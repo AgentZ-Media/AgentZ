@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { mkdtempSync, mkdirSync, writeFileSync, readFileSync, rmSync, existsSync, symlinkSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, dirname } from "node:path";
-import { newApp, removeApp, nextPort, validateId } from "./index.mjs";
+import { newApp, removeApp, nextPort, validateId, lockDrift } from "./index.mjs";
 import { templates } from "./templates.mjs";
 import { findTokenViolations } from "../checks/tokens.mjs";
 import { validateAppId } from "../release/core.mjs";
@@ -157,4 +157,13 @@ test("rejects existing native Cargo package names before any mutation", (t) => {
     for (const path of [`apps/${id}`, `modules/${id}`, `docs/release-notes/${id}`]) assert.equal(existsSync(join(f.root, path)), false);
     assert.equal(f.calls.length, 0);
   }
+});
+
+test("reports lockfile packages changed beyond the generated importer", () => {
+  const lock = (packages) => `lockfileVersion: '9.0'\n\nimporters:\n\n  .: {}\n\npackages:\n\n${packages.map((entry) => `  ${entry}:\n    resolution: {integrity: x}\n`).join("\n")}\nsnapshots:\n\n  x: {}\n`;
+  const before = lock(["picomatch@4.0.4", "'@babel/parser@7.29.3'", "solid-js@1.9.12"]);
+  assert.deepEqual(lockDrift(before, before), { added: [], removed: [] });
+  const after = lock(["picomatch@4.0.7", "'@babel/parser@7.29.3'", "solid-js@1.9.12"]);
+  assert.deepEqual(lockDrift(before, after), { added: ["picomatch@4.0.7"], removed: ["picomatch@4.0.4"] });
+  assert.deepEqual(lockDrift(before, lock(["picomatch@4.0.4", "solid-js@1.9.12"])).removed, ["@babel/parser@7.29.3"]);
 });

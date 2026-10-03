@@ -2,6 +2,8 @@ import { readFileSync, existsSync } from 'node:fs';
 import { join } from 'node:path';
 
 const semver = /^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-((?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*)(?:\.(?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*))*))?(?:\+([0-9a-zA-Z-]+(?:\.[0-9a-zA-Z-]+)*))?$/;
+/** Placeholder line written by `release:bump`; a release must replace it. */
+export const RELEASE_NOTES_PLACEHOLDER = 'Describe the changes users will notice.';
 export function parseVersion(value) {
   const match = typeof value === 'string' && value.match(semver);
   if (!match) throw new Error(`Invalid semantic version: ${value}`);
@@ -63,6 +65,7 @@ export function validateRelease(root, app, version, { notes = true } = {}) {
   if (typeof meta.product !== 'string' || !meta.product.trim() || /[\r\n]/.test(meta.product)) throw new Error('Invalid productName');
   const notesFile = join(root, 'docs/release-notes', app, `v${version}.md`);
   if (notes && (!existsSync(notesFile) || !readFileSync(notesFile, 'utf8').trim())) throw new Error(`Missing release notes: ${notesFile}`);
+  if (notes && readFileSync(notesFile, 'utf8').includes(RELEASE_NOTES_PLACEHOLDER)) throw new Error(`Release notes still contain the template placeholder: ${notesFile}`);
   return { ...meta, version, tag: `${app}-v${version}`, notesFile };
 }
 export function renderBody(notes, footer, product) {
@@ -96,6 +99,9 @@ export function platformComplete(manifest, assets, platform, context) {
   return true;
 }
 export function pointerDecision(candidate, current, reservedVersion = null) {
+  // Pre-releases are published on their own tag but never reach the stable
+  // update channel or the website downloads.
+  if (parseVersion(candidate.version).pre.length > 0) return 'prerelease';
   if (reservedVersion && compareVersions(candidate.version, reservedVersion) < 0) return 'skip';
   if (!current) return 'advance';
   const order = compareVersions(candidate.version, current.version);

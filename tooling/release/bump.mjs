@@ -2,7 +2,7 @@ import { readFileSync, writeFileSync, mkdirSync, existsSync } from 'node:fs';
 import { join, dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { execFileSync } from 'node:child_process';
-import { appMetadata, parseVersion, compareVersions, validateRelease } from './core.mjs';
+import { appMetadata, parseVersion, compareVersions, validateRelease, RELEASE_NOTES_PLACEHOLDER } from './core.mjs';
 
 export function bump(root, app, version, runCargo = (args) => execFileSync('cargo', args, { cwd: root, stdio: 'inherit' })) {
   parseVersion(version);
@@ -25,7 +25,7 @@ export function bump(root, app, version, runCargo = (args) => execFileSync('carg
     const notes = join(root, 'docs/release-notes', app, `v${version}.md`);
     if (!existsSync(notes)) {
       mkdirSync(dirname(notes), { recursive: true });
-      writeFileSync(notes, `${meta.product} v${version} — Release notes\n\n## What's new\n\n- Describe the changes users will notice.\n\n## Updating\n\nInstall the update from the app's update indicator, or download the installer below.\n`, { flag: 'wx' });
+      writeFileSync(notes, `${meta.product} v${version} — Release notes\n\n## What's new\n\n- ${RELEASE_NOTES_PLACEHOLDER}\n\n## Updating\n\nInstall the update from the app's update indicator, or download the installer below.\n`, { flag: 'wx' });
     }
     return { tag: `${app}-v${version}`, notes };
   } catch (error) {

@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { mkdtempSync, mkdirSync, readFileSync, writeFileSync, rmSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
-import { parseTag, parseVersion, compareVersions, validateRelease, validateManifest, pointerDecision, renderBody, platformComplete } from './core.mjs';
+import { parseTag, parseVersion, compareVersions, validateRelease, validateManifest, pointerDecision, renderBody, platformComplete, RELEASE_NOTES_PLACEHOLDER } from './core.mjs';
 import { bump } from './bump.mjs';
 
 function fixture(t) {
@@ -42,6 +42,12 @@ test('prepare validates all four versions and requires app-specific notes', t =>
   assert.throws(() => validateRelease(root, 'notes', '0.1.0'), /Missing release notes/);
   assert.doesNotThrow(() => validateRelease(root, 'notes', '0.1.0', { notes: false }));
 });
+test('prepare rejects release notes that still contain the bump placeholder', t => {
+  const root = fixture(t);
+  writeFileSync(join(root, 'docs/release-notes/notes/v0.1.0.md'), `Notes 0.1.0\n\n- ${RELEASE_NOTES_PLACEHOLDER}\n`);
+  assert.throws(() => validateRelease(root, 'notes', '0.1.0'), /placeholder/);
+  assert.doesNotThrow(() => validateRelease(root, 'notes', '0.1.0', { notes: false }));
+});
 test('bump updates only app version, invokes targeted offline Cargo update, creates notes', t => {
   const root = fixture(t);
   const result = bump(root, 'notes', '0.2.0', args => {
@@ -49,7 +55,9 @@ test('bump updates only app version, invokes targeted offline Cargo update, crea
     const lock = join(root, 'Cargo.lock'); writeFileSync(lock, readFileSync(lock, 'utf8').replace('0.1.0', '0.2.0'));
   });
   assert.equal(result.tag, 'notes-v0.2.0');
-  assert.equal(validateRelease(root, 'notes', '0.2.0').lock, '0.2.0');
+  assert.equal(validateRelease(root, 'notes', '0.2.0', { notes: false }).lock, '0.2.0');
+  // The generated notes are a template: releasing them unedited must fail.
+  assert.throws(() => validateRelease(root, 'notes', '0.2.0'), /placeholder/);
   assert.match(readFileSync(result.notes, 'utf8'), /Notes App v0.2.0/);
   assert.match(readFileSync(join(root, 'Cargo.lock'), 'utf8'), /version = "9.0.0"/);
   assert.throws(() => bump(root, 'notes', '0.1.0'), /newer/);
@@ -74,6 +82,11 @@ test('pointer cannot go backward, equal identical manifests repair partial uploa
   assert.equal(pointerDecision(manifest(), null, '0.10.0'), 'skip');
   assert.equal(pointerDecision(manifest(), manifest('0.8.4'), '0.10.0'), 'skip');
   assert.equal(pointerDecision(manifest(), null, '0.9.0'), 'advance');
+});
+test('pre-release versions never move the stable pointer', () => {
+  assert.equal(pointerDecision(manifest('1.0.0-rc.1'), manifest('0.9.1')), 'prerelease');
+  assert.equal(pointerDecision(manifest('1.0.0-rc.1'), null), 'prerelease');
+  assert.equal(pointerDecision(manifest('1.0.0'), manifest('0.9.1')), 'advance');
 });
 test('install footer replaces all product placeholders', () => {
   assert.equal(renderBody('New notes\n', 'Open {{PRODUCT_NAME}}; {{PRODUCT_NAME}}.app', 'Notes App'), 'New notes\n\nOpen Notes App; Notes App.app\n');

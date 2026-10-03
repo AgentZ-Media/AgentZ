@@ -21,6 +21,27 @@ function restoreFiles(root, snapshot) {
   }
 }
 const registryPaths = { logo: "packages/design/logo.ts", site: "apps/site/src/apps.ts" };
+
+/** `name@version` entries of the resolved package list in pnpm-lock.yaml. */
+function lockedPackages(text) {
+  const section = text.split(/\npackages:\n/)[1]?.split(/\nsnapshots:\n/)[0] ?? "";
+  return new Set([...section.matchAll(/^ {2}'?(@?[^\s'@]+(?:\/[^\s'@]+)?@[^\s':(]+)'?:/gm)].map((match) => match[1]));
+}
+/** Generating or removing an app only adds or drops its own importer. A
+ *  re-resolution can still move unrelated packages; report it for review. */
+export function lockDrift(before, after) {
+  const old = lockedPackages(before ?? ""), next = lockedPackages(after ?? "");
+  return { added: [...next].filter((entry) => !old.has(entry)), removed: [...old].filter((entry) => !next.has(entry)) };
+}
+function warnLockDrift(root, before) {
+  const lockFile = join(root, "pnpm-lock.yaml");
+  if (!before || !existsSync(lockFile)) return { added: [], removed: [] };
+  const drift = lockDrift(before.toString("utf8"), readFileSync(lockFile, "utf8"));
+  if (!drift.added.length && !drift.removed.length) return drift;
+  console.warn(`pnpm-lock.yaml hat auch fremde Pakete verändert. Vor dem Commit prüfen (git diff pnpm-lock.yaml):\n${[
+    ...drift.added.map((entry) => `  + ${entry}`), ...drift.removed.map((entry) => `  - ${entry}`)].join("\n")}`);
+  return drift;
+}
 export function validateId(id) {
   if (typeof id !== "string" || !/^[a-z][a-z0-9]*(?:-[a-z0-9]+)*$/.test(id) || id.length > 50 || RESERVED.has(id)) throw new Error(`Ungültige oder reservierte App-ID: ${id}`);
   return id;
@@ -125,7 +146,8 @@ export function newApp(root, id, name, { run = runCommand } = {}) {
     for (const path of created) rmSync(join(root, path), { recursive: true, force: true });
     throw error;
   }
-  return { id, name, port, paths: ownedPaths };
+  const drift = warnLockDrift(root, lockSnapshot["pnpm-lock.yaml"]);
+  return { id, name, port, paths: ownedPaths, drift };
 }
 
 export function removeApp(root, id, { run = runCommand } = {}) {
@@ -161,6 +183,7 @@ export function removeApp(root, id, { run = runCommand } = {}) {
     for (const [path, content] of Object.entries(replacements)) writeFileSync(safePath(root, path), content);
     updateLocks(root, run);
     stagingCanBeRemoved = true;
+    warnLockDrift(root, snapshot["pnpm-lock.yaml"]);
   } catch (error) {
     try {
       restoreFiles(root, snapshot);

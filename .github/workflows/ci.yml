@@ -48,11 +48,8 @@ jobs:
                   "git", "diff", "--name-only", "--no-renames", "-z", f"{base}{separator}{head}"
               ]).decode().split("\0")
               def is_documentation(path):
-                  return (
-                      path.startswith("docs/")
-                      or path in {"README.md", "CLAUDE.md", "AGENTS.md", "LICENSE"}
-                      or (path.startswith(".claude/rules/") and path.endswith(".md"))
-                  )
+                  # Markdown never feeds a build; release notes live in docs/.
+                  return path.startswith("docs/") or path.endswith(".md") or path == "LICENSE"
               code = any(path and not is_documentation(path) for path in changed)
           with open(os.environ["GITHUB_OUTPUT"], "a") as output:
               output.write(f"code={str(code).lower()}\n")
