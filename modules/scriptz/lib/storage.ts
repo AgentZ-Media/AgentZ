@@ -1,4 +1,4 @@
-// High-level storage adapter for @scriptz/core.
+// High-level storage adapter for @agentz/scriptz.
 //
 // DbConnection abstracts raw SQL access; StorageAdapter provides typed
 // CRUD methods. The SQL-backed default in ./api.ts uses DbConnection,
@@ -229,7 +229,7 @@ export function setStorageAdapter(a: StorageAdapter): void {
 export function getStorageAdapter(): StorageAdapter {
   if (!adapter) {
     throw new Error(
-      "Storage adapter not set. Make sure @scriptz/core/lib/api was imported (or a custom adapter registered) before this call.",
+      "Storage adapter not set. Make sure @agentz/scriptz/lib/api was imported (or a custom adapter registered) before this call.",
     );
   }
   return adapter;

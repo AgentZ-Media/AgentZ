@@ -1,4 +1,8 @@
-# ScriptZ Desktop - Claude context
+# ScriptZ - App-Kontext
+
+App-Paket: `@agentz/scriptz-app`. Produktmodul: `@agentz/scriptz`.
+Suite-Regeln: [`CLAUDE.md`](../../CLAUDE.md). Geteiltes Kit und
+Desktop-Host sind für spätere Phasen geplant, noch nicht vorhanden.
 
 Fast, local script editor for short-form video creators (TikTok, Reels,
 YouTube Shorts). Tauri 2 shell + Solid + TypeScript + Lexical editor
@@ -10,7 +14,8 @@ first-class; Linux not (yet) shipped.
 This codebase was deliberately stripped down in 2026-05 and redesigned
 as the "Werkbank" in 2026-10 (sidebar shell, four block types, stages,
 length range; plan in [`docs/redesign/umsetzung.md`](../../docs/redesign/umsetzung.md)).
-Since then almost all UI and logic lives in `packages/core/` and the
+After the Phase 2 path migration, almost all UI and logic lives in
+`modules/scriptz/` and the
 design system in `packages/design/`; this app is a thin Tauri shell
 (`App.tsx` renders the shared `AppShell` and adds close-flush +
 auto-updater). Der tatsächliche Code ist die Referenz für das
@@ -20,11 +25,11 @@ aktuelle Verhalten.
 
 Details lazy-load aus [`/.claude/rules/`](../../.claude/rules/):
 
-- [`desktop-architecture.md`](../../.claude/rules/desktop-architecture.md)
-  - Layout von `packages/core`, `packages/design`, `src/` und
+- [`scriptz-architecture.md`](../../.claude/rules/scriptz-architecture.md)
+  - Layout von `modules/scriptz`, `packages/design`, `src/` und
   `src-tauri/`, Stufen + Zielbereich, das per-script Character-Modell,
   Legacy-Block-Migration, Editor → DB Data-Flow. Lädt bei
-  `apps/desktop/src/**`, `apps/desktop/src-tauri/**`, `packages/core/**`
+  `apps/scriptz/src/**`, `apps/scriptz/src-tauri/**`, `modules/scriptz/**`
   und `packages/design/**`.
 - [`desktop-release.md`](../../.claude/rules/desktop-release.md) -
   In-App-Updater (`tauri-plugin-updater` + minisign), Versionen in vier
@@ -46,12 +51,12 @@ tsconfig.json
 vite.config.ts
 ```
 
-Detail-Layout der Subverzeichnisse: siehe `desktop-architecture.md`.
+Detail-Layout der Subverzeichnisse: siehe `scriptz-architecture.md`.
 
 ## Conventions (wichtig)
 
 - **TypeScript owns persistence.** All SQL lives in
-  `packages/core/lib/` (`scripts.ts`, `folders.ts`, ...); the plugin-sql
+  `modules/scriptz/lib/` (`scripts.ts`, `folders.ts`, ...); the plugin-sql
   connection comes from `PlatformAdapter.getDb()` in `src/lib/platform.ts`.
   There are no Tauri commands for data access - the Rust side opens no
   DB connections. Schema changes are additive SQL migrations in
@@ -59,7 +64,7 @@ Detail-Layout der Subverzeichnisse: siehe `desktop-architecture.md`.
   `src-tauri/src/lib.rs`.
 - **All entities use UUIDv4 string IDs.** Never auto-increment integers.
 - **Timestamps** are JS Unix-millis (`Date.now()`).
-- **No `any` in TypeScript.** Data types in `packages/core/lib/types.ts`.
+- **No `any` in TypeScript.** Data types in `modules/scriptz/lib/types.ts`.
 - **Lexical: vanilla only.** No `@lexical/react`. We
   `editor.setRootElement(ref)` and **must** call
   `registerRichText(editor)` - without it,
@@ -74,7 +79,7 @@ Detail-Layout der Subverzeichnisse: siehe `desktop-architecture.md`.
   pre-append `$createTextNode("")` - Lexical's reconciler then renders
   nothing useful and WebKit can't place a caret. With no children,
   the reconciler injects a managed `<br>` placeholder automatically.
-- **Solid stores:** small modules under `packages/core/stores/`.
+- **Solid stores:** small modules under `modules/scriptz/stores/`.
   Components subscribe via getters; mutations go through store actions.
   Navigation is `stores/nav.ts` (routes, history ⌘[ / ⌘], "Zuletzt"),
   panel/dialog state is `stores/ui.ts`. **No tabs** - the sidebar shell
@@ -103,6 +108,9 @@ Detail-Layout der Subverzeichnisse: siehe `desktop-architecture.md`.
 
 ## Commands
 
+Aus `apps/scriptz/` ausführen; vom Repo-Root heißen die nativen
+Start-/Build-Befehle `pnpm dev:scriptz` und `pnpm build:scriptz`.
+
 ```bash
 pnpm install                # installs node deps
 pnpm tauri:dev              # full app with hot-reload + Rust rebuild
@@ -130,7 +138,7 @@ cargo check --manifest-path src-tauri/Cargo.toml
 - **No localStorage for script content.** Persistence is SQLite.
 - **No telemetry.** App works fully offline. The only network call is
   the hourly updater poll to
-  `https://github.com/AgentZ-Media/ScriptZ/releases/latest/download/latest.json`
+  `https://github.com/AgentZ-Media/AgentZ/releases/latest/download/latest.json`
   (no body, no identifier) plus the manifest-driven binary download
   when the user clicks the update pill.
 - **Don't reintroduce global characters, projects, tags, aliases,

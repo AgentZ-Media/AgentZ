@@ -5,7 +5,7 @@ import type { UpdatesStore } from "../../../lib/updates";
 import { t } from "../../../i18n";
 import { Row, SectionHead, Switch } from "./parts";
 
-const REPO_URL = "https://github.com/AgentZ-Media/ScriptZ";
+const REPO_URL = "https://github.com/AgentZ-Media/AgentZ";
 
 /** Auto-update (desktop only - the dialog hides this section when no
  *  updates store is registered). */

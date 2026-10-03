@@ -282,7 +282,7 @@ export const en: Record<keyof typeof de, string> = {
   "settings.about.developer": "Built by",
   "settings.about.developer.linkText": "AgentZ",
   "settings.about.repository": "Repository",
-  "settings.about.repository.linkText": "github.com/AgentZ-Media/ScriptZ",
+  "settings.about.repository.linkText": "github.com/AgentZ-Media/AgentZ",
   "settings.about.onboarding.help": "Show the short app tour again.",
   "settings.about.onboarding.button": "Show again",
   "settings.toast.colorFailed": "Saving color failed: {message}",

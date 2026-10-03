@@ -1,8 +1,8 @@
 {
-  "name": "@scriptz/core",
+  "name": "@agentz/scriptz",
   "private": true,
   "version": "0.0.0",
-  "description": "Shared editor, business logic and UI for ScriptZ Desktop and (future) Web apps.",
+  "description": "ScriptZ product module: editor, application logic, stores and UI.",
   "type": "module",
   "main": "./index.ts",
   "types": "./index.ts",

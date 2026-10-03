@@ -389,7 +389,7 @@ const sqlBackedAdapter: StorageAdapter = {
 setStorageAdapter(sqlBackedAdapter);
 
 // Proxy facade for drop-in compatibility. Older code that does
-// `import { api } from "@scriptz/core/lib/api"` and calls `api.getScript(id)`
+// `import { api } from "@agentz/scriptz/lib/api"` and calls `api.getScript(id)`
 // passes through here to `getStorageAdapter()` - i.e. always to
 // the currently registered adapter. Functions are bound to the adapter
 // so any `this` references in a custom impl

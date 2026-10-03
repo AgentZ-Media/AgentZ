@@ -1,4 +1,4 @@
-// Tauri-backed implementation of @scriptz/core's PlatformAdapter.
+// Tauri-backed implementation of @agentz/scriptz's PlatformAdapter.
 //
 // Imported once at app startup from index.tsx, this registers a
 // concrete adapter so the core code - which only knows the abstract
@@ -10,8 +10,8 @@
 // tauri.ts, App.tsx's close handler).
 //
 // Since phase 2F: no own exportPdf.ts / exportPlaintext.ts anymore.
-// The PDF bytes are built by packages/core/lib/exportPdf.ts, the
-// plaintext comes from packages/core/lib/lex::extractTeleprompterText.
+// The PDF bytes are built by modules/scriptz/lib/exportPdf.ts, the
+// plaintext comes from modules/scriptz/lib/lex::extractTeleprompterText.
 // Here we only handle the "bytes to disk" part via saveAs.
 
 import Database from "@tauri-apps/plugin-sql";
@@ -29,7 +29,7 @@ import {
   type PlatformAdapter,
   type SaveAsOptions,
   type SaveAsResult,
-} from "@scriptz/core/lib/platform";
+} from "@agentz/scriptz/lib/platform";
 
 // Map Tauri's OS string to our three-bucket Platform. iOS / Android
 // would arrive on Tauri Mobile; for the desktop bundle we collapse

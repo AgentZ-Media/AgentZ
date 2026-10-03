@@ -1,6 +1,6 @@
 import { Show } from "solid-js";
-import { settingsStore } from "@scriptz/core/stores/settings";
-import { t } from "@scriptz/core/i18n";
+import { settingsStore } from "@agentz/scriptz/stores/settings";
+import { t } from "@agentz/scriptz/i18n";
 import { updatesStore } from "~/stores/updates";
 import "./UpdateIndicator.css";
 

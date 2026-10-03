@@ -1,9 +1,9 @@
 import { createSignal } from "solid-js";
 import { check, type Update } from "@tauri-apps/plugin-updater";
 import { relaunch } from "@tauri-apps/plugin-process";
-import { settingsStore } from "@scriptz/core/stores/settings";
-import { setUpdatesStore, type UpdatesStore } from "@scriptz/core/lib/updates";
-import { flushAll } from "@scriptz/core/lib/saveFlush";
+import { settingsStore } from "@agentz/scriptz/stores/settings";
+import { setUpdatesStore, type UpdatesStore } from "@agentz/scriptz/lib/updates";
+import { flushAll } from "@agentz/scriptz/lib/saveFlush";
 
 export type UpdateStage =
   | "idle"
@@ -151,5 +151,5 @@ export const updatesStore: UpdatesStore = {
   stopBackgroundPolling,
 };
 
-// Register with @scriptz/core so SettingsDialog can pick it up.
+// Register with @agentz/scriptz so SettingsDialog can pick it up.
 setUpdatesStore(updatesStore);

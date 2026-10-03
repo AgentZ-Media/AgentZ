@@ -16,7 +16,7 @@ ausklappbare Zeitleiste zeigt, wer wann redet und wo gekürzt werden kann.
 ## Warum ein Bereich und kein einzelner Wert
 
 Short-Form-Skripte werden in Sekunden gemessen, nicht in Seiten. Die
-Laufzeit-Schätzung gibt es schon (`packages/core/lib/runtime.ts`), aber
+Laufzeit-Schätzung gibt es schon (`modules/scriptz/lib/runtime.ts`), aber
 ohne Bezugspunkt weiß man nicht, ob 1:15 gut oder zu lang ist.
 
 Ein einzelner Zielwert wäre aber zu streng: Wer „1:00" als Ziel hat,
@@ -157,14 +157,19 @@ Gleiche Logik, Rotstift-Ton `#FF7A66`, Zielbereich als
 `rgba(255,255,255,0.07)`, Hook-Zone als Gelb mit geringerer Deckkraft,
 Spuren auf `--fill`.
 
-## Technische Skizze (für später)
+## Historische technische Skizze
+
+Die folgende Skizze dokumentiert die ursprüngliche Umsetzung. Die
+Web-App samt IndexedDB-Adapter wurde in Phase 1 des Suite-Umbaus entfernt;
+heute nutzt ScriptZ nur den SQLite-Adapter. Pfade sind auf den aktuellen
+Stand gebracht.
 
 - **Schema (additiv):** `folders.length_min_sec INTEGER NULL` und
   `folders.length_max_sec INTEGER NULL`. Standard-Bereich als zwei
   Settings, z. B. `length_min_default_sec` / `length_max_default_sec`
   (NULL/leer = aus). Validierung: Minimum < Maximum, wenn beide gesetzt.
 - **Beide Storage-Adapter** (SQLite + IndexedDB) erweitern,
-  `StorageAdapter`-Interface in `packages/core/lib/storage.ts` zuerst.
+  `StorageAdapter`-Interface in `modules/scriptz/lib/storage.ts` zuerst.
 - **`.scriptz`-Datei:** enthält keine Ordner, also keine Änderung nötig.
 - **Zeitleiste:** braucht pro Block Start/Dauer. Kann live aus dem
   Lexical-State berechnet werden (gleiche Funktion wie `runtime.ts`,

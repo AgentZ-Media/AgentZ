@@ -4,7 +4,7 @@ import { t } from "../../../i18n";
 import { AppMark } from "../../Common/AppMark";
 import { Row, SectionHead } from "./parts";
 
-const REPO_URL = "https://github.com/AgentZ-Media/ScriptZ";
+const REPO_URL = "https://github.com/AgentZ-Media/AgentZ";
 const DEVELOPER_URL = "https://linktr.ee/deragentz";
 
 export function SettingsAbout(props: { onClose(): void; onShowOnboarding(): void }) {

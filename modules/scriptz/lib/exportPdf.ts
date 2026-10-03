@@ -1,6 +1,6 @@
 // PDF generator - browser-compatible byte generation.
 //
-// Migration from apps/desktop/src/lib/exportPdf.ts (phase 2F): the pure
+// Migration from apps/scriptz/src/lib/exportPdf.ts (phase 2F): the pure
 // layout logic plus pdf-lib + @pdf-lib/fontkit has no Tauri binding
 // and runs identically in the browser and on desktop. The file
 // writing part (mkdir + writeFile) moves to the

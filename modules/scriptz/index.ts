@@ -1,7 +1,7 @@
-// Public barrel for @scriptz/core.
+// Public barrel for @agentz/scriptz.
 //
 // Most consumers should prefer the per-module subpath imports (e.g.
-// `@scriptz/core/lib/api`, `@scriptz/core/components/Browser/Browser`)
+// `@agentz/scriptz/lib/api`, `@agentz/scriptz/components/Browser/Browser`)
 // for tree-shaking and clearer dependency edges. This barrel exists so
 // the package has a default entry point and so platform-glue files
 // (the host's adapter implementation) can grab the registration

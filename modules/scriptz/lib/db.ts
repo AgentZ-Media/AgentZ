@@ -1,4 +1,4 @@
-// Database access for @scriptz/core.
+// Database access for @agentz/scriptz.
 //
 // Until Phase 11 of the Rust → TS migration this file held the
 // @tauri-apps/plugin-sql connection directly. With the core/ extraction

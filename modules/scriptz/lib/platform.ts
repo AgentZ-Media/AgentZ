@@ -1,6 +1,6 @@
 // Platform abstraction layer.
 //
-// Everything in @scriptz/core is platform-neutral TypeScript. Anything that
+// Everything in @agentz/scriptz is platform-neutral TypeScript. Anything that
 // needs native capabilities - SQLite, file dialogs, file system writes,
 // reveal-in-folder, app version, open-external-URL - goes through this
 // adapter interface. The desktop app registers a Tauri-backed adapter at

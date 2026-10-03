@@ -11,8 +11,8 @@
  *     scriptz-mark-inverse.svg   bare Z, chalk + highlighter (dark backgrounds)
  *     scriptz-app-icon.svg       app icon ("App-Icon hell" in concept.html)
  *     scriptz-app-icon.png       1024 px raster of the app icon
- *   apps/desktop/src-tauri/icons/**          full Tauri set via `tauri icon`
- *   apps/desktop/src-tauri/icons/icon.iconset/*
+ *   apps/scriptz/src-tauri/icons/**          full Tauri set via `tauri icon`
+ *   apps/scriptz/src-tauri/icons/icon.iconset/*
  *
  * The app icon follows the macOS icon grid: 1024 canvas, 824 tile at 100 px
  * inset, corner radius 22.5 % of the tile - the same geometry as the
@@ -156,7 +156,7 @@ renderPng(chrome, iconSvg, iconPng, CANVAS);
 console.log("png  -> packages/design/assets/scriptz-app-icon.png");
 
 // Desktop: the full Tauri set (icns, ico, Windows Store tiles, iOS, Android).
-const desktopDir = join(repoRoot, "apps/desktop");
+const desktopDir = join(repoRoot, "apps/scriptz");
 // pnpm is a .cmd shim on Windows, which execFileSync can only start via a
 // shell. The relative path keeps the argument free of spaces for that shell.
 execFileSync("pnpm", ["tauri", "icon", relative(desktopDir, iconPng)], {
@@ -173,4 +173,4 @@ for (const base of [16, 32, 128, 256, 512]) {
     renderPng(chrome, iconSvg, join(iconset, `icon_${base}x${base}${suffix}.png`), px);
   }
 }
-console.log("png  -> apps/desktop/src-tauri/icons/icon.iconset/");
+console.log("png  -> apps/scriptz/src-tauri/icons/icon.iconset/");

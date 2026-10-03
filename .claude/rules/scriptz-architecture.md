@@ -1,31 +1,32 @@
 ---
 paths:
-  - "apps/desktop/src/**"
-  - "apps/desktop/src-tauri/**"
-  - "packages/core/**"
+  - "apps/scriptz/src/**"
+  - "apps/scriptz/src-tauri/**"
+  - "modules/scriptz/**"
   - "packages/design/**"
 ---
 
-# Desktop-App: Architektur-Detail
+# ScriptZ: Architektur-Detail
 
 Tauri 2 shell + Solid + TypeScript + Lexical editor (vanilla, no React).
 All persistence, search, export and CRUD lives in TypeScript; the Rust
 crate is reduced to plugin wiring + schema migrations. macOS Apple
 Silicon + Windows x64 are first-class; Linux not (yet) shipped.
 
-Seit dem Redesign „Werkbank" (2026-10, Branch `redesign-werkbank`) liegt
-praktisch die gesamte App in `packages/core/` (UI, Stores, Logik) und
-`packages/design/` (Designsystem). `apps/desktop/` ist eine dünne Schale.
-Konzept und Arbeitsplan: [`docs/redesign/umsetzung.md`](docs/redesign/umsetzung.md),
+Seit Phase 2 des Suite-Fundaments liegt die bisherige App-Logik aus
+dem Redesign „Werkbank" in `modules/scriptz/` (UI, Stores, Logik) und
+`packages/design/` (Designsystem). `apps/scriptz/` ist eine dünne Schale.
+`@agentz/kit` und `@agentz/desktop` sind noch nicht ausgegliedert.
+Konzept und Arbeitsplan: [`docs/redesign/umsetzung.md`](../../docs/redesign/umsetzung.md),
 visuelle Referenz `docs/redesign/concept.html`, Längenziel-Spec
-[`docs/feature-laengenziel.md`](docs/feature-laengenziel.md).
+[`docs/feature-laengenziel.md`](../../docs/feature-laengenziel.md).
 
 Der tatsächliche Code ist die Referenz für das aktuelle Verhalten.
 
 ## Repo-Layout (Detail)
 
 ```
-apps/desktop/
+apps/scriptz/
   src-tauri/
     src/lib.rs             Tauri Builder + plugin wiring + plugin-sql
                            migration list (001-007). No commands, no
@@ -76,7 +77,7 @@ packages/design/           @agentz/design - suite design system (see its README)
   scripts/build-logo.mjs   Exports assets/ + the full
                            Tauri icon set from logo.ts (build:logo).
 
-packages/core/
+modules/scriptz/
   styles/
     tokens.css             ScriptZ-only tokens: traffic-light spacer,
                            character palette (--char-*), A4 paper geometry.

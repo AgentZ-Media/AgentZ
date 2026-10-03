@@ -2,7 +2,7 @@
 name = "scriptz"
 version = "0.8.4"
 description = "ScriptZ - fast, local, beautiful script editor for short-form video creators (TikTok, Reels, YouTube Shorts)."
-authors = ["ScriptZ Contributors"]
+authors = ["AgentZ Media"]
 edition = "2021"
 
 [lib]

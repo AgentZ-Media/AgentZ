@@ -288,7 +288,7 @@ export const de = {
   "settings.about.developer": "Entwickelt von",
   "settings.about.developer.linkText": "AgentZ",
   "settings.about.repository": "Repository",
-  "settings.about.repository.linkText": "github.com/AgentZ-Media/ScriptZ",
+  "settings.about.repository.linkText": "github.com/AgentZ-Media/AgentZ",
   "settings.about.onboarding.help": "Die Kurz-Tour zur App nochmal anzeigen.",
   "settings.about.onboarding.button": "Nochmal anzeigen",
   "settings.toast.colorFailed": "Farbe speichern fehlgeschlagen: {message}",
