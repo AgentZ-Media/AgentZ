@@ -352,6 +352,33 @@ und Phasen; dieses Protokoll hält die konkreten Ergebnisse fest.
   Tooling-Tests; damit 34 Tooling-Tests. Der Check läuft auch in der CI.
   Root-Befehle `dev:site` und `build:site`; Website-Regeln in
   `.claude/rules/site.md`.
-- **Abgrenzung:** Lokal umgesetzt und geprüft, noch nicht veröffentlicht.
+- **Abgrenzung:** [PR #29](https://github.com/AgentZ-Media/AgentZ/pull/29)
+  gemergt (`763e327`); lokal umgesetzt und geprüft, noch nicht veröffentlicht.
   Vercel-Projekt, Domain und DNS übernimmt Timo. Der App-Generator und
   seine Sandbox-Abnahme gehören zur anschließenden Phase 8.
+
+### Phase 8: App-Generator und Sandbox-Abnahme
+
+- **Generator:** `pnpm new-app <id> "<Name>"` erzeugt App und Modul mit
+  eigener Bundle-ID, Datenbank, DE/EN-Texten, Kit-Shell, Test, Icon-Set,
+  Release-Notes-Verzeichnis und Website-Eintrag `soon`. Ports, HMR und
+  Tauri-`devUrl` werden gemeinsam vergeben. Vorhandene Pfade werden nicht
+  überschrieben; Fehler stellen Quellen, Registry-Einträge und Lockfiles
+  wieder her. `remove-app` ermöglicht den späteren kontrollierten Rückbau,
+  ohne lokale Nutzerdaten, Git-Tags oder Releases zu löschen.
+- **Echter Durchlauf:** `pnpm new-app sandbox "Sandbox"` ausgeführt,
+  `de.agent-z.sandbox`, `sandbox.db`, Ports 1430/1431. Root-Typecheck,
+  Frontend-Build und Tests erfolgreich. Eine durch den Token-Check erkannte
+  Legacy-Variable `--text` in der Vorlage wurde auf einen semantischen
+  Token korrigiert.
+- **Abnahme läuft:** Beim parallelen Entwicklungsstart mit ScriptZ wurde
+  ein Fehler bei der Solid-Auflösung durch die gemeinsame Vite-Konfiguration
+  gefunden und im gemeinsamen Host korrigiert, ohne ScriptZ-Code zu ändern.
+  Die 25 Desktop-Tests sind grün; beide nativen Entwicklungsprozesse starten.
+  Temporäre App-Bundles ermöglichen die anschließende visuelle Abnahme.
+  Noch keine abgeschlossene gleichzeitige Desktop-Nutzung, kein Sandbox-
+  Release und kein echter Sandbox-Update-Zyklus behauptet. Der Rückbau folgt erst nach
+  erfolgreicher Abnahme.
+- **Dokumentation:** `docs/neue-app.md` beschreibt Anlage, Fachlogik,
+  Migrationen, Icons, Releases und Rückbau. Die zentrale Release-Regel
+  liegt jetzt entsprechend der Repository-Konvention auf Deutsch vor.
