@@ -146,7 +146,7 @@
   font-size: 48px;
   line-height: 1;
   margin-bottom: 16px;
-  color: #d04141;
+  color: var(--warn);
 }
 .boot-error-h1 {
   font-size: var(--fs-20);
@@ -155,7 +155,7 @@
 }
 .boot-error-lede {
   margin: 0 0 20px;
-  color: var(--fg-muted, #5b5b58);
+  color: var(--muted);
   font-size: var(--fs-14);
   line-height: 1.55;
 }
@@ -165,10 +165,10 @@
   padding: 10px 14px;
   border: 1px solid var(--border);
   border-radius: 8px;
-  background: var(--bg-elev, rgba(0, 0, 0, 0.02));
+  background: var(--surface-2);
   font-family: var(--font-mono, monospace);
   font-size: var(--fs-12);
-  color: #d04141;
+  color: var(--warn);
   text-align: left;
   max-width: 100%;
   overflow-wrap: break-word;
@@ -184,7 +184,7 @@
   font-size: var(--fs-11);
   padding: 12px;
   border-radius: 8px;
-  background: var(--bg-elev, rgba(0, 0, 0, 0.04));
+  background: var(--surface-2);
   max-height: 240px;
   overflow: auto;
   white-space: pre-wrap;
@@ -193,5 +193,5 @@
 .boot-error-help {
   margin: 0;
   font-size: var(--fs-12);
-  color: var(--fg-muted, #5b5b58);
+  color: var(--muted);
 }

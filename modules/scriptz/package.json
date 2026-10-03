@@ -23,20 +23,21 @@
   },
   "dependencies": {
     "@agentz/design": "workspace:*",
-    "@lexical/history": "^0.44.0",
-    "@lexical/rich-text": "^0.44.0",
-    "@lexical/utils": "^0.44.0",
-    "@pdf-lib/fontkit": "^1.1.1",
-    "lexical": "^0.44.0",
-    "pdf-lib": "^1.17.1",
-    "solid-js": "^1.9.3"
+    "@lexical/history": "catalog:",
+    "@lexical/rich-text": "catalog:",
+    "@lexical/utils": "catalog:",
+    "@pdf-lib/fontkit": "catalog:",
+    "lexical": "catalog:",
+    "pdf-lib": "catalog:",
+    "solid-js": "catalog:"
   },
   "devDependencies": {
-    "@solidjs/testing-library": "^0.8.10",
-    "jsdom": "^25.0.1",
-    "typescript": "~5.6.2",
-    "vite": "^6.0.3",
-    "vite-plugin-solid": "^2.11.0",
-    "vitest": "^2.1.8"
+    "@solidjs/testing-library": "catalog:",
+    "jsdom": "catalog:",
+    "typescript": "catalog:",
+    "vite": "catalog:",
+    "vite-plugin-solid": "catalog:",
+    "vitest": "catalog:",
+    "@agentz/vitest-preset": "workspace:*"
   }
 }

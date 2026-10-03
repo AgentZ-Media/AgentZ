@@ -3,7 +3,10 @@ paths:
   - "apps/scriptz/package.json"
   - "apps/scriptz/src-tauri/tauri.conf.json"
   - "apps/scriptz/src-tauri/Cargo.toml"
-  - "apps/scriptz/src-tauri/Cargo.lock"
+  - "Cargo.toml"
+  - "Cargo.lock"
+  - "pnpm-workspace.yaml"
+  - "package.json"
   - "docs/release-notes/**"
   - ".github/workflows/release.yml"
 ---
@@ -16,8 +19,10 @@ Update-Kanäle entstehen erst in Phase 6 des Suite-Fundaments.
 
 `pnpm install --frozen-lockfile` prüft ausschließlich `pnpm-lock.yaml`.
 Es schützt **nicht** `Cargo.lock`; dafür müssen Cargo-Befehle mit
-`--locked` laufen. Der Cargo-Workspace und seine CI-Prüfung folgen
-in Phase 3; aktuell liegt das Rust-Lockfile in `apps/scriptz/src-tauri/`.
+`--locked` laufen. Seit Phase 3 liegt das unverändert verschobene
+Rust-Lockfile im Repo-Root. Die PR-CI führt
+`cargo check --workspace --locked` aus. Gemeinsame Abhängigkeiten und
+Release-Profile stehen im Root-`Cargo.toml`.
 
 ## Deploy-Targets
 
@@ -39,7 +44,7 @@ gehalten werden:
 1. `apps/scriptz/package.json` - `version`
 2. `apps/scriptz/src-tauri/tauri.conf.json` - `version`
 3. `apps/scriptz/src-tauri/Cargo.toml` - `[package].version`
-4. `apps/scriptz/src-tauri/Cargo.lock` - Version des Pakets `scriptz`
+4. `Cargo.lock` - Version des Pakets `scriptz`
 
 Zusätzlich `docs/release-notes/scriptz/vX.Y.Z.md` mit dem Changelog seit dem
 letzten Tag anlegen (siehe nächster Abschnitt). Der Release-Workflow
@@ -48,6 +53,12 @@ bricht ab, wenn diese Datei fehlt.
 Nach Freigabe und Merge: `git tag vX.Y.Z`, dann
 `git push origin vX.Y.Z`. Der Release-Workflow baut beide Plattformen
 und veröffentlicht Installer und Updater-Manifest auf GitHub.
+
+Cargo schreibt Build-Artefakte in das gemeinsame `target/` im
+Repo-Root. Lokale Builds ohne explizites Target liegen in
+`target/release/bundle/`; die Release-Jobs verwenden
+`target/aarch64-apple-darwin/release/bundle/` beziehungsweise
+`target/x86_64-pc-windows-msvc/release/bundle/`.
 
 ## Release-Asset-Naming
 

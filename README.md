@@ -33,6 +33,9 @@ modules/scriptz/          @agentz/scriptz
                           ScriptZ editor, UI, stores, and application logic
 packages/design/         @agentz/design
                           Shared CSS tokens, primitives, fonts, icons, assets
+tooling/vitest-preset/     Shared Solid/jsdom test configuration
+Cargo.toml / Cargo.lock   Rust workspace and shared dependency lockfile
+tsconfig.base.json        Shared TypeScript compiler options
 docs/release-notes/
   scriptz/                ScriptZ release notes
 ```
@@ -59,7 +62,7 @@ sync, and a combined all-in-one app are outside the foundation's scope.
 
 ## Development
 
-Use pnpm 9.0.0 (pinned in `package.json`), Node.js, Rust, and the native
+Use pnpm 10.34.6 (pinned in `package.json`), Node.js 24+, Rust, and the native
 Tauri build prerequisites for your platform. The current desktop targets
 are macOS Apple Silicon and Windows x64.
 
@@ -69,8 +72,12 @@ Run from the repository root:
 pnpm install --frozen-lockfile
 pnpm dev:scriptz          # start ScriptZ with the native Tauri shell
 pnpm build:scriptz        # build the ScriptZ native app and installer
+pnpm lint                # check package boundaries and correctness
 pnpm typecheck           # check all TypeScript workspaces
-pnpm test                # run workspace tests
+pnpm test                # run tooling rule tests and workspace tests
+pnpm check:colors        # check colors outside the design system
+pnpm build:frontends     # build app frontends without native bundles
+cargo check --workspace --locked # check Rust without changing the lockfile
 ```
 
 If updating an existing checkout after the folder migration, run the install
@@ -83,6 +90,16 @@ cargo clean --manifest-path apps/scriptz/src-tauri/Cargo.toml
 pnpm build:scriptz
 ```
 
+Shared JavaScript dependency versions live in the pnpm workspace catalog;
+internal packages use `workspace:*`. Package tests use
+`@agentz/vitest-preset`. The PR workflow runs lint, typechecks, tests, color
+checks, frontend builds, and a locked Cargo workspace check.
+
+Cargo uses the repository-root `Cargo.lock` and `target/` directory. Native
+bundles are written to `target/release/bundle/`, or
+`target/<target-triple>/release/bundle/` when building an explicit Rust target.
+The existing Rust dependency versions are preserved.
+
 Creating signed updater artifacts requires the release signing key.
 A local build without that key may produce the app and installer before
 failing at the updater-signing step.
@@ -94,7 +111,8 @@ working on storage, migrations, or app initialization; the
 the SQLite backup and isolated-test workflow.
 
 Repository conventions live in [CLAUDE.md](CLAUDE.md), ScriptZ details in
-[apps/scriptz/CLAUDE.md](apps/scriptz/CLAUDE.md), and design usage in
+[apps/scriptz/CLAUDE.md](apps/scriptz/CLAUDE.md), package rules in
+[the suite architecture guide](.claude/rules/suite-architecture.md), and design usage in
 [packages/design/README.md](packages/design/README.md).
 
 ## Releases

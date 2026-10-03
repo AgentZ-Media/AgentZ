@@ -1,0 +1,137 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  changes:
+    name: Detect code changes
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    outputs:
+      code: ${{ steps.diff.outputs.code }}
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      # Keep the workflow itself unfiltered: skipping it with paths-ignore
+      # would leave required checks pending on documentation-only PRs.
+      - name: Classify changed paths
+        id: diff
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.before }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+          EVENT_NAME: ${{ github.event_name }}
+        shell: python
+        run: |
+          import os
+          import subprocess
+
+          base = os.environ["BASE_SHA"]
+          head = os.environ["HEAD_SHA"]
+          if not base or set(base) == {"0"}:
+              code = True
+          else:
+              separator = "..." if os.environ["EVENT_NAME"] == "pull_request" else ".."
+              changed = subprocess.check_output([
+                  "git", "diff", "--name-only", "--no-renames", "-z", f"{base}{separator}{head}"
+              ]).decode().split("\0")
+              def is_documentation(path):
+                  return (
+                      path.startswith("docs/")
+                      or path in {"README.md", "CLAUDE.md", "AGENTS.md", "LICENSE"}
+                      or (path.startswith(".claude/rules/") and path.endswith(".md"))
+                  )
+              code = any(path and not is_documentation(path) for path in changed)
+          with open(os.environ["GITHUB_OUTPUT"], "a") as output:
+              output.write(f"code={str(code).lower()}\n")
+
+  web:
+    name: JavaScript checks
+    needs: changes
+    if: needs.changes.outputs.code == 'true'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm lint
+      - run: pnpm typecheck
+      - run: pnpm test
+      - run: pnpm check:colors
+      # All apps are selected by the root script, including future apps.
+      - run: pnpm build:frontends
+
+  rust:
+    name: Rust workspace
+    needs: changes
+    if: needs.changes.outputs.code == 'true'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - name: Install Tauri system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            build-essential curl wget file libwebkit2gtk-4.1-dev \
+            libxdo-dev libssl-dev libayatana-appindicator3-dev librsvg2-dev
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: swatinem/rust-cache@v2
+        with:
+          workspaces: . -> target
+          key: ci-linux
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      # generate_context! reads each app's frontendDist during compilation.
+      - run: pnpm build:frontends
+      - run: cargo check --workspace --locked
+
+  check:
+    # This is the stable required-check name, including documentation-only PRs.
+    name: CI passed
+    if: always()
+    needs: [changes, web, rust]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - name: Check job results
+        env:
+          CHANGES_RESULT: ${{ needs.changes.result }}
+          CODE_CHANGED: ${{ needs.changes.outputs.code }}
+          WEB_RESULT: ${{ needs.web.result }}
+          RUST_RESULT: ${{ needs.rust.result }}
+        run: |
+          test "$CHANGES_RESULT" = success
+          if [ "$CODE_CHANGED" = true ]; then
+            test "$WEB_RESULT" = success
+            test "$RUST_RESULT" = success
+          else
+            test "$CODE_CHANGED" = false
+            test "$WEB_RESULT" = skipped
+            test "$RUST_RESULT" = skipped
+          fi
