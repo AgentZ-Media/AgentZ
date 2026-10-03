@@ -1,4 +1,4 @@
-import { For, Show, createResource, createSignal, onCleanup } from "solid-js";
+import { For, Show, createEffect, createResource, createSignal, on, onCleanup } from "solid-js";
 import { Modal } from "../Common/Modal";
 import { confirmDialog } from "../Common/ConfirmDialog";
 import { api } from "../../lib/api";
@@ -259,6 +259,18 @@ function SnapshotPaper(props: SnapshotPaperProps) {
     if (avail <= 0 || sheetW <= 0) return;
     setZoom(Math.min(1, avail / sheetW));
   };
+
+  // Every version starts reading at the top, not at the previous one's
+  // scroll position.
+  createEffect(
+    on(
+      () => props.snapshot.id,
+      () => {
+        if (canvasRef) canvasRef.scrollTop = 0;
+      },
+      { defer: true },
+    ),
+  );
 
   const attachCanvas = (el: HTMLDivElement) => {
     canvasRef = el;
