@@ -1,9 +1,10 @@
-// Daily word logging - feeds streak, heatmap and daily goal.
+// Daily word logging - feeds the writing counter and the activity heatmap.
 //
-// Three consumers:
-//   1. Status strip in the titlebar (words today, streak)
-//   2. Momentum strip in the browser overview (daily goal progress)
-//   3. Activity modal with 365-day heatmap (GitHub style, sepia ramp)
+// Two consumers:
+//   1. Writing counter in the sidebar footer (adaptive week/month/year window)
+//   2. Activity dialog with the 365-day heatmap (components/Activity)
+// The streak value is still computed for the stats summary but no longer
+// shown anywhere (no pressure features, see docs/redesign).
 //
 // Write path: lib/scripts.ts calls `recordWordDelta(delta)` on every save,
 // after the diff against the last saved word count has been calculated.

@@ -60,10 +60,10 @@ export const de = {
   "hero.download.subline":
     "Ein .dmg oder .exe. Kein Konto, keine Tracker, keine KI. Updates kommen automatisch über den eingebauten Updater.",
 
-  "hero.ideen.keyword": "DIE IDEEN-INBOX",
+  "hero.ideen.keyword": "DIE IDEEN-SEITE",
   "hero.ideen.title": "Sammle, was du als Nächstes schreibst.",
   "hero.ideen.subline":
-    "Skript-Ideen für TikTok, Reels und Shorts an einem Ort. Per Klick wird daraus ein fertiges Skript - offline, ohne Konto.",
+    "Skript-Ideen für TikTok, Reels und Shorts an einem Ort, sortiert nach Ordnern. ⌘I erfasst sie von überall, ein Kürzel macht daraus ein Skript - offline, ohne Konto.",
 
   // ===================== Home section (`/`) =====================
   // Dedicated content below the page hero instead of repeating the
@@ -71,21 +71,25 @@ export const de = {
   // hint, closing download block.
   "home.gallery.h2": "Drei Ansichten, eine App.",
   "home.gallery.sub":
-    "Übersicht, Ideen, Editor. Mehr braucht ein Skript-Tool nicht. Die Tabs oben sind die App.",
+    "Übersicht, Ideen, Editor. Links die Seitenleiste mit der Pipeline, in der Mitte das Blatt, rechts der Inspector. Mehr braucht ein Skript-Tool nicht.",
 
-  "home.features.h2": "Drei Dinge, die nur ScriptZ kann.",
+  "home.features.h2": "Vier Dinge, für die ScriptZ gebaut ist.",
   "home.feature.quick.title": "Quickmodus für zwei Sprecher",
   "home.feature.quick.body":
     "Two-Hander-Dialog wie von selbst: Enter springt zum nächsten Charakter, kein Tab, kein Sprechername tippen. Spart pro 60-Sekunden-Reel eine Minute.",
   "home.feature.quick.link": "Quickmodus erklärt →",
+  "home.feature.length.title": "Zielbereich und Zeitleiste",
+  "home.feature.length.body":
+    "Gib einem Ordner eine Ziellänge wie 0:45-1:05. Darunter gibt es nur einen leisen Hinweis, erst über der Obergrenze wird die Laufzeit rot. ⌘J zeigt unter dem Blatt, wer wann redet.",
+  "home.feature.length.link": "So sieht das aus →",
+  "home.feature.pipeline.title": "Pipeline von der Idee bis online",
+  "home.feature.pipeline.body":
+    "Ideen, Schreiben, Drehbereit, Gedreht, Online: Jedes Skript hat eine Stufe, die Seitenleiste zeigt, was wo steht. Ordner bleiben für Themen, Kunden und Serien.",
+  "home.feature.pipeline.link": "Zur Ideen-Seite →",
   "home.feature.noai.title": "Bewusst ohne KI",
   "home.feature.noai.body":
     "Keine Vorschläge, kein „Verbessern\"-Button, kein Cloud-Upload. Deine Stimme bleibt deine, dein Skript bleibt lokal in einer SQLite-Datei.",
   "home.feature.noai.link": "Das Kein-KI-Manifest →",
-  "home.feature.local.title": "Lokal, kostenlos, Open Source",
-  "home.feature.local.body":
-    "Ein Installer, kein Konto, keine Tracker. macOS oder Windows. Quellcode auf GitHub, alles in einer SQLite-Datei auf deinem Rechner.",
-  "home.feature.local.link": "Auf GitHub ansehen →",
 
   "home.compare.h2": "Im Vergleich.",
   "home.compare.body":
@@ -124,12 +128,13 @@ export const de = {
   "install.copied": "Kopiert ✓",
   "install.copyManual": "Bitte manuell kopieren",
 
-  // ===================== App-Chrome / Tabs =====================
+  // ===================== App chrome: sidebar + header bar =====================
+  // `tab.*` keys are the route labels (sidebar, mobile nav). The name
+  // is historical - the app itself no longer has tabs.
   "tab.home.title": "Übersicht",
   "tab.home.long": "Skripteditor für TikTok, Reels und YouTube Shorts",
   "tab.home.aria": "Übersicht (zurück nach oben)",
   "tab.ideas.title": "Ideen",
-  "tab.ideas.aria": "Ideen",
   "tab.warum.short": "Warum?",
   "tab.warum.long": "Skripte schreiben, ohne dass die App im Weg steht",
   "tab.quickmodus.short": "Der Quickmodus",
@@ -146,21 +151,26 @@ export const de = {
   "status.saved": "Gespeichert",
 
   "toolbar.back.aria": "Zurück zur Übersicht",
-  "toolbar.back.label": "Übersicht",
-  "toolbar.pill.action": "ACTION",
-  "toolbar.pill.character": "CHARAKTER",
-  "toolbar.pill.dialog": "DIALOG",
+  "toolbar.stage": "Online",
+  "toolbar.stage.title":
+    "Stufe dieser Seite. In der App wandert jedes Skript von der Idee bis Online.",
   "toolbar.download": "Download",
+  "side.aria": "Seitenleiste",
+  "side.section.scripts": "Skripte",
+  "side.counter.unit": "Wörter",
+  "side.counter.sub": "auf dieser Seite",
+  "side.counter.title":
+    "In der App steht hier ein ruhiger Schreib-Zähler, zum Beispiel „1.240 Wörter diese Woche\". Kein Ziel, kein Streak.",
 
   // ===================== Tab: WARUM =====================
-  "warum.caption": "INT. SCRIPTZ — SKRIPTEDITOR FÜR TIKTOK, REELS UND YOUTUBE SHORTS",
+  "warum.caption": "INT. SCRIPTZ - SKRIPTEDITOR FÜR TIKTOK, REELS UND YOUTUBE SHORTS",
   "warum.action1":
-    "Eine leere Seite. Cursor blinkt. Du tippst und das Format passiert von allein. Charakter-Name? Automatisch zentriert und in Versalien. Tabulator? Block-Wechsel. Enter? Nächste Zeile - meistens schon im richtigen Block.",
+    "Eine leere Seite. Cursor blinkt. Du tippst und das Format passiert von allein. Vier Blocktypen, mehr nicht: Action, Charakter, Dialog, Parenthetical. Eine Klammer im Dialog? Wird zur Regieanweisung. Charakter-Name? Automatisch zentriert und in Versalien. Tab? Block-Picker. Enter? Nächste Zeile - meistens schon im richtigen Block.",
   "warum.action2":
     "ScriptZ ist für Content Creator gebaut, nicht für Drehbuchautoren. Du willst kein 90-Minuten-Spielfilm-Layout. Du willst ein TikTok-Skript um halb drei fertig haben, bevor das gute Licht weg ist.",
   "warum.timo1.paren": "(direkt)",
   "warum.timo1.dialog":
-    "Du tippst, der Editor formatiert. Charaktere werden automatisch erkannt, kriegen eine Farbe, eine Sprechzeit-Statistik. Du musst nichts anlegen. Du musst nichts klicken. Du musst nur schreiben.",
+    "Du tippst, der Editor formatiert. Charaktere werden automatisch erkannt, kriegen eine Farbe und ihren Anteil an der Sprechzeit. Du musst nichts anlegen. Du musst nichts klicken. Du musst nur schreiben.",
   "warum.axel1.dialog": "Das klingt nach jedem Tool seit 2015.",
   "warum.timo2.dialog":
     "Probier's. Mach ein Skript, schreib zwei Sprecher. Dann drück Enter. Du wirst sehen, dass der Cursor schon im richtigen Block landet, mit dem richtigen Sprecher davor. Das ist der Quickmodus. Genau das spart dir pro Wechsel zwei Tastendrücke - und bei einem 60-Sekunden-Reel mit 12 Wechseln spart das eine Minute.",
@@ -168,15 +178,21 @@ export const de = {
   "warum.axel2.dialog": "Und KI? Macht sie mir vor, was ich sagen soll?",
   "warum.timo3.dialog":
     "Nein. Bewusst nicht. Kreativität ist dein Job. Wenn du wolltest, dass ein Modell für dich schreibt, hättest du ChatGPT auf.",
-  "warum.cut": "CUT TO: SCREENSHOT",
-  "warum.action3": "Drei Ansichten der App. Klick die Tabs - die App ist diese Tabs.",
+  "warum.axel3.dialog": "Und woher weiß ich, ob mein Reel zu lang wird?",
+  "warum.timo4.dialog":
+    "Du gibst dem Ordner einen Zielbereich, zum Beispiel 0:45 bis 1:05. Liegst du darunter, gibt es nur einen leisen Hinweis. Erst über der Obergrenze wird die Laufzeit rot. Und mit ⌘J klappt unter dem Blatt die Zeitleiste auf: wer wann redet, wo der Hook sitzt, wo du kürzen kannst.",
+  "warum.axel4.dialog": "Und wenn es fertig ist?",
+  "warum.timo5.dialog":
+    "Dann wandert es weiter: Idee, Schreiben, Drehbereit, Gedreht, Online. Die Seitenleiste zeigt, was wo steht. Ordner bleiben für Themen, Kunden und Serien.",
+  "warum.action3": "Drei Ansichten der App: Übersicht, Ideen, Editor. Klick dich durch.",
 
   "shot.tab.overview": "Übersicht",
   "shot.tab.ideas": "Ideen",
   "shot.tab.editor": "Editor",
-  "shot.alt.overview": "ScriptZ Übersicht mit Skript-Liste und Charakteren",
-  "shot.alt.ideas": "ScriptZ Ideen-Inbox",
-  "shot.alt.editor": "ScriptZ Editor mit Charakter-Highlights und Cast-Sidebar",
+  "shot.alt.overview":
+    "ScriptZ Übersicht: Seitenleiste mit Pipeline, Skripte nach Stufe gruppiert",
+  "shot.alt.ideas": "ScriptZ Ideen-Seite mit Ordner-Chips und Detail-Panel",
+  "shot.alt.editor": "ScriptZ Editor mit Charakter-Farben, Inspector und Zeitleiste",
 
   "jump.label.long": "Weiter im Programm:",
   "jump.label.short": "Weiter:",
@@ -189,11 +205,10 @@ export const de = {
   "jump.btn.backToStart": "→ Zurück zum Anfang",
 
   // ===================== Tab: QUICKMODUS =====================
-  "quick.caption": "INT. QUICKMODUS — DER TWO-HANDER-WORKFLOW FÜR REELS UND SHORTS",
+  "quick.caption": "INT. QUICKMODUS - DER TWO-HANDER-WORKFLOW FÜR REELS UND SHORTS",
   "quick.action1":
     "Der Quickmodus ist das, was ScriptZ nicht ersetzbar macht. Sobald dein Skript genau zwei Sprecher hat, übernimmt er. Nach jedem Dialog und einmal Enter springt der Cursor automatisch in den anderen Charakter und gleich rein in den nächsten Dialog. Kein Tab, kein Sprechername tippen, kein zweites Enter.",
-  "quick.sfxLabel": "SFX:",
-  "quick.sfxText": "tack-tack-tack",
+  "quick.beat": "Tack, tack, tack. Enter.",
   "quick.action2":
     "Praktisch heißt das: pro Sprecherwechsel zwei Tastendrücke gespart. Bei einem typischen 60-Sekunden-Reel mit zehn bis zwölf Wechseln ist das fast eine Minute. Pro Tag drei Skripte? Drei Minuten. Pro Woche? Eine viertel Stunde, in der du nicht formatiert, sondern geschrieben hast.",
   "quick.timo1.dialog": "So sieht das in echt aus. Ich tippe etwas.",
@@ -202,23 +217,24 @@ export const de = {
   "quick.axel2.dialog": "Niemand hat „AXEL\" getippt. Niemand hat Tab gedrückt.",
   "quick.timo3.dialog": "Wir schreiben einfach. Der Editor weiß, was wir wollen.",
   "quick.action3":
-    "Drei Charaktere im Skript? Quickmodus pausiert automatisch - dann weiß der Editor nicht, wer als Nächster spricht. Sobald du wieder auf zwei reduzierst, ist er wieder da. Kein Schalter, kein Setting, kein Lernen.",
+    "Drei Charaktere im Skript? Quickmodus pausiert automatisch - dann weiß der Editor nicht, wer als Nächster spricht. Sobald du wieder auf zwei reduzierst, ist er wieder da. Er schaltet sich von selbst ein. Der Schalter in der Kopfleiste ist nur für den Fall, dass du ihn mal nicht willst.",
   "quick.callout.eyebrow": "DAS DETAIL, DAS ZÄHLT",
   "quick.callout.body":
     "Das machen weder Word, noch Notion, noch Final Draft, noch ChatGPT, noch Apple Notes. Bei uns ist es ein Kernfeature, von Anfang an. Wer schon mal zwei Sprecher gleichzeitig getippt hat, weiß, was das pro Tag spart.",
 
   // ===================== Tab: NO-AI =====================
-  "noai.caption": "INT. KEIN-KI-MANIFEST — SKRIPTEDITOR OHNE KI",
+  "noai.caption": "INT. KEIN-KI-MANIFEST - SKRIPTEDITOR OHNE KI",
   "noai.action1":
     "ScriptZ hat keine KI eingebaut. Kein Chatfenster, kein „schreib mir ein Skript\", kein automatisches Umformulieren, keine Vorschläge, keine Auto-Vervollständigung jenseits der Charakter-Namen aus deinem eigenen Skript. Bewusst nicht.",
   "noai.axel1.paren": "(skeptisch)",
-  "noai.axel1.dialog": "Alle anderen Tools haben KI. Du verkaufst „keine KI\" als Feature?",
+  "noai.axel1.dialog":
+    "Alle anderen Tools haben KI. Du verkaufst „keine KI\" als Feature?",
   "noai.timo1.dialog":
     "Ja. Weil deine Stimme dein Produkt ist. Wenn ein Modell dir die Hälfte des Skripts schreibt, ist die Hälfte der Stimme das Modell.",
   "noai.axel2.dialog": "Manchmal hängt man halt fest.",
   "noai.timo2.dialog":
-    "Dann ist die Lösung nicht „lass das Modell ran\", sondern „mach drei Minuten Pause\". Wir haben dafür den Sprint-Timer und die Ideen-Inbox. Beides offline, beides ohne fremde Stimme.",
-  "noai.camera": "CAMERA: HÄLT DRAUF.",
+    "Dann ist die Lösung nicht „lass das Modell ran\", sondern „mach drei Minuten Pause\". Dafür gibt es ⌘I für den schnellen Gedanken und den Fokus-Modus, der alles außer dem Blatt ausblendet. Beides offline, beides ohne fremde Stimme.",
+  "noai.beat": "Axel nickt. Lange Pause.",
   "noai.card1.title": "Kein API-Key",
   "noai.card1.body": "Keine Cloud-Schlüssel, keine Tokens, keine Abrechnung pro Wort.",
   "noai.card2.title": "Kein Trainingsdaten-Beitrag",
@@ -227,10 +243,10 @@ export const de = {
   "noai.card3.body": "Dein Skript ist nicht kaputt. Es braucht keine Verbesserung von außen.",
   "noai.card4.title": "Stattdessen: schneller Editor",
   "noai.card4.body":
-    "Quickmodus, Charakter-Auto-Erkennung, Block-Hotkeys. Tools, die deine Idee aus deinem Kopf auf die Seite tragen - ohne sie umzuschreiben.",
+    "Quickmodus, Charakter-Auto-Erkennung, vier Block-Hotkeys, Zeitleiste. Tools, die deine Idee aus deinem Kopf auf die Seite tragen - ohne sie umzuschreiben.",
 
   // ===================== Tab: VERGLEICH =====================
-  "cmp.caption": "EXT. VERGLEICH — SCRIPTZ VS. FINAL DRAFT, NOTION, CHATGPT",
+  "cmp.caption": "EXT. VERGLEICH - SCRIPTZ VS. FINAL DRAFT, NOTION, CHATGPT",
   "cmp.action1":
     "ScriptZ als Final-Draft-Alternative für Short-Form: andere Tools können vieles, was wir nicht können. Hier ist die Liste, was wir können, was sie nicht können:",
   "cmp.head.crit": "Was du brauchst",
@@ -238,6 +254,8 @@ export const de = {
   "cmp.row.quick": "Quickmodus für 2 Sprecher",
   "cmp.row.chars": "Charaktere automatisch erkannt",
   "cmp.row.short": "Auf Short-Form ausgelegt",
+  "cmp.row.length": "Zielbereich + Sprecher-Zeitleiste",
+  "cmp.row.pipeline": "Pipeline von der Idee bis online",
   "cmp.row.noai": "Bewusst ohne KI",
   "cmp.row.local": "Kostenlos & lokal",
   "cmp.row.fast": "Auf in < 1 s",
@@ -254,11 +272,13 @@ export const de = {
   "cmp.mark.paid": "Bezahl",
   "cmp.mark.appleonly": "Apple-only",
   "cmp.mark.meh": "Naja",
+  "cmp.mark.pages": "Seiten",
+  "cmp.mark.diy": "Selbst bauen",
   "cmp.action2":
     "Wir können nichts davon ersetzen. Final Draft kann eine Spielfilm-Drehbuchabgabe an die WGA. Notion kann ein Wiki. ChatGPT kann dir ein Brainstorming generieren. Wir können: Skripte für Reels schnell. Das ist alles - und das wars uns wert.",
 
   // ===================== Tab: DOWNLOAD =====================
-  "dl.caption": "INT. DOWNLOAD — SCRIPTZ KOSTENLOS FÜR MACOS UND WINDOWS",
+  "dl.caption": "INT. DOWNLOAD - SCRIPTZ KOSTENLOS FÜR MACOS UND WINDOWS",
   "dl.action1.mac":
     "macOS 13 oder neuer. Kostenlos. Open Source. Beim ersten Start: Rechtsklick aufs App-Icon → „Öffnen\". Apple verlangt das für unsignierte Apps. Updates kommen danach automatisch.",
   "dl.action1.win":
@@ -283,8 +303,7 @@ export const de = {
   "dl.web.intro": "Lieber erst ausprobieren?",
   "dl.web.link": "Direkt im Browser testen →",
   "dl.web.sub": "Test-Editor, kein Konto, alles lokal in deinem Browser.",
-  "dl.sfxLabel": "SFX:",
-  "dl.sfxText": "Erster Start",
+  "dl.firstRun": "ERSTER START",
   "dl.action2.mac":
     "Beim ersten Öffnen meldet macOS, dass die App nicht überprüft werden kann. Das ist normal - ScriptZ ist Open Source und nicht bei Apple registriert. Einmal den Befehl unten im Terminal ausführen, danach läuft alles wie gewohnt.",
   "dl.action2.win":
@@ -292,19 +311,33 @@ export const de = {
   "dl.fadeOut": "FADE OUT.",
   "dl.end": "ENDE",
 
-  // ===================== Tab: IDEEN =====================
+  // ===================== Route: IDEEN =====================
   "ideas.h": "Ideen",
   "ideas.sub":
-    "Sammle, was du als Nächstes schreiben willst — und mach daraus ein Skript, sobald die Idee Beine bekommt.",
-  "ideas.input.placeholder": "Was schreibst du als Nächstes?",
-  "ideas.search.placeholder": "In Ideen suchen…",
-  "ideas.filter.open": "Offen",
-  "ideas.filter.all": "Alle",
-  "ideas.filter.used": "Verwendet",
-  "ideas.sort": "Sortieren · Neueste",
-  "ideas.btn.script": "Skript →",
-  "ideas.btn.delete.aria": "Idee löschen",
-  "ideas.hint.before": "in der App öffnet diese Inbox als Overlay — egal, wo du gerade bist. Eingeben, Enter, weiter.",
+    "Sammle, was du als Nächstes schreiben willst - und mach daraus ein Skript, sobald die Idee Beine bekommt.",
+  "ideas.meta": "{open} offen · {fresh} neu diese Woche",
+  "ideas.input.placeholder": "Was willst du als Nächstes schreiben?",
+  "ideas.input.hint": "⌘I geht von überall",
+  "ideas.filter.placeholder": "Filtern",
+  "ideas.chip.all": "Alle",
+  "ideas.chip.none": "Ohne Ordner",
+  "ideas.folder.tutorials": "Tutorials",
+  "ideas.folder.compare": "Vergleiche",
+  "ideas.folder.reels": "Reels",
+  "ideas.group.week": "Diese Woche",
+  "ideas.group.older": "Älter",
+  "ideas.detail.top": "Idee · vor 2 Std.",
+  "ideas.detail.folder": "Ordner",
+  "ideas.detail.created": "Erstellt",
+  "ideas.detail.createdValue": "heute, 06:14",
+  "ideas.detail.move": "In Ordner …",
+  "ideas.detail.delete": "Löschen",
+  "ideas.keys.select": "wählen",
+  "ideas.keys.edit": "bearbeiten",
+  "ideas.keys.start": "als Skript anfangen",
+  "ideas.detail.start": "Als Skript anfangen",
+  "ideas.hint.before":
+    "erfasst eine Idee von überall in der App, auch im Fokus-Modus. Eingeben, Enter, weiter. Die Ideen-Seite selbst ist für 50 und mehr Ideen gebaut: Ordner-Chips, Filter, Detail-Panel.",
 
   // Idea samples
   "ideas.sample.tutorial.title": "Tutorial: Vom leeren Cursor zum fertigen Skript in 5 Minuten",
@@ -327,12 +360,10 @@ export const de = {
   "ideas.sample.reel.body":
     "Two-hander Dialog. Enter drücken. Sprecher wechselt automatisch. Das wars.",
   "ideas.sample.reel.age": "vor 14 Std.",
-  "ideas.sample.morning.title": "Was passiert, wenn man morgens nichts geschrieben hat",
-  "ideas.sample.morning.body":
-    "Streak bricht. Heatmap-Lücke. Tag verloren. So motivierend wie der Wecker um 6 Uhr.",
-  "ideas.sample.morning.age": "vor 1 Tag",
-  "ideas.sample.cliche.title": "Cliché GenZ im Bewerbungsgespräch",
-  "ideas.sample.cliche.age": "gestern verwendet",
+  "ideas.sample.length.title": "Wie lang darf ein Reel sein?",
+  "ideas.sample.length.body":
+    "Zielbereich statt Bauchgefühl: 0:45 bis 1:05. Darunter ein leiser Hinweis, darüber Rotstift. Die Zeitleiste zeigt, wo gekürzt wird.",
+  "ideas.sample.length.age": "vor 9 Tagen",
 
   // ===================== Footer =====================
   "footer.col.project": "Projekt",
@@ -349,8 +380,11 @@ export const de = {
   "footer.about.os.mac": "macOS 13+ · Open Source",
   "footer.about.os.win": "Windows 10+ · Open Source",
 
-  // ===================== Sprint pill =====================
-  "sprint.label": "Lese-Sprint",
+  // ===================== Runtime pill =====================
+
+  "runpill.label": "Laufzeit",
+  "runpill.title":
+    "So lange dauert diese Seite gesprochen, bei 210 Wörtern pro Minute - so schätzt ScriptZ die Länge eines Skripts.",
 
   // ===================== Language toggle =====================
   "lang.toggle.aria": "Sprache wechseln",
@@ -378,7 +412,7 @@ export const de = {
   // Why route (`/warum-scriptz`)
   "meta.warum.title": "Warum ScriptZ - Skripteditor ohne Drehbuch-Korsett | für Reels und Shorts",
   "meta.warum.description":
-    "ScriptZ ist für Content Creator gebaut, nicht für Drehbuchautoren. Format passiert beim Tippen, Charaktere werden automatisch erkannt. Für TikTok, Reels und YouTube Shorts.",
+    "ScriptZ ist für Content Creator gebaut, nicht für Drehbuchautoren. Format passiert beim Tippen, Charaktere werden erkannt, ein Zielbereich zeigt, ob das Skript zu lang wird. Für TikTok, Reels und YouTube Shorts.",
   // Quick-mode route (`/quickmodus`)
   "meta.quickmodus.title": "Quickmodus - Two-Hander-Workflow für Reels und Shorts | ScriptZ",
   "meta.quickmodus.description":
@@ -396,9 +430,9 @@ export const de = {
   "meta.download.description":
     "Skripteditor für Content Creator. Kostenlos, lokal, Open Source. macOS 13+ (.dmg) oder Windows 10+ (.exe). Kein Konto, keine Tracker, keine KI.",
   // Ideas route (`/ideen`)
-  "meta.ideas.title": "Ideen-Inbox - was du als Nächstes schreibst | ScriptZ",
+  "meta.ideas.title": "Ideen - was du als Nächstes schreibst | ScriptZ",
   "meta.ideas.description":
-    "Sammle Skript-Ideen für TikTok, Reels und YouTube Shorts, wandle sie per Klick in ein fertiges Skript. Offline, ohne Konto, in der ScriptZ-App und im Browser.",
+    "Sammle Skript-Ideen für TikTok, Reels und YouTube Shorts, sortiert nach Ordnern und mit ⌘I von überall erfasst. Ein Kürzel macht daraus ein Skript. Offline, ohne Konto, in der App und im Browser.",
   "meta.ogLocale": "de_DE",
 
   // ===================== Blog =====================

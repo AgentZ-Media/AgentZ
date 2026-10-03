@@ -1,3 +1,17 @@
+/* ScriptZ - global base styles.
+
+   Load order (set up in each app entry):
+     @agentz/design/fonts.css -> tokens.css -> legacy.css -> components.css
+     -> this file (which pulls in ScriptZ tokens + the iA Writer paper font).
+
+   Generic primitives (.btn + variants, kbd/.kbd, .toast/.toast-host,
+   .menu, .dlg, .scrim, .chip, .seg, .sw-t, boxed .field, ...) live in
+   @agentz/design/components.css. This file keeps the base element
+   styles and the ScriptZ-specific legacy classes (.modal*, .pill,
+   .cselect*, .settings-*, .checkbox, label+control .field), restyled on
+   the design tokens. UI chrome uses --ui (Schibsted Grotesk); the paper
+   keeps --type (iA Writer Quattro) via Editor.css. */
+
 @import "./tokens.css";
 @import "./fonts.css";
 
@@ -12,9 +26,9 @@ body,
   padding: 0;
   width: 100%;
   height: 100%;
-  font-family: var(--font-sans);
+  font-family: var(--ui);
   font-size: var(--fs-13);
-  line-height: var(--lh-normal);
+  line-height: var(--lh-ui);
   color: var(--fg);
   background: var(--bg);
   -webkit-font-smoothing: antialiased;
@@ -43,7 +57,7 @@ button {
 }
 button:focus { outline: none; }
 button:focus-visible {
-  outline: 2px solid var(--border-focus);
+  outline: 2px solid var(--focus);
   outline-offset: 2px;
 }
 
@@ -52,34 +66,34 @@ textarea {
   font-family: inherit;
   font-size: inherit;
   color: inherit;
-  background: var(--bg-elev-1);
-  border: 1px solid var(--border);
-  border-radius: var(--r-3);
-  padding: 8px 12px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--r-ctl);
+  padding: 7px 10px;
   outline: none;
   transition: border-color var(--t-fast), box-shadow var(--t-fast),
     background var(--t-fast);
 }
 input::placeholder,
 textarea::placeholder {
-  color: var(--fg-subtle);
+  color: var(--faint);
 }
 input:hover,
 textarea:hover {
-  border-color: var(--border-strong);
+  border-color: var(--line-strong);
 }
 input:focus,
 textarea:focus {
-  border-color: var(--border-focus);
-  box-shadow: 0 0 0 3px var(--ring-brand);
+  border-color: var(--focus);
+  box-shadow: 0 0 0 3px var(--fill);
 }
 
-a { color: var(--brand-600); text-decoration: none; }
+a { color: var(--fg); text-decoration: none; }
 a:hover { text-decoration: underline; }
 
-::selection { background: var(--selected); color: var(--fg); }
+::selection { background: var(--selection); color: inherit; }
 
-/* Tauri drag region — used by the title bar */
+/* Tauri drag region - used by the title bar */
 [data-tauri-drag-region] {
   -webkit-app-region: drag;
   cursor: default;
@@ -88,91 +102,19 @@ a:hover { text-decoration: underline; }
   -webkit-app-region: no-drag;
 }
 
-/* Scrollbars (subtle, paper-toned) */
+/* Scrollbars (subtle) */
 *::-webkit-scrollbar { width: 10px; height: 10px; }
 *::-webkit-scrollbar-track { background: transparent; }
 *::-webkit-scrollbar-thumb {
-  background: var(--border-strong);
+  background: var(--line-strong);
   border-radius: 6px;
   border: 2px solid transparent;
   background-clip: padding-box;
 }
 *::-webkit-scrollbar-thumb:hover {
-  background: var(--fg-disabled);
+  background: var(--faint);
   background-clip: padding-box;
   border: 2px solid transparent;
-}
-
-/* ============================================================
-   Buttons — three flavours.
-   .btn          neutral, weiss / dunkelgrau je nach Theme
-   .btn-primary  Tinten-Schwarz auf Weiss (light) / Off-White auf Grau (dark)
-   .btn-danger   muted destructive
-   ============================================================ */
-.btn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 6px;
-  padding: 8px 16px;
-  border-radius: var(--r-3);
-  background: var(--bg-elev-1);
-  color: var(--fg);
-  font-family: var(--font-sans);
-  font-size: var(--fs-13);
-  font-weight: 500;
-  border: 1px solid var(--border);
-  white-space: nowrap;
-  transition: background var(--t-fast), border-color var(--t-fast),
-    color var(--t-fast), transform var(--t-fast),
-    box-shadow var(--t-fast);
-}
-.btn:hover {
-  background: var(--bg-elev-2);
-  border-color: var(--border-strong);
-  transform: translateY(-0.5px);
-}
-.btn:active {
-  transform: translateY(0.5px) scale(0.985);
-  transition-duration: 80ms;
-}
-.btn[disabled] { opacity: 0.45; pointer-events: none; }
-
-.btn-primary {
-  background: var(--primary-bg);
-  color: var(--primary-fg);
-  border-color: var(--primary-border);
-}
-.btn-primary:hover {
-  background: var(--primary-bg-hover);
-  border-color: var(--brand-500);
-}
-
-.btn-danger {
-  background: transparent;
-  color: var(--status-err);
-  border-color: var(--border);
-}
-.btn-danger:hover {
-  background: var(--danger-soft);
-  border-color: var(--danger-border);
-}
-
-/* Keyboard hint */
-.kbd {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  min-width: 20px;
-  height: 20px;
-  padding: 0 6px;
-  border-radius: 5px;
-  background: var(--bg-elev-1);
-  color: var(--fg-muted);
-  font-family: var(--font-mono);
-  font-size: var(--fs-11);
-  border: 1px solid var(--border);
-  box-shadow: 0 1px 0 var(--border);
 }
 
 /* Pill (read-only chip) */
@@ -180,29 +122,30 @@ a:hover { text-decoration: underline; }
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  padding: 4px 10px;
+  padding: 4px 9px;
   border-radius: var(--r-pill);
-  background: var(--pill-bg);
-  color: var(--pill-fg);
+  background: var(--fill);
+  color: var(--fg);
   font-size: var(--fs-12);
   line-height: 1.4;
-  font-weight: 500;
+  font-weight: 600;
   white-space: nowrap;
   border: 1px solid transparent;
 }
 
-.muted    { color: var(--fg-muted); }
-.subtle   { color: var(--fg-subtle); }
+.muted    { color: var(--muted); }
+.subtle   { color: var(--faint); }
 .small    { font-size: var(--fs-12); }
 
 /* Inline link-styled button */
 .link-like {
-  color: var(--brand-600);
+  color: var(--fg);
   background: transparent;
   border: none;
   padding: 0;
-  font-family: var(--font-sans);
+  font-family: var(--ui);
   font-size: var(--fs-13);
+  font-weight: 600;
   cursor: pointer;
 }
 .link-like:hover { text-decoration: underline; }
@@ -211,14 +154,12 @@ a:hover { text-decoration: underline; }
 .hide-scroll::-webkit-scrollbar { display: none; }
 
 /* ============================================================
-   Modal & overlay
+   Modal & overlay (legacy markup; new dialogs use .scrim + .dlg)
    ============================================================ */
 .modal-backdrop {
   position: fixed;
   inset: 0;
-  background: var(--backdrop);
-  backdrop-filter: blur(6px);
-  -webkit-backdrop-filter: blur(6px);
+  background: var(--scrim);
   z-index: 100;
   display: grid;
   place-items: start center;
@@ -227,11 +168,11 @@ a:hover { text-decoration: underline; }
 }
 
 .modal {
-  background: var(--modal-bg);
+  background: var(--surface);
   color: var(--fg);
-  border: 1px solid var(--border);
-  border-radius: var(--r-5);
-  box-shadow: var(--shadow-modal);
+  border: 0;
+  border-radius: var(--r-dlg);
+  box-shadow: var(--shadow-dlg);
   display: flex;
   flex-direction: column;
   min-width: min(420px, 92vw);
@@ -247,17 +188,17 @@ a:hover { text-decoration: underline; }
 }
 .modal h2 {
   margin: 0;
-  font-family: var(--font-sans);
+  font-family: var(--ui);
   font-size: var(--fs-16);
-  font-weight: 600;
-  letter-spacing: 0.005em;
+  font-weight: 700;
+  letter-spacing: -0.005em;
 }
 .modal-head {
   display: flex;
   align-items: center;
   justify-content: space-between;
   padding: 18px 22px;
-  border-bottom: 1px solid var(--border);
+  border-bottom: 1px solid var(--line-soft);
   flex-shrink: 0;
 }
 .modal-close {
@@ -269,14 +210,14 @@ a:hover { text-decoration: underline; }
   background: transparent;
   border: 0;
   border-radius: var(--r-2);
-  color: var(--fg-subtle);
+  color: var(--faint);
   cursor: pointer;
   font-size: 14px;
   line-height: 1;
-  transition: all var(--t-fast);
+  transition: background var(--t-fast), color var(--t-fast);
 }
 .modal-close:hover {
-  background: var(--hover);
+  background: var(--fill);
   color: var(--fg);
 }
 .modal-body { padding: var(--sp-5) var(--sp-6); }
@@ -285,8 +226,10 @@ a:hover { text-decoration: underline; }
 .modal-footer {
   display: flex;
   justify-content: flex-end;
-  gap: 10px;
-  padding: var(--sp-4) var(--sp-6) var(--sp-5);
+  gap: 8px;
+  padding: var(--sp-3) var(--sp-5);
+  border-top: 1px solid var(--line-soft);
+  background: var(--surface-2);
 }
 
 @keyframes fade-in {
@@ -297,35 +240,36 @@ a:hover { text-decoration: underline; }
   from { opacity: 0; transform: translateY(-6px) scale(0.97); }
   to   { opacity: 1; transform: translateY(0) scale(1); }
 }
-/* Toasts slide in from the bottom — feels more natural than a
+/* Toasts slide in from the bottom - feels more natural than a
    scale-in for content that appears at the bottom edge. */
 @keyframes toast-slide-up {
   from { opacity: 0; transform: translateY(14px) scale(0.97); }
   to   { opacity: 1; transform: translateY(0) scale(1); }
 }
 
-/* Field group */
-.field {
+/* Field group: label + control stacked. Only on wrappers - a `.field`
+   class on an input/textarea/select is the boxed input from
+   @agentz/design/components.css. */
+:is(div, label, fieldset).field {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 6px;
 }
-.field label {
+:is(div, label, fieldset).field > label {
   font-size: var(--fs-12);
-  color: var(--fg-muted);
-  font-weight: 500;
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
+  color: var(--muted);
+  font-weight: 600;
 }
 /* Validation / helper text directly under a field input. `field-hint-warn`
-   is the "user still has to do something" variant - reddish brown
-   instead of red, so it doesn't feel like an error after a completed action. */
+   is the "user still has to do something" variant - emphasised ink
+   instead of red, so it doesn't read as an error. */
 .field-hint {
   font-size: var(--fs-12);
-  color: var(--fg-muted);
+  color: var(--muted);
 }
 .field-hint-warn {
-  color: var(--status-warn, #b9651b);
+  color: var(--fg);
+  font-weight: 500;
 }
 
 .checkbox {
@@ -337,11 +281,12 @@ a:hover { text-decoration: underline; }
   color: var(--fg);
   user-select: none;
 }
-.checkbox input { accent-color: var(--brand-500); }
+.checkbox input { accent-color: var(--fg); }
 
 /* ============================================================
-   Custom select — used when the native <select> popup feels out
-   of place inside a styled modal. Mirrors the .field input look.
+   Custom select - used when the native <select> popup feels out
+   of place inside a styled modal. Trigger = boxed field, popover =
+   menu surface.
    ============================================================ */
 .cselect {
   position: relative;
@@ -350,32 +295,33 @@ a:hover { text-decoration: underline; }
 }
 .cselect-trigger {
   width: 100%;
+  min-height: 30px;
   display: inline-flex;
   align-items: center;
   justify-content: space-between;
   gap: 8px;
-  background: var(--bg-elev-1);
-  border: 1px solid var(--border);
-  border-radius: var(--r-3);
-  padding: 8px 12px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--r-ctl);
+  padding: 4px 10px;
   color: var(--fg);
   cursor: pointer;
   text-align: left;
   transition: border-color var(--t-fast), box-shadow var(--t-fast),
     background var(--t-fast);
 }
-.cselect-trigger:hover { border-color: var(--border-strong); }
+.cselect-trigger:hover { border-color: var(--line-strong); }
 .cselect.is-open .cselect-trigger,
 .cselect-trigger:focus-visible {
   outline: none;
-  border-color: var(--border-focus);
-  box-shadow: 0 0 0 3px var(--ring-brand);
+  border-color: var(--focus);
+  box-shadow: 0 0 0 3px var(--fill);
 }
 .cselect-value { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.cselect-value.is-placeholder { color: var(--fg-muted); }
+.cselect-value.is-placeholder { color: var(--faint); }
 .cselect-caret {
   display: inline-flex;
-  color: var(--fg-muted);
+  color: var(--faint);
   transition: transform var(--t-fast);
 }
 .cselect.is-open .cselect-caret { transform: rotate(180deg); }
@@ -383,11 +329,11 @@ a:hover { text-decoration: underline; }
 .cselect-popover {
   position: fixed;
   z-index: 1100;
-  background: var(--modal-bg, var(--bg-elev-2));
-  border: 1px solid var(--border);
-  border-radius: var(--r-3);
-  box-shadow: var(--shadow-toast, 0 6px 24px rgba(0, 0, 0, 0.12));
-  padding: 4px;
+  background: var(--surface);
+  border: 0;
+  border-radius: var(--r-pop);
+  box-shadow: var(--shadow-pop);
+  padding: 5px;
   max-height: 240px;
   overflow-y: auto;
 }
@@ -395,7 +341,8 @@ a:hover { text-decoration: underline; }
   display: flex;
   align-items: center;
   width: 100%;
-  padding: 8px 10px;
+  min-height: 32px;
+  padding: 6px 9px;
   border-radius: var(--r-2);
   font-size: inherit;
   color: var(--fg);
@@ -403,59 +350,31 @@ a:hover { text-decoration: underline; }
   background: transparent;
   text-align: left;
 }
-.cselect-option.is-active { background: var(--hover); }
-.cselect-option.is-selected { color: var(--fg); font-weight: 500; }
+.cselect-option.is-active { background: var(--fill); }
+.cselect-option.is-selected { color: var(--fg); font-weight: 600; }
 
-/* Form radios + toggles — shared between Settings and Export dialogs.
+/* Form radios + toggles - shared between Settings and Export dialogs.
    Must live in global so consumers don't depend on Settings being loaded. */
 .settings-radio {
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  font-family: var(--font-sans);
+  font-family: var(--ui);
   font-size: var(--fs-13);
   cursor: pointer;
   color: var(--fg);
 }
-.settings-radio input { accent-color: var(--brand-500); }
+.settings-radio input { accent-color: var(--fg); }
 
 .settings-toggle {
   display: inline-flex;
   align-items: center;
   gap: 10px;
-  font-family: var(--font-sans);
+  font-family: var(--ui);
   font-size: var(--fs-13);
   cursor: pointer;
   user-select: none;
   color: var(--fg);
 }
-.settings-toggle input { accent-color: var(--brand-500); }
+.settings-toggle input { accent-color: var(--fg); }
 .settings-toggle.is-disabled { opacity: 0.5; cursor: not-allowed; }
-
-/* ============================================================
-   Toasts (bottom-center)
-   ============================================================ */
-.toast-host {
-  position: fixed;
-  bottom: 28px;
-  left: 50%;
-  transform: translateX(-50%);
-  z-index: 200;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  pointer-events: none;
-}
-.toast {
-  background: var(--modal-bg);
-  color: var(--fg);
-  border: 1px solid var(--border);
-  border-radius: var(--r-3);
-  padding: 10px 16px;
-  font-size: var(--fs-13);
-  box-shadow: var(--shadow-toast);
-  animation: toast-slide-up var(--t-med);
-  pointer-events: all;
-}
-.toast.error { border-left: 3px solid var(--status-err); }
-.toast.ok    { border-left: 3px solid var(--status-ok); }

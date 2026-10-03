@@ -2,8 +2,8 @@
 /**
  * MobileNav - standalone mobile navigation for viewports <= 768 px.
  *
- * On mobile the app chrome (traffic light, tabs, toolbar, sprint
- * pill) is hidden entirely, because a simulated app at 375 px only
+ * On mobile the app chrome (sidebar, header bar, runtime pill) is
+ * hidden entirely, because a simulated app at 375 px only
  * gets in the way. Instead this component renders:
  *
  *  - A slim sticky top bar with wordmark + hamburger button.
@@ -11,7 +11,7 @@
  *    legal links and GitHub.
  *
  * On desktop (>= 769 px) the component is completely invisible -
- * the normal chrome tab bar takes over there.
+ * the sidebar of the app chrome takes over there.
  *
  * The active page is highlighted via the `activeRoute` prop. For
  * legal pages there is a dedicated key ("impressum"/"datenschutz")
@@ -40,8 +40,9 @@ const { lang, activeRoute, currentPath } = Astro.props;
 const otherLang: Lang = lang === "de" ? "en" : "de";
 const switchHref = switchLangPath(lang, otherLang, currentPath);
 
-// Pages order follows the tab bar in AppShell.astro. Home first,
-// then content pages, download at the end as a CTA-adjacent entry.
+// Pages order roughly follows the sidebar in AppShell.astro. Home
+// first, then content pages, download at the end as a CTA-adjacent
+// entry.
 type NavItem = { key: RouteKey; labelKey: Parameters<typeof t>[1] };
 const navItems: NavItem[] = [
   { key: "home",       labelKey: "tab.home.title" },

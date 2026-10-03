@@ -28,6 +28,7 @@ import type {
   Idea,
   Script,
   ScriptCharacter,
+  ScriptStatus,
   ScriptSummary,
   SearchHit,
   Snapshot,
@@ -143,11 +144,38 @@ function lsSet(prefix: string, key: string, value: string): void {
   }
 }
 
+/** Maps the Studio approval workflow status onto the core production
+ *  stage. Read-only mapping - the Studio workflow stays the source of
+ *  truth and is driven via the Convex API (WorkflowBar), never through
+ *  `setScriptStatus`. */
+function studioStatusToScriptStatus(raw: unknown): ScriptStatus {
+  switch (raw) {
+    case "approved":
+      return "ready";
+    case "filmed":
+      return "shot";
+    // draft / in_review / changes_requested / rejected (and anything
+    // unknown) are all still being written.
+    default:
+      return "writing";
+  }
+}
+
 class ConvexStorageAdapter implements StorageAdapter {
   // ===== Scripts =====
   async getScript(id: string): Promise<Script> {
-    const s = await convex.query(api.scripts.get, { scriptId: id as never });
-    return s as unknown as Script;
+    const s = (await convex.query(api.scripts.get, {
+      scriptId: id as never,
+    })) as unknown as Omit<Script, "status" | "status_changed_at"> & {
+      status?: unknown;
+    };
+    // The Convex payload carries the Studio workflow status
+    // (draft/in_review/...) under `status`; core expects a ScriptStatus.
+    return {
+      ...s,
+      status: studioStatusToScriptStatus(s.status),
+      status_changed_at: null,
+    };
   }
 
   async updateScript(input: UpdateScriptInput): Promise<ScriptSummary> {
@@ -187,6 +215,8 @@ class ConvexStorageAdapter implements StorageAdapter {
       direction_block_count: -1,
       characters,
       folder_id: null,
+      status: "writing",
+      status_changed_at: null,
     };
   }
 
@@ -217,6 +247,10 @@ class ConvexStorageAdapter implements StorageAdapter {
   duplicateScript(): Promise<ScriptSummary> {
     return notSupported("duplicateScript");
   }
+  setScriptStatus(_id: string, _status: ScriptStatus): Promise<ScriptSummary> {
+    // Studio has its own approval workflow (WorkflowBar -> Convex).
+    return notSupported("setScriptStatus");
+  }
   async backfillRuntimeStats(): Promise<void> {
     /* no-op in Studio */
   }
@@ -233,6 +267,9 @@ class ConvexStorageAdapter implements StorageAdapter {
   }
   renameFolder(): Promise<Folder> {
     return notSupported("renameFolder");
+  }
+  setFolderLengthRange(): Promise<Folder> {
+    return notSupported("setFolderLengthRange");
   }
   deleteFolder(): Promise<void> {
     return notSupported("deleteFolder");
@@ -343,6 +380,7 @@ class ConvexStorageAdapter implements StorageAdapter {
       highlighting_enabled: s.highlighting_enabled,
       created_at: s.created_at,
       updated_at: s.updated_at,
+      status: s.status,
     });
     return getPlatformAdapter().saveAs(
       {

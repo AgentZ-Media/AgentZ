@@ -1,0 +1,400 @@
+/* Onboarding - concept screen "Onboarding" (`.onb*`, `.dl`).
+   Full-window dark grid (sidebar colour) with the 960x560 split card.
+   Demo character colours arrive as --c (data colour); tints are mixed onto
+   the paper at 28 % like highlight.ts. */
+
+.onb {
+  position: fixed;
+  inset: 0;
+  z-index: 120;
+  display: grid;
+  place-items: center;
+  padding: 48px 24px 24px;
+  background-color: var(--side-bg);
+  background-image:
+    linear-gradient(color-mix(in srgb, var(--side-strong) 3.5%, transparent) 1px, transparent 1px),
+    linear-gradient(90deg, color-mix(in srgb, var(--side-strong) 3.5%, transparent) 1px, transparent 1px);
+  background-size: 28px 28px;
+  animation: ds-fade-in var(--t-med);
+}
+/* Window drag strip; on macOS desktop the native traffic lights sit in it. */
+.onb-drag {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 40px;
+}
+
+.onb-card {
+  width: 960px;
+  /* Grows past the concept's 560 px when a step has extra content (e.g. the
+     web note on step 1) instead of clipping the footer; clamps to the window
+     and lets the left column scroll only when the window is really small. */
+  min-height: min(560px, calc(100vh - 72px));
+  max-width: 100%;
+  max-height: calc(100vh - 72px);
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  grid-template-rows: minmax(0, 1fr);
+  border-radius: 18px;
+  overflow: hidden;
+  background: var(--surface);
+  color: var(--fg);
+  box-shadow: var(--shadow-dlg);
+  outline: none;
+}
+
+/* ---------- left ---------- */
+.onb-l {
+  padding: 32px 40px 28px;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  overflow-y: auto;
+}
+.onb-brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-weight: 800;
+  font-size: 16px;
+  letter-spacing: -0.01em;
+}
+.onb-steps {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 4px;
+  margin: 34px 0 18px;
+  width: 120px;
+}
+.onb-steps span {
+  height: 4px;
+  border-radius: 2px;
+  background: var(--fill);
+  transition: background var(--t-med);
+}
+.onb-steps .done {
+  background: var(--fg);
+}
+.onb-steps .on {
+  background: var(--accent);
+}
+.onb-eyebrow {
+  color: var(--faint);
+  font-weight: 600;
+  font-size: 12px;
+}
+.onb-h {
+  margin: 8px 0 12px;
+  font-size: 38px;
+  line-height: 1.05;
+  font-weight: 800;
+  letter-spacing: -0.035em;
+}
+.onb-p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 14px;
+  line-height: 1.55;
+  max-width: 40ch;
+}
+.onb-ctl {
+  margin-top: 14px;
+}
+.onb-ctl .srow,
+.onb-quick {
+  padding: 10px 0;
+}
+.onb-quick {
+  margin-top: 16px;
+}
+.onb-web {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin-top: 14px;
+  padding: 9px 11px;
+  border-radius: var(--r-3);
+  background: var(--accent-soft);
+  font-size: 12px;
+  line-height: 1.45;
+}
+.onb-web a {
+  font-weight: 600;
+  text-decoration: underline;
+}
+.onb-keys {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px 16px;
+  margin-top: 22px;
+  color: var(--muted);
+}
+.onb-keys div {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.onb-keys kbd {
+  min-width: 30px;
+}
+.onb-keys-list {
+  grid-template-columns: 1fr;
+  gap: 10px;
+}
+.onb-keys-list kbd {
+  min-width: 38px;
+}
+.onb-foot {
+  margin-top: auto;
+  padding-top: 18px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.onb-foot .sp {
+  flex: 1;
+}
+.onb-skip {
+  color: var(--faint);
+  font-size: 12.5px;
+  padding: 4px 6px;
+  border-radius: var(--r-1);
+}
+.onb-skip:hover {
+  color: var(--fg);
+}
+.onb-foot .btn.primary {
+  min-height: 34px;
+  padding: 0 14px;
+}
+
+/* ---------- right ---------- */
+.onb-r {
+  background: var(--bg);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 36px;
+  min-width: 0;
+}
+.onb-sheet {
+  width: 100%;
+  background: var(--paper);
+  color: var(--paper-fg);
+  border-radius: var(--r-pop);
+  box-shadow: var(--shadow-paper);
+  padding: 22px 22px 18px;
+  font-family: var(--type);
+  font-size: 13px;
+  line-height: 1.6;
+}
+.onb-sheet .b.char {
+  text-align: center;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+.onb-sheet .b.dia {
+  margin: 0 12%;
+}
+.onb-sheet .b.par {
+  margin: 0 18%;
+  font-style: italic;
+  color: var(--paper-muted);
+}
+.onb-sheet .m {
+  padding: 1px 4px;
+  border-radius: 3px;
+  box-decoration-break: clone;
+  -webkit-box-decoration-break: clone;
+  transition: background var(--t-med);
+}
+.onb-sheet.tinted .m {
+  background: color-mix(in srgb, var(--c) 28%, var(--paper));
+}
+.onb-sheet .caret {
+  display: inline-block;
+  width: 1.5px;
+  height: 1.15em;
+  margin-left: 1px;
+  background: var(--paper-fg);
+  vertical-align: -3px;
+  animation: onb-blink 1.05s steps(1) infinite;
+}
+@keyframes onb-blink {
+  50% {
+    opacity: 0;
+  }
+}
+
+/* Step 2 demo: rows appear one after another. */
+.dl {
+  display: grid;
+  grid-template-columns: 96px minmax(0, 1fr) 18px;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 0;
+  border-bottom: 1px dashed var(--paper-line);
+}
+.dl .b.dia,
+.dl .b.par {
+  margin: 0;
+}
+.dl .tag {
+  font: 600 10px/1 var(--ui);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--paper-muted);
+}
+.dl .tag.on {
+  color: var(--accent-fg);
+  background: var(--accent);
+  padding: 4px 6px;
+  border-radius: var(--r-1);
+  justify-self: start;
+}
+.dl .ent {
+  color: var(--paper-muted);
+  font: 13px/1 var(--ui);
+  text-align: right;
+}
+.dl.is-now {
+  border-bottom: 0;
+}
+.onb-note {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  margin-top: 12px;
+  padding: 9px 10px;
+  border-radius: var(--r-3);
+  background: var(--accent-soft);
+  color: var(--fg);
+  font: 12px/1.4 var(--ui);
+}
+.onb-demo .dl,
+.onb-demo .onb-note,
+.onb-cap {
+  animation: onb-in 420ms var(--ease) both;
+  animation-delay: calc(var(--d, 0) * 520ms + 150ms);
+}
+@keyframes onb-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* Step 1 preview: a miniature window in the chosen theme. */
+.onb-win {
+  width: 100%;
+  height: 300px;
+  display: grid;
+  grid-template-columns: 64px minmax(0, 1fr);
+  border-radius: var(--r-4);
+  overflow: hidden;
+  background: var(--bg);
+  box-shadow: var(--shadow-raise), 0 0 0 1px var(--line);
+}
+.onb-win-side {
+  background: var(--side-bg);
+  padding: 12px 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.onb-win-side .app-mark {
+  margin-bottom: 6px;
+}
+.onb-win-side span:not(.app-mark) {
+  height: 6px;
+  border-radius: 3px;
+  background: var(--side-hover);
+}
+.onb-win-side span.on {
+  background: var(--side-active);
+  box-shadow: inset 2px 0 0 var(--accent);
+}
+.onb-win-main {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+.onb-win-bar {
+  height: 26px;
+  border-bottom: 1px solid var(--line);
+  display: flex;
+  align-items: center;
+  padding: 0 10px;
+}
+.onb-win-bar span {
+  width: 60px;
+  height: 6px;
+  border-radius: 3px;
+  background: var(--fill);
+}
+.onb-sheet-mini {
+  width: auto;
+  margin: 16px 18px;
+  padding: 16px 16px 14px;
+  font-size: 10.5px;
+  line-height: 1.55;
+  border-radius: 4px;
+}
+.onb-sheet-mini .b + .b {
+  margin-top: 3px;
+}
+.onb-sheet-mini .b.act {
+  margin-bottom: 8px;
+}
+
+/* Step 3 preview: keycaps. */
+.onb-caps {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+  width: 100%;
+  max-width: 340px;
+}
+.onb-cap {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 18px 16px;
+  border-radius: var(--r-4);
+  background: var(--surface);
+  box-shadow: var(--shadow-raise), 0 0 0 1px var(--line);
+}
+.onb-cap b {
+  font-size: 24px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+}
+.onb-cap span {
+  color: var(--muted);
+  font-size: 12.5px;
+}
+.onb-cap:first-child {
+  background: var(--accent);
+  color: var(--accent-fg);
+}
+.onb-cap:first-child span {
+  color: inherit;
+  opacity: 0.7;
+}
+
+@media (max-width: 900px) {
+  .onb-card {
+    grid-template-columns: 1fr;
+    width: 520px;
+  }
+  .onb-r {
+    display: none;
+  }
+}

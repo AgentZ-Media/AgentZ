@@ -1,337 +1,296 @@
-/* =========================================================================
-   Settings modal — 2-column layout (nav on the left, pane on the right).
-   Visualized after re-design `modals.jsx::SettingsModal`.
-   ========================================================================= */
+/* Settings dialog - concept screen "Einstellungen" (`.set*`, `.srow`,
+   `.num-f`, `.rng-f`, `.goals`). Rows, switches, segmented controls and
+   number fields come from @agentz/design/components.css. */
 
-/* Removes the modal-body padding again; we want the grid flush.
-   Also disable body scrolling - otherwise the sidebar scrolls along
-   on long pane content (keyboard tab!) instead of staying
-   fixed. The pane gets its own overflow:auto. */
-.modal-body:has(.settings-grid) {
-  padding: 0;
-  overflow: hidden;
-  display: flex;
-}
-
-/* Fixed modal height for settings so the window doesn't jump in height
-   on tab switch. Grows proportionally with the screen
-   (78vh) up to a top limit of 720px - otherwise the dialog gets
-   unnecessarily huge on large monitors. min: 480px prevents
-   a short tab from making the modal too tight. max-height: 95vh is a
-   hard guard for very small windows where 480px > window would be.
-   Only applies when the modal contains the settings sections - other
-   dialogs (confirm, rename) stay compact. */
-.modal:has(.settings-grid) {
-  height: clamp(480px, 78vh, 720px);
-  max-height: 95vh;
-}
-
-.settings-grid {
+.dlg.set {
+  width: 840px;
+  height: 650px;
+  max-width: calc(100vw - 48px);
+  max-height: calc(100vh - 48px);
   display: grid;
-  grid-template-columns: 180px 1fr;
-  flex: 1 1 auto;
-  min-height: 0;
-  width: 100%;
+  grid-template-columns: 208px minmax(0, 1fr);
 }
 
-.settings-nav {
-  border-right: 1px solid var(--border);
-  padding: 14px 8px;
+/* ---------- navigation ---------- */
+.set-nav {
+  background: var(--surface-2);
+  border-right: 1px solid var(--line-soft);
+  padding: 16px 10px;
   display: flex;
   flex-direction: column;
-  gap: 2px;
-  background: var(--paper-2);
-  /* Own scrollbar only in case the nav list ever gets longer than the
-     modal - with the current 6 tabs that never happens, but it's
-     cheap future-proofing. */
+  gap: 1px;
   overflow-y: auto;
-  min-height: 0;
 }
-.settings-nav-btn {
+.set-title {
+  font-weight: 700;
+  font-size: 13px;
+  padding: 2px 8px 12px;
+  color: var(--muted);
+}
+.set-it {
+  height: 30px;
+  flex: none;
   display: flex;
   align-items: center;
-  gap: 8px;
-  height: 32px;
-  padding: 0 10px;
-  font-family: var(--font-sans);
-  font-size: 13px;
-  color: var(--text-subtle);
-  background: transparent;
-  border: 1px solid transparent;
+  gap: 9px;
+  padding: 0 9px;
   border-radius: var(--r-2);
+  color: var(--muted);
+  font-weight: 500;
   text-align: left;
-  cursor: pointer;
-  transition: all var(--t-fast);
 }
-.settings-nav-btn:hover {
-  background: var(--hover);
-  color: var(--text);
+.set-it:hover {
+  background: var(--fill);
+  color: var(--fg);
 }
-.settings-nav-btn.is-active {
-  background: var(--paper);
-  color: var(--ink-700);
-  border-color: var(--border);
-  box-shadow: 0 1px 2px rgba(28, 24, 20, 0.08);
+.set-it.on {
+  background: var(--fill);
+  color: var(--fg);
+  font-weight: 600;
 }
-.settings-nav-btn.is-active .settings-nav-ic {
-  color: var(--ink-500);
+.set-sep {
+  height: 1px;
+  flex: none;
+  background: var(--line-soft);
+  margin: 8px 6px;
 }
-.settings-nav-ic {
-  display: inline-flex;
-  color: var(--text-faint);
-}
-
-.settings-pane {
-  padding: 22px 24px;
-  /* Pane scrolls independently from the nav, otherwise the sidebar
-     scrolls away with long content (keyboard tab). */
-  overflow-y: auto;
-  min-height: 0;
-}
-.settings-pane h3 {
-  margin: 0 0 4px;
-  font-family: var(--font-sans);
-  font-size: 17px;
+.set-badge {
+  margin-left: auto;
+  min-width: 16px;
+  height: 16px;
+  padding: 0 4px;
+  border-radius: 8px;
+  background: var(--accent);
+  color: var(--accent-fg);
+  font-size: 10px;
   font-weight: 700;
-  color: var(--ink-700);
-  letter-spacing: -0.005em;
-}
-.settings-pane-sub {
-  font-size: 12px;
-  color: var(--text-subtle);
-  margin-bottom: 14px;
+  display: grid;
+  place-items: center;
 }
 
-.settings-row {
+/* ---------- body ---------- */
+.set-body {
+  padding: 20px 26px 24px;
+  overflow-y: auto;
+  min-width: 0;
+}
+.set-head {
+  margin-bottom: 8px;
+}
+.set-head b {
+  font-size: 18px;
+}
+.dlg-esc {
+  flex: none;
+}
+.set-body .srow-ctl {
+  display: flex;
+  justify-content: flex-end;
+}
+.set-body .srow.is-error small {
+  color: var(--warn);
+}
+.set-empty {
+  margin: 12px 0 0;
+  padding: 14px 16px;
+  border-radius: var(--r-pop);
+  border: 1px dashed var(--line);
+  background: var(--surface-2);
+  color: var(--muted);
+  line-height: 1.5;
+}
+.set-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+.set-error {
+  margin: 6px 0 0;
+  color: var(--warn);
+  font-size: 12.5px;
+}
+
+/* ---------- range fields ---------- */
+.rng-wrap {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 4px;
+}
+.rng-f .num-f {
+  min-width: 70px;
+  width: 70px;
+}
+.rng-f .num-f input {
+  width: 100%;
+  text-align: center;
+}
+.rng-f .num-f input::placeholder {
+  color: var(--faint);
+  font-weight: 500;
+}
+.num-f.is-err {
+  border-color: var(--warn);
+  box-shadow: 0 0 0 3px var(--warn-soft);
+}
+.rng-err {
+  max-width: 260px;
+  color: var(--warn);
+  font-size: 12px;
+  line-height: 1.35;
+  text-align: right;
+}
+.num-f input {
+  text-align: left;
+}
+
+/* ---------- folders ---------- */
+.set-note {
+  grid-template-columns: minmax(0, 1fr);
+}
+.set-folders {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.set-folder {
+  display: grid;
+  grid-template-columns: 7px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  min-height: 42px;
+  padding: 6px 8px 6px 12px;
+  border-radius: var(--r-3);
+  background: var(--surface-2);
+}
+.set-folder .fdot,
+.set-swatch {
+  border-radius: 50%;
+  background: var(--dot, var(--faint));
+}
+.set-folder .fdot {
+  width: 7px;
+  height: 7px;
+  display: inline-block;
+}
+.set-folder-name {
+  color: var(--fg);
+  font-weight: 500;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* ---------- characters ---------- */
+.set-char-who {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+.set-swatch {
+  width: 14px;
+  height: 14px;
+  flex: none;
+  box-shadow: 0 0 0 2px var(--surface), 0 0 0 3px var(--line);
+}
+.set-swatch:hover {
+  box-shadow: 0 0 0 2px var(--surface), 0 0 0 3px var(--line-strong);
+}
+.set-char-name {
+  font: 700 12px/1 var(--type);
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.set-char-tag {
+  color: var(--faint);
+  font-size: 11.5px;
+}
+.set-chars .srow {
+  padding: 9px 0;
+  min-height: 46px;
+}
+
+/* ---------- shortcuts ---------- */
+.set-keys {
+  margin-top: 14px;
+}
+.set-keys h4 {
+  margin: 0 0 4px;
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--faint);
+}
+.set-key {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 12px 0;
-  border-top: 1px solid var(--border);
   gap: 16px;
+  min-height: 32px;
+  border-top: 1px solid var(--line-soft);
+  color: var(--fg);
 }
-.settings-row-label {
-  flex: 1;
-  min-width: 0;
-}
-.settings-row-label .row-label {
-  font-size: 13px;
-  color: var(--text);
-  font-weight: 500;
-}
-.settings-row-label .row-help {
-  font-size: 12px;
-  color: var(--text-subtle);
-  margin-top: 2px;
-}
-
-/* ---- Custom toggle (pill with knob) ---- */
-.s-toggle {
-  position: relative;
-  width: 36px;
-  height: 20px;
-  background: rgba(28, 24, 20, 0.18);
-  border: 0;
-  border-radius: var(--r-pill);
-  cursor: pointer;
-  transition: background var(--t-fast);
-  flex-shrink: 0;
-}
-[data-theme="dark"] .s-toggle { background: rgba(255, 255, 255, 0.20); }
-.s-toggle::after {
-  content: "";
-  position: absolute;
-  top: 2px;
-  left: 2px;
-  width: 16px;
-  height: 16px;
-  border-radius: 50%;
-  background: var(--paper);
-  box-shadow: 0 1px 2px rgba(28, 24, 20, 0.18);
-  transition: transform var(--t-fast);
-}
-.s-toggle.is-on { background: var(--ink-500); }
-.s-toggle.is-on::after { transform: translateX(16px); }
-.s-toggle.is-disabled,
-.s-toggle:disabled {
-  opacity: 0.4;
-  cursor: not-allowed;
-}
-
-/* ---- Segmented control (Theme) ---- */
-.seg {
+.set-key-k {
   display: inline-flex;
-  background: rgba(28, 24, 20, 0.05);
-  border-radius: var(--r-3);
-  padding: 2px;
-  flex-shrink: 0;
-}
-[data-theme="dark"] .seg { background: rgba(255, 255, 255, 0.06); }
-.seg button {
-  height: 26px;
-  padding: 0 12px;
-  font-family: var(--font-sans);
-  font-size: 12px;
-  color: var(--text-subtle);
-  background: transparent;
-  border: 0;
-  border-radius: 6px;
-  cursor: pointer;
-  transition: all var(--t-fast);
-}
-.seg button:hover { color: var(--text); }
-.seg button.is-on {
-  background: var(--paper);
-  color: var(--ink-700);
-  box-shadow: 0 1px 2px rgba(28, 24, 20, 0.10);
-}
-
-/* ---- Tagesziel-Input ---- */
-.settings-goal-input {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  flex-shrink: 0;
-}
-.settings-goal-input input {
-  width: 90px;
-  padding: 6px 10px;
-  border: 1px solid var(--border);
-  border-radius: var(--r-2);
-  background: var(--paper);
-  font-family: var(--font-mono);
-  font-size: 13px;
-  text-align: right;
-  font-variant-numeric: tabular-nums;
-  color: var(--text);
-}
-.settings-goal-input input:focus {
-  border-color: var(--border-focus);
-  box-shadow: 0 0 0 4px var(--ring-brand);
-  outline: none;
-}
-.settings-goal-unit {
-  font-size: 12px;
-  color: var(--text-faint);
-}
-
-/* ---- Studio-Verbindung ---- */
-.settings-studio {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-.settings-studio-input {
-  width: 100%;
-  padding: 8px 10px;
-  border: 1px solid var(--border);
-  border-radius: var(--r-2);
-  background: var(--paper);
-  font-family: var(--font-mono);
-  font-size: 12px;
-  color: var(--text);
-}
-.settings-studio-input:focus {
-  border-color: var(--border-focus);
-  box-shadow: 0 0 0 4px var(--ring-brand);
-  outline: none;
-}
-.settings-studio-error {
-  margin: 0;
-  font-size: 12px;
-  color: var(--danger, #c0392b);
-}
-.settings-studio-status {
-  margin: 0;
-  font-size: 13px;
-  color: var(--text);
-}
-.settings-studio-actions {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-/* ---- Update-Sektion: Aktion-Cluster rechts ---- */
-.settings-update-actions {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  flex-shrink: 0;
-}
-
-/* ---- Charaktere-Sektion ---- */
-.settings-character-row {
-  gap: 12px;
-}
-.settings-character-swatch {
-  width: 18px;
-  height: 18px;
-  border-radius: 50%;
-  border: 1px solid rgba(28, 24, 20, 0.18);
-  padding: 0;
-  cursor: pointer;
-  flex-shrink: 0;
-  transition: transform var(--t-fast);
-}
-[data-theme="dark"] .settings-character-swatch {
-  border-color: rgba(255, 255, 255, 0.22);
-}
-.settings-character-swatch:hover {
-  transform: scale(1.08);
-}
-.settings-character-name {
-  flex: 1;
-  min-width: 0;
-  font-family: var(--font-sans);
-  font-size: 13px;
-  font-weight: 500;
-  color: var(--text);
-  letter-spacing: 0.02em;
-}
-
-/* ---- "About"-Text-Mono (Repo-URL) ---- */
-.settings-mono {
-  font-family: var(--font-mono);
-  font-size: 12px;
-}
-
-/* ---- Tastatur-Reiter ---- */
-.settings-shortcuts-group {
-  margin-top: 18px;
-}
-.settings-shortcuts-group:first-of-type {
-  margin-top: 8px;
-}
-.settings-shortcuts-title {
-  font-size: 11px;
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-  color: var(--text-faint);
-  margin-bottom: 8px;
-}
-.settings-shortcuts-list {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  display: grid;
   gap: 4px;
 }
-.settings-shortcut-row {
-  display: grid;
-  grid-template-columns: minmax(120px, max-content) 1fr;
+
+/* ---------- studio ---------- */
+.set-block .srow:first-child {
+  border-top: 1px solid var(--line-soft);
+}
+.set-inline {
+  display: flex;
+  gap: 8px;
+}
+.set-code {
+  flex: 1;
+  font-family: var(--type);
+  font-size: 12px;
+}
+
+/* ---------- about ---------- */
+.set-brand {
+  display: flex;
   align-items: center;
   gap: 14px;
-  padding: 6px 0;
-  border-bottom: 1px solid var(--border-paper, var(--border));
-  font-size: 13px;
+  padding: 14px 0 16px;
+  border-top: 1px solid var(--line-soft);
 }
-.settings-shortcut-row:last-child {
-  border-bottom: 0;
+.set-brand b {
+  display: block;
+  font-size: 18px;
+  font-weight: 800;
+  letter-spacing: -0.01em;
 }
-.settings-shortcut-keys .kbd-inline {
-  font-size: 11px;
+.set-brand small {
+  color: var(--muted);
+  font-size: 12.5px;
 }
-.settings-shortcut-desc {
-  color: var(--text-subtle);
+.set-mono {
+  font-family: var(--type);
+  font-size: 12px;
+}
+
+@media (max-width: 760px) {
+  .dlg.set {
+    grid-template-columns: 1fr;
+    height: auto;
+  }
+  .set-nav {
+    flex-direction: row;
+    flex-wrap: wrap;
+    border-right: 0;
+    border-bottom: 1px solid var(--line-soft);
+  }
+  .set-title,
+  .set-sep {
+    display: none;
+  }
 }

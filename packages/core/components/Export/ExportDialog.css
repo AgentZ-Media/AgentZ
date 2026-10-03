@@ -1,0 +1,219 @@
+/* Export dialog - concept screen "Export" (`.exp*`, `.pdf*`, `.fmt*`, `.rd`).
+   The PDF preview is laid out in millimetres: every line carries its
+   position as unitless --x / --y / --w (mm) and is scaled via --mm. The
+   page sits in a `data-theme="light"` scope so it stays a white sheet in
+   every theme, like the real PDF. Character tints arrive as --tc (data
+   colour) and are mixed onto the paper at 28 %, like exportPdf.ts. */
+
+.dlg.exp {
+  width: 780px;
+  max-width: calc(100vw - 48px);
+}
+.exp-grid {
+  display: grid;
+  grid-template-columns: 300px minmax(0, 1fr);
+  min-height: 460px;
+}
+
+/* ---------- preview ---------- */
+.exp-prev {
+  background: var(--bg);
+  border-right: 1px solid var(--line-soft);
+  padding: 26px 0 18px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+}
+.pdf-page,
+.txt-page {
+  --pdf-w: 236px;
+  --mm: calc(var(--pdf-w) / 210);
+  width: var(--pdf-w);
+  aspect-ratio: 210 / 297;
+  flex: none;
+  position: relative;
+  overflow: hidden;
+  background: var(--paper);
+  color: var(--paper-fg);
+  box-shadow: var(--shadow-raise);
+  border-radius: 2px;
+  font-family: var(--type);
+}
+.pdf-line {
+  position: absolute;
+  left: calc(var(--x) * var(--mm));
+  width: calc(var(--w) * var(--mm));
+  /* Baseline sits ~0.78 of the line box down. */
+  top: calc((var(--y) - 4.8) * var(--mm));
+  font-size: calc(3.88 * var(--mm));
+  line-height: calc(6.2 * var(--mm));
+  white-space: pre;
+  overflow: hidden;
+}
+.pdf-line.c {
+  text-align: center;
+}
+.pdf-line.b {
+  font-weight: 700;
+}
+.pdf-line.it {
+  font-style: italic;
+}
+.pdf-tint {
+  padding: 0 calc(1.1 * var(--mm));
+  border-radius: calc(1.2 * var(--mm));
+  background: color-mix(in srgb, var(--tc) 28%, var(--paper));
+}
+
+.txt-page pre {
+  margin: 0;
+  padding: calc(25 * var(--mm)) calc(20 * var(--mm));
+  font: inherit;
+  font-size: calc(3.88 * var(--mm));
+  line-height: 1.6;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.pdf-meta {
+  font-size: 12px;
+  color: var(--faint);
+}
+.pdf-meta b {
+  color: var(--muted);
+  font-weight: 600;
+}
+
+.file-card {
+  margin-top: 40px;
+  width: 200px;
+  padding: 26px 16px 18px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  text-align: center;
+  border-radius: var(--r-4);
+  background: var(--surface);
+  box-shadow: var(--shadow-raise);
+}
+.file-card b {
+  font-weight: 600;
+  word-break: break-word;
+}
+.file-card small {
+  color: var(--faint);
+  font-size: 12px;
+}
+.file-ic {
+  width: 56px;
+  height: 56px;
+  display: grid;
+  place-items: center;
+  border-radius: var(--r-4);
+  background: var(--accent);
+  color: var(--accent-fg);
+  margin-bottom: 6px;
+}
+.file-help {
+  margin: 4px 24px 0;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.5;
+  text-align: center;
+}
+
+/* ---------- options ---------- */
+.exp-body {
+  padding: 20px 22px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  min-width: 0;
+}
+.dlg-esc {
+  flex: none;
+}
+.fmt {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+.fmt-it {
+  display: grid;
+  grid-template-columns: 16px 1fr;
+  gap: 11px;
+  align-items: start;
+  padding: 10px 12px;
+  border-radius: var(--r-pop);
+  border: 1px solid var(--line);
+  background: var(--surface);
+  text-align: left;
+  transition: border-color var(--t-fast), box-shadow var(--t-fast);
+}
+.fmt-it:hover {
+  border-color: var(--line-strong);
+}
+.fmt-it b {
+  display: block;
+  font-weight: 600;
+}
+.fmt-it small {
+  color: var(--muted);
+  font-size: 12px;
+}
+.fmt-it.on {
+  border-color: var(--fg);
+  box-shadow: inset 0 0 0 1px var(--fg);
+}
+.rd {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  border: 1.5px solid var(--line-strong);
+  margin-top: 1px;
+  background: var(--surface);
+  transition: border-width var(--t-fast);
+}
+.fmt-it.on .rd {
+  border: 5px solid var(--fg);
+}
+.opts .srow {
+  padding: 10px 0;
+}
+
+.exp-foot {
+  margin-top: auto;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding-top: 12px;
+  border-top: 1px solid var(--line-soft);
+}
+.exp-foot .sp {
+  flex: 1;
+}
+.fname {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  max-width: 220px;
+  color: var(--muted);
+  font-size: 12px;
+}
+.fname span {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+@media (max-width: 760px) {
+  .exp-grid {
+    grid-template-columns: 1fr;
+  }
+  .exp-prev {
+    display: none;
+  }
+}

@@ -145,7 +145,7 @@ manuelle Schritte:
    GitHub-Releases-API (`.dmg` + `.exe` Asset-URLs), deployed
    write-scriptz.com.
 6. Bestehende User sehen innerhalb von ~60 Min die grüne Update-Pille
-   im File-Browser-Footer (stündlicher `latest.json`-Poll, plattform-
+   im Fuß der Seitenleiste (stündlicher `latest.json`-Poll, plattform-
    spezifisches Bundle wird automatisch gewählt).
 
 ## Wenn der Release-Workflow fehlschlägt

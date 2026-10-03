@@ -1,8 +1,8 @@
 // Runtime estimate - one source for the editor rail and the browser overview.
 //
 // Previously there were two places that calculated differently:
-// the rail summed only dialog words and added 2s per action/camera
-// block; the overview divided the TOTAL word count (incl. character names,
+// the rail summed only dialog words and added 2s per action block; the
+// overview divided the TOTAL word count (incl. character names,
 // parentheticals, captions, SFX) by the same WPM and therefore
 // systematically overestimated the runtime. This file defines the formula
 // once, scripts.ts persists the two input values on save, and
@@ -19,7 +19,10 @@ import { t } from "../i18n";
 export interface RuntimeStats {
   /** Words in dialog blocks. Only these are computed against dialog WPM. */
   dialogWords: number;
-  /** Action + camera blocks. Each block contributes a short beat. */
+  /** Action blocks. Each block contributes a short beat. Retired camera /
+   *  caption / sfx blocks count as action (lex.ts normalizes them before
+   *  extraction). Character and parenthetical blocks contribute nothing:
+   *  a delivery cue like "(leise)" is not spoken and takes no extra beat. */
   directionBlocks: number;
 }
 
@@ -28,18 +31,23 @@ export interface RuntimeStats {
  *  on app start (or at latest the next save) normalizes them. */
 export const RUNTIME_STATS_SENTINEL = -1;
 
-const SECONDS_PER_DIRECTION_BLOCK = 2;
-const MIN_RUNTIME_SEC = 5;
+/** Seconds each action block contributes. Shared with lib/timing.ts. */
+export const SECONDS_PER_DIRECTION_BLOCK = 2;
+/** Floor of the displayed total runtime. Applies to the total only -
+ *  per-block timeline segments (lib/timing.ts) are never scaled up. */
+export const MIN_RUNTIME_SEC = 5;
 
 function isDialogBlock(b: ExtractedBlock): boolean {
   return b.kind === "scriptz-dialog";
 }
 
 function isDirectionBlock(b: ExtractedBlock): boolean {
-  return b.kind === "scriptz-action" || b.kind === "scriptz-camera";
+  return b.kind === "scriptz-action";
 }
 
-function wordCount(text: string): number {
+/** Whitespace-separated word count. Shared with lib/timing.ts so the
+ *  timeline and the total use the exact same tokenization. */
+export function wordCount(text: string): number {
   const t = text.trim();
   if (!t) return 0;
   return t.split(/\s+/).filter(Boolean).length;

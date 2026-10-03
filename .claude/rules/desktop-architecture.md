@@ -2,166 +2,246 @@
 paths:
   - "apps/desktop/src/**"
   - "apps/desktop/src-tauri/**"
+  - "packages/core/**"
+  - "packages/design/**"
 ---
 
 # Desktop-App: Architektur-Detail
 
 Tauri 2 shell + Solid + TypeScript + Lexical editor (vanilla, no React).
-All persistence, search, export and CRUD lives in TypeScript via
-`@tauri-apps/plugin-sql`; the Rust crate is reduced to plugin wiring +
-schema migrations after the Phase 0-11 Rust → TS migration finished
-in 2026-05. macOS Apple Silicon + Windows x64 are first-class; Linux
-not (yet) shipped.
+All persistence, search, export and CRUD lives in TypeScript; the Rust
+crate is reduced to plugin wiring + schema migrations. macOS Apple
+Silicon + Windows x64 are first-class; Linux not (yet) shipped.
 
-This codebase was deliberately stripped down to a minimal feature set in
-2026-05. The original spec (`ScriptZ-Projektplan.md`) describes a much
-larger system; treat the actual code as the source of truth, not the
-spec, when they disagree.
+Seit dem Redesign „Werkbank" (2026-10, Branch `redesign-werkbank`) liegt
+praktisch die gesamte App in `packages/core/` (UI, Stores, Logik) und
+`packages/design/` (Designsystem). `apps/desktop/` ist eine dünne Schale.
+Konzept und Arbeitsplan: [`docs/redesign/umsetzung.md`](docs/redesign/umsetzung.md),
+visuelle Referenz `docs/redesign/concept.html`, Längenziel-Spec
+[`docs/feature-laengenziel.md`](docs/feature-laengenziel.md).
+
+Der ursprüngliche Projektplan (`ScriptZ-Projektplan.md`) ist veraltet -
+bei Widerspruch gilt der Code.
 
 ## Repo-Layout (Detail)
 
 ```
-src-tauri/
+apps/desktop/
+  src-tauri/
+    src/lib.rs             Tauri Builder + plugin wiring + plugin-sql
+                           migration list (001-007). No commands, no
+                           business logic.
+    migrations/
+      001_baseline.sql     Idempotent baseline schema.
+      002_ai_cleanup.sql   Drops the old AI columns/settings.
+      003_redesign.sql     daily_word_log, ideas table,
+                           scripts.last_word_count sentinel.
+      004_word_count_sentinel.sql  Sentinel backfill.
+      005_runtime_stats.sql  dialog_word_count / direction_block_count
+                           (runtime estimate inputs, sentinel -1).
+      006_idea_folders.sql   Ideas in folders.
+      007_werkbank.sql     Additive: scripts.status (TEXT NOT NULL
+                           DEFAULT 'writing') + status_changed_at +
+                           idx_scripts_status, folders.length_min_sec /
+                           length_max_sec. The retirement of Kamera/
+                           Caption/SFX is deliberately NOT SQL (see
+                           "Legacy-Blöcke").
+    capabilities/default.json, tauri.conf.json, Cargo.toml
   src/
-    main.rs                entry → scriptz_lib::run()
-    lib.rs                 ~45 lines: Tauri Builder + plugin wiring +
-                           plugin-sql migration list. No commands, no
-                           business logic, no setup-closure.
-  migrations/
-    001_baseline.sql       Idempotent post-Phase-7 schema (CREATE TABLE
-                           IF NOT EXISTS …). Includes the AI summary
-                           cols on purpose so 002 can DROP them
-                           uniformly on fresh + existing DBs.
-    002_ai_cleanup.sql     ALTER TABLE DROP COLUMN x5 + DELETE
-                           ai.* settings.
-    003_redesign.sql       v0.6 redesign: daily_word_log table for
-                           streak/heatmap aggregation, ideas table for
-                           the inbox, scripts.last_word_count sentinel.
-    004_word_count_sentinel.sql  Backfill sentinel for existing scripts
-                           so the first save after upgrade doesn't
-                           double-count words into daily_word_log.
-  capabilities/default.json  Tauri permission scope (sql, fs, dialog, …)
-  tauri.conf.json          Window geometry, bundle ID, updater endpoint
-  Cargo.toml               11 deps: tauri + 9 plugins + serde_json (only
-                           because tauri::generate_context!() expands to
-                           code that references it).
+    index.tsx              Registers PlatformAdapter + updates store
+                           (import side effects), then the CSS layers
+                           (@agentz/design fonts -> tokens -> legacy ->
+                           components, then core global.css), mounts <App>.
+    App.tsx                <AppShell platform="desktop"
+                           sidebarFooterSlot={<UpdateIndicator/>}> +
+                           onCloseRequested -> flushAll(2000) + updater
+                           background polling. Nothing else.
+    lib/platform.ts        Tauri PlatformAdapter: plugin-sql Database as
+                           getDb(), dialogs, fs, opener, http, os.
+    lib/tauri.ts           isTauri flag / thin invoke wrapper (rare).
+    stores/updates.ts      tauri-plugin-updater, registered into the
+                           core `updates` slot.
+    components/Common/UpdateIndicator.tsx   Update pill (sidebar footer).
 
-src/                Solid frontend (TypeScript) — owns all persistence
-  lib/
-    db.ts              Lazy plugin-sql connection (Database.load("sqlite:scriptz.db")).
-    scripts.ts         CRUD + duplicate + archive/restore/purge. Reconciles
-                       characters_meta from content_json on every update.
-                       Sticky color via DEFAULT_PALETTE in characterColors.ts.
-    snapshots.ts       Auto + manual snapshots, 50-per-script cap.
-    search.ts          FTS5 BM25 over scripts_fts (title + content_text).
-    folders.ts         Flat one-level folders.
-    characterColors.ts App-wide name → colour overrides + palette logic.
-    fts.ts             FTS5 helpers (sanitize, refresh-on-save).
-    lex.ts             Lexical state → text extraction (extract_blocks,
-                       extract_teleprompter_text, extract_character_names).
-                       Powers FTS, plain-text export, and character-meta
-                       reconciliation on every save.
-    exportPdf.ts       PDF export via pdf-lib + @pdf-lib/fontkit. A4,
-                       widow/orphan control, char tinting via name lookup
-                       against the script's characters_meta.
-    exportPlaintext.ts Teleprompter plain-text export (Char/Dialog/Paren).
-    api.ts             Single `api.*` facade exposing the modules above
-                       as a typed object. Used by every component.
-    types.ts           TS-side data types (Script, ScriptSummary, Folder,
-                       Snapshot, ScriptCharacter, SearchHit …).
-    tauri.ts           thin invoke wrapper, isTauri flag (rare — most
-                       code now goes through plugin-sql, not commands).
-    colors.ts          tint() helper (rgba blend)
-    format.ts          relativeTime, formatAbsolute, debounce
-    saveFlush.ts       central registry for "drain pending writes"
-                       hooks (editor auto-save, tab-state persist) so
-                       the window-close handler in App.tsx can wait for
-                       all buffered work before destroying the window
-    welcome.ts         first-run welcome script seeder (generic tutorial)
-    dailyWords.ts      day-bucketing + word-delta accounting; writes
-                       to daily_word_log on every save (positive
-                       deltas only, sentinel-protected).
-    dailyStats.ts      reads daily_word_log → streak, today's words,
-                       365-day heatmap series.
-    dailyStatsBus.ts   pub/sub for stats changes (wakes Heatmap +
-                       MomentumStrip + EditorToolbar's "X W heute"
-                       counter without polling).
-    ideas.ts           CRUD for the ideas inbox (open / used) +
-                       convert-to-script.
-    ideasBus.ts        pub/sub for ideas list changes.
-  index.tsx              entry, mounts <App>, imports global CSS
-  App.tsx                tabs + overlays (CmdK, Settings, NewScript,
-                         IdeaQuickCapture)
-  components/
-    TabBar.tsx           rounded tabs with App-icon + +-button +
-                         daily-goal pill ("X W heute") + streak pill
-    Editor/
-      ScriptView.tsx     paper canvas, hosts EditorRail + SprintPill
-      Editor.tsx         Lexical mount: createEditor, registerRichText,
-                         registerHistory, all custom plugins
-      EditorToolbar.tsx  inline title editor + 7 block-type pills +
-                         quick-mode + highlight + focus + export
-      EditorRail.tsx     right sidebar: Cast tab (per-char dialog %)
-                         + Versions tab (snapshot history inline)
-      SprintPill.tsx     bottom-right Pomodoro pill (5/15/25 min)
-                         with progress bar + word-tracker
-      ExportDialog.tsx   PDF + Plain Text export modal
-      SnapshotsDialog.tsx history browser with restore (still used
-                          from CmdK; the rail's Versions tab is the
-                          new primary surface)
-      nodes/             7 ElementNode subclasses
-        BaseScriptzNode  shared base, getBlockType()
-        Scriptz{Action,Character,Dialog,Parenthetical,Camera,Caption,Sfx}Node
-      plugins/
-        smartEnter.ts          Enter/Backspace state machine
-        blockHotkeys.ts        Cmd+1..7 → block-type swap
-        blockDropdown.tsx      Tab opens block-type picker
-        characterDropdown.tsx  cursor-anchored autocomplete; entries are
-                               sorted by predict.ts ranking so the visual
-                               order mirrors the prediction
-        parentheticalLive.ts   live ( … ) detection in Dialog
-        inlineFormat.ts        Cmd+B/I/U
-        allcaps.ts             characterName attribute sync (visual UPPER
-                               is CSS-only — text-transform on the block)
-        highlight.ts           per-block --char-tint CSS variable; Editor
-                               highlighting now matches PDF output
-                               (per-character colour, not a single tint)
-    Browser/
-      Browser.tsx           file browser: scripts grid, search, sort,
-                            paginated by 200 with "load more" button
-      MomentumStrip.tsx     dashboard top row: streak + today's progress
-                            + "weiterschreiben" CTA to last open script.
-      Heatmap.tsx           365-day GitHub-style writing heatmap.
-      ActivityModal.tsx     full activity panel: today meter, streak,
-                            year totals, big heatmap.
-      FolderChips.tsx       flat folder filter row above the grid
-      TrashView.tsx
-      NewScriptDialog.tsx + ScriptContextMenu.tsx
-    Ideas/
-      IdeaQuickCapture.tsx  ⌘I overlay: tippen, Enter speichert.
-                            Auto-closes; no script-context required.
-      IdeasDrawer.tsx       side drawer with Open/Alle/Verwendet tabs;
-                            click → convert idea to new script (⌘↵).
-      IdeasToggle.tsx       browser-side toggle button for the drawer.
-    CommandBar/CommandBar.tsx     Cmd+K Spotlight modal (scripts only)
-    Settings/SettingsDialog.tsx   incl. daily-goal field for tab-bar pill
-    Common/
-      Modal, ConfirmDialog, ToastHost, UpdateIndicator
-  stores/
-    settings.ts        theme, highlightingDefault, updateCheck flags,
-                       dailyWordGoal
-    tabs.ts            open tabs, persistence in app_state.open_tabs
-    toasts.ts          push-toast helper
-    dailyStats.ts      cached today/streak/heatmap, invalidated by
-                       dailyStatsBus on every save
-    ideas.ts           cached ideas list, invalidated by ideasBus
+packages/design/           @agentz/design - suite design system (see its README)
+  tokens.css               Semantic tokens light/dark/dark-paper
+                           (:root, [data-theme="dark"], [data-paper="dark"]).
+  legacy.css               Alias layer: old token names (--fg-muted,
+                           --bg-elev-*, --brand-*, ...) -> new tokens.
+                           New code must not use them.
+  components.css           .btn, .chip, .fchip, kbd, .menu/.menu-it, .scrim,
+                           .dlg, .toast, .sw-t, .seg, .field, .num-f, .rng-f ...
+  fonts.css                Schibsted Grotesk (UI, offline via fontsource).
+  icons.ts                 ICONS (24er stroke icons), STAGE_GLYPHS (14er).
+  logo.ts                  Dot-matrix Z (LOGO_DOTS ...).
+
+packages/core/
   styles/
-    tokens.css         design tokens (brand orange #e0791f, A4 mm geometry)
-    fonts.css          iA Writer Quattro @font-face
-    global.css         resets, .btn / .modal / .toast etc.
-public/fonts/          iA Writer Quattro TTFs (loaded at runtime by
-                       exportPdf.ts via fetch + pdf-lib embedFont)
+    tokens.css             ScriptZ-only tokens: traffic-light spacer,
+                           character palette (--char-*), A4 paper geometry.
+    fonts.css              iA Writer Quattro (paper font).
+    global.css             Resets + pre-redesign classes (.btn-primary,
+                           .modal*, .pill, .cselect*, ...) restyled on tokens.
+  components/
+    Shell/
+      AppShell.tsx         Shared shell for desktop + web: boot sequence
+                           (settings, welcome seed, nav/ui/prefs load,
+                           runtime backfill, then migrateLegacyBlocksOnce,
+                           then markLibraryReady), sidebar | main layout,
+                           route rendering, mounts all dialogs once.
+                           Props: platform, topSlot, sidebarFooterSlot.
+      Sidebar.tsx          Dark sidebar: app row, search + new, "Alle
+                           Skripte", Ideen, pipeline (stages), folders,
+                           "Zuletzt", footer (WritingCounter, trash,
+                           settings, host slot).
+      libraryData.ts       Shared reactive lists (live scripts + folders),
+                           refetched on scriptsBus / foldersBus.
+      shortcuts.ts         Global shortcuts (⌘K, ⌘N, ⌘I, ⌘[ ⌘], ⌘\, ⌘⇧\,
+                           ⌘J, ⌘⌥←/→, ⌘⇧F, ⌘E, ⌘, ...), window bubble phase.
+    Library/
+      ScriptsPage.tsx      Script list: groups by stage/folder/none, filter,
+                           sort, selection mode, length range per row.
+      ScriptRow, PageBar, SelectionBar (multi PDF / Studio / move / stage /
+      trash), ContextMenu, PromptDialog, HandoffDialog (Studio transfer),
+      TrashPage, actions.ts (shared script/folder ops + toasts), dnd.ts
+      (row -> sidebar folder), prefs.ts (grouping/sort in app_state).
+    Palette/CommandPalette.tsx   ⌘K: scripts, ideas, commands; empty = Zuletzt.
+    Script/
+      ScriptScreen.tsx     Editor screen ({ scriptId }): TopBar, paper,
+                           Inspector, Timeline, focus chrome, recovery.
+      TopBar.tsx           Breadcrumb, TitleInput, StageChip (+ menu),
+                           Quick/colour toggles, export button.
+      Inspector.tsx        Info only (runtime vs. range, cast shares,
+                           "Aus der Idee", stage since ...). No settings.
+      Timeline.tsx         Mini track + ⌘J expanded speaker lanes, hover
+                           link to blocks, click jumps.
+      GutterLabel.tsx      Block-type label next to the caret block.
+      FocusChrome.tsx      Focus pill (length / session words / exit).
+      StageChip, StageToast (undo), stageActions.ts (stepStage),
+      liveEditor.ts, timelineMath.ts (pure), RecoveryPanel, TitleInput.
+    Editor/
+      Editor.tsx           Lexical mount: createEditor, registerRichText,
+                           registerHistory, plugins below. readOnly prop
+                           (used by Studio).
+      persistence.ts       Debounced save (250 ms) through a serialized
+                           queue (lib/serialSave.ts), auto snapshot (5 min),
+                           flush on teardown.
+      activeBlockReporter, canvasFocus, characterReconcile, predict.ts,
+      ColorPickerPopover, SnapshotsDialog, PaperLayout.css.
+      nodes/               4 ElementNode subclasses
+        BaseScriptzNode    shared base, getBlockType()
+        Scriptz{Action,Character,Dialog,Parenthetical}Node
+        index.ts           BLOCK_HOTKEYS (⌘1-4), blockLabel()
+      plugins/
+        smartEnter.ts      Enter/Backspace state machine (4 types;
+                           Parenthetical -> Dialog)
+        blockHotkeys.ts    ⌘1/⌘2/⌘3/⌘4 -> Action/Character/Dialog/
+                           Parenthetical
+        parentheticalLive.ts  "(" in a Dialog opens a Parenthetical
+                           (splits the line at the caret), ")" closes it
+                           and jumps into the next Dialog
+        blockDropdown.tsx  Tab opens the block-type picker
+        characterDropdown.tsx  caret-anchored autocomplete, ranked by
+                           predict.ts
+        inlineFormat.ts    ⌘B / ⌘U (no italic: ⌘I = idea capture)
+        allcaps.ts         characterName attribute sync (UPPER is CSS)
+        highlight.ts       per-block --char-tint (Character, Dialog,
+                           Parenthetical)
+        colorPicker.tsx    character colour popover (3 entry points)
+    Ideas/                 IdeasPage (+ parts/), QuickCapture (⌘I modal),
+                           ideaGroups.ts, similar.ts, folderColor.ts
+    Export/                ExportDialog (⌘E, live preview via pdfPreview.ts)
+    Settings/              SettingsDialog + sections/ (Appearance, Writing,
+                           Folders incl. length range per folder, Characters,
+                           Shortcuts, Studio, Updates, About), rangeInput.ts
+    Onboarding/            Onboarding (3 steps, ONBOARDING_KEY)
+    Activity/              WritingCounter (sidebar footer), ActivityModal
+                           (window totals + Heatmap). No goal, no streak.
+    Common/                Icon, StageGlyph, AppMark, Modal, ConfirmDialog,
+                           ToastHost, BootErrorScreen
+  stores/
+    nav.ts                 Route (scripts | ideas | script | trash),
+                           history (⌘[ / ⌘]), "Zuletzt" (max 8). Persisted
+                           in app_state["nav.state"]; migrates the old
+                           app_state["open_tabs"] once. Every route change
+                           runs flushAll() first.
+    ui.ts                  Sidebar / inspector / timeline (persisted in
+                           app_state["ui.layout"]), focus mode (per-script
+                           override), open dialogs (palette, capture,
+                           settings + section, export, onboarding,
+                           activity). Dialogs are parameterless.
+    settings.ts            theme, language, highlightingDefault, darkPaper,
+                           focusModeDefault (default off), quickMode,
+                           showWritingStats (= writing counter, default on),
+                           dialogWpm, length_min/max_default_sec, update
+                           flags, studio connect code.
+    dailyStats.ts, ideas.ts, saveStatus.ts, toasts.ts
+  lib/
+    api.ts                 `api.*` facade = proxy onto the registered
+                           StorageAdapter. Registers the SQL-backed default
+                           adapter (desktop) on import.
+    storage.ts             StorageAdapter interface (incl. setScriptStatus,
+                           setFolderLengthRange, ListScriptsQuery.status),
+                           validateLengthRange.
+    platform.ts            PlatformAdapter slot (getDb, saveAs, openFile,
+                           openUrl, ...), applyPlatformToDocument.
+    db.ts                  getDb() via PlatformAdapter + settings/app_state.
+    types.ts               Script, ScriptSummary (+ status,
+                           status_changed_at), Folder (+ length_min_sec,
+                           length_max_sec), ScriptStatus, Stage,
+                           SCRIPT_STATUSES, isScriptStatus ...
+    scripts.ts             CRUD, setScriptStatus, duplicate, archive/
+                           restore/purge, characters_meta reconcile,
+                           runtime stats, backfill.
+    folders.ts             Flat folders, setFolderLengthRange, INBOX_FOLDER_ID.
+    snapshots.ts           Auto + manual, 50-per-script cap.
+    search.ts / fts.ts     FTS5 BM25 over scripts_fts.
+    lex.ts                 Lexical JSON -> blocks / teleprompter text /
+                           character names / dialog words per character.
+    runtime.ts             Runtime estimate (dialog words / WPM + 2 s per
+                           action block, min 5 s; Character and
+                           Parenthetical count 0 s).
+    timing.ts              computeTimeline(): per-block segments, sum ==
+                           runtime.ts (same formula).
+    lengthGoal.ts          LengthRange, resolveLengthRange (folder ->
+                           global default -> none), lengthStatus
+                           (none/under/in/over), formatRange, parseClock.
+    writingCounter.ts      pickWritingWindow(): smallest window with words
+                           (week -> month -> year -> total).
+    legacyBlocks.ts        normalizeLegacyContent / normalizeLegacyTree.
+    legacyBlocksMigration.ts  migrateLegacyBlocksOnce() (boot).
+    exportPdf.ts, exportSelection.ts (multi PDF), scriptzFile.ts (.scriptz
+    v1, status additive), handoff.ts (Studio), ideas.ts, dailyWords.ts,
+    characterColors.ts, welcome.ts, keys.ts, format.ts, colors.ts,
+    saveFlush.ts (flushAll: awaits buffered + in-flight writes),
+    serialSave.ts (serialized "latest draft wins" saver for every
+    autosave/commit field), scriptViewCache.ts, updates.ts (updater slot),
+    *Bus.ts (scripts/folders/ideas/dailyStats pub-sub).
+  i18n/                    de.ts / en.ts + parts/{shell,script,dialogs}.ts
+                           (see i18n.md)
 ```
+
+Gestrichen im Redesign (2026-10, bewusst, nicht wieder einführen):
+Tabs/`TabBar`/`stores/tabs.ts`, `Browser/` inkl. `MomentumStrip`,
+`EditorToolbar`, `EditorRail`, `SprintPill`, `ScriptView`, `CommandBar`,
+`IdeasDrawer`, die Blocktypen Kamera/Caption/SFX, Wochenziel und
+Streak-Anzeige. Parenthetical (samt `parentheticalLive`) war zwischenzeitlich
+gestrichen und ist seit 2026-10-03 bewusst wieder da.
+
+## Stufen und Zielbereich
+
+- **Stufe** (`ScriptStatus`): `writing` (Schreiben) -> `ready`
+  (Drehbereit) -> `shot` (Gedreht) -> `online`. In der UI kommt `idea`
+  als Vorstufe dazu (`Stage`), das ist aber kein Skript-Status, sondern
+  die Ideen-Seite. Gesetzt über `api.setScriptStatus` (StageChip,
+  SelectionBar, ⌘⌥←/→ via `stageActions.ts`, mit Undo-Toast);
+  `status_changed_at` ändert sich nur bei echtem Wechsel.
+- **Zielbereich**: Minimum/Maximum in Sekunden, je Ordner
+  (`folders.length_min_sec/max_sec`, `api.setFolderLengthRange`) oder
+  global als Standard (Settings `length_min_default_sec` /
+  `length_max_default_sec`, leer = aus). Auflösung in
+  `lengthGoal.ts::resolveLengthRange`: Ordner -> Standard -> keiner.
+  „Darunter" ist Information (gedämpft), nur „darüber" nutzt `--warn`.
 
 ## Characters - das Per-Script-Modell
 
@@ -170,34 +250,60 @@ global character table.
 
 - The Lexical state contains `scriptz-character` blocks with a
   `characterName` attribute (uppercased, kept in sync by `allcaps.ts`).
-- On every save, `src/lib/scripts.ts` walks the JSON via
-  `extractCharacterNames` (in `src/lib/lex.ts`), reconciles the result
-  against `scripts.characters_meta` (a JSON array of `{name, color}`),
-  and writes the merged list back. Names are matched case-insensitively;
-  **colors are sticky** - a name that already has a color keeps it.
+- On every save, `lib/scripts.ts` walks the JSON via
+  `extractCharacterNames` (`lib/lex.ts`), reconciles the result against
+  `scripts.characters_meta` (JSON array of `{name, color}`) and writes the
+  merged list back. Names match case-insensitively; **colors are sticky**.
   New names get the next free color from `DEFAULT_PALETTE` in
-  `src/lib/characterColors.ts`.
-- The frontend reads `script.characters` (the parsed array) for the
-  pillbar and the in-editor autocomplete dropdown. There is no
-  "create character" UI - it happens implicitly when you type a new
-  name into a Charakter block.
+  `lib/characterColors.ts`.
+- The UI reads `script.characters` for the Inspector cast list, the cast
+  dots in `ScriptRow` and the autocomplete dropdown. There is no
+  "create character" UI - it happens implicitly when you type a new name
+  into a Charakter block.
+
+## Legacy-Blöcke (Kamera/Caption/SFX)
+
+Die Node-Klassen existieren nicht mehr; Lexical würde alten Content
+ablehnen. Parenthetical gehört **nicht** dazu - es ist ein regulärer
+Blocktyp und läuft unverändert durch. Deshalb:
+
+- **On-the-fly**: Jeder Pfad, der Content parst, läuft über
+  `lib/legacyBlocks.ts` (Editor-Load, `lex.ts`, PDF, Plaintext,
+  `.scriptz`-Import, Snapshot-Restore in `snapshots.ts` und im Web-Adapter,
+  SnapshotsDialog). Alte Typen werden zu `scriptz-action`, Text und
+  Formatierung bleiben.
+- **Boot-Migration**: `migrateLegacyBlocksOnce()` schreibt einmalig alle
+  Skripte (inkl. Papierkorb) über `api` um, mit `internalRewrite: true`
+  (keine Wörter ins Tageslog, `updated_at` bleibt). Flag
+  `app_state["migration.legacy_blocks_v1"]`; bei einem Fehler bleibt das
+  Flag weg und der nächste Start versucht es erneut. Snapshots bleiben
+  unverändert und werden beim Restore normalisiert.
+- Keine SQL-Migration dafür - `content_json` ist ein JSON-Blob.
 
 ## Data flow
 
-- Editor mounts on script load → registers all plugins → `onUpdate`
-  debounced 250 ms → serialises Lexical state to JSON →
-  `api.updateScript` → `src/lib/scripts.ts` writes `scripts.content_json`
-  via plugin-sql, refreshes FTS5 (`refreshFtsForScript`), reconciles
-  `characters_meta` against `character_colors`.
-- `onSaved` callback fires after each successful save → `ScriptView`
-  refetches the script → pillbar re-renders with the latest character
-  list.
-- Auto-snapshot fires every 5 min while dirty (`api.createSnapshot(id, "auto")`).
-  Manual via `Cmd+Shift+S`. Cap is 50 per script (oldest is dropped),
-  enforced in both `createSnapshot` and `restoreSnapshot`.
-- Search: frontend → `api.globalSearch(query)` → FTS5 BM25 over
-  `scripts_fts` → `SearchHit[]` with `<mark>` snippets.
-- PDF export: frontend `api.exportPdf({ scriptId, path, … })` →
-  `src/lib/exportPdf.ts` reads the script via plugin-sql, walks blocks,
-  lays out on A4 with widow/orphan control via pdf-lib, writes the
-  bytes via `@tauri-apps/plugin-fs::writeFile`. No Rust code involved.
+- Boot (`AppShell`): settings, welcome seed, `navStore.load()`,
+  `uiStore.load()`, library prefs, runtime backfill parallel -> danach
+  `migrateLegacyBlocksOnce()` -> `markLibraryReady()`. Erst dann laufen
+  Listen-Queries und kann ein Editor ein Skript öffnen.
+- Navigation: `navStore.go/openScript/back/forward` ruft erst
+  `flushAll()` (Editor-Save, nav-Persist), dann wird die Route gesetzt.
+  `ScriptScreen` mountet pro `scriptId` den Editor.
+- Editor `onUpdate` -> 250 ms debounce (`persistence.ts`) -> JSON ->
+  `api.updateScript` -> `lib/scripts.ts` schreibt `content_json`,
+  refresht FTS5, reconciled `characters_meta`, aktualisiert Runtime-Stats
+  (`dialog_word_count`, `direction_block_count`) und bucht positive
+  Wort-Deltas in `daily_word_log`.
+- Live-Anzeigen: `liveEditor.ts` liefert Blockliste (debounced) und
+  Caret-Block (sofort) -> Timeline (`timing.ts`), Inspector
+  (`runtime.ts` + `lengthGoal.ts`), GutterLabel, FocusPill.
+- Stufe/Zielbereich: `api.setScriptStatus` / `api.setFolderLengthRange`
+  -> `scriptsBus` / `foldersBus` bump -> `libraryData` refetcht ->
+  Sidebar-Zähler, ScriptsPage-Gruppen, Inspector aktualisieren sich.
+- Auto-Snapshot alle 5 min solange dirty, manuell ⌘⇧S, Cap 50 pro
+  Skript (in `createSnapshot` und `restoreSnapshot` erzwungen).
+- Suche: ⌘K -> `api.globalSearch` -> FTS5 BM25 (Desktop) bzw. MiniSearch
+  (Web) -> `SearchHit[]` mit `<mark>`-Snippets.
+- PDF-Export: `lib/exportPdf.ts` baut die Bytes (pdf-lib, A4,
+  Widow/Orphan), das Speichern läuft über `PlatformAdapter.saveAs`
+  (Desktop: Tauri-Dialog + plugin-fs). Kein Rust-Code beteiligt.

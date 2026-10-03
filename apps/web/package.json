@@ -12,10 +12,11 @@
   },
   "license": "MIT",
   "dependencies": {
-    "@scriptz/core": "workspace:*",
+    "@agentz/design": "workspace:*",
     "@lexical/history": "^0.44.0",
     "@lexical/rich-text": "^0.44.0",
     "@lexical/utils": "^0.44.0",
+    "@scriptz/core": "workspace:*",
     "dexie": "^4.0.10",
     "lexical": "^0.44.0",
     "minisearch": "^7.1.0",

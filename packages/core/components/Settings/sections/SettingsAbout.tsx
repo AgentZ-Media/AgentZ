@@ -1,74 +1,52 @@
-import { Show, createSignal, onMount } from "solid-js";
+import { createSignal, onMount } from "solid-js";
 import { getPlatformAdapter } from "../../../lib/platform";
 import { t } from "../../../i18n";
-
-const openUrl = (url: string) => getPlatformAdapter().openUrl(url);
-const getVersion = () => getPlatformAdapter().getVersion();
+import { AppMark } from "../../Common/AppMark";
+import { Row, SectionHead } from "./parts";
 
 const REPO_URL = "https://github.com/AgentZ-Media/ScriptZ";
+const DEVELOPER_URL = "https://linktr.ee/deragentz";
 
-export interface SettingsAboutProps {
-  onStartOnboarding?(): void;
-}
-
-export function SettingsAbout(props: SettingsAboutProps) {
-  const [appVersion, setAppVersion] = createSignal("0.6.0");
-
+export function SettingsAbout(props: { onClose(): void; onShowOnboarding(): void }) {
+  const [version, setVersion] = createSignal<string | null>(null);
   onMount(async () => {
     try {
-      setAppVersion(await getVersion());
+      setVersion(await getPlatformAdapter().getVersion());
     } catch {
-      /* dev mode without Tauri */
+      /* dev mode without a host version */
     }
   });
-
-  const openRepo = async () => {
-    try { await openUrl(REPO_URL); } catch {}
-  };
+  const open = (url: string) => void getPlatformAdapter().openUrl(url).catch(() => {});
 
   return (
     <>
-      <h3>{t("settings.section.about")}</h3>
-      <div class="settings-pane-sub">{t("settings.about.sub")}</div>
-      <div class="settings-row">
-        <div class="settings-row-label">
-          <div class="row-label">{t("settings.about.version", { version: appVersion() })}</div>
-          <div class="row-help">{t("settings.about.license")}</div>
+      <SectionHead title={t("prefs.about.title")} sub={t("settings.about.sub")} onClose={props.onClose} />
+      <div class="set-brand">
+        <AppMark size={48} />
+        <div>
+          <b>ScriptZ</b>
+          <small>
+            {version() ? t("prefs.about.version", { version: version()! }) : ""}
+            {version() ? " · " : ""}
+            {t("settings.about.license")}
+          </small>
         </div>
       </div>
-      <div class="settings-row">
-        <div class="settings-row-label">
-          <div class="row-label">{t("settings.about.developer")}</div>
-        </div>
-        <button
-          class="link-like"
-          onClick={() => void openUrl("https://linktr.ee/deragentz").catch(() => {})}
-        >
+      <Row label={t("settings.about.developer")}>
+        <button type="button" class="btn ghost" onClick={() => open(DEVELOPER_URL)}>
           {t("settings.about.developer.linkText")}
         </button>
-      </div>
-      <div class="settings-row">
-        <div class="settings-row-label">
-          <div class="row-label">{t("settings.about.repository")}</div>
-        </div>
-        <button class="link-like settings-mono" onClick={openRepo}>
+      </Row>
+      <Row label={t("settings.about.repository")}>
+        <button type="button" class="btn ghost set-mono" onClick={() => open(REPO_URL)}>
           {t("settings.about.repository.linkText")}
         </button>
-      </div>
-      <Show when={props.onStartOnboarding}>
-        <div class="settings-row">
-          <div class="settings-row-label">
-            <div class="row-label">{t("settings.about.onboarding.label")}</div>
-            <div class="row-help">{t("settings.about.onboarding.help")}</div>
-          </div>
-          <button
-            class="btn btn--sm"
-            onClick={() => props.onStartOnboarding?.()}
-          >
-            {t("settings.about.onboarding.button")}
-          </button>
-        </div>
-      </Show>
+      </Row>
+      <Row label={t("prefs.about.onboarding.label")} help={t("settings.about.onboarding.help")}>
+        <button type="button" class="btn" onClick={() => props.onShowOnboarding()}>
+          {t("settings.about.onboarding.button")}
+        </button>
+      </Row>
     </>
   );
 }

@@ -11,6 +11,7 @@ import {
   normalizeHexColor,
 } from "../../lib/colors";
 import { t } from "../../i18n";
+import { dismissOnDialog } from "../Common/dismissOnDialog";
 
 export interface ColorPickerPopoverProps {
   open: boolean;
@@ -40,6 +41,16 @@ export function ColorPickerPopover(props: ColorPickerPopoverProps) {
     }
   });
 
+  // A shell dialog opening on top (⌘I, ⌘K, ...) closes the popover, so
+  // its Escape handler can't fire alongside the dialog's. Focus is not
+  // tracked: the popover is often opened while the editor keeps focus.
+  dismissOnDialog({
+    open: () => props.open,
+    inside: () => true,
+    dismiss: () => props.onClose(),
+    trackFocus: false,
+  });
+
   // Close on Escape or any click outside. We listen on `mousedown` (capture)
   // so the popover closes BEFORE the swatch's click reopens it — without
   // capture, a click on the same swatch would close-then-reopen.
@@ -53,6 +64,8 @@ export function ColorPickerPopover(props: ColorPickerPopoverProps) {
     };
     const onKey = (ev: KeyboardEvent) => {
       if (ev.key === "Escape") {
+        // Already handled by a dialog / menu on top.
+        if (ev.defaultPrevented) return;
         ev.preventDefault();
         props.onClose();
       }

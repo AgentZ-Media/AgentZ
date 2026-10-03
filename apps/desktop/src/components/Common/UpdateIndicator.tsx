@@ -1,12 +1,26 @@
-import { Show, onMount, onCleanup } from "solid-js";
+import { Show } from "solid-js";
 import { settingsStore } from "@scriptz/core/stores/settings";
 import { t } from "@scriptz/core/i18n";
 import { updatesStore } from "~/stores/updates";
 import "./UpdateIndicator.css";
 
+const MARK = "\u0000";
+
+/**
+ * Update card at the bottom of the sidebar (concept `.upd`):
+ * "v0.9.0 ist bereit · Neu starten". Hidden while nothing is pending.
+ * Background polling is started by App.tsx, not here, so hiding the
+ * sidebar doesn't stop the update check.
+ */
 export function UpdateIndicator() {
+  const stage = () => updatesStore.stage();
+  const version = () => {
+    const v = updatesStore.available()?.version;
+    return v ? `v${v.replace(/^v/, "")}` : "";
+  };
+
   const onClick = async () => {
-    const s = updatesStore.stage();
+    const s = stage();
     if (s === "ready") {
       await updatesStore.restart();
       return;
@@ -16,42 +30,54 @@ export function UpdateIndicator() {
     }
   };
 
-  onMount(() => {
-    updatesStore.startBackgroundPolling();
-    onCleanup(() => updatesStore.stopBackgroundPolling());
-  });
-
-  const label = () => {
-    const s = updatesStore.stage();
-    if (s === "downloading") return t("updateIndicator.label.downloading", { progress: updatesStore.progress() });
-    if (s === "ready") return t("updateIndicator.label.ready");
-    if (s === "error") return t("updateIndicator.label.error");
-    const v = updatesStore.available()?.version;
-    return v ? t("updateIndicator.label.available", { version: v }) : t("updateIndicator.label.generic");
+  const title = () => {
+    const s = stage();
+    if (s === "ready") return t("shell.update.title.ready");
+    if (s === "downloading") return t("shell.update.title.downloading");
+    if (s === "error") return t("shell.update.title.error");
+    return t("shell.update.title.available");
   };
 
-  const title = () => {
-    const s = updatesStore.stage();
-    if (s === "ready") return t("updateIndicator.title.ready");
-    if (s === "downloading") return t("updateIndicator.title.downloading");
-    if (s === "error") return t("updateIndicator.title.error");
-    return t("updateIndicator.title.default");
+  const action = () => {
+    const s = stage();
+    if (s === "ready") return t("shell.update.action.restart");
+    if (s === "error") return t("shell.update.action.retry");
+    if (s === "available") return t("shell.update.action.install");
+    return "";
+  };
+
+  /** Sentence with the version in bold, without markup in the catalog. */
+  const text = () => {
+    const s = stage();
+    if (s === "downloading") {
+      return <span class="upd-txt">{t("shell.update.downloading", { progress: updatesStore.progress() })}</span>;
+    }
+    if (s === "error") return <span class="upd-txt">{t("shell.update.error")}</span>;
+    const key = s === "ready" ? "shell.update.ready" : "shell.update.available";
+    const [a, b] = t(key, { version: MARK }).split(MARK);
+    return (
+      <span class="upd-txt">
+        {a}
+        <b>{version()}</b>
+        {b ?? ""}
+      </span>
+    );
   };
 
   return (
-    <Show
-      when={
-        settingsStore.updateCheckEnabled() && updatesStore.stage() !== "idle"
-      }
-    >
+    <Show when={settingsStore.updateCheckEnabled() && stage() !== "idle"}>
       <button
-        class="update-pill"
-        onClick={onClick}
+        type="button"
+        class="upd"
+        classList={{ "is-busy": stage() === "downloading", "is-error": stage() === "error" }}
+        onClick={() => void onClick()}
         title={title()}
-        disabled={updatesStore.stage() === "downloading"}
+        disabled={stage() === "downloading"}
       >
-        <span class="update-dot" aria-hidden="true" />
-        <span>{label()}</span>
+        {text()}
+        <Show when={action()}>
+          <span class="upd-act">{action()}</span>
+        </Show>
       </button>
     </Show>
   );

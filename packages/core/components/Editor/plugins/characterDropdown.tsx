@@ -19,7 +19,10 @@ import {
   previousCharacterFrom,
 } from "../predict";
 import type { ScriptCharacter } from "../../../lib/types";
+import { K } from "../../../lib/keys";
 import { t } from "../../../i18n";
+
+const DROPDOWN_WIDTH = 236;
 
 function findCharacterAncestor(
   node: LexicalNode | null,
@@ -59,6 +62,9 @@ export function installCharacterDropdown(
   // characters in predict-ranked order: most-likely-next-speaker first,
   // previous speaker pushed to the tail.
   const [rankedList, setRankedList] = createSignal<ScriptCharacter[]>([]);
+  // Name (uppercase) of the predicted next speaker - labelled "ist dran".
+  // Null when the only candidate is the previous speaker.
+  const [predicted, setPredicted] = createSignal<string | null>(null);
 
   const filteredEntries = (): ScriptCharacter[] => {
     const q = filter().trim().toUpperCase();
@@ -67,7 +73,17 @@ export function installCharacterDropdown(
     return list.filter((e) => e.name.toUpperCase().includes(q));
   };
 
+  // Centered under the character line (concept `.ac`). The x coordinate
+  // is the line's centre; the view shifts itself by -50 % and is clamped
+  // so it never leaves the window.
   const positionFromCursor = (nodeKey: string | null): { x: number; y: number } => {
+    if (nodeKey) {
+      const el = editor.getElementByKey(nodeKey);
+      if (el) {
+        const r = el.getBoundingClientRect();
+        return { x: r.left + r.width / 2, y: r.bottom + 4 };
+      }
+    }
     const dom = window.getSelection();
     if (dom && dom.rangeCount > 0) {
       const rect = dom.getRangeAt(0).getBoundingClientRect();
@@ -75,19 +91,14 @@ export function installCharacterDropdown(
         return { x: rect.left, y: rect.bottom + 6 };
       }
     }
-    // Empty Charakter block: the range sits on Lexical's managed <br>
-    // placeholder and reports a zero rect. Anchor to the block's own DOM
-    // element so the dropdown shows up under the (empty) line instead of
-    // jumping to the editor's top-left corner.
-    if (nodeKey) {
-      const el = editor.getElementByKey(nodeKey);
-      if (el) {
-        const r = el.getBoundingClientRect();
-        return { x: r.left, y: r.bottom + 6 };
-      }
-    }
     const r = host.getBoundingClientRect();
-    return { x: r.left + 16, y: r.top + 60 };
+    return { x: r.left + r.width / 2, y: r.top + 60 };
+  };
+
+  const clampedX = (x: number) => {
+    const half = DROPDOWN_WIDTH / 2;
+    const vw = typeof window !== "undefined" ? window.innerWidth : 1200;
+    return Math.max(half + 8, Math.min(x, vw - half - 8));
   };
 
   const close = () => {
@@ -127,36 +138,24 @@ export function installCharacterDropdown(
       <Show when={open() && filteredEntries().length > 0}>
         <div
           class="scriptz-character-dropdown"
+          role="listbox"
+          aria-label={t("script.ac.aria")}
           style={{
             position: "fixed",
-            left: `${pos().x}px`,
+            left: `${clampedX(pos().x)}px`,
             top: `${pos().y}px`,
+            transform: "translateX(-50%)",
             "z-index": 50,
-            background: "var(--modal-bg)",
-            color: "var(--fg)",
-            border: "1px solid var(--border)",
-            "border-radius": "var(--r-3)",
-            "box-shadow": "var(--shadow-popover)",
-            padding: "4px",
-            "min-width": "240px",
-            "font-family": "var(--font-sans)",
-            "font-size": "13px",
-            "user-select": "none",
           }}
           onMouseDown={(ev) => ev.preventDefault()}
         >
           <For each={filteredEntries()}>
             {(entry, i) => (
               <div
-                style={{
-                  padding: "6px 10px",
-                  "border-radius": "var(--r-2)",
-                  cursor: "pointer",
-                  background: i() === activeIdx() ? "var(--selected)" : "transparent",
-                  display: "flex",
-                  "align-items": "center",
-                  gap: "8px",
-                }}
+                class="scriptz-ac-it"
+                classList={{ on: i() === activeIdx() }}
+                role="option"
+                aria-selected={i() === activeIdx()}
                 onMouseEnter={() => setActiveIdx(i())}
                 onMouseDown={(ev) => {
                   ev.preventDefault();
@@ -165,22 +164,13 @@ export function installCharacterDropdown(
               >
                 <button
                   type="button"
-                  class="scriptz-color-picker-trigger"
+                  class="scriptz-ac-dot scriptz-color-picker-trigger"
                   aria-label={t("charDropdown.colorAria", { name: entry.name })}
                   title={t("charDropdown.colorAria", { name: entry.name })}
-                  style={{
-                    width: "12px",
-                    height: "12px",
-                    padding: 0,
-                    border: "none",
-                    "border-radius": "999px",
-                    background: entry.color,
-                    "flex-shrink": 0,
-                    cursor: "pointer",
-                  }}
+                  style={{ background: entry.color }}
                   onMouseDown={(ev) => {
-                    // Beat the dropdown row's mouseDown (which would commit
-                    // the entry). We just want to open the picker.
+                    // Beat the row's mouseDown (which would commit the
+                    // entry). We just want to open the picker.
                     ev.preventDefault();
                     ev.stopPropagation();
                     const r = (ev.currentTarget as HTMLElement).getBoundingClientRect();
@@ -190,10 +180,17 @@ export function installCharacterDropdown(
                     });
                   }}
                 />
-                <span style={{ "flex": 1, "font-weight": 600 }}>{entry.name}</span>
+                <b>{entry.name.toUpperCase()}</b>
+                <Show when={predicted() === entry.name.toUpperCase()}>
+                  <small>{t("script.ac.next")}</small>
+                </Show>
+                <Show when={i() === activeIdx()}>
+                  <kbd>{K("Enter")}</kbd>
+                </Show>
               </div>
             )}
           </For>
+          <div class="scriptz-ac-foot">{t("script.ac.newName")}</div>
         </div>
       </Show>
     );
@@ -230,6 +227,8 @@ export function installCharacterDropdown(
     setActiveKey(nodeKey);
     setFilter(text);
     setRankedList(ranked);
+    const head = ranked[0];
+    setPredicted(head && head.name.toUpperCase() !== prevSpeakerUpper ? head.name.toUpperCase() : null);
     setPos(positionFromCursor(nodeKey));
 
     // Highlight resolution:
@@ -270,6 +269,12 @@ export function installCharacterDropdown(
 
   const onKey = (ev: KeyboardEvent) => {
     if (!open()) return;
+    // Only while the caret is actually in the editor: the selection stays in
+    // the character block when focus moves to a dialog (⌘I, ⌘K) or the
+    // colour popover, and Enter / arrows there must not pick a name.
+    const root = editor.getRootElement();
+    const active = document.activeElement;
+    if (!root || !active || !root.contains(active)) return;
     const list = filteredEntries();
     if (list.length === 0) return;
     if (ev.key === "ArrowDown") {

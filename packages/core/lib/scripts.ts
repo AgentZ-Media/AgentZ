@@ -41,7 +41,14 @@ import {
   RUNTIME_STATS_SENTINEL,
   runtimeStatsFromContent,
 } from "./runtime";
-import type { Script, ScriptCharacter, ScriptSummary } from "./types";
+import { normalizeLegacyContent } from "./legacyBlocks";
+import {
+  isScriptStatus,
+  type Script,
+  type ScriptCharacter,
+  type ScriptStatus,
+  type ScriptSummary,
+} from "./types";
 import { t } from "../i18n";
 
 interface SummaryRow {
@@ -57,12 +64,15 @@ interface SummaryRow {
   dialog_word_count: number;
   direction_block_count: number;
   folder_id: string | null;
+  status: string | null;
+  status_changed_at: number | null;
 }
 
 const SUMMARY_COLUMNS =
   "id, title, highlighting_enabled, characters_meta, " +
   "created_at, updated_at, archived_at, page_count, " +
-  "last_word_count, dialog_word_count, direction_block_count, folder_id";
+  "last_word_count, dialog_word_count, direction_block_count, folder_id, " +
+  "status, status_changed_at";
 
 function summaryRowToScript(r: SummaryRow): ScriptSummary {
   return {
@@ -78,6 +88,10 @@ function summaryRowToScript(r: SummaryRow): ScriptSummary {
     dialog_word_count: r.dialog_word_count,
     direction_block_count: r.direction_block_count,
     folder_id: r.folder_id,
+    // Defensive: an unknown value (manual DB edit, future status from a
+    // newer build) degrades to "writing" instead of breaking the UI.
+    status: isScriptStatus(r.status) ? r.status : "writing",
+    status_changed_at: r.status_changed_at ?? null,
   };
 }
 
@@ -121,6 +135,7 @@ export interface ListScriptsQuery {
   limit?: number | null;
   offset?: number | null;
   folderId?: string | null;
+  status?: ScriptStatus | null;
 }
 
 export async function listScripts(q: ListScriptsQuery): Promise<ScriptSummary[]> {
@@ -157,6 +172,12 @@ export async function listScripts(q: ListScriptsQuery): Promise<ScriptSummary[]>
     p++;
   }
 
+  if (q.status !== undefined && q.status !== null) {
+    sql += ` AND status = $${p}`;
+    args.push(q.status);
+    p++;
+  }
+
   const sort = q.sort ?? "updated";
   if (sort === "created") {
     sql += " ORDER BY created_at DESC";
@@ -190,7 +211,11 @@ export async function createScript(
   const id = crypto.randomUUID();
   const now = Date.now();
   const finalTitle = title ?? t("common.untitled");
-  const contentJson = initialContentJson ?? emptyLexicalState();
+  // Imported / seeded content may still carry retired block types.
+  const contentJson =
+    initialContentJson !== null
+      ? normalizeLegacyContent(initialContentJson).json
+      : emptyLexicalState();
 
   const records = await loadColorRecords();
   const { chars, newDefaults } = reconcileCharsFromContent([], contentJson, records);
@@ -222,8 +247,8 @@ export async function createScript(
   await db.execute(
     `INSERT INTO scripts (id, title, highlighting_enabled, content_json, characters_meta,
                           created_at, updated_at, page_count, folder_id, last_word_count,
-                          dialog_word_count, direction_block_count)
-     VALUES ($1, $2, NULL, $3, $4, $5, $5, 1, $6, $7, $8, $9)`,
+                          dialog_word_count, direction_block_count, status, status_changed_at)
+     VALUES ($1, $2, NULL, $3, $4, $5, $5, 1, $6, $7, $8, $9, 'writing', NULL)`,
     [
       id,
       finalTitle,
@@ -251,18 +276,21 @@ export async function duplicateScript(id: string): Promise<ScriptSummary> {
   // so a direct edit afterwards only counts the delta
   // (otherwise the first save would count the whole copied text as
   // "written today").
-  const wc = countWordsInContent(src.content_json);
-  const runtime = runtimeStatsFromContent(src.content_json);
+  // The copy is a fresh draft: it always starts at "writing", whatever
+  // stage the source is in.
+  const contentJson = normalizeLegacyContent(src.content_json).json;
+  const wc = countWordsInContent(contentJson);
+  const runtime = runtimeStatsFromContent(contentJson);
   await db.execute(
     `INSERT INTO scripts (id, title, highlighting_enabled, content_json, characters_meta,
                           created_at, updated_at, page_count, folder_id, last_word_count,
-                          dialog_word_count, direction_block_count)
-     VALUES ($1, $2, $3, $4, $5, $6, $6, $7, $8, $9, $10, $11)`,
+                          dialog_word_count, direction_block_count, status, status_changed_at)
+     VALUES ($1, $2, $3, $4, $5, $6, $6, $7, $8, $9, $10, $11, 'writing', NULL)`,
     [
       newId,
       newTitle,
       src.highlighting_enabled,
-      src.content_json,
+      contentJson,
       charsJson,
       now,
       src.page_count,
@@ -287,6 +315,28 @@ export async function renameScript(id: string, title: string): Promise<ScriptSum
   return rowToSummary(id);
 }
 
+/** Moves a script to another production stage. `status_changed_at` is
+ *  only bumped when the status really changes (re-selecting the current
+ *  stage is a no-op). `updated_at` stays untouched - a stage change is not
+ *  a content edit and must not reorder "recently edited" lists. */
+export async function setScriptStatus(
+  id: string,
+  status: ScriptStatus,
+): Promise<ScriptSummary> {
+  if (!isScriptStatus(status)) {
+    throw new Error(`invalid script status: ${String(status)}`);
+  }
+  const db = await getDb();
+  // The `status IS NOT $1` guard keeps status_changed_at stable when the
+  // current stage is re-selected. Zero affected rows = unknown id OR no
+  // change; rowToSummary throws for the former.
+  await db.execute(
+    "UPDATE scripts SET status = $1, status_changed_at = $2 WHERE id = $3 AND status IS NOT $1",
+    [status, Date.now(), id],
+  );
+  return rowToSummary(id);
+}
+
 export interface UpdateScriptInput {
   id: string;
   title?: string;
@@ -299,6 +349,9 @@ export interface UpdateScriptInput {
    *  the user picked a colour). Replaces characters_meta directly,
    *  bypassing the reconcile step. */
   characters?: ScriptCharacter[];
+  /** Internal rewrite (legacy-block migration): no daily-word booking,
+   *  `updated_at` untouched. See `StorageAdapter.UpdateScriptInput`. */
+  internalRewrite?: boolean;
 }
 
 export async function updateScript(input: UpdateScriptInput): Promise<ScriptSummary> {
@@ -326,13 +379,17 @@ export async function updateScript(input: UpdateScriptInput): Promise<ScriptSumm
     );
   }
   if (input.contentJson !== undefined) {
+    // Content never gets persisted with retired block types (cheap
+    // substring fast path when there's nothing to convert).
+    const contentJson = normalizeLegacyContent(input.contentJson).json;
+    const internal = input.internalRewrite === true;
     // Compare-and-swap loop around diff-on-save: plugin-sql has no
     // transactions, so we guard the word-delta bookkeeping via a
     // conditional UPDATE. If two parallel saves read the same
     // last_word_count, both deltas would otherwise land in daily_word_log
     // and today's bucket would be double-counted.
-    const newWordCount = countWordsInContent(input.contentJson);
-    const runtime = runtimeStatsFromContent(input.contentJson);
+    const newWordCount = countWordsInContent(contentJson);
+    const runtime = runtimeStatsFromContent(contentJson);
     const records = await loadColorRecords();
     let delta = 0;
     let attempts = 0;
@@ -341,31 +398,32 @@ export async function updateScript(input: UpdateScriptInput): Promise<ScriptSumm
       const metaRows = await db.select<{
         characters_meta: string;
         last_word_count: number | null;
+        updated_at: number;
       }[]>(
-        "SELECT characters_meta, last_word_count FROM scripts WHERE id = $1",
+        "SELECT characters_meta, last_word_count, updated_at FROM scripts WHERE id = $1",
         [input.id],
       );
       if (metaRows.length === 0) {
         throw new Error(`not found: script ${input.id}`);
       }
-      const existing = parseCharsMeta(metaRows[0]?.characters_meta ?? "[]");
       const lastWordCount = metaRows[0]?.last_word_count ?? 0;
-      const { chars, newDefaults } = reconcileCharsFromContent(
-        existing,
-        input.contentJson,
+      const charsJson = await reconcileCharsMeta(
+        metaRows[0]?.characters_meta ?? "[]",
+        contentJson,
         records,
+        now,
       );
-      for (const [n, c] of newDefaults) {
-        await upsertDefaultColor(n, c, now);
-      }
-      const charsJson = serializeCharsMeta(chars);
 
       // last_word_count === -1 is the sentinel from migration 003 for
       // existing scripts: the first save after the update only normalizes
       // the count without booking the entire prior word total as "written
       // today".
       const isFirstMeasurement = lastWordCount < 0;
-      const candidateDelta = isFirstMeasurement ? 0 : newWordCount - lastWordCount;
+      // Internal rewrites (legacy-block migration) only normalize the
+      // count - converting block types is not writing.
+      const candidateDelta =
+        isFirstMeasurement || internal ? 0 : newWordCount - lastWordCount;
+      const stamp = internal ? (metaRows[0]?.updated_at ?? now) : now;
 
       const result = await db.execute(
         `UPDATE scripts
@@ -373,9 +431,9 @@ export async function updateScript(input: UpdateScriptInput): Promise<ScriptSumm
                dialog_word_count = $5, direction_block_count = $6
            WHERE id = $7 AND last_word_count = $8`,
         [
-          input.contentJson,
+          contentJson,
           charsJson,
-          now,
+          stamp,
           newWordCount,
           runtime.dialogWords,
           runtime.directionBlocks,
@@ -402,9 +460,9 @@ export async function updateScript(input: UpdateScriptInput): Promise<ScriptSumm
                  dialog_word_count = $5, direction_block_count = $6
              WHERE id = $7`,
           [
-            input.contentJson,
+            contentJson,
             charsJson,
-            now,
+            stamp,
             newWordCount,
             runtime.dialogWords,
             runtime.directionBlocks,
@@ -439,6 +497,58 @@ export async function updateScript(input: UpdateScriptInput): Promise<ScriptSumm
   }
   await refreshFtsForScript(input.id);
   return rowToSummary(input.id);
+}
+
+/** Writes content restored from a snapshot and reconciles every derived
+ *  column with it: word count, dialog word count, direction block count,
+ *  characters_meta and the FTS row. Unlike `updateScript`, restored words
+ *  are NOT booked as written today - `last_word_count` (incl. the -1
+ *  sentinel) is reset to the restored count, so the next real edit books
+ *  only its own delta. `updated_at` moves to `now` (a restore is a
+ *  user-visible change). */
+export async function writeRestoredContent(
+  id: string,
+  rawContentJson: string,
+  now: number = Date.now(),
+): Promise<void> {
+  const db = await getDb();
+  // Snapshots taken before the block-type reduction may still contain
+  // retired block types - restore them as action blocks.
+  const contentJson = normalizeLegacyContent(rawContentJson).json;
+  const wordCount = countWordsInContent(contentJson);
+  const runtime = runtimeStatsFromContent(contentJson);
+  const records = await loadColorRecords();
+  const metaRows = await db.select<{ characters_meta: string }[]>(
+    "SELECT characters_meta FROM scripts WHERE id = $1",
+    [id],
+  );
+  if (metaRows.length === 0) {
+    throw new Error(`not found: script ${id}`);
+  }
+  const charsJson = await reconcileCharsMeta(
+    metaRows[0]?.characters_meta ?? "[]",
+    contentJson,
+    records,
+    now,
+  );
+  // Unconditional on purpose: a concurrent CAS save in updateScript sees
+  // the changed last_word_count and retries against the restored baseline.
+  await db.execute(
+    `UPDATE scripts
+       SET content_json = $1, characters_meta = $2, updated_at = $3, last_word_count = $4,
+           dialog_word_count = $5, direction_block_count = $6
+       WHERE id = $7`,
+    [
+      contentJson,
+      charsJson,
+      now,
+      wordCount,
+      runtime.dialogWords,
+      runtime.directionBlocks,
+      id,
+    ],
+  );
+  await refreshFtsForScript(id);
 }
 
 export async function archiveScript(id: string): Promise<void> {
@@ -540,6 +650,26 @@ function emptyLexicalState(): string {
       version: 1,
     },
   });
+}
+
+/** Reconciles a stored `characters_meta` blob against `contentJson`,
+ *  back-fills unseen names into the app-wide default registry and returns
+ *  the serialized result. Shared by content saves and snapshot restore. */
+async function reconcileCharsMeta(
+  existingMeta: string,
+  contentJson: string,
+  records: Map<string, ColorRecord>,
+  now: number,
+): Promise<string> {
+  const { chars, newDefaults } = reconcileCharsFromContent(
+    parseCharsMeta(existingMeta),
+    contentJson,
+    records,
+  );
+  for (const [n, c] of newDefaults) {
+    await upsertDefaultColor(n, c, now);
+  }
+  return serializeCharsMeta(chars);
 }
 
 /** Reconcile the per-script character list with the names actually

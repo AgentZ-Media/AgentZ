@@ -132,8 +132,9 @@ export async function moveIdea(
 export async function convertIdeaToScript(input: {
   ideaId: string;
   folderId?: string | null;
-  /** If true (default), the note is carried over as the first action
-   *  into the new script. */
+  /** If true, the note is carried over as the first action into the new
+   *  script. Default false since the Werkbank redesign - the note stays on
+   *  the idea and the inspector shows it under "Aus der Idee". */
   notesAsAction?: boolean;
 }): Promise<{ idea: Idea; script: ScriptSummary }> {
   const db = await getDb();
@@ -164,7 +165,7 @@ export async function convertIdeaToScript(input: {
     throw new Error(t("error.ideaAlreadyConverted"));
   }
 
-  const notesAsAction = input.notesAsAction ?? true;
+  const notesAsAction = input.notesAsAction ?? false;
   const seedJson = buildScriptSeed({
     notes: notesAsAction ? ideaRow.notes : "",
   });

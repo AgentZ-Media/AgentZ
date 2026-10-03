@@ -2,6 +2,7 @@ import type { LexicalEditor } from "lexical";
 import { api } from "../../lib/api";
 import { scriptsBus } from "../../lib/scriptsBus";
 import { registerFlusher } from "../../lib/saveFlush";
+import { createSerialSaver } from "../../lib/serialSave";
 import { saveStatusStore } from "../../stores/saveStatus";
 import type { ScriptCharacter } from "../../lib/types";
 
@@ -46,21 +47,32 @@ export interface PersistenceOptions {
 }
 
 export interface PersistenceHandle {
-  /** Marks the script as dirty and (re)arms the debounced save. Called
-   *  from the editor's update listener for every content-changing tick. */
+  /** (Re)arms the debounced save. Called from the editor's update listener
+   *  for every content-changing tick; the save itself is skipped when the
+   *  serialized state equals the last ACKNOWLEDGED write. */
   scheduleSave: () => void;
-  /** Tears down the save timer, auto-snapshot interval and global
-   *  flusher registration. Also fires a final teardown-flagged
-   *  `persist()` if a save was buffered. */
+  /** Persists buffered edits now and resolves once every queued or
+   *  in-flight save has finished. */
+  flush: () => Promise<void>;
+  /** Tears down the save timer and auto-snapshot interval and fires a
+   *  final teardown-flagged save if anything is buffered. The global
+   *  flusher stays registered until that save settled, so a window close
+   *  right after a script switch still awaits it. */
   teardown: () => void;
 }
 
 /** Owns the entire save lifecycle of an editor instance: debounced save,
  *  CAS-style "don't overwrite real content with empty during teardown"
  *  guard, server-assigned color merge, auto-snapshot interval, and the
- *  `registerFlusher` hook for window-close. The Editor.tsx onMount only
- *  needs to call `scheduleSave()` from its update listener and dispose
- *  via the returned `teardown`. */
+ *  `registerFlusher` hook for window-close / navigation. The Editor.tsx
+ *  onMount only needs to call `scheduleSave()` from its update listener
+ *  and dispose via the returned `teardown`.
+ *
+ *  Saves are serialized through `createSerialSaver`: the editor state is
+ *  read when a queued save actually runs and compared against the content
+ *  of the last acknowledged write. That way an undo back to the stored
+ *  state while a newer save is still in flight is written after it
+ *  instead of being skipped. */
 export function createPersistence(opts: PersistenceOptions): PersistenceHandle {
   const {
     editor,
@@ -71,89 +83,85 @@ export function createPersistence(opts: PersistenceOptions): PersistenceHandle {
     onSavingChange,
   } = opts;
 
-  let saveTimer: ReturnType<typeof setTimeout> | null = null;
   let dirtySinceSnapshot = false;
-  // Last content we successfully wrote to the DB. The teardown-race guard
-  // compares against this when an unmount/flush sees an empty editor state.
-  let lastPersistedContent = initialContentJson ?? "";
 
-  const persist = async (fromTeardown = false): Promise<void> => {
+  const readContent = (): string => {
     let contentJson = "";
     editor.getEditorState().read(() => {
-      const state = editor.getEditorState();
-      contentJson = JSON.stringify(state.toJSON());
+      contentJson = JSON.stringify(editor.getEditorState().toJSON());
     });
+    return contentJson;
+  };
 
-    // Safety net: if the editor state is empty NOW and the last
-    // successfully saved state had content, on a teardown that's a
-    // clear race symptom (editor torn down while a debounced /
-    // onCleanup persist() was in flight). We block this only on
-    // teardown — a legitimate "clear the script" via the user would
-    // otherwise be unfixable.
-    if (
-      fromTeardown &&
-      isContentEffectivelyEmpty(contentJson) &&
-      lastPersistedContent &&
-      !isContentEffectivelyEmpty(lastPersistedContent)
-    ) {
-      console.warn(
-        "[scriptz] persist() abgebrochen: Teardown-Flush mit leerem " +
-          "Editor-State, letzter gespeicherter Stand war nicht leer - " +
-          "vermutlich Unmount-Race. Keine Überschreibung.",
-      );
-      return;
-    }
-
-    onSavingChange?.(true);
-    saveStatusStore.startSaving();
-    try {
-      const summary = await api.updateScript({ id: scriptId, contentJson });
-      lastPersistedContent = contentJson;
-      saveStatusStore.markSaved();
-      scriptsBus.bump();
-
-      // Update the cache so a name retyped in a later script
-      // immediately gets the canonical color.
-      for (const c of summary.characters) {
-        knownColors.set(c.name.toUpperCase(), c.color);
+  const saver = createSerialSaver<string>({
+    initial: initialContentJson ?? "",
+    read: readContent,
+    // Nothing changed since the last acknowledged write - typically the
+    // update right after loading the script, which re-serializes the
+    // stored state byte-for-byte. Writing anyway would bump updated_at, so
+    // merely opening a script would reorder "Geändert" and show "Gerade
+    // eben".
+    isClean: (draft, baseline) => draft === baseline,
+    delayMs: SAVE_DEBOUNCE_MS,
+    async write(contentJson, baseline, reason) {
+      // Safety net: if the editor state is empty NOW and the last
+      // successfully saved state had content, on a teardown that's a
+      // clear race symptom (editor torn down while a debounced save was
+      // in flight). We block this only on teardown - a legitimate "clear
+      // the script" via the user would otherwise be unfixable.
+      if (
+        reason === "teardown" &&
+        isContentEffectivelyEmpty(contentJson) &&
+        baseline &&
+        !isContentEffectivelyEmpty(baseline)
+      ) {
+        console.warn(
+          "[scriptz] persist() abgebrochen: Teardown-Flush mit leerem " +
+            "Editor-State, letzter gespeicherter Stand war nicht leer - " +
+            "vermutlich Unmount-Race. Keine Überschreibung.",
+        );
+        return baseline;
       }
-      mergeAfterSave(summary);
-    } catch (err) {
-      console.error("[scriptz] auto-save failed", err);
-      saveStatusStore.markError(err);
-    } finally {
-      onSavingChange?.(false);
-    }
-  };
 
-  const scheduleSave = () => {
-    dirtySinceSnapshot = true;
-    if (saveTimer) clearTimeout(saveTimer);
-    saveTimer = setTimeout(() => {
-      saveTimer = null;
-      void persist();
-    }, SAVE_DEBOUNCE_MS);
-  };
+      onSavingChange?.(true);
+      saveStatusStore.startSaving();
+      try {
+        const summary = await api.updateScript({ id: scriptId, contentJson });
+        // Only real writes make an auto snapshot worthwhile.
+        dirtySinceSnapshot = true;
+        saveStatusStore.markSaved();
+        scriptsBus.bump();
 
-  // Window-close / unmount / hot-reload: persist immediately instead of
-  // dropping the buffered 250 ms of typing.
-  const flushPending = async (): Promise<void> => {
-    if (!saveTimer) return;
-    clearTimeout(saveTimer);
-    saveTimer = null;
-    try {
-      await persist(true);
-    } catch (err) {
-      console.warn("[scriptz] flushPending failed", err);
-    }
-  };
-  const unregisterFlusher = registerFlusher(flushPending);
+        // Update the cache so a name retyped in a later script
+        // immediately gets the canonical color.
+        for (const c of summary.characters) {
+          knownColors.set(c.name.toUpperCase(), c.color);
+        }
+        mergeAfterSave(summary);
+        return contentJson;
+      } catch (err) {
+        saveStatusStore.markError(err);
+        throw err;
+      } finally {
+        onSavingChange?.(false);
+      }
+    },
+    onError: (err) => console.error("[scriptz] auto-save failed", err),
+  });
+
+  const scheduleSave = () => saver.schedule();
+
+  // Window-close / navigation / export: persist immediately instead of
+  // dropping the buffered 250 ms of typing, and wait for saves already in
+  // flight.
+  const flush = () => saver.flush("flush");
+  const unregisterFlusher = registerFlusher(flush);
 
   const snapshotTimer = setInterval(() => {
     if (!dirtySinceSnapshot) return;
     // Only clear the dirty flag AFTER a successful snapshot. If we
     // cleared it up-front, a failed call would silently swallow the
-    // dirtiness — the next tick would see "not dirty" and skip, leaving
+    // dirtiness - the next tick would see "not dirty" and skip, leaving
     // a gap in the version history. Now a failed call keeps the flag
     // set and the next 5 min tick tries again.
     void api.createSnapshot(scriptId, "auto").then(
@@ -168,17 +176,12 @@ export function createPersistence(opts: PersistenceOptions): PersistenceHandle {
 
   const teardown = () => {
     // Critical: flush any debounced save before tearing down so the
-    // last 250 ms of typing isn't lost when switching scripts, closing
-    // a tab, or unmounting on hot-reload. Fire-and-forget — the IPC
-    // continues independently of the editor instance.
-    if (saveTimer) {
-      clearTimeout(saveTimer);
-      saveTimer = null;
-      void persist(true);
-    }
-    unregisterFlusher();
+    // last 250 ms of typing isn't lost when switching scripts or
+    // unmounting on hot-reload. The queue continues independently of the
+    // editor instance; the flusher is unregistered once it drained.
     clearInterval(snapshotTimer);
+    void saver.flush("teardown").finally(unregisterFlusher);
   };
 
-  return { scheduleSave, teardown };
+  return { scheduleSave, flush, teardown };
 }

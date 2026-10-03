@@ -445,6 +445,9 @@ export async function buildPdfBytes(
   }
 
   const contentW = A4_W_MM - MARGIN_LEFT_MM - MARGIN_RIGHT_MM;
+  // Four block types (Action, Character, Dialog, Parenthetical). Retired
+  // types arrive as action - extractBlocks normalizes them via
+  // lib/legacyBlocks.ts.
   const blocks = extractBlocks(deps.contentJson);
 
   // name (UPPER) -> color hex
@@ -516,45 +519,6 @@ export async function buildPdfBytes(
           "left",
           null,
           b.runs,
-        );
-        break;
-      case "scriptz-camera":
-        layout.writeLine(
-          b.text.toUpperCase(),
-          MARGIN_LEFT_MM,
-          contentW,
-          false,
-          true,
-          "right",
-          null,
-          b.runs,
-          upper,
-        );
-        break;
-      case "scriptz-caption":
-        layout.writeLine(
-          b.text.toUpperCase(),
-          MARGIN_LEFT_MM,
-          contentW,
-          false,
-          true,
-          "left",
-          null,
-          b.runs,
-          upper,
-        );
-        break;
-      case "scriptz-sfx":
-        layout.writeLine(
-          b.text.toUpperCase(),
-          MARGIN_LEFT_MM,
-          contentW,
-          false,
-          false,
-          "left",
-          null,
-          b.runs,
-          upper,
         );
         break;
       default:

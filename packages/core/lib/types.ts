@@ -18,6 +18,27 @@ export interface CharacterColorRecord {
   updated_at: number;
 }
 
+/** Production stage of a script (Werkbank redesign). Lives on every
+ *  script; new scripts start at "writing". */
+export type ScriptStatus = "writing" | "ready" | "shot" | "online";
+
+/** Pipeline stage as shown in the sidebar / overview: ideas are a stage
+ *  before any script exists. */
+export type Stage = "idea" | ScriptStatus;
+
+/** All script statuses in pipeline order. */
+export const SCRIPT_STATUSES: readonly ScriptStatus[] = [
+  "writing",
+  "ready",
+  "shot",
+  "online",
+] as const;
+
+/** Type guard for values read from storage / files. */
+export function isScriptStatus(v: unknown): v is ScriptStatus {
+  return v === "writing" || v === "ready" || v === "shot" || v === "online";
+}
+
 export interface ScriptSummary {
   id: string;
   title: string;
@@ -33,11 +54,15 @@ export interface ScriptSummary {
   /** Dialog words at the last save - input for the runtime formula
    *  in `lib/runtime.ts`. -1 = sentinel "never measured". */
   dialog_word_count: number;
-  /** Number of action/camera blocks at the last save - each block
+  /** Number of action blocks at the last save - each block
    *  contributes a 2s beat to the runtime. -1 = sentinel. */
   direction_block_count: number;
   characters: ScriptCharacter[];
   folder_id: string | null;
+  /** Production stage. Defaults to "writing" for new and pre-redesign rows. */
+  status: ScriptStatus;
+  /** Unix-millis of the last status change; null = never changed. */
+  status_changed_at: number | null;
 }
 
 export interface Script extends ScriptSummary {
@@ -50,6 +75,10 @@ export interface Folder {
   created_at: number;
   updated_at: number;
   script_count: number;
+  /** Target runtime range in whole seconds (see docs/feature-laengenziel.md).
+   *  null = bound not set. When both are set, min < max. */
+  length_min_sec: number | null;
+  length_max_sec: number | null;
 }
 
 export interface Snapshot {
@@ -75,14 +104,14 @@ export interface SearchHit {
   meta: Record<string, unknown>;
 }
 
+/** The four block types of the editor. Older content may still contain
+ *  the retired types (camera, caption, sfx) - those are converted to action
+ *  by `lib/legacyBlocks.ts` wherever content is parsed. */
 export type BlockType =
   | "scriptz-action"
   | "scriptz-character"
   | "scriptz-dialog"
-  | "scriptz-parenthetical"
-  | "scriptz-camera"
-  | "scriptz-caption"
-  | "scriptz-sfx";
+  | "scriptz-parenthetical";
 
 /** A writing idea from the ideas drawer. `usedAt` marks the
  *  conversion into a real script. `folder_id` shares the same

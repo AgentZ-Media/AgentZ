@@ -1,0 +1,45 @@
+/* Writing counter in the (always dark) sidebar footer - concept
+   `.goal-txt` / Bausteine `.wc`. Uses the --side-* tokens so it stays
+   readable on the sidebar in both themes. */
+
+.wcount {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 1px;
+  padding: 4px 6px;
+  margin: -4px -6px;
+  border-radius: var(--r-2);
+  color: var(--side-muted);
+  font-size: 12px;
+  line-height: 1.3;
+  text-align: left;
+  transition: background var(--t-fast);
+}
+.wcount:hover {
+  background: var(--side-hover);
+}
+.wcount:focus-visible {
+  outline: 2px solid var(--side-fg);
+  outline-offset: 0;
+}
+.wcount b {
+  color: var(--side-strong);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+.wcount span {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.wcount kbd {
+  background: color-mix(in srgb, var(--side-strong) 8%, transparent);
+  color: var(--side-fg);
+}

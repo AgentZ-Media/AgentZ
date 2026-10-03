@@ -1,0 +1,371 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>ScriptZ Redesign - Bestandsaufnahme & Konzept</title>
+<link rel="stylesheet" href="doc.css" />
+</head>
+<body>
+
+<header class="d-top">
+  <a class="d-brand" href="index.html">ScriptZ / Redesign</a>
+  <nav>
+    <a class="is-current" href="index.html">Bestandsaufnahme</a>
+    <a href="concept.html">Werkbank (final)</a>
+  </nav>
+</header>
+
+<main class="d-wrap">
+
+<section class="d-hero">
+  <div class="d-eyebrow">Stand: v0.8.4 · 2. Oktober 2026</div>
+  <h1>Was ScriptZ heute ist - und was es werden kann.</h1>
+  <p>
+    Erst die ehrliche Bestandsaufnahme: wie App, Navigation, Ideen, Editor,
+    Overlays und Design-Tokens heute gebaut sind. Dann ein neues Modell für
+    Status statt Workflow-Ordner, ein Plan, wie das Designsystem als eigenes
+    Paket für eine ganze Creator-Suite ausgegliedert wird, und das finale
+    Redesign-Konzept zum Durchklicken.
+  </p>
+</section>
+
+<!-- ============================================================ -->
+<section class="d-sec" id="arch">
+  <h2>1 · Architektur heute</h2>
+  <p class="d-lede">
+    Ein pnpm-Monorepo, vier Apps, ein geteilter Core. Desktop, Web und Studio
+    sind drei Schalen um denselben Editor - sie unterscheiden sich nur in
+    ihren Adaptern. Die Landing ist eigenständig.
+  </p>
+<pre class="d-diagram">
+  <b>apps/desktop</b>  Tauri 2 + Solid      <b>apps/web</b>  Solid + Vite        <b>apps/studio</b>  Solid + Convex       <b>apps/landing</b>
+  ├ PlatformAdapter (Dialoge,     ├ PlatformAdapter (Blob-   ├ ConvexStorageAdapter       Astro, statisch
+  │  Auto-Updater, Close-Flush)    │  Download, Disclaimer)   ├ Better Auth, Rollen        importiert <i>nichts</i>
+  └ StorageAdapter → SQLite/FTS5  └ StorageAdapter →         ├ Freigabe-Workflow          aus core
+                                     IndexedDB + MiniSearch   └ <em>eigene Tokens (--s-*)</em>   <em>eigene Tokens (Kopie)</em>
+           │                              │                         │
+           └──────────────┬───────────────┴─────────────────────────┘
+                          ▼
+  <b>packages/core</b>  @scriptz/core   ·  ~19.500 Zeilen TS/TSX  ·  ~5.400 Zeilen CSS
+  ├ components/   Browser · Ideas · Editor · CommandBar · Settings · Onboarding · TabBar · Common
+  ├ Editor/       Lexical (vanilla) · 7 Block-Nodes · 9 Plugins · predict.ts · persistence.ts
+  ├ lib/          scripts · ideas · folders · snapshots · search/fts · exportPdf · lex · dailyWords · handoff …
+  ├ stores/       tabs · settings · ideas · dailyStats · saveStatus · toasts
+  ├ i18n/         de.ts (Referenz, ~530 Keys) · en.ts
+  └ styles/       <em>tokens.css · global.css · fonts.css</em>  ← das heutige "Designsystem"
+</pre>
+</section>
+
+<!-- ============================================================ -->
+<section class="d-sec" id="nav">
+  <h2>2 · Navigation & Overlays</h2>
+  <p class="d-lede">
+    Die App ist ein Browser-Fenster mit Tabs. Zwei feste Pseudo-Tabs (Home,
+    Ideen) sitzen links, dahinter beliebig viele Skript-Tabs. Rechts in der
+    gleichen Leiste: Wochenwörter, Streak, Speicherstatus, Zahnrad.
+  </p>
+<pre class="d-diagram">
+┌─ Titlebar ─────────────────────────────────────────────────────────────────────────────────────┐
+│ ●●●  [⌂ Home] [💡 18] [Skript A ×] [Skript B ×] [Skript C ×] [+]      0 W Woche · ✦ 1 Tag · ● Gespeichert  ⚙ │
+└────────────────────────────────────────────────────────────────────────────────────────────────┘
+       │          │            │                                   │
+       │          │            └─ <b>ScriptView</b>  Toolbar · A4-Papier · Rail (Cast | Versionen)
+       │          └─ <b>IdeasView</b>  Eingabe · Suche · Offen/Alle/Verwendet · Karten · "Skript →"
+       └─ <b>Browser</b>  Begrüßung · Momentum-Strip · Suche · Liste/Raster · Import · Papierkorb · Neu
+                    Ordner-Chips (Alle | Posteingang | Ordner … | + Ordner) · Sortierung · Zeit-Buckets
+
+Overlays (modal, über allem):
+  <b>⌘K</b>  CommandBar      Volltextsuche über Skripte (nur Skripte, keine Befehle)
+  <b>⌘I</b>  QuickCapture    "Neue Idee" · Ordner wählen · ⏎ Merken · ⌘⏎ sofort Skript  <i>(im Fokus-Modus gesperrt)</i>
+  <b>⌘,</b>  Settings        Erscheinungsbild · Editor · Charaktere · Tastatur · Studio · Updates · Über
+  <b>⌘E</b>  Export          PDF · Plain Text · .scriptz
+  <b>⌘⇧H</b> Snapshots       Verlauf + Wiederherstellen
+  ·    NewScript · Activity (Heatmap) · Handoff an Studio · Onboarding (2 Schritte) · Confirm · Toasts
+</pre>
+  <div class="d-grid3" style="margin-top:20px">
+    <div class="d-card"><h4>Tastatur zuerst</h4><p>Fast alles hat einen Hotkey: ⌘N, ⌘T, ⌘W, ⌘0-9, ⌘⌥←/→, ⌃Tab. Das ist eine Stärke, die jedes Redesign behalten muss.</p></div>
+    <div class="d-card"><h4>Fokus-Modus als Default</h4><p>Beim Öffnen eines Skripts sind Toolbar und Rail weg - nur das Papier und ein Augen-Button. Unbenannte Skripte erzwingen die Toolbar, damit ein Titel kommt.</p></div>
+    <div class="d-card"><h4>View-Transitions</h4><p>Home ↔ Skript und Tab-Wechsel animieren gerichtet (into-script, back-to-browser, forward/backward).</p></div>
+  </div>
+</section>
+
+<!-- ============================================================ -->
+<section class="d-sec" id="data">
+  <h2>3 · Datenmodell & wie Ideen verknüpft sind</h2>
+  <p class="d-lede">
+    Lokal in einer SQLite-Datei (Desktop) bzw. IndexedDB (Web). Ordner sind
+    die <b>einzige</b> Ordnungsachse - für Skripte und seit Migration 006 auch
+    für Ideen.
+  </p>
+  <div class="d-grid2">
+<pre class="d-diagram">
+<b>folders</b>  id · name                    <i>flach, eine Ebene</i>
+   ▲ folder_id (SET NULL)      ▲ folder_id (SET NULL)
+   │                           │
+<b>scripts</b>                      <b>ideas</b>
+  id · title                    id · title · notes
+  content_json  <i>(Lexical)</i>       created_at
+  characters_meta <i>[{name,color,share}]</i>
+  word_count · dialog_word_count used_at      <i>null = offen</i>
+  direction_block_count         script_id ──▶ scripts.id
+  highlighting_enabled                         <i>(SET NULL)</i>
+  archived_at   <i>= Papierkorb</i>
+   │
+   ├─▶ <b>snapshots</b>  auto | manual, max. 50
+   └─▶ <b>scripts_fts</b> (FTS5)
+
+<b>daily_word_log</b>  date · words_added  → Streak, Heatmap
+<b>character_colors</b> name → Farbe (app-weit, sticky)
+<b>app_state</b>  key/value  (offene Tabs, Fokus pro Skript …)
+</pre>
+<pre class="d-diagram">
+<b>Lebenslauf einer Idee heute</b>
+
+  ⌘I  oder  Ideen-Tab
+    │   title (+ notes, + Ordner)
+    ▼
+  <b>[ offen ]</b>  ── "Skript →" / ⌘⏎ ──┐
+                                   │ convertIdeaToScript()
+                                   │  · neues Skript, gleicher Ordner
+                                   │  · notes → erster ACTION-Block
+                                   ▼
+  <b>[ verwendet ]</b> used_at, script_id ──▶ Skript
+    │
+    └ Skript gelöscht → script_id = NULL,
+      Idee bleibt als "verwendet" ohne Link
+
+<b>Danach</b> existiert kein Status mehr. Ob ein Skript
+"noch offen", "fertig" oder "gedreht" ist, kann man
+heute nur über <em>Ordner</em> ausdrücken.
+</pre>
+  </div>
+</section>
+
+<!-- ============================================================ -->
+<section class="d-sec" id="editor">
+  <h2>4 · Der Skript-Editor</h2>
+  <p class="d-lede">
+    Lexical ohne React, auf einem endlosen Blatt in A4-Breite - Seiten
+    gibt es erst im PDF. Formatierung passiert beim Tippen über eine
+    Smart-Enter-Zustandsmaschine.
+  </p>
+  <div class="d-grid2">
+<pre class="d-diagram">
+┌ <b>EditorToolbar</b> ───────────────────────────────────────┐
+│ ← Übersicht │ Titel (inline) │ ACTION CHARAKTER DIALOG + │
+│                              ⚡Quick  ▮Highlight  👁  Export │
+└──────────────────────────────────────────────────────────┘
+┌ paper-canvas ─────────────────────────┐ ┌ <b>EditorRail</b> ──┐
+│   ┌ paper-sheet (endlos)       ┐   │ │ Cast | Versionen │
+│   │          <b>TIMO</b>               │   │ │ ● TIMO     52 %  │
+│   │    So, ich hab alles fertig, │   │ │ ● AXEL     48 %  │
+│   │    Chef.                     │   │ │ Spielzeit 1:15   │
+│   │          <b>AXEL</b>               │   │ │ Wörter 266       │
+│   │    Hast du mal auf die Uhr   │   │ │ Dialog 238       │
+│   │    geschaut?                 │   │ └──────────────────┘
+│   └──────────────────────────────┘   │
+└───────────────────────────────────────┘
+</pre>
+    <div>
+      <table class="d-table">
+        <tr><th>Block</th><th>Layout</th><th>Enter →</th></tr>
+        <tr><td>Action <code>⌘1</code></td><td>volle Breite</td><td>Action / Charakter</td></tr>
+        <tr><td>Charakter <code>⌘2</code></td><td>zentriert, CAPS (CSS)</td><td>Dialog</td></tr>
+        <tr><td>Dialog <code>⌘3</code></td><td>16 % eingerückt</td><td>Charakter (Quick: der andere)</td></tr>
+        <tr><td>Paren. <code>⌘4</code></td><td>22 %, kursiv, live bei <code>(</code></td><td>zurück in Dialog</td></tr>
+        <tr><td>Kamera <code>⌘5</code></td><td>rechtsbündig, CAPS</td><td>Action</td></tr>
+        <tr><td>Caption <code>⌘6</code></td><td>INT./EXT., fett</td><td>Action</td></tr>
+        <tr><td>SFX <code>⌘7</code></td><td>CAPS, gedämpft</td><td>Action</td></tr>
+      </table>
+      <p style="font-size:14px;color:var(--d-muted)">
+        Plugins: smartEnter, blockHotkeys, blockDropdown (Tab), characterDropdown
+        (sortiert per <code>predict.ts</code>), parentheticalLive, inlineFormat,
+        allcaps, highlight (Farbe pro Charakter), colorPicker. Auto-Save nach
+        250 ms, Auto-Snapshot alle 5 Min.
+      </p>
+    </div>
+  </div>
+</section>
+
+<!-- ============================================================ -->
+<section class="d-sec" id="ds">
+  <h2>5 · Das Designsystem heute</h2>
+  <p class="d-lede">
+    Es gibt kein eigenständiges Designsystem, sondern drei Token-Sätze, die
+    auseinanderlaufen. Die Primitives (Button, Modal, Pill, Select) leben in
+    <code>global.css</code> des Core.
+  </p>
+  <table class="d-table">
+    <tr><th>Ort</th><th>Präfix</th><th>Akzent</th><th>Zustand</th></tr>
+    <tr><td><code>packages/core/styles/tokens.css</code></td><td><code>--bg --fg --text --brand-* --ink-*</code></td><td>Tinten-Schwarz</td><td>Vier Namensfamilien mit identischen Werten (<code>--fg</code> = <code>--text</code> = <code>--brand-500</code> = <code>--ink-500</code>). Im Dark-Mode kippt <code>--ink-700</code> auf Weiß.</td></tr>
+    <tr><td><code>apps/studio/src/styles/studio.css</code></td><td><code>--s-*</code></td><td><b>Orange</b> #c8631a</td><td>Komplett eigener Satz, eigene Radien und Schatten. Widerspricht der monochromen Marke.</td></tr>
+    <tr><td><code>apps/landing/src/styles/tokens.css</code></td><td><code>--brand-* --char-*</code></td><td>Tinten-Schwarz</td><td>Kopie des Core-Satzes, schon abgewichen (<code>--brand-200</code> #d4cdb9 vs. #d4d4d2), Charakter-Palette auf Schwarz gesetzt.</td></tr>
+  </table>
+  <div class="d-grid3" style="margin-top:20px">
+    <div class="d-card"><h4>58 harte Hex-Werte</h4><p>51 in Komponenten-CSS, 7 in TSX (u. a. Trafficlights, alte Orange-Werte).</p></div>
+    <div class="d-card"><h4>Icons dupliziert</h4><p>Inline-SVGs in 8 Dateien, <code>BulbIcon</code> 3×, <code>SearchIcon</code>, <code>TrashIcon</code>, <code>DocIcon</code> je 2×.</p></div>
+    <div class="d-card"><h4>Eine Schrift für alles</h4><p>iA Writer Quattro für UI, Papier und Zahlen. Charakteristisch, aber die UI wird dadurch dicht und schwer lesbar in kleinen Größen.</p></div>
+  </div>
+</section>
+
+<!-- ============================================================ -->
+<section class="d-sec" id="findings">
+  <h2>6 · Befunde</h2>
+  <p class="d-lede">Was beim Durchgehen auffällt, sortiert nach Wirkung.</p>
+
+  <div class="d-finding"><span class="d-tag is-high">Logik</span><div>
+    <h4>Ordner tragen zwei Bedeutungen</h4>
+    <p>Ordner werden für Themen/Kunden <i>und</i> für Arbeitsstand (offen, gedreht) benutzt. Ein Skript kann aber nur in einem Ordner liegen - "Kunde X" und "gedreht" gleichzeitig geht nicht. Fehlt: ein Status.</p>
+  </div></div>
+  <div class="d-finding"><span class="d-tag is-high">Logik</span><div>
+    <h4>Idee und Skript sind getrennte Welten</h4>
+    <p>Nach der Umwandlung bleibt die Idee als "verwendet" liegen, ihre Notizen werden ins Skript kopiert (doppelt). Es gibt keine Sicht, die zeigt: wie viel ist in der Pipeline, was ist drehbereit.</p>
+  </div></div>
+  <div class="d-finding"><span class="d-tag is-high">Design</span><div>
+    <h4>Kein ausgliederbares Designsystem</h4>
+    <p>Drei Token-Sätze, vier Alias-Familien, Primitives in <code>global.css</code>, Studio mit Orange. Für eine Suite muss das ein Paket mit einer Quelle werden.</p>
+  </div></div>
+  <div class="d-finding"><span class="d-tag is-mid">Navigation</span><div>
+    <h4>Tab-Leiste macht vier Jobs</h4>
+    <p>Navigation (Home, Ideen), offene Dokumente, Statistik (Woche, Streak) und Speicherstatus teilen sich 38 px Höhe. Für eine Suite mit mehreren Programmen trägt dieses Muster nicht.</p>
+  </div></div>
+  <div class="d-finding"><span class="d-tag is-mid">Navigation</span><div>
+    <h4>Home hat fünf Schichten vor dem ersten Skript</h4>
+    <p>Begrüßung → Momentum-Strip → Suche + 5 Buttons → Ordner-Chips → Sortierzeile → Liste. Die Zeilen selbst zeigen wenig (Charaktere, Laufzeit), aber keinen Stand.</p>
+  </div></div>
+  <div class="d-finding"><span class="d-tag is-mid">Editor</span><div>
+    <h4>Toolbar wiederholt, was Tastatur schon kann</h4>
+    <p>7 Block-Pills plus Tab-Picker plus ⌘1-7 - drei Wege für dasselbe. Die Rail zeigt "Versionen" nur als Link auf den Snapshot-Dialog.</p>
+  </div></div>
+  <div class="d-finding"><span class="d-tag is-mid">Editor</span><div>
+    <h4>⌘I ist im Fokus-Modus gesperrt</h4>
+    <p>Der Fokus-Modus ist Default, also ist Quick-Capture genau beim Schreiben weg - dem Moment, in dem die nächste Idee am häufigsten kommt. README und Landing versprechen "⌘I from anywhere".</p>
+  </div></div>
+  <div class="d-finding"><span class="d-tag is-low">Konsistenz</span><div>
+    <h4>README verspricht einen Sprint-Timer, den es nicht mehr gibt</h4>
+    <p>Im Code von <code>packages/core</code> existiert keine Sprint-Komponente mehr; README (Editor-Abschnitt, Motivation, Vergleichstabelle) und Landing erwähnen ihn noch.</p>
+  </div></div>
+  <div class="d-finding"><span class="d-tag is-low">Konsistenz</span><div>
+    <h4>Studio und lokale App sprechen verschiedene Status-Sprachen</h4>
+    <p>Studio kennt draft · in_review · approved · filmed · …, die lokale App gar nichts. Beim Handoff geht die Information "das ist schon gedreht" verloren.</p>
+  </div></div>
+</section>
+
+<!-- ============================================================ -->
+<section class="d-sec" id="logic">
+  <h2>7 · Neue Logik: ein Ding, ein Lebenslauf</h2>
+  <p class="d-lede">
+    Grundlage des Konzepts: <b>Status</b> beschreibt, wo ein Stück
+    gerade steht. <b>Ordner</b> beschreiben, wozu es gehört (Format, Kunde,
+    Serie). Zwei Achsen, die sich nicht mehr in die Quere kommen. Eine Idee ist
+    einfach die erste Stufe.
+  </p>
+  <div class="d-grid2">
+<pre class="d-diagram">
+<b>Status (fest, fünf Stufen)</b>
+
+  <em>Idee</em> ──▶ <b>Schreiben</b> ──▶ <b>Drehbereit</b> ──▶ <b>Gedreht</b> ──▶ <b>Online</b>
+   │            ▲ │                         │
+   │            └─┘ zurück jederzeit        └─ optional, wer
+   └─ nur Titel + Notiz,                       nichts postet,
+      noch kein Papier                         hört bei Gedreht auf
+
+  Papierkorb bleibt orthogonal (archived_at).
+
+<b>Ordner (frei, flach wie heute)</b>
+  TikTok-Sketche · Kunde Müller · Serie "Büro" …
+  → Ordner verlieren den Job "Arbeitsstand".
+</pre>
+    <div>
+      <h3 style="margin-top:0">Was das konkret bedeutet</h3>
+      <ul style="font-size:14px;color:var(--d-muted);padding-left:18px">
+        <li><b style="color:var(--d-fg)">Neue Spalte</b> <code>scripts.status</code> + <code>status_changed_at</code>. Additive Migration, Default <code>writing</code>, also kein Bestandsskript ändert sein Verhalten.</li>
+        <li><b style="color:var(--d-fg)">Ideen bleiben vorerst eine eigene Tabelle</b>, werden aber in der UI als Stufe "Idee" gezeigt. Beim Umwandeln wird die Idee <i>zum</i> Skript (Notiz wandert in ein Notizfeld des Skripts statt in den ersten ACTION-Block). Eine echte Zusammenlegung der Tabellen wäre Schritt zwei.</li>
+        <li><b style="color:var(--d-fg)">Studio-Mapping</b>: Idee ↔ draft-Idee, Schreiben ↔ draft, Drehbereit ↔ approved, Gedreht ↔ filmed. Der Handoff überträgt den Status mit.</li>
+        <li><b style="color:var(--d-fg)">Kein Tag-System</b>. Tags, Projekte und globale Charaktere wurden 2026-05 bewusst entfernt. Status ist bewusst eine geschlossene Liste, keine frei definierbaren Labels - sonst sind wir in drei Monaten wieder bei der Ordner-Frage.</li>
+        <li><b style="color:var(--d-fg)">Wirkung auf Statistik</b>: "Gedreht diese Woche" ist eine Zahl, die Creator wirklich interessiert - mehr als Wörter. Kann die Wochenziel-Logik ergänzen.</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ============================================================ -->
+<section class="d-sec" id="extract">
+  <h2>8 · Designsystem ausgliedern</h2>
+  <p class="d-lede">
+    Ziel: ein Paket, das jede künftige App der Suite importiert und nur noch
+    über ein Theme (Akzent, ggf. Display-Schrift) individualisiert. Kein Hex-Wert
+    außerhalb dieses Pakets.
+  </p>
+  <div class="d-grid2">
+<pre class="d-diagram">
+packages/
+├ <b>design/</b>            <em>@agentz/design</em>   reines CSS + Tokens, framework-frei
+│ ├ tokens/
+│ │ ├ primitives.css   Graustufen, Farbrampen, Abstände, Radien, Typo, Motion
+│ │ ├ semantic.css     --surface-*, --text-*, --line-*, --accent-*, --status-*
+│ │ └ tokens.json      Quelle → generiert CSS + TS (optional)
+│ ├ themes/
+│ │ ├ scriptz.css      [data-app="scriptz"] Akzent, Papier-Tokens
+│ │ └ &lt;app&gt;.css        jede künftige Suite-App
+│ ├ components/        button · field · select · menu · popover · modal
+│ │                    toast · kbd · badge · segmented · sidebar · list-row
+│ ├ fonts/             woff2 + Lizenzen (offline gebundelt)
+│ └ icons/             ein SVG-Set statt 8 Inline-Kopien
+│
+├ <b>ui/</b>                <em>@agentz/ui</em>   Solid-Komponenten auf design/
+│                      Sidebar · CommandPalette · Modal · Toast · StatusBadge
+│
+└ <b>scriptz-core/</b>      heutiges core, nur noch Editor + Domänenlogik
+</pre>
+    <div>
+      <h3 style="margin-top:0">Regeln, damit es sauber bleibt</h3>
+      <ul style="font-size:14px;color:var(--d-muted);padding-left:18px">
+        <li><b style="color:var(--d-fg)">Drei Ebenen</b>: Primitives (Rohwerte) → Semantik (Rollen) → Theme (App-Akzent). Komponenten lesen nur Semantik.</li>
+        <li><b style="color:var(--d-fg)">Ein Namensraum</b>: <code>--brand-*</code>, <code>--ink-*</code>, <code>--fg</code>/<code>--text</code> und <code>--s-*</code> werden über eine Alias-Datei auf die neuen Namen gemappt und dann schrittweise entfernt.</li>
+        <li><b style="color:var(--d-fg)">Stylelint</b> verbietet Hex-Werte außerhalb von <code>packages/design</code>, analog zur bestehenden ESLint-Regel gegen <code>@tauri-apps</code> im Core.</li>
+        <li><b style="color:var(--d-fg)">Landing darf <code>@agentz/design</code> importieren</b> - es ist reines CSS ohne App-Logik. Damit endet die Kopie in <code>apps/landing/src/styles/tokens.css</code>.</li>
+        <li><b style="color:var(--d-fg)">Studio</b> zieht seine <code>--s-*</code>-Tokens auf das Paket um und verliert sein eigenes Orange.</li>
+        <li><b style="color:var(--d-fg)">Rüberkopieren</b> heißt dann: <code>packages/design</code> kopieren, ein Theme anlegen, fertig.</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ============================================================ -->
+<section class="d-sec" id="concepts">
+  <h2>9 · Das Konzept: Werkbank</h2>
+  <p class="d-lede">
+    Aus drei Richtungen ist eine geworden. Die Werkbank ist die Schale, die
+    für eine Suite mit vielen Programmen skaliert; die Zeitleiste aus dem
+    Taktgeber-Entwurf ist als ausklappbares Panel unter dem Papier
+    eingezogen.
+  </p>
+  <div class="d-concepts" style="grid-template-columns:1fr">
+    <a class="d-concept-link" href="concept.html">
+      <div class="d-concept-swatch" style="height:90px"><span style="background:#1b1e24;flex:2"></span><span style="background:#f3f4f6;flex:4"></span><span style="background:#ffffff;flex:3"></span><span style="background:#ffe14d;flex:1"></span></div>
+      <div class="d-concept-body">
+        <div class="d-eyebrow">Finales Konzept · 7 Screens, hell und dunkel</div>
+        <h4>Werkbank →</h4>
+        <p>Seitenleiste mit App-Wechsler, Pipeline-Stufen, Ordnern und Zuletzt. Inspector nur für Informationen. Ausklappbare Zeitleiste mit Sprecher-Spuren, Hook und Längenziel. Nur noch vier Blocktypen, endlose Schreibfläche, Wort-Zähler statt Wochenziel, das Punkt-Logo im neuen Design. Dazu Bausteine, Tokens, Tastatur und Feinschliff-Notizen.</p>
+      </div>
+    </a>
+  </div>
+
+  <h3>Verworfen</h3>
+  <table class="d-table">
+    <tr><th>Richtung</th><th>Idee</th><th>Was davon bleibt</th></tr>
+    <tr><td>Wand</td><td>Pipeline als Karteikarten-Board auf Schiefer</td><td>Nichts - die Stufen leben in der Seitenleiste und als Gruppierung der Liste.</td></tr>
+    <tr><td>Taktgeber</td><td>Zeit als Hauptachse, Timecodes am Papier, Befehlszeile statt Navigation</td><td>Die Zeitleiste mit Sprecher-Spuren, Hook-Zone und Längenziel - ausklappbar unter dem Papier.</td></tr>
+  </table>
+</section>
+
+</main>
+
+<footer class="d-wrap d-foot">
+  Interne Konzept-Doku · erstellt aus dem Code-Stand v0.8.4 · Mockups sind statisches HTML, keine laufende App.
+</footer>
+
+</body>
+</html>

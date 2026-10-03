@@ -10,17 +10,18 @@ import {
 } from "lexical";
 import {
   BaseScriptzNode,
-  BLOCK_TAGS,
+  BLOCK_HOTKEYS,
   BLOCK_TYPES,
+  blockLabel,
   $createScriptzActionNode,
   $createScriptzCharacterNode,
   $createScriptzDialogNode,
   $createScriptzParentheticalNode,
-  $createScriptzCameraNode,
-  $createScriptzCaptionNode,
-  $createScriptzSfxNode,
 } from "../nodes";
 import type { BlockType } from "../../../lib/types";
+import { K } from "../../../lib/keys";
+import { t } from "../../../i18n";
+import { dismissOnDialog, focusWithin } from "../../Common/dismissOnDialog";
 
 function findScriptzAncestor(node: LexicalNode | null): BaseScriptzNode | null {
   let cur: LexicalNode | null = node;
@@ -41,12 +42,6 @@ function createBlockOfType(type: BlockType): BaseScriptzNode {
       return $createScriptzDialogNode();
     case "scriptz-parenthetical":
       return $createScriptzParentheticalNode();
-    case "scriptz-camera":
-      return $createScriptzCameraNode();
-    case "scriptz-caption":
-      return $createScriptzCaptionNode();
-    case "scriptz-sfx":
-      return $createScriptzSfxNode();
   }
 }
 
@@ -56,6 +51,10 @@ interface DropdownProps {
   current: BlockType | null;
   onSelect: (type: BlockType) => void;
   onClose: () => void;
+  /** Closes without refocusing the editor (a dialog took over). */
+  onDismiss: () => void;
+  /** The editor's root element: keys only count while focus is in it. */
+  root: () => HTMLElement | null;
 }
 
 function BlockDropdown(props: DropdownProps) {
@@ -63,7 +62,21 @@ function BlockDropdown(props: DropdownProps) {
     Math.max(0, BLOCK_TYPES.findIndex((t) => t === props.current)),
   );
 
+  // The picker keeps the caret (focus) in the editor. A dialog opening on
+  // top - or focus leaving the editor otherwise - closes it, so Enter or
+  // the arrows typed into the dialog never change the block behind it.
+  dismissOnDialog({
+    open: () => true,
+    inside: (node) => {
+      if (props.root()?.contains(node)) return true;
+      const el = node instanceof Element ? node : node.parentElement;
+      return !!el?.closest(".scriptz-block-dropdown");
+    },
+    dismiss: () => props.onDismiss(),
+  });
+
   const onKey = (e: KeyboardEvent) => {
+    if (!focusWithin(props.root())) return;
     // stopImmediatePropagation IN ADDITION to preventDefault: Lexical hangs its
     // own keydown listener on the editor root and dispatches
     // KEY_ENTER_COMMAND / arrow-key caret movement from there. preventDefault
@@ -107,44 +120,44 @@ function BlockDropdown(props: DropdownProps) {
   return (
     <div
       class="scriptz-block-dropdown"
+      role="listbox"
+      aria-label={t("script.picker.aria")}
       style={{
         position: "fixed",
-        left: `${props.x}px`,
+        left: `${clampX(props.x)}px`,
         top: `${props.y}px`,
         "z-index": 50,
-        background: "var(--modal-bg)",
-        color: "var(--fg)",
-        border: "1px solid var(--border)",
-        "border-radius": "var(--r-3)",
-        "box-shadow": "var(--shadow-popover)",
-        padding: "4px",
-        "min-width": "180px",
-        "font-family": "var(--font-sans)",
-        "font-size": "var(--fs-13)",
       }}
     >
       <For each={BLOCK_TYPES}>
         {(type, i) => (
           <div
-            classList={{ "scriptz-bd-item": true, "is-active": i() === index() }}
-            style={{
-              padding: "6px 10px",
-              "border-radius": "var(--r-2)",
-              cursor: "pointer",
-              background: i() === index() ? "var(--selected)" : "transparent",
-            }}
+            class="scriptz-bd-item"
+            classList={{ "is-active": i() === index(), "is-current": type === props.current }}
+            role="option"
+            aria-selected={i() === index()}
             onMouseEnter={() => setIndex(i())}
             onMouseDown={(e) => {
               e.preventDefault();
               props.onSelect(type);
             }}
           >
-            {BLOCK_TAGS[type]}
+            <span class="scriptz-bd-label">{blockLabel(type)}</span>
+            <kbd class="scriptz-bd-hint" aria-hidden="true">
+              {K(BLOCK_HOTKEYS[type])}
+            </kbd>
           </div>
         )}
       </For>
     </div>
   );
+}
+
+const PICKER_WIDTH = 200;
+
+function clampX(x: number): number {
+  const vw = typeof window !== "undefined" ? window.innerWidth : 1200;
+  return Math.max(8, Math.min(x, vw - PICKER_WIDTH - 8));
 }
 
 export function installBlockDropdown(
@@ -154,13 +167,13 @@ export function installBlockDropdown(
   let dispose: (() => void) | null = null;
   let container: HTMLDivElement | null = null;
 
-  const close = () => {
+  const close = (refocus = true) => {
     if (dispose) dispose();
     dispose = null;
     if (container && container.parentNode) container.parentNode.removeChild(container);
     container = null;
     // Refocus the editor so typing continues normally.
-    queueMicrotask(() => editor.focus());
+    if (refocus) queueMicrotask(() => editor.focus());
   };
 
   const open = (x: number, y: number, current: BlockType | null) => {
@@ -199,6 +212,8 @@ export function installBlockDropdown(
           current={current}
           onSelect={onSelect}
           onClose={close}
+          onDismiss={() => close(false)}
+          root={() => editor.getRootElement()}
         />
       ),
       container,

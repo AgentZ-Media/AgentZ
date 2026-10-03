@@ -1,77 +1,81 @@
 import { For } from "solid-js";
 import { K } from "../../../lib/keys";
 import { t } from "../../../i18n";
+import { SectionHead } from "./parts";
 
 interface ShortcutGroup {
   title: string;
-  items: Array<{ keys: string; desc: string }>;
+  items: Array<{ keys: string[]; desc: string }>;
 }
 
-// Shortcut display is platform-aware: K() renders "⌘N" on macOS and
-// "Ctrl+N" on Windows/Linux. Per-call build so language switches
-// update the descriptions immediately.
-function shortcutGroups(): ShortcutGroup[] {
+// Platform-aware via K(): "⌘N" on macOS, "Ctrl+N" elsewhere. Built per
+// render so a language switch updates the descriptions immediately.
+// Source of truth: docs/redesign/umsetzung.md §7.
+function groups(): ShortcutGroup[] {
   return [
     {
-      title: t("shortcuts.group.general"),
+      title: t("prefs.shortcuts.group.app"),
       items: [
-        { keys: K("Mod+N"), desc: t("shortcut.newScript") },
-        { keys: K("Mod+T"), desc: t("shortcut.toOverview") },
-        { keys: K("Mod+W"), desc: t("shortcut.closeTab") },
-        { keys: K("Mod+K"), desc: t("shortcut.openSearch") },
-        { keys: K("Mod+F"), desc: t("shortcut.focusSearch") },
-        { keys: K("Mod+,"), desc: t("shortcut.openSettings") },
-        { keys: K("Mod+I"), desc: t("shortcut.captureIdea") },
-        { keys: `${K("Mod+0")}-${K("Mod+9")}`, desc: t("shortcut.tabByIndex") },
-        { keys: `${K("Mod+Alt+ArrowLeft")} / ${K("Mod+Alt+ArrowRight")}`, desc: t("shortcut.cycleTabs") },
+        { keys: [K("Mod+K")], desc: t("prefs.shortcuts.palette") },
+        { keys: [K("Mod+N")], desc: t("prefs.shortcuts.newScript") },
+        { keys: [K("Mod+I")], desc: t("prefs.shortcuts.capture") },
+        { keys: [K("Mod+["), K("Mod+]")], desc: t("prefs.shortcuts.history") },
+        { keys: [K("Mod+\\")], desc: t("prefs.shortcuts.sidebar") },
+        { keys: [K("Mod+Shift+\\")], desc: t("prefs.shortcuts.inspector") },
+        { keys: [K("Mod+J")], desc: t("prefs.shortcuts.timeline") },
+        { keys: [K("Mod+Alt+ArrowRight"), K("Mod+Alt+ArrowLeft")], desc: t("prefs.shortcuts.stage") },
+        { keys: [K("Mod+Shift+F")], desc: t("prefs.shortcuts.focus") },
+        { keys: [K("Mod+E")], desc: t("prefs.shortcuts.export") },
+        { keys: [K("Mod+,")], desc: t("prefs.shortcuts.settings") },
+        { keys: [K("Mod+Shift+S")], desc: t("prefs.shortcuts.snapshot") },
+        { keys: [K("Mod+Shift+H")], desc: t("prefs.shortcuts.versions") },
       ],
     },
     {
-      title: t("shortcuts.group.editor"),
+      title: t("prefs.shortcuts.group.editor"),
       items: [
-        { keys: t("shortcut.key.tab"), desc: t("shortcut.blockPicker") },
-        { keys: K("Mod+1"), desc: t("shortcut.blockAction") },
-        { keys: K("Mod+2"), desc: t("shortcut.blockCharacter") },
-        { keys: K("Mod+3"), desc: t("shortcut.blockDialog") },
-        { keys: K("Mod+4"), desc: t("shortcut.blockParenthetical") },
-        { keys: K("Mod+5"), desc: t("shortcut.blockCamera") },
-        { keys: K("Mod+6"), desc: t("shortcut.blockCaption") },
-        { keys: K("Mod+7"), desc: t("shortcut.blockSfx") },
-        { keys: K("Enter"), desc: t("shortcut.smartEnter") },
-        { keys: `${K("Mod+B")} / ${K("Mod+I")} / ${K("Mod+U")}`, desc: t("shortcut.formatting") },
-        { keys: K("Mod+E"), desc: t("shortcut.exportScript") },
-        { keys: K("Mod+Shift+F"), desc: t("shortcut.focusMode") },
-        { keys: K("Mod+Shift+S"), desc: t("shortcut.snapshotCreate") },
-        { keys: K("Mod+Shift+H"), desc: t("shortcut.snapshotHistory") },
+        { keys: [K("Mod+1")], desc: t("prefs.shortcuts.action") },
+        { keys: [K("Mod+2")], desc: t("prefs.shortcuts.character") },
+        { keys: [K("Mod+3")], desc: t("prefs.shortcuts.dialog") },
+        { keys: [K("Mod+4")], desc: t("prefs.shortcuts.parenthetical") },
+        { keys: ["(", ")"], desc: t("prefs.shortcuts.parenLive") },
+        { keys: [t("shortcut.key.tab")], desc: t("prefs.shortcuts.picker") },
+        { keys: [K("Enter")], desc: t("prefs.shortcuts.smartEnter") },
+        { keys: [K("Mod+B"), K("Mod+U")], desc: t("prefs.shortcuts.format") },
+      ],
+    },
+    {
+      title: t("prefs.shortcuts.group.ideas"),
+      items: [
+        { keys: ["↑", "↓"], desc: t("prefs.shortcuts.ideasSelect") },
+        { keys: [K("Enter")], desc: t("prefs.shortcuts.ideasEdit") },
+        { keys: [K("Mod+Enter")], desc: t("prefs.shortcuts.ideasConvert") },
+        { keys: ["⌫"], desc: t("prefs.shortcuts.ideasDelete") },
+        { keys: ["/"], desc: t("prefs.shortcuts.ideasFilter") },
       ],
     },
   ];
 }
 
-export function SettingsShortcuts() {
+export function SettingsShortcuts(props: { onClose(): void }) {
   return (
     <>
-      <h3>{t("settings.section.shortcuts")}</h3>
-      <div class="settings-pane-sub">
-        {t("settings.shortcuts.sub")}
-      </div>
-      <For each={shortcutGroups()}>
-        {(group) => (
-          <div class="settings-shortcuts-group">
-            <div class="settings-shortcuts-title">{group.title}</div>
-            <ul class="settings-shortcuts-list">
-              <For each={group.items}>
-                {(it) => (
-                  <li class="settings-shortcut-row">
-                    <span class="settings-shortcut-keys">
-                      <span class="kbd kbd-inline">{it.keys}</span>
-                    </span>
-                    <span class="settings-shortcut-desc">{it.desc}</span>
-                  </li>
-                )}
-              </For>
-            </ul>
-          </div>
+      <SectionHead title={t("prefs.shortcuts.title")} sub={t("prefs.shortcuts.sub")} onClose={props.onClose} />
+      <For each={groups()}>
+        {(g) => (
+          <section class="set-keys">
+            <h4>{g.title}</h4>
+            <For each={g.items}>
+              {(it) => (
+                <div class="set-key">
+                  <span>{it.desc}</span>
+                  <span class="set-key-k">
+                    <For each={it.keys}>{(k) => <kbd>{k}</kbd>}</For>
+                  </span>
+                </div>
+              )}
+            </For>
+          </section>
         )}
       </For>
     </>

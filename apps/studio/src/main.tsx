@@ -10,6 +10,13 @@ import "./lib/platform";
 import "@scriptz/core/lib/api";
 import "./adapters/convex";
 
+// Styles: design system first (fonts -> tokens -> legacy aliases ->
+// component primitives), then core's global.css, which pulls in the
+// ScriptZ tokens (paper geometry, character palette) and the paper font.
+import "@agentz/design/fonts.css";
+import "@agentz/design/tokens.css";
+import "@agentz/design/legacy.css";
+import "@agentz/design/components.css";
 import "@scriptz/core/styles/global.css";
 import "./styles/studio.css";
 import App from "./App";

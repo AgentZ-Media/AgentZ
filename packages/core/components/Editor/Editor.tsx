@@ -22,6 +22,7 @@ import { installCharacterDropdown } from "./plugins/characterDropdown";
 import { installHighlight } from "./plugins/highlight";
 import { installColorPicker } from "./plugins/colorPicker";
 import { api } from "../../lib/api";
+import { normalizeLegacyContent } from "../../lib/legacyBlocks";
 import { settingsStore } from "../../stores/settings";
 import { K } from "../../lib/keys";
 import { t } from "../../i18n";
@@ -37,8 +38,8 @@ export interface EditorProps {
   scriptId: string;
   initialContentJson: string | null | undefined;
   /** Optional cursor set after mount instead of `rootEnd`.
-   *  ScriptView passes the last known cursor of the script through here
-   *  so the user lands back exactly where they were on tab switch. */
+   *  The script screen passes the last known cursor of the script through
+   *  here so the user lands back exactly where they were. */
   initialCursor?: CursorAddress | null;
   characters: ScriptCharacter[];
   highlighting?: boolean;
@@ -62,13 +63,19 @@ export interface EditorProps {
    * — the parent is expected to render a recovery UI instead. */
   onParseError?: (rawJson: string) => void;
   /** Returns the `LexicalEditor` instance to the parent after mount — the
-   *  editor toolbar needs it to call
-   *  `setBlockType(editor, "scriptz-character")` on a pill click. */
+   *  script screen uses it for the live timeline, the gutter label and
+   *  jumping to a block. */
   onEditorReady?: (editor: LexicalEditor) => void;
   /** Fires whenever the cursor moves into a different block type (or out
    *  of any Scriptz block, in which case the value is `null`). Drives the
-   *  `is-active` highlighting of the block pills in the toolbar. */
+   *  block-type indicator of the parent. */
   onActiveBlockChange?: (blockType: string | null) => void;
+  /** Hands the parent a function that opens the character colour picker
+   *  for a name, anchored at a viewport point (the script inspector's cast
+   *  dots use it). Not called in read-only mode. */
+  onColorPickerReady?: (
+    open: (name: string, anchor: { x: number; y: number }) => void,
+  ) => void;
 }
 
 const THEME: EditorThemeClasses = {};
@@ -118,7 +125,7 @@ export function Editor(props: EditorProps) {
 
     editor.setRootElement(rootRef);
 
-    // Expose editor instance to parent (the editor toolbar needs it).
+    // Expose the editor instance to the parent (script screen).
     props.onEditorReady?.(editor);
 
     // Lexical's default text-insertion handlers live in @lexical/rich-text.
@@ -135,7 +142,11 @@ export function Editor(props: EditorProps) {
     let loaded = false;
     if (props.initialContentJson) {
       try {
-        const state = editor.parseEditorState(props.initialContentJson);
+        // Retired block types (camera, caption, sfx) have no
+        // node class anymore - convert them to action before parsing, or
+        // Lexical would reject the whole state.
+        const { json } = normalizeLegacyContent(props.initialContentJson);
+        const state = editor.parseEditorState(json);
         editor.setEditorState(state);
         loaded = true;
       } catch (err) {
@@ -169,7 +180,7 @@ export function Editor(props: EditorProps) {
     // Word-style: when a script becomes the active editor, the writer
     // should be able to start typing immediately — no manual click into
     // the contenteditable area required. If an `initialCursor` was
-    // provided (tab switch back to a previously open script), we place
+    // provided (returning to a previously open script), we place
     // the cursor at the saved spot and focus WITHOUT `defaultSelection`
     // — otherwise Lexical would overwrite the just-set selection back
     // to rootEnd. Without a saved cursor: to the end of the document.
@@ -219,6 +230,7 @@ export function Editor(props: EditorProps) {
             highlight.refresh();
           },
         }));
+    if (!readOnly) props.onColorPickerReady?.(colorPicker.openFor);
     const teardownCharDD = readOnly
       ? noop
       : installCharacterDropdown(editor, hostRef, () => ({
@@ -236,7 +248,10 @@ export function Editor(props: EditorProps) {
         firstPaperSync = false;
         return;
       }
-      highlight.refresh();
+      // Next frame: the theme attributes on <html> (and with them the
+      // `--paper` token the tint is mixed against) are written by the
+      // settings store's own effect, which may run after this one.
+      requestAnimationFrame(() => highlight.refresh());
     });
 
     // Cache of the app-wide character color records (override ?? default
@@ -275,7 +290,7 @@ export function Editor(props: EditorProps) {
       });
 
     // Pull external color updates (e.g. from the settings characters tab)
-    // live into the running editor. ScriptView refetches on
+    // live into the running editor. The script screen refetches on
     // `scriptsBus.bump()` and passes the fresh `characters` as a prop —
     // we merge ONLY colors (no replace), so currently-typed, not-yet-
     // saved names aren't overwritten. The first run is skipped because
@@ -305,7 +320,7 @@ export function Editor(props: EditorProps) {
           onSavingChange: props.onSavingChange,
         });
 
-    // Active-block reporter (block pill highlight + empty marker).
+    // Active-block reporter (block-type indicator + empty marker).
     const reporter = createActiveBlockReporter({
       editor,
       getRootEl: () => rootRef,
@@ -387,7 +402,7 @@ export function Editor(props: EditorProps) {
             if (typeof p === "string") return p;
             if (p.slot === "tab") return <span class="kbd kbd-inline">{t("shortcut.key.tab")}</span>;
             if (p.slot === "first") return <span class="kbd kbd-inline">{K("Mod+1")}</span>;
-            return <span class="kbd kbd-inline">{K("Mod+7")}</span>;
+            return <span class="kbd kbd-inline">{K("Mod+4")}</span>;
           });
         })()}
       </div>

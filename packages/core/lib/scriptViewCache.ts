@@ -1,9 +1,9 @@
 /**
- * Per-script view state that survives the tab switch.
+ * Per-script view state that survives navigating away and back.
  *
- * When you switch from script A to B and back, you should land
+ * When you navigate from script A to B and back (sidebar, history, palette), you should land
  * where you were: scroll position of the paper canvas + cursor in
- * the editor. ScriptView pauses briefly on switch, saves the
+ * the editor. ScriptScreen pauses briefly on switch, saves the
  * state for A into this map and reads the matching entry back out
  * on the mount step for B (or when switching back to A later).
  *

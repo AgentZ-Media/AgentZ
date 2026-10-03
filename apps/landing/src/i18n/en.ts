@@ -56,31 +56,35 @@ export const en: Record<keyof typeof de, string> = {
   "hero.download.subline":
     "One .dmg or .exe. No account, no trackers, no AI. Updates come automatically via the built-in updater.",
 
-  "hero.ideen.keyword": "THE IDEAS INBOX",
+  "hero.ideen.keyword": "THE IDEAS PAGE",
   "hero.ideen.title": "Collect what you'll write next.",
   "hero.ideen.subline":
-    "Script ideas for TikTok, Reels and Shorts in one place. One click turns them into a finished script - offline, no account.",
+    "Script ideas for TikTok, Reels and Shorts in one place, sorted by folder. ⌘I captures them from anywhere, one shortcut turns them into a script - offline, no account.",
 
   // ===================== Home section (`/en`) =====================
   // Dedicated home content below the page hero: screenshot gallery,
   // three feature teasers, comparison hint, closing download block.
   "home.gallery.h2": "Three views, one app.",
   "home.gallery.sub":
-    "Overview, ideas, editor. That's all a script tool needs. The tabs above are the app.",
+    "Overview, ideas, editor. The sidebar with the pipeline on the left, the sheet in the middle, the inspector on the right. That's all a script tool needs.",
 
-  "home.features.h2": "Three things only ScriptZ does.",
+  "home.features.h2": "Four things ScriptZ is built for.",
   "home.feature.quick.title": "Quick mode for two speakers",
   "home.feature.quick.body":
     "Two-hander dialog as if by itself: Enter jumps to the next character, no Tab, no typing names. Saves a minute per 60-second reel.",
   "home.feature.quick.link": "Quick mode explained →",
+  "home.feature.length.title": "Target range and timeline",
+  "home.feature.length.body":
+    "Give a folder a target length like 0:45-1:05. Below it you get a quiet hint, only past the upper bound does the runtime turn red. ⌘J shows who speaks when, right under the sheet.",
+  "home.feature.length.link": "See how it looks →",
+  "home.feature.pipeline.title": "A pipeline from idea to online",
+  "home.feature.pipeline.body":
+    "Ideas, Writing, Ready to shoot, Shot, Online: every script has a stage, and the sidebar shows what sits where. Folders stay for topics, clients and series.",
+  "home.feature.pipeline.link": "To the ideas page →",
   "home.feature.noai.title": "No AI, on purpose",
   "home.feature.noai.body":
     "No suggestions, no „improve\" button, no cloud upload. Your voice stays yours, your script stays local in a SQLite file.",
   "home.feature.noai.link": "The no-AI manifesto →",
-  "home.feature.local.title": "Local, free, open source",
-  "home.feature.local.body":
-    "One installer, no account, no trackers. macOS or Windows. Source on GitHub, everything in a SQLite file on your machine.",
-  "home.feature.local.link": "See it on GitHub →",
 
   "home.compare.h2": "Compared.",
   "home.compare.body":
@@ -119,12 +123,11 @@ export const en: Record<keyof typeof de, string> = {
   "install.copied": "Copied ✓",
   "install.copyManual": "Please copy manually",
 
-  // ===================== App-Chrome / Tabs =====================
+  // ===================== App chrome: sidebar + header bar =====================
   "tab.home.title": "Overview",
   "tab.home.long": "Script editor for TikTok, Reels and YouTube Shorts",
   "tab.home.aria": "Overview (back to top)",
   "tab.ideas.title": "Ideas",
-  "tab.ideas.aria": "Ideas",
   "tab.warum.short": "Why?",
   "tab.warum.long": "Write scripts without the app getting in the way",
   "tab.quickmodus.short": "Quick mode",
@@ -141,21 +144,25 @@ export const en: Record<keyof typeof de, string> = {
   "status.saved": "Saved",
 
   "toolbar.back.aria": "Back to overview",
-  "toolbar.back.label": "Overview",
-  "toolbar.pill.action": "ACTION",
-  "toolbar.pill.character": "CHARACTER",
-  "toolbar.pill.dialog": "DIALOG",
+  "toolbar.stage": "Online",
+  "toolbar.stage.title": "This page's stage. In the app, every script moves from idea to online.",
   "toolbar.download": "Download",
+  "side.aria": "Sidebar",
+  "side.section.scripts": "Scripts",
+  "side.counter.unit": "words",
+  "side.counter.sub": "on this page",
+  "side.counter.title":
+    "In the app, this spot holds a calm writing counter, e.g. „1,240 words this week\". No goal, no streak.",
 
   // ===================== Tab: WARUM =====================
-  "warum.caption": "INT. SCRIPTZ — SCRIPT EDITOR FOR TIKTOK, REELS AND YOUTUBE SHORTS",
+  "warum.caption": "INT. SCRIPTZ - SCRIPT EDITOR FOR TIKTOK, REELS AND YOUTUBE SHORTS",
   "warum.action1":
-    "An empty page. Cursor blinks. You type and the formatting just happens. Character name? Auto-centered, all caps. Tab? Block switch. Enter? Next line - usually already in the right block.",
+    "An empty page. Cursor blinks. You type and the formatting just happens. Four block types, nothing more: Action, Character, Dialog, Parenthetical. A parenthesis in a dialog line? Becomes a delivery cue. Character name? Auto-centered, all caps. Tab? Block picker. Enter? Next line - usually already in the right block.",
   "warum.action2":
     "ScriptZ is built for content creators, not for screenwriters. You don't want a 90-minute feature-film layout. You want a TikTok script done by half past two, before the good light is gone.",
   "warum.timo1.paren": "(direct)",
   "warum.timo1.dialog":
-    "You type, the editor formats. Characters are auto-detected, get a color, a speaking-time stat. You don't have to set anything up. You don't have to click anything. You just have to write.",
+    "You type, the editor formats. Characters are auto-detected, get a color and their share of the speaking time. You don't have to set anything up. You don't have to click anything. You just have to write.",
   "warum.axel1.dialog": "Sounds like every tool since 2015.",
   "warum.timo2.dialog":
     "Try it. Make a script, write two speakers. Then hit Enter. You'll see the cursor land in the right block, with the right speaker in front. That's quick mode. It saves two keystrokes per switch - and on a 60-second reel with 12 switches, that's a minute.",
@@ -163,15 +170,20 @@ export const en: Record<keyof typeof de, string> = {
   "warum.axel2.dialog": "And AI? Does it suggest what to say?",
   "warum.timo3.dialog":
     "No. Deliberately not. Creativity is your job. If you wanted a model to write for you, you'd have ChatGPT open.",
-  "warum.cut": "CUT TO: SCREENSHOT",
-  "warum.action3": "Three views of the app. Click the tabs - the app is these tabs.",
+  "warum.axel3.dialog": "And how do I know if my reel is getting too long?",
+  "warum.timo4.dialog":
+    "You give the folder a target range, say 0:45 to 1:05. Below it, you only get a quiet hint. The runtime only turns red past the upper bound. And ⌘J opens the timeline under the sheet: who speaks when, where the hook sits, where you can cut.",
+  "warum.axel4.dialog": "And once it's done?",
+  "warum.timo5.dialog":
+    "Then it moves on: Idea, Writing, Ready to shoot, Shot, Online. The sidebar shows what sits where. Folders stay for topics, clients and series.",
+  "warum.action3": "Three views of the app: overview, ideas, editor. Click through.",
 
   "shot.tab.overview": "Overview",
   "shot.tab.ideas": "Ideas",
   "shot.tab.editor": "Editor",
-  "shot.alt.overview": "ScriptZ overview with script list and characters",
-  "shot.alt.ideas": "ScriptZ ideas inbox",
-  "shot.alt.editor": "ScriptZ editor with character highlights and cast sidebar",
+  "shot.alt.overview": "ScriptZ overview: sidebar with pipeline, scripts grouped by stage",
+  "shot.alt.ideas": "ScriptZ ideas page with folder chips and detail panel",
+  "shot.alt.editor": "ScriptZ editor with character colors, inspector and timeline",
 
   "jump.label.long": "Up next:",
   "jump.label.short": "Next:",
@@ -184,11 +196,10 @@ export const en: Record<keyof typeof de, string> = {
   "jump.btn.backToStart": "→ Back to start",
 
   // ===================== Tab: QUICKMODUS =====================
-  "quick.caption": "INT. QUICK MODE — THE TWO-HANDER WORKFLOW FOR REELS AND SHORTS",
+  "quick.caption": "INT. QUICK MODE - THE TWO-HANDER WORKFLOW FOR REELS AND SHORTS",
   "quick.action1":
     "Quick mode is what makes ScriptZ irreplaceable. Once your script has exactly two speakers, it kicks in. After each dialog, one Enter and the cursor jumps automatically to the other character and right into the next dialog. No Tab, no typing the speaker name, no second Enter.",
-  "quick.sfxLabel": "SFX:",
-  "quick.sfxText": "tack-tack-tack",
+  "quick.beat": "Tack, tack, tack. Enter.",
   "quick.action2":
     "In practice: two keystrokes saved per speaker switch. On a typical 60-second reel with ten to twelve switches, that's almost a minute. Three scripts a day? Three minutes. Per week? A quarter hour you spent writing instead of formatting.",
   "quick.timo1.dialog": "Here's what it looks like for real. I type something.",
@@ -197,23 +208,24 @@ export const en: Record<keyof typeof de, string> = {
   "quick.axel2.dialog": "Nobody typed „AXEL\". Nobody hit Tab.",
   "quick.timo3.dialog": "We just write. The editor knows what we want.",
   "quick.action3":
-    "Three characters in the script? Quick mode pauses automatically - then the editor doesn't know who's next. Drop back to two and it's back. No switch, no setting, no learning curve.",
+    "Three characters in the script? Quick mode pauses automatically - then the editor doesn't know who's next. Drop back to two and it's back. It switches itself on. The toggle in the header bar is only there in case you ever don't want it.",
   "quick.callout.eyebrow": "THE DETAIL THAT MATTERS",
   "quick.callout.body":
     "Neither Word, nor Notion, nor Final Draft, nor ChatGPT, nor Apple Notes does this. For us it's a core feature, from day one. Anyone who's ever typed two speakers at once knows what that saves per day.",
 
   // ===================== Tab: NO-AI =====================
-  "noai.caption": "INT. NO-AI MANIFESTO — SCRIPT EDITOR WITHOUT AI",
+  "noai.caption": "INT. NO-AI MANIFESTO - SCRIPT EDITOR WITHOUT AI",
   "noai.action1":
     "ScriptZ has no AI built in. No chat window, no „write me a script\", no auto-rephrasing, no suggestions, no autocomplete beyond character names from your own script. Deliberately not.",
   "noai.axel1.paren": "(skeptical)",
-  "noai.axel1.dialog": "Every other tool has AI. You're selling „no AI\" as a feature?",
+  "noai.axel1.dialog":
+    "Every other tool has AI. You're selling „no AI\" as a feature?",
   "noai.timo1.dialog":
     "Yes. Because your voice is your product. If a model writes half the script, half the voice is the model.",
   "noai.axel2.dialog": "Sometimes you just get stuck.",
   "noai.timo2.dialog":
-    "Then the answer isn't „let the model take over\", it's „take a three-minute break\". That's what the sprint timer and the ideas inbox are for. Both offline, both without a foreign voice.",
-  "noai.camera": "CAMERA: HOLDS ON IT.",
+    "Then the answer isn't „let the model take over\", it's „take a three-minute break\". That's what ⌘I is for, for the quick thought, and focus mode, which hides everything but the sheet. Both offline, both without a foreign voice.",
+  "noai.beat": "Axel nods. Long pause.",
   "noai.card1.title": "No API key",
   "noai.card1.body": "No cloud keys, no tokens, no per-word billing.",
   "noai.card2.title": "No training-data contribution",
@@ -222,10 +234,10 @@ export const en: Record<keyof typeof de, string> = {
   "noai.card3.body": "Your script isn't broken. It doesn't need outside improvement.",
   "noai.card4.title": "Instead: a fast editor",
   "noai.card4.body":
-    "Quick mode, character auto-detection, block hotkeys. Tools that carry your idea from your head to the page - without rewriting it.",
+    "Quick mode, character auto-detection, four block hotkeys, a timeline. Tools that carry your idea from your head to the page - without rewriting it.",
 
   // ===================== Tab: VERGLEICH =====================
-  "cmp.caption": "EXT. COMPARE — SCRIPTZ VS. FINAL DRAFT, NOTION, CHATGPT",
+  "cmp.caption": "EXT. COMPARE - SCRIPTZ VS. FINAL DRAFT, NOTION, CHATGPT",
   "cmp.action1":
     "ScriptZ as a Final Draft alternative for short-form: other tools can do plenty we can't. Here's the list of what we can do that they can't:",
   "cmp.head.crit": "What you need",
@@ -233,6 +245,8 @@ export const en: Record<keyof typeof de, string> = {
   "cmp.row.quick": "Quick mode for 2 speakers",
   "cmp.row.chars": "Characters auto-detected",
   "cmp.row.short": "Built for short-form",
+  "cmp.row.length": "Target range + speaker timeline",
+  "cmp.row.pipeline": "Pipeline from idea to online",
   "cmp.row.noai": "Deliberately no AI",
   "cmp.row.local": "Free & local",
   "cmp.row.fast": "Open in < 1s",
@@ -249,11 +263,13 @@ export const en: Record<keyof typeof de, string> = {
   "cmp.mark.paid": "Paid",
   "cmp.mark.appleonly": "Apple-only",
   "cmp.mark.meh": "Meh",
+  "cmp.mark.pages": "Pages",
+  "cmp.mark.diy": "DIY",
   "cmp.action2":
     "We can replace none of that. Final Draft can submit a feature screenplay to the WGA. Notion can run a wiki. ChatGPT can brainstorm with you. We can: scripts for reels, fast. That's all - and it was worth it to us.",
 
   // ===================== Tab: DOWNLOAD =====================
-  "dl.caption": "INT. DOWNLOAD — SCRIPTZ FREE FOR MACOS AND WINDOWS",
+  "dl.caption": "INT. DOWNLOAD - SCRIPTZ FREE FOR MACOS AND WINDOWS",
   "dl.action1.mac":
     "macOS 13 or newer. Free. Open source. First launch: right-click the app icon → „Open\". Apple requires that for unsigned apps. Updates come automatically after that.",
   "dl.action1.win":
@@ -278,8 +294,7 @@ export const en: Record<keyof typeof de, string> = {
   "dl.web.intro": "Want to try it first?",
   "dl.web.link": "Test it right in your browser →",
   "dl.web.sub": "Test editor, no account, all local in your browser.",
-  "dl.sfxLabel": "SFX:",
-  "dl.sfxText": "First launch",
+  "dl.firstRun": "FIRST LAUNCH",
   "dl.action2.mac":
     "On first launch, macOS reports the app cannot be verified. That's normal - ScriptZ is open source and not registered with Apple. Run the command below in Terminal once, then everything works as expected.",
   "dl.action2.win":
@@ -287,19 +302,33 @@ export const en: Record<keyof typeof de, string> = {
   "dl.fadeOut": "FADE OUT.",
   "dl.end": "END",
 
-  // ===================== Tab: IDEEN =====================
+  // ===================== Route: IDEEN =====================
   "ideas.h": "Ideas",
   "ideas.sub":
-    "Collect what you want to write next — and turn it into a script the moment the idea has legs.",
-  "ideas.input.placeholder": "What do you want to write about?",
-  "ideas.search.placeholder": "Search ideas…",
-  "ideas.filter.open": "Open",
-  "ideas.filter.all": "All",
-  "ideas.filter.used": "Used",
-  "ideas.sort": "Sort · Newest",
-  "ideas.btn.script": "Script →",
-  "ideas.btn.delete.aria": "Delete idea",
-  "ideas.hint.before": "in the app opens this inbox as an overlay — wherever you are. Type, Enter, done.",
+    "Collect what you want to write next - and turn it into a script the moment the idea has legs.",
+  "ideas.meta": "{open} open · {fresh} new this week",
+  "ideas.input.placeholder": "What do you want to write next?",
+  "ideas.input.hint": "⌘I works from anywhere",
+  "ideas.filter.placeholder": "Filter",
+  "ideas.chip.all": "All",
+  "ideas.chip.none": "No folder",
+  "ideas.folder.tutorials": "Tutorials",
+  "ideas.folder.compare": "Comparisons",
+  "ideas.folder.reels": "Reels",
+  "ideas.group.week": "This week",
+  "ideas.group.older": "Older",
+  "ideas.detail.top": "Idea · 2h ago",
+  "ideas.detail.folder": "Folder",
+  "ideas.detail.created": "Created",
+  "ideas.detail.createdValue": "today, 6:14 AM",
+  "ideas.detail.move": "Move to folder …",
+  "ideas.detail.delete": "Delete",
+  "ideas.keys.select": "select",
+  "ideas.keys.edit": "edit",
+  "ideas.keys.start": "start as script",
+  "ideas.detail.start": "Start as script",
+  "ideas.hint.before":
+    "captures an idea from anywhere in the app, even in focus mode. Type, Enter, done. The ideas page itself is built for 50+ ideas: folder chips, filter, detail panel.",
 
   // Idea samples
   "ideas.sample.tutorial.title": "Tutorial: From empty cursor to finished script in 5 minutes",
@@ -322,12 +351,10 @@ export const en: Record<keyof typeof de, string> = {
   "ideas.sample.reel.body":
     "Two-hander dialog. Hit Enter. Speaker switches automatically. That's it.",
   "ideas.sample.reel.age": "14h ago",
-  "ideas.sample.morning.title": "What happens when you didn't write anything in the morning",
-  "ideas.sample.morning.body":
-    "Streak breaks. Heatmap gap. Day lost. As motivating as the 6 AM alarm.",
-  "ideas.sample.morning.age": "1d ago",
-  "ideas.sample.cliche.title": "Cliché Gen Z in a job interview",
-  "ideas.sample.cliche.age": "used yesterday",
+  "ideas.sample.length.title": "How long can a reel be?",
+  "ideas.sample.length.body":
+    "A target range instead of gut feeling: 0:45 to 1:05. Below it a quiet hint, above it the red pen. The timeline shows where to cut.",
+  "ideas.sample.length.age": "9d ago",
 
   // ===================== Footer =====================
   "footer.col.project": "Project",
@@ -344,8 +371,11 @@ export const en: Record<keyof typeof de, string> = {
   "footer.about.os.mac": "macOS 13+ · Open Source",
   "footer.about.os.win": "Windows 10+ · Open Source",
 
-  // ===================== Sprint pill =====================
-  "sprint.label": "Reading sprint",
+  // ===================== Runtime pill =====================
+
+  "runpill.label": "Runtime",
+  "runpill.title":
+    "How long this page takes to say out loud at 210 words per minute - the way ScriptZ estimates a script's length.",
 
   // ===================== Language toggle =====================
   "lang.toggle.aria": "Switch language",
@@ -370,7 +400,7 @@ export const en: Record<keyof typeof de, string> = {
   // Why-route (`/en/why-scriptz`)
   "meta.warum.title": "Why ScriptZ - script editor without screenplay corset | for Reels and Shorts",
   "meta.warum.description":
-    "ScriptZ is built for content creators, not screenwriters. Format happens as you type, characters are auto-detected. For TikTok, Reels and YouTube Shorts.",
+    "ScriptZ is built for content creators, not screenwriters. Format happens as you type, characters are detected, a target range shows when the script runs long. For TikTok, Reels and YouTube Shorts.",
   // Quick-mode route (`/en/quick-mode`)
   "meta.quickmodus.title": "Quick mode - two-hander workflow for Reels and Shorts | ScriptZ",
   "meta.quickmodus.description":
@@ -388,9 +418,9 @@ export const en: Record<keyof typeof de, string> = {
   "meta.download.description":
     "Script editor for content creators. Free, local, open source. macOS 13+ (.dmg) or Windows 10+ (.exe). No account, no trackers, no AI.",
   // Ideas route (`/en/ideas`)
-  "meta.ideas.title": "Ideas inbox - what you write next | ScriptZ",
+  "meta.ideas.title": "Ideas - what you write next | ScriptZ",
   "meta.ideas.description":
-    "Collect script ideas for TikTok, Reels and YouTube Shorts, turn them into a finished script with one click. Offline, no account, in the ScriptZ app and in the browser.",
+    "Collect script ideas for TikTok, Reels and YouTube Shorts, sorted by folder and captured from anywhere with ⌘I. One shortcut turns them into a script. Offline, no account, in the app and in the browser.",
   "meta.ogLocale": "en_US",
 
   // ===================== Blog =====================

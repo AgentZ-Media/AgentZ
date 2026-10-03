@@ -1,34 +1,33 @@
 /* =========================================================================
-   ScriptZ — Editor block styling.
+   ScriptZ - editor blocks + editor popovers.
 
-   The paper interior. Widths key off `--paper-content-w` from tokens.css.
-   Font: iA Writer Quattro everywhere — visual continuity with the UI.
+   The paper interior. Widths key off `--paper-content-w` (core tokens).
+   Font: iA Writer Quattro (`--type`) for everything that is script text.
 
-   Layout follows German screenplay convention loosely:
-     ACTION       full width
-     CAPTION      INT./EXT. heading, weight 700, uppercase
-     CHARACTER    centered, weight 700, uppercase (CSS-only)
-     PARENTHEL.   slightly indented, italic
-     DIALOG       indented ~25% from left
-     SFX          uppercase italic-tinted, full width
-     CAMERA       right-aligned uppercase
+   Four block types:
+     ACTION         full width
+     CHARACTER      centered, weight 700, uppercase (CSS-only)
+     DIALOG         indented ~16% from both sides
+     PARENTHETICAL  indented ~22% from both sides, italic, muted
+
+   Popovers (character autocomplete, block picker, colour picker) follow
+   the concept's `.ac` / `.menu` look. Design tokens only; character
+   colours arrive inline (user data).
    ========================================================================= */
 
 .editor-host {
   position: relative;
 }
 
-/* Hotkey hint in an empty script. Sits absolute above the first line
-   so it doesn't influence the layout flow of the contenteditable. CSS
-   `:has` is Safari 15.4+ and therefore available on every supported macOS
-   Tahoe build - the app minimum OS sorts that out. */
+/* Hotkey hint in an empty script. Absolute above the first line so it
+   doesn't influence the layout flow of the contenteditable. */
 .editor-empty-hint {
   position: absolute;
   top: 60px;
   left: 50%;
   transform: translateX(-50%);
-  font-size: 12px;
-  color: var(--text-faint, var(--text-subtle));
+  font: 12px/1.4 var(--ui);
+  color: var(--faint);
   opacity: 0;
   pointer-events: none;
   white-space: nowrap;
@@ -36,10 +35,11 @@
 }
 .editor-empty-hint .kbd-inline {
   font-size: 10px;
-  padding: 1px 5px;
+  padding: 2px 5px;
+  margin: 0 2px;
 }
 .editor-host:has(.editor-root[data-empty="1"]) .editor-empty-hint {
-  opacity: 0.7;
+  opacity: 0.8;
 }
 
 .editor-root {
@@ -47,11 +47,11 @@
   width: var(--paper-content-w);
   max-width: 100%;
   margin: 0 auto;
-  font-family: var(--font-paper);
-  font-size: var(--fs-14);
-  line-height: 1.6;
+  font-family: var(--type);
+  font-size: 13.5px;
+  line-height: 1.62;
   color: var(--paper-fg);
-  caret-color: var(--brand-500);
+  caret-color: var(--paper-fg);
   font-feature-settings: "liga" 1, "calt" 1;
 }
 
@@ -67,7 +67,7 @@
   margin-top: 4px;
 }
 
-/* Paragraph rhythm — subtle clusters between groups */
+/* Paragraph rhythm - subtle clusters between groups */
 .editor-root .block-scriptz-character + .block-scriptz-dialog,
 .editor-root .block-scriptz-parenthetical + .block-scriptz-dialog,
 .editor-root .block-scriptz-character + .block-scriptz-parenthetical {
@@ -79,44 +79,21 @@
 .editor-root .block-scriptz-action + .block-scriptz-action {
   margin-top: 14px;
 }
-.editor-root .block-scriptz-caption + * {
-  margin-top: 14px;
-}
-.editor-root .block + .block-scriptz-caption {
-  margin-top: 22px;
-}
 
 /* ---- Action ---------------------------------------------------------- */
 .editor-root .block-scriptz-action {
   text-align: left;
 }
 
-/* ---- Caption (INT./EXT. scene heading) ------------------------------- */
-.editor-root .block-scriptz-caption {
-  font-weight: 700;
-  font-size: var(--fs-14);
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-}
-
 /* ---- Character ---
-   Centered horizontally on the paper. Uppercase via CSS only — never
-   mutate text nodes during input (breaks Lexical typing). */
+   Centered on the paper. Uppercase via CSS only - never mutate text nodes
+   during input (breaks Lexical typing). */
 .editor-root .block-scriptz-character {
   text-align: center;
   text-transform: uppercase;
   font-weight: 700;
   letter-spacing: 0.06em;
   margin-top: 18px;
-}
-
-/* ---- Parenthetical --------------------------------------------------- */
-.editor-root .block-scriptz-parenthetical {
-  margin-left: 22%;
-  margin-right: 22%;
-  font-style: italic;
-  color: var(--paper-fg-muted);
-  text-align: left;
 }
 
 /* ---- Dialog ---------------------------------------------------------- */
@@ -126,111 +103,210 @@
   text-align: left;
 }
 
-/* ---- Camera (right-aligned cue) -------------------------------------- */
-.editor-root .block-scriptz-camera {
-  text-align: right;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-  font-weight: 700;
-  font-size: var(--fs-13);
-  color: var(--paper-fg-muted);
-}
-
-/* ---- SFX ------------------------------------------------------------- */
-.editor-root .block-scriptz-sfx {
+/* ---- Parenthetical ---------------------------------------------------
+   Delivery cue under the character name ("(leise)"). Typed live with "("
+   inside a dialog line (plugins/parentheticalLive.ts). */
+.editor-root .block-scriptz-parenthetical {
+  margin-left: 22%;
+  margin-right: 22%;
+  font-style: italic;
+  color: var(--paper-muted);
   text-align: left;
-  font-weight: 500;
-  letter-spacing: 0.02em;
-  font-size: var(--fs-13);
-  color: var(--paper-fg-muted);
-  text-transform: uppercase;
 }
 
 /* ---------------------------------------------------------------------- */
-/* Highlighting: when on, paint character/dialog/parenthetical text with
-   the per-character tint set as `--char-tint` on the block by the
-   highlight plugin. The bg is applied to the inner text-span (Lexical
-   wraps every text node in `<span data-lexical-text="true">`) with
-   `box-decoration-break: clone` so multi-line text gets per-line pills
-   that hug the actual text — same look as the PDF output, not a full
-   block-wide bar. */
-/* Per-line text-hugging pills (Arc-style). The dialog/character/
-   parenthetical nodes wrap their children in an inner
-   `<span class="tint-host">` (see BaseScriptzNode.hasTintHost) — Lexical
-   appends every text run into this single inline element, so the bg +
-   padding + radius + box-decoration-break apply to one host that
-   contains the plain text *and* any inline `<strong>`/`<em>` runs.
-   Result: one continuous pill per visual line, including bolded /
-   italicised words, no seams, no margin tricks. */
+/* Highlighting (concept `.m`): per-line pills that hug the text. Dialog,
+   character and parenthetical nodes wrap their children in one inline
+   `<span class="tint-host">` (BaseScriptzNode.hasTintHost), so background,
+   padding, radius and box-decoration-break apply to a single host that
+   holds plain text and inline bold/underline runs alike - one continuous
+   pill per visual line. `--char-tint` is the character colour mixed onto
+   the paper at 28 % (plugins/highlight.ts, same formula as the PDF). */
 .editor-root[data-highlighting="on"] .block-scriptz-character .tint-host,
 .editor-root[data-highlighting="on"] .block-scriptz-dialog .tint-host,
 .editor-root[data-highlighting="on"] .block-scriptz-parenthetical .tint-host {
-  background: var(--char-tint, var(--char-tint-default));
+  background: var(--char-tint, var(--paper-tint));
   box-decoration-break: clone;
   -webkit-box-decoration-break: clone;
   padding: 1px 4px;
   border-radius: 3px;
 }
 
+/* Linked line: hovering a section in the timeline outlines its line in
+   the character colour (set as `--tl-link` on the block). */
+.editor-root .block[data-tl-link] .tint-host {
+  border-radius: 3px;
+  box-shadow: 0 0 0 1.5px color-mix(in srgb, var(--tl-link, var(--paper-muted)) 72%, var(--paper-fg));
+  box-decoration-break: clone;
+  -webkit-box-decoration-break: clone;
+}
+.editor-root .block[data-tl-link="action"] {
+  border-radius: 3px;
+  outline: 1.5px solid var(--paper-muted);
+  outline-offset: 3px;
+}
+
 /* Selection on paper */
 .editor-root ::selection {
-  background: var(--selection-paper);
+  background: var(--selection);
+}
+
+/* ---------------------------------------------------------------------- */
+/* Character autocomplete (concept `.ac`). Positioned fixed by
+   plugins/characterDropdown.tsx, centered under the character line. */
+.scriptz-character-dropdown {
+  width: 236px;
+  padding: 5px;
+  border-radius: var(--r-pop);
+  background: var(--surface);
+  color: var(--fg);
+  box-shadow: var(--shadow-pop);
+  font: 13px/1.3 var(--ui);
+  text-align: left;
+  letter-spacing: 0;
+  text-transform: none;
+  user-select: none;
+  animation: ed-pop-in var(--t-fast);
+}
+.scriptz-ac-it {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  height: 32px;
+  padding: 0 8px;
+  border-radius: var(--r-2);
+  cursor: pointer;
+}
+.scriptz-ac-it.on {
+  background: var(--fill);
+}
+.scriptz-ac-it b {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font: 700 11.5px/1 var(--type);
+  letter-spacing: 0.06em;
+}
+.scriptz-ac-it small {
+  color: var(--faint);
+  font-size: 11.5px;
+  white-space: nowrap;
+}
+.scriptz-ac-it kbd {
+  margin-left: auto;
+}
+.scriptz-ac-dot {
+  width: 8px;
+  height: 8px;
+  flex: none;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  cursor: pointer;
+  transition: transform var(--t-fast), box-shadow var(--t-fast);
+}
+.scriptz-ac-dot:hover,
+.scriptz-ac-dot:focus-visible {
+  outline: none;
+  transform: scale(1.35);
+  box-shadow: 0 0 0 2px var(--surface), 0 0 0 3px var(--line-strong);
+}
+.scriptz-ac-foot {
+  margin-top: 4px;
+  padding: 7px 8px 3px;
+  border-top: 1px solid var(--line-soft);
+  color: var(--faint);
+  font-size: 11.5px;
+}
+
+/* Block-type picker (Tab) - concept `.menu`. */
+.scriptz-block-dropdown {
+  width: 200px;
+  padding: 5px;
+  border-radius: var(--r-pop);
+  background: var(--surface);
+  color: var(--fg);
+  box-shadow: var(--shadow-pop);
+  font: 13px/1.3 var(--ui);
+  user-select: none;
+  animation: ed-pop-in var(--t-fast);
+}
+.scriptz-bd-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  height: 32px;
+  padding: 0 9px;
+  border-radius: var(--r-2);
+  cursor: pointer;
+}
+.scriptz-bd-item.is-active {
+  background: var(--fill);
+}
+.scriptz-bd-item.is-current .scriptz-bd-label {
+  font-weight: 700;
+}
+.scriptz-bd-item kbd {
+  margin-left: auto;
+}
+
+@keyframes ed-pop-in {
+  from {
+    opacity: 0;
+    transform: translateY(-3px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
 }
 
 /* ---------------------------------------------------------------------- */
 /* Character-colour picker
    - .scriptz-color-overlay: full-bleed transparent layer inside the host
-     that holds the marge swatch + the popover. pointer-events:none on the
-     overlay so the editor stays clickable; the swatch + popover re-enable
-     pointer events on themselves.
-   - .scriptz-marge-swatch: the gutter dot. Hidden by default; the plugin
-     toggles visibility via inline opacity. Kept always-mounted so we don't
-     pay the create/destroy cost on every caret movement.
-   - .scriptz-color-popover: the picker itself.                              */
-.scriptz-color-overlay {
-  /* set inline by the plugin; styles here only define visual look */
-}
-
+     that holds the margin swatch + the popover (pointer-events: none so
+     the editor stays clickable; swatch + popover re-enable them).
+   - .scriptz-marge-swatch: the dot left of a character line.
+   - .scriptz-color-popover: the picker itself. */
 .scriptz-marge-swatch {
   width: 12px;
   height: 12px;
   padding: 0;
-  border: 1.5px solid rgba(255, 255, 255, 0.85);
+  border: 1.5px solid var(--paper);
   border-radius: 999px;
   cursor: pointer;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.18);
-  transition: transform 120ms ease, opacity 120ms ease;
+  box-shadow: 0 0 0 1px var(--paper-line);
+  transition: transform var(--t-fast), opacity var(--t-fast);
   z-index: 5;
 }
 .scriptz-marge-swatch:hover {
   transform: scale(1.18);
 }
 .scriptz-marge-swatch:focus-visible {
-  outline: 2px solid var(--border-focus);
+  outline: 2px solid var(--focus);
   outline-offset: 2px;
 }
 
 .scriptz-color-popover {
-  background: var(--modal-bg);
-  color: var(--fg);
-  border: 1px solid var(--border);
-  border-radius: var(--r-3);
-  box-shadow: var(--shadow-popover);
-  padding: 10px;
-  font-family: var(--font-sans);
-  font-size: 13px;
-  z-index: 55;
-  pointer-events: auto;
-  user-select: none;
   display: flex;
   flex-direction: column;
   gap: 8px;
+  padding: 10px;
+  border-radius: var(--r-pop);
+  background: var(--surface);
+  color: var(--fg);
+  box-shadow: var(--shadow-pop);
+  font: 13px/1.3 var(--ui);
+  z-index: 55;
+  pointer-events: auto;
+  user-select: none;
+  animation: ed-pop-in var(--t-fast);
 }
 .scriptz-color-popover-title {
-  font-weight: 700;
-  letter-spacing: 0.04em;
-  font-size: 11px;
-  color: var(--fg-muted);
+  color: var(--faint);
+  font: 700 11px/1 var(--type);
+  letter-spacing: 0.06em;
   text-transform: uppercase;
 }
 .scriptz-color-swatches {
@@ -242,16 +318,17 @@
   width: 100%;
   aspect-ratio: 1;
   padding: 0;
-  border: 1px solid rgba(0, 0, 0, 0.1);
+  border: 0;
   border-radius: var(--r-2);
+  box-shadow: inset 0 0 0 1px var(--paper-line);
   cursor: pointer;
-  transition: transform 100ms ease, box-shadow 100ms ease;
+  transition: transform var(--t-fast), box-shadow var(--t-fast);
 }
 .scriptz-color-swatch:hover {
   transform: scale(1.08);
 }
 .scriptz-color-swatch.is-current {
-  outline: 2px solid var(--border-focus);
+  outline: 2px solid var(--focus);
   outline-offset: 2px;
 }
 .scriptz-color-hex-row {
@@ -261,25 +338,27 @@
 .scriptz-color-hex-input {
   flex: 1;
   min-width: 0;
-  padding: 4px 8px;
-  border: 1px solid var(--border);
-  border-radius: var(--r-2);
-  background: var(--bg-elev-2);
+  height: 28px;
+  padding: 0 8px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-ctl);
+  background: var(--surface);
   color: var(--fg);
-  font-family: var(--font-mono, monospace);
-  font-size: 12px;
+  font: 12px/1 var(--type);
+  outline: none;
 }
 .scriptz-color-hex-input:focus {
-  outline: none;
-  border-color: var(--border-focus);
+  border-color: var(--fg);
+  box-shadow: 0 0 0 3px var(--fill);
 }
 .scriptz-color-hex-apply {
-  padding: 4px 10px;
-  border: 1px solid var(--border);
-  border-radius: var(--r-2);
-  background: var(--bg-elev-1);
+  height: 28px;
+  padding: 0 10px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-ctl);
+  background: var(--surface);
   color: var(--fg);
-  font-size: 12px;
+  font: 600 12px/1 var(--ui);
   cursor: pointer;
 }
 .scriptz-color-hex-apply:disabled {
@@ -287,19 +366,19 @@
   opacity: 0.5;
 }
 .scriptz-color-hex-apply:not(:disabled):hover {
-  background: var(--bg-elev-3);
+  background: var(--fill);
 }
 .scriptz-color-reset {
-  padding: 4px 8px;
-  border: 1px solid transparent;
+  padding: 5px 8px;
+  border: 0;
   border-radius: var(--r-2);
   background: transparent;
-  color: var(--fg-muted);
-  font-size: 12px;
-  cursor: pointer;
+  color: var(--muted);
+  font: 12px/1.3 var(--ui);
   text-align: left;
+  cursor: pointer;
 }
 .scriptz-color-reset:hover {
-  background: var(--selected);
+  background: var(--fill);
   color: var(--fg);
 }

@@ -158,10 +158,10 @@ const mobileNavActive: Parameters<typeof MobileNav>[0]["activeRoute"] =
     <script is:inline type="application/ld+json" set:html={JSON.stringify(orgLd)} />
     {softwareLd && <script is:inline type="application/ld+json" set:html={JSON.stringify(softwareLd)} />}
 
-    <!-- View transitions / ClientRouter: turns tab-route changes
-         into a felt tab switch instead of a full reload. Chrome +
-         sprint pill carry `transition:persist`, so they stay
-         mounted across the swap. -->
+    <!-- View transitions / ClientRouter: turns route changes into
+         a soft cross-fade instead of a full reload. The chrome is
+         re-rendered per route (no `transition:persist`), so labels
+         follow the language. -->
     <ClientRouter fallback="swap" />
 
     <!-- Platform auto-detect: runs synchronously before the first
@@ -236,18 +236,26 @@ const mobileNavActive: Parameters<typeof MobileNav>[0]["activeRoute"] =
     <slot />
 
     <!-- ClientRouter after-swap handler:
-         1. Re-run the shell init (re-binds copy button, sprint,
-            platform CTA, screenshot gallery). Function comes from
+         1. Re-run the shell init (re-binds copy button, page
+            counters, platform CTA, screenshot gallery). Function comes from
             AppShell.astro and lives globally at
             `window.__scriptzShellInit`.
-         2. Scroll to the top so every tab switch returns the user
-            to the page start (incl. hero), like a classic page
-            load.
+         2. Scroll to the top so every route switch returns the
+            user to the page start (incl. hero), like a classic page
+            load - or to the `#hash` target if the link carries one.
          3. Restart the reveal-on-scroll observer - the `.reveal`
             targets are fresh in the DOM. -->
     <script is:inline>
       (function () {
         var scrollToPageTop = function () {
+          // Links with a hash (e.g. the home teaser to `#length`) land
+          // on their target instead of the page top.
+          var id = location.hash ? decodeURIComponent(location.hash.slice(1)) : "";
+          var target = id ? document.getElementById(id) : null;
+          if (target) {
+            target.scrollIntoView({ behavior: "instant", block: "start" });
+            return;
+          }
           window.scrollTo({ top: 0, behavior: "instant" });
         };
 

@@ -1,0 +1,648 @@
+/* =========================================================================
+   Script screen (Werkbank): top bar, paper canvas, gutter label, inspector,
+   focus chrome. Visual reference: docs/redesign/concept.html (`.bar`,
+   `.crumb`, `.saved`, `.chip`, `.tg-*`, `.canvas`, `.gut`, `.insp`, `.sec*`,
+   `.steps`, `.len*`, `.facts`, `.crow*`, `.origin`, `.ver-row`, `.focus-*`).
+   Design tokens only; character colours arrive inline as `--c` (user data).
+   Timeline styles live in Timeline.css.
+   ========================================================================= */
+
+.ss {
+  flex: 1 1 0;
+  height: 100%;
+  min-width: 0;
+  min-height: 0;
+  display: flex;
+  position: relative;
+  overflow: hidden;
+  background: var(--bg);
+  color: var(--fg);
+  font: 13px/1.45 var(--ui);
+}
+
+.ss-main {
+  flex: 1 1 0;
+  min-width: 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+}
+
+.ss-loading {
+  padding: 40px;
+  color: var(--faint);
+}
+
+/* ---------------------------------------------------------------------
+   Top bar
+   --------------------------------------------------------------------- */
+.ss-bar {
+  height: 48px;
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 0 14px 0 calc(12px + var(--shell-inset-left, 0px));
+  border-bottom: 1px solid var(--line);
+  background: var(--bg);
+  position: relative;
+  z-index: 6;
+  user-select: none;
+}
+
+.ss-hist {
+  display: flex;
+  gap: 2px;
+  flex: none;
+}
+.ss-hist-btn {
+  width: 26px;
+  height: 26px;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  border: 0;
+  border-radius: var(--r-2);
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+}
+.ss-hist-btn:hover:not(:disabled) {
+  background: var(--fill);
+  color: var(--fg);
+}
+.ss-hist-btn:disabled {
+  color: var(--faint);
+  opacity: 0.6;
+  cursor: default;
+}
+.ss-hist-btn:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 1px;
+}
+
+.ss-crumb {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  flex: 0 1 auto;
+  min-width: 0;
+  white-space: nowrap;
+  color: var(--muted);
+}
+.ss-crumb-folder {
+  flex: 0 1 auto;
+  min-width: 0;
+  max-width: 200px;
+  padding: 3px 6px;
+  margin: 0 -6px;
+  border: 0;
+  border-radius: 5px;
+  background: transparent;
+  color: var(--muted);
+  font: inherit;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  cursor: pointer;
+}
+.ss-crumb-folder:hover {
+  background: var(--fill);
+  color: var(--fg);
+}
+.ss-crumb-folder:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 1px;
+}
+.ss-crumb-sep {
+  color: var(--faint);
+}
+
+/* Auto-sizing title input: the hidden ::after mirrors the text and gives
+   the grid cell its width; the input fills the same cell. */
+.ss-title {
+  display: inline-grid;
+  grid-template-columns: minmax(0, auto);
+  min-width: 0;
+  max-width: 100%;
+}
+.ss-title::after,
+.ss-title input {
+  grid-area: 1 / 1;
+  padding: 3px 6px;
+  font: inherit;
+  letter-spacing: inherit;
+  white-space: pre;
+}
+.ss-title::after {
+  content: attr(data-value) " ";
+  visibility: hidden;
+  overflow: hidden;
+  height: 0;
+}
+.ss-title input {
+  width: 100%;
+  min-width: 3ch;
+  border: 0;
+  border-radius: 5px;
+  background: transparent;
+  color: var(--fg);
+  outline: none;
+  text-overflow: ellipsis;
+  transition: background var(--t-fast), box-shadow var(--t-fast);
+}
+.ss-title input::placeholder {
+  color: var(--faint);
+}
+.ss-title input:hover {
+  background: var(--fill);
+}
+.ss-title input:focus {
+  background: var(--surface);
+  box-shadow: 0 0 0 1px var(--line-strong), 0 0 0 3px var(--fill);
+  text-overflow: clip;
+}
+.ss-crumb-title {
+  flex: 0 1 auto;
+  margin: 0 -6px;
+  font-weight: 600;
+}
+
+.ss-sp {
+  flex: 1;
+  min-width: 8px;
+}
+
+.ss-saved {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex: none;
+  color: var(--faint);
+  font-size: 12px;
+  white-space: nowrap;
+}
+.ss-saved::before {
+  content: "";
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--ok);
+}
+.ss-saved.is-saving::before {
+  background: var(--faint);
+  animation: ss-pulse 1.2s ease-in-out infinite;
+}
+.ss-saved.is-error {
+  color: var(--warn);
+}
+.ss-saved.is-error::before {
+  background: var(--warn);
+}
+@keyframes ss-pulse {
+  50% {
+    opacity: 0.35;
+  }
+}
+
+/* Stage chip + menu */
+.ss-stage {
+  position: relative;
+  flex: none;
+}
+.ss-stage .chip svg.st,
+.ss-stage-menu svg.st {
+  color: var(--fg);
+}
+.ss-stage-menu {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  z-index: 30;
+  outline: none;
+}
+.ss-stage-menu .menu-it kbd {
+  justify-content: center;
+}
+
+/* Quick / colour toggles + explanatory tooltip (concept `.tg-tip`) */
+.ss-bar .tg-group {
+  position: relative;
+  flex: none;
+}
+.ss-bar .tg-group .btn.icon.is-na svg.i {
+  color: var(--faint);
+}
+.ss-bar .tg-group .btn.icon.is-na {
+  cursor: default;
+}
+.ss-tip {
+  position: absolute;
+  top: calc(100% + 10px);
+  z-index: 40;
+  width: 232px;
+  padding: 9px 11px;
+  border-radius: 9px;
+  background: var(--fg);
+  color: var(--bg);
+  font-size: 12px;
+  line-height: 1.4;
+  text-align: left;
+  white-space: normal;
+  box-shadow: var(--shadow-toast);
+  pointer-events: none;
+}
+.ss-tip b {
+  display: block;
+  margin-bottom: 2px;
+  font-weight: 700;
+}
+.ss-tip span {
+  opacity: 0.65;
+}
+.ss-tip::before {
+  content: "";
+  position: absolute;
+  top: -5px;
+  left: var(--tip-arrow, 18px);
+  width: 10px;
+  height: 10px;
+  background: var(--fg);
+  transform: rotate(45deg);
+}
+
+.ss-bar > .btn {
+  flex: none;
+}
+
+/* ---------------------------------------------------------------------
+   Canvas + paper (base geometry in Editor/PaperLayout.css)
+   --------------------------------------------------------------------- */
+.paper-canvas.ss-canvas {
+  position: relative;
+  padding: 26px 24px 64px;
+  scroll-padding-top: 40px;
+  scroll-padding-bottom: 40px;
+}
+.ss-sheet {
+  overflow: visible;
+}
+
+/* Block type of the caret block, left of the paper (concept `.gut`) */
+.ss-gut {
+  position: absolute;
+  height: 20px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 7px;
+  border-radius: 5px;
+  background: var(--accent);
+  color: var(--accent-fg);
+  font: 700 10px/1 var(--ui);
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  pointer-events: none;
+  z-index: 2;
+  transition: top var(--t-fast);
+}
+.ss-gut kbd {
+  padding: 2px 4px;
+  background: color-mix(in srgb, var(--accent-fg) 9%, transparent);
+  color: color-mix(in srgb, var(--accent-fg) 60%, transparent);
+  font-size: 9.5px;
+  letter-spacing: 0;
+}
+
+/* ---------------------------------------------------------------------
+   Inspector
+   --------------------------------------------------------------------- */
+.ss-insp-wrap {
+  width: 292px;
+  flex: none;
+  display: flex;
+  min-height: 0;
+}
+.ss.is-narrow .ss-insp-wrap {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 20;
+  box-shadow: var(--shadow-pop);
+  animation: ss-slide-in var(--t-med);
+}
+@keyframes ss-slide-in {
+  from {
+    transform: translateX(16px);
+    opacity: 0;
+  }
+  to {
+    transform: none;
+    opacity: 1;
+  }
+}
+
+.ss-insp {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+  background: var(--surface);
+  border-left: 1px solid var(--line);
+}
+.ss-sec {
+  padding: 16px 18px;
+  border-top: 1px solid var(--line-soft);
+}
+.ss-sec:first-child {
+  border-top: 0;
+}
+.ss-sec-h {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 10px;
+  color: var(--faint);
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.ss-sec-h .r {
+  margin-left: auto;
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+.ss-steps {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 3px;
+}
+.ss-steps span {
+  height: 6px;
+  border-radius: 3px;
+  background: var(--fill);
+}
+.ss-steps span.done {
+  background: var(--fg);
+}
+.ss-step-now {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  margin-top: 10px;
+}
+.ss-step-now b {
+  font-size: 16px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+.ss-step-now span {
+  color: var(--faint);
+  white-space: nowrap;
+}
+
+.ss-len {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 7px;
+}
+.ss-len b {
+  font-size: 26px;
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  font-variant-numeric: tabular-nums;
+}
+.ss-len b.over {
+  color: var(--warn);
+}
+.ss-len > span {
+  color: var(--faint);
+  font-variant-numeric: tabular-nums;
+}
+.ss-len .ss-pill {
+  margin-left: auto;
+  align-self: center;
+  padding: 4px 7px;
+  border-radius: 5px;
+  background: var(--warn-soft);
+  color: var(--warn);
+  font-size: 11.5px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+.ss-len .ss-pill.calm {
+  background: var(--fill);
+  color: var(--muted);
+}
+.ss-facts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px 14px;
+  margin-top: 6px;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+.ss-facts b {
+  color: var(--fg);
+  font-weight: 600;
+}
+
+.ss-crow {
+  display: grid;
+  grid-template-columns: 12px minmax(0, 1fr) auto;
+  gap: 8px;
+  align-items: center;
+  height: 24px;
+}
+.ss-sw {
+  width: 10px;
+  height: 10px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: var(--c);
+  box-shadow: 0 0 0 2px var(--surface), 0 0 0 3px var(--line);
+  cursor: pointer;
+  transition: box-shadow var(--t-fast), transform var(--t-fast);
+}
+.ss-sw:hover,
+.ss-sw:focus-visible {
+  outline: none;
+  transform: scale(1.15);
+  box-shadow: 0 0 0 2px var(--surface), 0 0 0 3px var(--muted);
+}
+.ss-nm {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: color-mix(in srgb, var(--c) 72%, var(--fg));
+  font: 700 11.5px/1 var(--type);
+  letter-spacing: 0.05em;
+}
+.ss-pc {
+  color: var(--muted);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+.ss-crow-bar {
+  height: 4px;
+  margin: 2px 0 8px 20px;
+  border-radius: 2px;
+  background: var(--fill);
+  overflow: hidden;
+}
+.ss-crow-bar i {
+  display: block;
+  height: 100%;
+  border-radius: 2px;
+  background: var(--c);
+}
+.ss-muted {
+  margin: 0;
+  color: var(--muted);
+  font-size: 12.5px;
+  line-height: 1.45;
+}
+
+.ss-origin {
+  padding: 1px 0 1px 11px;
+  border-left: 3px solid var(--accent);
+}
+.ss-origin b {
+  display: block;
+  margin-bottom: 2px;
+}
+.ss-origin p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 12.5px;
+  line-height: 1.45;
+  white-space: pre-wrap;
+  display: -webkit-box;
+  -webkit-line-clamp: 8;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.ss-ver-row {
+  width: calc(100% + 12px);
+  margin: -4px -6px;
+  padding: 4px 6px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  border: 0;
+  border-radius: var(--r-2);
+  background: transparent;
+  color: var(--muted);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.ss-ver-row:hover {
+  background: var(--fill);
+}
+.ss-ver-row:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 1px;
+}
+.ss-ver-l,
+.ss-ver-r {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  white-space: nowrap;
+}
+.ss-ver-r {
+  gap: 4px;
+}
+.ss-ver-l b {
+  color: var(--fg);
+  font-weight: 600;
+}
+
+/* ---------------------------------------------------------------------
+   Focus mode: no bar / inspector / timeline, faint title, bottom pill
+   --------------------------------------------------------------------- */
+.ss.is-focus .ss-canvas {
+  background: var(--paper);
+  padding-top: 60px;
+}
+.ss.is-focus .ss-sheet {
+  box-shadow: none;
+}
+.ss-focus-title {
+  position: absolute;
+  top: 12px;
+  left: 50%;
+  z-index: 5;
+  max-width: 60%;
+  transform: translateX(-50%);
+  border-radius: var(--r-2);
+  background: var(--paper);
+  font-size: 12px;
+}
+.ss-focus-title .ss-title input {
+  color: var(--faint);
+  text-align: center;
+}
+.ss-focus-title .ss-title input:focus {
+  color: var(--fg);
+}
+.ss-focus-pill {
+  position: absolute;
+  bottom: 20px;
+  left: 50%;
+  z-index: 5;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  height: 32px;
+  padding: 0 14px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-pill);
+  background: var(--surface);
+  color: var(--muted);
+  font-size: 12px;
+  white-space: nowrap;
+  transform: translateX(-50%);
+  box-shadow: var(--shadow-raise);
+}
+.ss-focus-pill b {
+  color: var(--fg);
+  font-variant-numeric: tabular-nums;
+}
+.ss-focus-pill b.over {
+  color: var(--warn);
+}
+.ss-focus-pill .div {
+  width: 1px;
+  height: 12px;
+  background: var(--line);
+}
+
+/* ---------------------------------------------------------------------
+   Stage undo toast (rendered in a portal, sits above the timeline)
+   --------------------------------------------------------------------- */
+.ss-undo-host {
+  position: fixed;
+  left: 50%;
+  bottom: 58px;
+  z-index: 210;
+  transform: translateX(-50%);
+  pointer-events: none;
+}
+.ss-undo-host .toast {
+  white-space: nowrap;
+  pointer-events: auto;
+}

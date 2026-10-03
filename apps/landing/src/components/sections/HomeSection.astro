@@ -1,15 +1,15 @@
 ---
 /**
  * HOME section - dedicated content for `/` and `/en`. Instead of
- * repeating the Warum tab, here's a short overview: screenshot
- * gallery, three feature teasers with links to the detail routes,
+ * repeating the Warum route, here's a short overview: screenshot
+ * gallery, four feature teasers with links to the detail routes,
  * comparison hint and a closing download block.
  *
  * Caption as H2 because the page hero on this route already carries
  * an H1 - otherwise the page would have two H1s.
  */
 import { routePath, t, type Lang } from "../../i18n";
-import { getLatestRelease, site } from "../../data/site";
+import { getLatestRelease } from "../../data/site";
 
 interface Props {
   lang: Lang;
@@ -55,7 +55,7 @@ const release = await getLatestRelease();
     </div>
   </div>
 
-  <!-- Three feature teasers ----------------------------------------- -->
+  <!-- Four feature teasers ----------------------------------------- -->
   <div class="v2-home-block">
     <h2 class="v2-home-h2">{t(lang, "home.features.h2")}</h2>
     <div class="v2-home-grid">
@@ -64,15 +64,20 @@ const release = await getLatestRelease();
         <p>{t(lang, "home.feature.quick.body")}</p>
         <span class="v2-home-card-cta">{t(lang, "home.feature.quick.link")}</span>
       </a>
+      <a class="v2-home-card" href={`${routePath(lang, "warum")}#length`}>
+        <h3>{t(lang, "home.feature.length.title")}</h3>
+        <p>{t(lang, "home.feature.length.body")}</p>
+        <span class="v2-home-card-cta">{t(lang, "home.feature.length.link")}</span>
+      </a>
+      <a class="v2-home-card" href={routePath(lang, "ideen")}>
+        <h3>{t(lang, "home.feature.pipeline.title")}</h3>
+        <p>{t(lang, "home.feature.pipeline.body")}</p>
+        <span class="v2-home-card-cta">{t(lang, "home.feature.pipeline.link")}</span>
+      </a>
       <a class="v2-home-card" href={routePath(lang, "no-ai")}>
         <h3>{t(lang, "home.feature.noai.title")}</h3>
         <p>{t(lang, "home.feature.noai.body")}</p>
         <span class="v2-home-card-cta">{t(lang, "home.feature.noai.link")}</span>
-      </a>
-      <a class="v2-home-card" href={site.github} target="_blank" rel="noopener">
-        <h3>{t(lang, "home.feature.local.title")}</h3>
-        <p>{t(lang, "home.feature.local.body")}</p>
-        <span class="v2-home-card-cta">{t(lang, "home.feature.local.link")}</span>
       </a>
     </div>
   </div>

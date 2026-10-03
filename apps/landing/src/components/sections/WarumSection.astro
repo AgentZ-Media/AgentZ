@@ -17,7 +17,7 @@ const { lang } = Astro.props;
 ---
 
 <section class="v2-tab-content is-active" data-content="warum" data-section-title={t(lang, "tab.warum.long")}>
-  <h2 class="v2-block v2-caption">{t(lang, "warum.caption")}</h2>
+  <h2 class="v2-block v2-action v2-scene">{t(lang, "warum.caption")}</h2>
 
   <div class="v2-block v2-action">{t(lang, "warum.action1")}</div>
 
@@ -40,7 +40,19 @@ const { lang } = Astro.props;
   <div class="v2-block v2-character" data-speaker="TIMO"><span class="v2-t">TIMO</span></div>
   <div class="v2-block v2-dialog" data-speaker="TIMO"><span class="v2-t">{t(lang, "warum.timo3.dialog")}</span></div>
 
-  <div class="v2-block v2-camera">{t(lang, "warum.cut")}</div>
+  <!-- Target range + timeline. Anchor target of the home teaser. -->
+  <div class="v2-block v2-character" data-speaker="AXEL" id="length"><span class="v2-t">AXEL</span></div>
+  <div class="v2-block v2-dialog" data-speaker="AXEL"><span class="v2-t">{t(lang, "warum.axel3.dialog")}</span></div>
+
+  <div class="v2-block v2-character" data-speaker="TIMO"><span class="v2-t">TIMO</span></div>
+  <div class="v2-block v2-dialog" data-speaker="TIMO"><span class="v2-t">{t(lang, "warum.timo4.dialog")}</span></div>
+
+  <!-- Pipeline stages. -->
+  <div class="v2-block v2-character" data-speaker="AXEL" id="pipeline"><span class="v2-t">AXEL</span></div>
+  <div class="v2-block v2-dialog" data-speaker="AXEL"><span class="v2-t">{t(lang, "warum.axel4.dialog")}</span></div>
+
+  <div class="v2-block v2-character" data-speaker="TIMO"><span class="v2-t">TIMO</span></div>
+  <div class="v2-block v2-dialog" data-speaker="TIMO"><span class="v2-t">{t(lang, "warum.timo5.dialog")}</span></div>
 
   <div class="v2-block v2-action">{t(lang, "warum.action3")}</div>
 

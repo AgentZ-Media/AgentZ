@@ -1,126 +1,83 @@
 import { Show } from "solid-js";
 import { settingsStore } from "../../../stores/settings";
 import { getPlatformAdapter } from "../../../lib/platform";
-import { getUpdatesStore } from "../../../lib/updates";
+import type { UpdatesStore } from "../../../lib/updates";
 import { t } from "../../../i18n";
-import { Toggle } from "./icons";
-
-const openUrl = (url: string) => getPlatformAdapter().openUrl(url);
-const updates = () => getUpdatesStore();
+import { Row, SectionHead, Switch } from "./parts";
 
 const REPO_URL = "https://github.com/AgentZ-Media/ScriptZ";
 
-export function SettingsUpdates() {
-  // Caller guarantees the updates store is available (nav hides this
-  // section otherwise), so the non-null assertions are safe.
-  const onCheckUpdate = async () => {
-    await updates()!.checkNow();
-  };
-  const onDownloadInstall = async () => {
-    await updates()!.downloadAndInstall();
-  };
-  const onRestart = async () => {
-    await updates()!.restart();
-  };
-  const isChecking = () => updates()!.manualCheck()?.kind === "checking";
+/** Auto-update (desktop only - the dialog hides this section when no
+ *  updates store is registered). */
+export function SettingsUpdates(props: { updates: UpdatesStore; onClose(): void }) {
+  const u = () => props.updates;
+  const isChecking = () => u().manualCheck()?.kind === "checking";
+  const openLatestRelease = () => void getPlatformAdapter().openUrl(`${REPO_URL}/releases/latest`).catch(() => {});
 
-  const openLatestRelease = async () => {
-    try { await openUrl(`${REPO_URL}/releases/latest`); } catch {}
+  const statusLabel = () => {
+    const stage = u().stage();
+    if (stage === "available" || stage === "downloading") {
+      return t("settings.updates.available", { version: u().available()?.version ?? "" });
+    }
+    if (stage === "ready") return t("settings.updates.ready");
+    if (u().manualCheck()?.kind === "uptodate") return t("settings.updates.upToDate");
+    return t("settings.updates.status");
+  };
+  const statusHelp = () => {
+    if (u().stage() === "downloading") return t("settings.updates.downloading", { progress: u().progress() });
+    if (u().manualCheck()?.kind === "error" || u().stage() === "error") return t("settings.updates.checkError");
+    return t("prefs.updates.statusHelp");
   };
 
   return (
     <>
-      <h3>{t("settings.section.updates")}</h3>
-      <div class="settings-pane-sub">{t("settings.updates.sub")}</div>
-
-      <div class="settings-row">
-        <div class="settings-row-label">
-          <div class="row-label">{t("settings.updates.enabled.label")}</div>
+      <SectionHead title={t("prefs.updates.title")} sub={t("settings.updates.sub")} onClose={props.onClose} />
+      <Row label={statusLabel()} help={statusHelp()} class={u().stage() === "error" ? "is-error" : undefined}>
+        <div class="set-actions">
+          <Show when={u().stage() === "available"}>
+            <button class="btn ghost sm" onClick={openLatestRelease}>
+              {t("settings.updates.action.onGithub")}
+            </button>
+            <button class="btn primary sm" onClick={() => void u().downloadAndInstall()}>
+              {t("settings.updates.action.download")}
+            </button>
+          </Show>
+          <Show when={u().stage() === "ready"}>
+            <button class="btn primary sm" onClick={() => void u().restart()}>
+              {t("settings.updates.action.restart")}
+            </button>
+          </Show>
+          <Show when={u().stage() === "error"}>
+            <button class="btn sm" onClick={() => void u().downloadAndInstall()}>
+              {t("settings.updates.action.retry")}
+            </button>
+          </Show>
+          <Show when={u().stage() !== "available" && u().stage() !== "ready"}>
+            <button
+              class="btn sm"
+              onClick={() => void u().checkNow()}
+              disabled={isChecking() || u().stage() === "downloading"}
+            >
+              {isChecking() ? t("settings.updates.action.checking") : t("settings.updates.action.check")}
+            </button>
+          </Show>
         </div>
-        <Toggle
+      </Row>
+      <Row label={t("settings.updates.enabled.label")} help={t("prefs.updates.enabledHelp")}>
+        <Switch
           checked={settingsStore.updateCheckEnabled()}
           onChange={(v) => void settingsStore.setUpdateCheckEnabled(v)}
           label={t("settings.updates.enabled.aria")}
         />
-      </div>
-
-      <div class="settings-row">
-        <div class="settings-row-label">
-          <div class="row-label">{t("settings.updates.hourly.label")}</div>
-        </div>
-        <Toggle
+      </Row>
+      <Row label={t("settings.updates.hourly.label")} help={t("prefs.updates.hourlyHelp")}>
+        <Switch
           checked={settingsStore.hourlyUpdateCheck()}
           disabled={!settingsStore.updateCheckEnabled()}
           onChange={(v) => void settingsStore.setHourlyUpdateCheck(v)}
           label={t("settings.updates.hourly.aria")}
         />
-      </div>
-
-      <div class="settings-row">
-        <div class="settings-row-label">
-          <Show
-            when={updates()!.stage() === "available"}
-            fallback={
-              <Show
-                when={updates()!.manualCheck()?.kind === "uptodate"}
-                fallback={<div class="row-label">{t("settings.updates.status")}</div>}
-              >
-                <div class="row-label">{t("settings.updates.upToDate")}</div>
-              </Show>
-            }
-          >
-            <div class="row-label">
-              {t("settings.updates.available", { version: updates()!.available()?.version ?? "" })}
-            </div>
-          </Show>
-          <Show when={updates()!.stage() === "downloading"}>
-            <div class="row-help">
-              {t("settings.updates.downloading", { progress: updates()!.progress() })}
-            </div>
-          </Show>
-          <Show when={updates()!.stage() === "ready"}>
-            <div class="row-help">{t("settings.updates.ready")}</div>
-          </Show>
-          <Show when={updates()!.manualCheck()?.kind === "error"}>
-            <div class="row-help" style="color:var(--status-err);">
-              {t("settings.updates.checkError")}
-            </div>
-          </Show>
-        </div>
-        <div class="settings-update-actions">
-          <Show when={updates()!.stage() === "available"}>
-            <button class="btn btn-primary btn--sm"
-              onClick={() => void onDownloadInstall()}>
-              {t("settings.updates.action.download")}
-            </button>
-            <button class="link-like" onClick={openLatestRelease}>
-              {t("settings.updates.action.onGithub")}
-            </button>
-          </Show>
-          <Show when={updates()!.stage() === "ready"}>
-            <button class="btn btn-primary btn--sm"
-              onClick={() => void onRestart()}>
-              {t("settings.updates.action.restart")}
-            </button>
-          </Show>
-          <Show when={updates()!.stage() === "error"}>
-            <button class="btn btn--sm" onClick={() => void onDownloadInstall()}>
-              {t("settings.updates.action.retry")}
-            </button>
-          </Show>
-          <button
-            class="btn btn--sm"
-            onClick={onCheckUpdate}
-            disabled={
-              isChecking() ||
-              updates()!.stage() === "downloading" ||
-              updates()!.stage() === "ready"
-            }
-          >
-            {isChecking() ? t("settings.updates.action.checking") : t("settings.updates.action.check")}
-          </button>
-        </div>
-      </div>
+      </Row>
     </>
   );
 }

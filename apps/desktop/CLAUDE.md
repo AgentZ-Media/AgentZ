@@ -7,18 +7,26 @@ TypeScript via `@tauri-apps/plugin-sql`; the Rust crate is plugin
 wiring + schema migrations only. macOS Apple Silicon + Windows x64 are
 first-class; Linux not (yet) shipped.
 
-This codebase was deliberately stripped down in 2026-05. The original
-spec (`ScriptZ-Projektplan.md`) describes a larger system; **treat the
-actual code as the source of truth, not the spec**, when they disagree.
+This codebase was deliberately stripped down in 2026-05 and redesigned
+as the "Werkbank" in 2026-10 (sidebar shell, four block types, stages,
+length range; plan in [`docs/redesign/umsetzung.md`](../../docs/redesign/umsetzung.md)).
+Since then almost all UI and logic lives in `packages/core/` and the
+design system in `packages/design/`; this app is a thin Tauri shell
+(`App.tsx` renders the shared `AppShell` and adds close-flush +
+auto-updater). The original spec (`ScriptZ-Projektplan.md`) describes a
+larger system; **treat the actual code as the source of truth, not the
+spec**, when they disagree.
 
 ## Path-scoped Rules
 
 Details lazy-load aus [`/.claude/rules/`](../../.claude/rules/):
 
 - [`desktop-architecture.md`](../../.claude/rules/desktop-architecture.md)
-  - Vollständiges `src/lib/` und `src-tauri/`-Layout, das per-script
-  Character-Modell, Editor → DB Data-Flow. Lädt bei `apps/desktop/src/**`
-  und `apps/desktop/src-tauri/**`.
+  - Layout von `packages/core`, `packages/design`, `src/` und
+  `src-tauri/`, Stufen + Zielbereich, das per-script Character-Modell,
+  Legacy-Block-Migration, Editor → DB Data-Flow. Lädt bei
+  `apps/desktop/src/**`, `apps/desktop/src-tauri/**`, `packages/core/**`
+  und `packages/design/**`.
 - [`desktop-release.md`](../../.claude/rules/desktop-release.md) -
   In-App-Updater (`tauri-plugin-updater` + minisign), Six-Spot Version
   Bump, macOS-`xattr`/SmartScreen-Erstinstall, Windows-Toolchain-Setup.
@@ -29,10 +37,12 @@ Details lazy-load aus [`/.claude/rules/`](../../.claude/rules/):
 ## Top-Level Layout
 
 ```
-src/                    Solid frontend (TypeScript)
-src-tauri/              Rust backend (Tauri 2)
-src/assets/fonts/       iA Writer Quattro woff2 (SIL OFL)
-ScriptZ-Projektplan.md  Original spec — outdated; superseded by the code
+src/                    Thin Solid shell: index.tsx (adapters + CSS
+                        layers), App.tsx (AppShell + close flush +
+                        updater), lib/platform.ts (Tauri PlatformAdapter),
+                        stores/updates.ts, components/Common/UpdateIndicator
+src-tauri/              Rust backend (Tauri 2): plugin wiring + SQL migrations
+ScriptZ-Projektplan.md  Original spec - outdated; superseded by the code
 package.json            pnpm scripts (dev, tauri:dev, tauri:build, typecheck)
 tsconfig.json
 vite.config.ts
@@ -42,12 +52,16 @@ Detail-Layout der Subverzeichnisse: siehe `desktop-architecture.md`.
 
 ## Conventions (wichtig)
 
-- **TypeScript owns persistence.** All SQL goes through plugin-sql via
-  the modules in `src/lib/`. There are no Tauri commands for data
-  access - the Rust side opens no DB connections.
+- **TypeScript owns persistence.** All SQL lives in
+  `packages/core/lib/` (`scripts.ts`, `folders.ts`, ...); the plugin-sql
+  connection comes from `PlatformAdapter.getDb()` in `src/lib/platform.ts`.
+  There are no Tauri commands for data access - the Rust side opens no
+  DB connections. Schema changes are additive SQL migrations in
+  `src-tauri/migrations/` (latest: `007_werkbank.sql`), registered in
+  `src-tauri/src/lib.rs`.
 - **All entities use UUIDv4 string IDs.** Never auto-increment integers.
 - **Timestamps** are JS Unix-millis (`Date.now()`).
-- **No `any` in TypeScript.** Data types in `src/lib/types.ts`.
+- **No `any` in TypeScript.** Data types in `packages/core/lib/types.ts`.
 - **Lexical: vanilla only.** No `@lexical/react`. We
   `editor.setRootElement(ref)` and **must** call
   `registerRichText(editor)` - without it,
@@ -62,8 +76,32 @@ Detail-Layout der Subverzeichnisse: siehe `desktop-architecture.md`.
   pre-append `$createTextNode("")` - Lexical's reconciler then renders
   nothing useful and WebKit can't place a caret. With no children,
   the reconciler injects a managed `<br>` placeholder automatically.
-- **Solid stores:** small modules under `src/stores/`. Components subscribe
-  via getters; mutations go through store actions.
+- **Solid stores:** small modules under `packages/core/stores/`.
+  Components subscribe via getters; mutations go through store actions.
+  Navigation is `stores/nav.ts` (routes, history ⌘[ / ⌘], "Zuletzt"),
+  panel/dialog state is `stores/ui.ts`. **No tabs** - the sidebar shell
+  replaced the tab bar in 2026-10.
+- **Exactly four block types: Action (⌘1), Charakter (⌘2), Dialog (⌘3),
+  Parenthetical (⌘4).** Parenthetical is NOT retired: it was briefly
+  dropped during the redesign and deliberately brought back on
+  2026-10-03 (typing `(` in a Dialog opens one, `)` jumps back into the
+  Dialog - `plugins/parentheticalLive.ts`; it counts 0 s for the runtime
+  and no dialog words). Kamera, Caption and SFX were deliberately removed
+  in 2026-10 - don't reintroduce them. Old content with those three is
+  converted to Action on every read (`lib/legacyBlocks.ts`) and once at
+  boot (`lib/legacyBlocksMigration.ts`). Any new code path that parses
+  `content_json` must run it through `normalizeLegacyContent` /
+  `normalizeLegacyTree` first.
+- **Stages** (`ScriptStatus`: `writing` -> `ready` -> `shot` ->
+  `online`, UI labels Schreiben/Drehbereit/Gedreht/Online) are set via
+  `api.setScriptStatus`. "Idee" is a UI stage only (ideas page), not a
+  script status.
+- **Length goal is a range** (min/max seconds), per folder
+  (`api.setFolderLengthRange`) or as global default in the settings;
+  resolved in `lib/lengthGoal.ts`. "Under" is information, never an
+  error - only "over" uses the warn colour. Spec:
+  [`docs/feature-laengenziel.md`](../../docs/feature-laengenziel.md).
+- **No hex colours** outside `packages/design/` - use `var(--token)`.
 
 ## Commands
 
@@ -106,6 +144,18 @@ cargo check --manifest-path src-tauri/Cargo.toml
   keystroke.** It will break typing after 1-2 characters. Use CSS or
   intercept `CONTROLLED_TEXT_INSERTION_COMMAND` to transform the payload
   before insertion.
+- **Don't reintroduce the pre-Werkbank chrome or pressure mechanics**
+  (removed 2026-10): tabs / tab bar, the browser dashboard with
+  MomentumStrip, EditorToolbar block pills, EditorRail, SprintPill,
+  weekly word goal (`weeklyWordGoal`), streak display, idea badge
+  setting, "Guten Morgen" greeting, the three retired block types
+  (Kamera, Caption, SFX - Parenthetical stays). The
+  replacement is the adaptive writing counter (`lib/writingCounter.ts`,
+  sidebar footer) and the info-only Inspector. Talk to the user first.
+- **Don't put settings into the Inspector.** It shows information only;
+  settings live in the SettingsDialog.
+- **Don't use ⌘I for italic.** ⌘I is the global idea quick-capture;
+  ScriptZ has no italic.
 
 ## Out of scope (per spec + post-cleanup)
 
@@ -117,22 +167,34 @@ Editor - bewusst rausgenommen 2026-05-09, Gimmick mit zu wenig
 Mehrwert), Plugin-System, mehrere Skript-Layouts, Industry-Standard-
 Drehbuch-Layout (Courier 12pt). Plus removed in 2026-05: Projects, Tags,
 Series, global Characters with bible/aliases/description, per-script
-display-name/color overrides, vibrancy chrome.
+display-name/color overrides, vibrancy chrome. Removed in 2026-10
+("Werkbank"): Kamera/Caption/SFX blocks, tabs, weekly
+word goal, streak, sprint timer.
 
 ## Troubleshooting
 
-- **`sqlite locked`** - should not happen with WAL + r2d2 pool; if it
-  does, check no migration fired mid-write.
+- **`sqlite locked`** - should not happen (single plugin-sql
+  connection); if it does, check no migration fired mid-write.
 - **Typing dies after a few keystrokes** - this is the
   `registerRichText` regression. The editor MUST call
   `registerRichText(editor)` after `setRootElement`.
 - **Empty Charakter block won't accept input** - pre-appending an empty
   `$createTextNode("")` is the cause; leave the new ElementNode childless
   and call `next.select(0, 0)` instead.
-- **A character keeps re-appearing in the pillbar after delete** - the
-  pillbar reflects what's in `content_json`. If the name still appears
-  in any Charakter block, it'll be re-added on the next save. Empty the
-  block (or change the name) instead of trying to delete the character.
+- **A character keeps re-appearing in the Inspector cast / autocomplete
+  after delete** - both reflect what's in `content_json`. If the name
+  still appears in any Charakter block, it'll be re-added on the next
+  save. Empty the block (or change the name) instead of trying to delete
+  the character.
+- **Script won't open / Lexical throws "type not found"** - content
+  with a retired block type reached `parseEditorState` without going
+  through `normalizeLegacyContent`. Fix the read path, don't
+  re-register the old node classes.
+- **Old scripts still contain Kamera/Caption/SFX blocks after an
+  update** - the
+  boot migration sets `app_state["migration.legacy_blocks_v1"]` only
+  after a complete run; if a script failed, it retries on the next
+  start. Reads normalize on the fly in the meantime.
 
 ## Landing mitziehen
 

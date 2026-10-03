@@ -12,7 +12,8 @@
 //   - App state, settings, ideas, daily word log - that's device state,
 //      not script content.
 
-import type { ScriptCharacter } from "./types";
+import { normalizeLegacyTree } from "./legacyBlocks";
+import { isScriptStatus, type ScriptCharacter, type ScriptStatus } from "./types";
 import { t } from "../i18n";
 
 /** File extension without the dot. */
@@ -43,6 +44,9 @@ export interface ScriptzFileV1 {
     highlightingEnabled: number | null;
     createdAt: string; // ISO 8601
     updatedAt: string; // ISO 8601
+    /** Production stage. Additive field (no version bump): older files
+     *  don't carry it, the parser then falls back to "writing". */
+    status: ScriptStatus;
   };
 }
 
@@ -91,13 +95,18 @@ export interface ScriptForSerialization {
   highlighting_enabled: number | null;
   created_at: number; // Unix-millis
   updated_at: number; // Unix-millis
+  /** Optional so older callers keep compiling; missing = "writing". */
+  status?: ScriptStatus;
 }
 
-/** Parses a stored Lexical state, throwing a descriptive `ScriptzParseError`
- *  on malformed JSON. Shared by single-script and bundle serialization. */
+/** Parses a stored Lexical state (converting retired block types to action),
+ *  throwing a descriptive `ScriptzParseError` on malformed JSON. Shared by single-script and bundle serialization. */
 function parseContentOrThrow(contentJson: string): object {
   try {
-    return JSON.parse(contentJson) as object;
+    const parsed = JSON.parse(contentJson) as object;
+    // Never ship retired block types to another device / Studio.
+    normalizeLegacyTree(parsed);
+    return parsed;
   } catch (err) {
     throw new ScriptzParseError(
       t("error.scriptz.invalidContent", { message: (err as Error).message }),
@@ -128,6 +137,7 @@ export function serializeScript(script: ScriptForSerialization): ScriptzFileV1 {
       highlightingEnabled: script.highlighting_enabled,
       createdAt: new Date(script.created_at).toISOString(),
       updatedAt: new Date(script.updated_at).toISOString(),
+      status: script.status ?? "writing",
     },
   };
 }
@@ -229,6 +239,9 @@ function validateScriptzObject(raw: unknown): ScriptzFileV1 {
   if (typeof s.contentJson !== "object" || s.contentJson === null) {
     throw new ScriptzParseError(t("error.scriptz.missingContent"));
   }
+  // Files written before the block-type reduction may carry retired block
+  // types - convert them so the importer gets editor-ready content.
+  normalizeLegacyTree(s.contentJson);
   if (!Array.isArray(s.characters)) {
     throw new ScriptzParseError(t("error.scriptz.missingCharacters"));
   }
@@ -268,6 +281,7 @@ function validateScriptzObject(raw: unknown): ScriptzFileV1 {
       highlightingEnabled,
       createdAt,
       updatedAt,
+      status: isScriptStatus(s.status) ? s.status : "writing",
     },
   };
 }

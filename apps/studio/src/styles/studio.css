@@ -1,59 +1,38 @@
-/* ScriptZ Studio design system. Warm "parchment + ink" look that matches the
-   ScriptZ brand, with a full dark variant keyed on [data-theme="dark"]
-   (set by core's settingsStore). Self-contained tokens so the chrome doesn't
-   depend on core token names; fonts come from core's global.css. */
+/* ScriptZ Studio styles. Studio follows the suite look: every --s-*
+   variable below is an alias onto the @agentz/design semantic tokens
+   (imported in main.tsx before this file), so light/dark switch with
+   core's settingsStore ([data-theme] on <html>) and no colour value lives
+   here. The old orange accent is gone: emphasis is ink (--fg), soft
+   highlights are the highlighter (--accent-soft). */
 
-:root {
-  --s-bg: #f3efe6;
-  --s-surface: #fffdf8;
-  --s-surface-2: #f6f2e9;
-  --s-surface-3: #efeadd;
-  --s-border: #e2dccd;
-  --s-border-strong: #d3ccb9;
-  --s-text: #2b2a26;
-  --s-text-soft: #6b6557;
-  --s-text-faint: #9a9384;
-  --s-accent: #c8631a;
-  --s-accent-soft: #f3e0cf;
-  --s-accent-text: #ffffff;
-  --s-danger: #c0392b;
-  --s-danger-soft: #f6dcd8;
-  --s-ok: #2f8f5b;
-  --s-ok-soft: #d8efe1;
-  --s-info: #2f6fb0;
-  --s-info-soft: #d9e7f5;
-  --s-warn: #b07d12;
-  --s-warn-soft: #f5e9c9;
-  --s-shadow: 0 8px 30px rgba(60, 50, 30, 0.08);
-  --s-shadow-lg: 0 18px 50px rgba(60, 50, 30, 0.16);
-  --s-radius: 12px;
-  --s-radius-sm: 8px;
-  --s-font: "iA Writer Quattro", ui-sans-serif, system-ui, -apple-system, sans-serif;
-  --s-mono: "iA Writer Mono", ui-monospace, SFMono-Regular, monospace;
-}
-
-[data-theme="dark"] {
-  --s-bg: #1c1c1a;
-  --s-surface: #262624;
-  --s-surface-2: #2d2d2a;
-  --s-surface-3: #333330;
-  --s-border: #3a3a36;
-  --s-border-strong: #4a4943;
-  --s-text: #e9e5da;
-  --s-text-soft: #a8a294;
-  --s-text-faint: #75705f;
-  --s-accent: #e0791f;
-  --s-accent-soft: #3a2a18;
-  --s-danger: #e06a5a;
-  --s-danger-soft: #3a211d;
-  --s-ok: #4caf7d;
-  --s-ok-soft: #1d2f24;
-  --s-info: #5b9bd8;
-  --s-info-soft: #1c2a38;
-  --s-warn: #d6a83a;
-  --s-warn-soft: #322a16;
-  --s-shadow: 0 8px 30px rgba(0, 0, 0, 0.35);
-  --s-shadow-lg: 0 18px 50px rgba(0, 0, 0, 0.5);
+:root,
+[data-theme] {
+  --s-bg: var(--bg);
+  --s-surface: var(--surface);
+  --s-surface-2: var(--surface-2);
+  --s-surface-3: var(--fill);
+  --s-border: var(--line);
+  --s-border-strong: var(--line-strong);
+  --s-text: var(--fg);
+  --s-text-soft: var(--muted);
+  --s-text-faint: var(--faint);
+  --s-accent: var(--fg);
+  --s-accent-soft: var(--accent-soft);
+  --s-accent-text: var(--bg);
+  --s-danger: var(--warn);
+  --s-danger-soft: var(--warn-soft);
+  --s-ok: var(--ok);
+  --s-ok-soft: color-mix(in srgb, var(--ok) 14%, transparent);
+  --s-info: var(--muted);
+  --s-info-soft: var(--fill);
+  --s-warn: var(--fg);
+  --s-warn-soft: var(--accent-soft);
+  --s-shadow: var(--shadow-raise);
+  --s-shadow-lg: var(--shadow-dlg);
+  --s-radius: var(--r-pop);
+  --s-radius-sm: var(--r-ctl);
+  --s-font: var(--ui);
+  --s-mono: var(--type);
 }
 
 * {
@@ -113,16 +92,15 @@ body {
   color: var(--s-accent-text);
 }
 .btn-primary:hover:not(:disabled) {
-  background: #b3571540;
-  background: color-mix(in srgb, var(--s-accent) 88%, black);
+  background: color-mix(in srgb, var(--s-accent) 86%, var(--s-bg));
 }
 .btn-danger {
   background: var(--s-danger);
   border-color: var(--s-danger);
-  color: #fff;
+  color: var(--s-surface);
 }
 .btn-danger:hover:not(:disabled) {
-  background: color-mix(in srgb, var(--s-danger) 88%, black);
+  background: color-mix(in srgb, var(--s-danger) 88%, var(--s-text));
 }
 .btn-ghost {
   background: transparent;
@@ -450,18 +428,18 @@ body {
 }
 .toast-error {
   background: var(--s-danger);
-  color: #fff;
+  color: var(--s-surface);
 }
 .toast-ok {
   background: var(--s-ok);
-  color: #fff;
+  color: var(--s-surface);
 }
 
 /* ---------- Modal ---------- */
 .modal-backdrop {
   position: fixed;
   inset: 0;
-  background: rgba(20, 16, 10, 0.45);
+  background: var(--scrim);
   display: grid;
   place-items: center;
   z-index: 80;

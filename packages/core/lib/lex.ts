@@ -3,8 +3,13 @@
 // Lossy on purpose - feeds FTS5 and the plain-text export, NOT round-trip
 // rendering.
 //
-// Mirrors src-tauri/src/lex.rs byte-for-byte during the Rust -> TS migration.
-// Both modules coexist until Phase 11 retires the Rust copy.
+// Retired block types (camera, caption, sfx) are converted to action
+// blocks before extraction (see ./legacyBlocks.ts), so every consumer -
+// FTS, exports, word counts, runtime, character reconciliation - sees the
+// same four block types as the editor (action, character, dialog,
+// parenthetical).
+
+import { mayContainLegacyBlocks, normalizeLegacyTree } from "./legacyBlocks";
 
 /** A contiguous text fragment with uniform inline formatting.
  *  Mirrors Lexical's per-TextNode `format` bitfield: bit 0 = bold,
@@ -35,9 +40,6 @@ const SCRIPTZ_KINDS = new Set([
   "scriptz-character",
   "scriptz-dialog",
   "scriptz-parenthetical",
-  "scriptz-camera",
-  "scriptz-caption",
-  "scriptz-sfx",
 ]);
 
 export function extractBlocks(contentJson: string): ExtractedBlock[] {
@@ -47,6 +49,7 @@ export function extractBlocks(contentJson: string): ExtractedBlock[] {
   } catch {
     return [];
   }
+  if (mayContainLegacyBlocks(contentJson)) normalizeLegacyTree(v);
   const root = isObject(v) && "root" in v ? (v as Record<string, unknown>).root : v;
   const out: ExtractedBlock[] = [];
   walk(root, out);
@@ -129,14 +132,8 @@ export function extractPlainText(contentJson: string): string {
       case "scriptz-character":
         out += b.text.toUpperCase();
         break;
-      case "scriptz-parenthetical": {
-        const trimmed = trimParens(b.text);
-        out += "(" + trimmed + ")";
-        break;
-      }
-      case "scriptz-sfx":
-        if (!b.text.toUpperCase().startsWith("SFX:")) out += "SFX: ";
-        out += b.text;
+      case "scriptz-parenthetical":
+        out += "(" + trimParens(b.text.trim()) + ")";
         break;
       default:
         out += b.text;
@@ -146,7 +143,10 @@ export function extractPlainText(contentJson: string): string {
 }
 
 export function extractTeleprompterText(contentJson: string): string {
-  // Plain-Text export per spec: only Character, Dialog, Parenthetical.
+  // Plain-text (teleprompter) export: only Character, Dialog and
+  // Parenthetical. Parentheticals are always written as "( … )", whether
+  // the block text already carries the parentheses (typed live with "(")
+  // or not (set via ⌘4).
   const blocks = extractBlocks(contentJson);
   let out = "";
   for (const b of blocks) {
@@ -161,8 +161,7 @@ export function extractTeleprompterText(contentJson: string): string {
         break;
       case "scriptz-parenthetical": {
         if (out.length > 0) out += "\n";
-        const trimmed = trimParens(b.text);
-        out += "(" + trimmed + ")";
+        out += "(" + trimParens(b.text.trim()) + ")";
         break;
       }
       default:
@@ -205,16 +204,17 @@ export function jaccardSimilarity(a: Set<string>, b: Set<string>): number {
   return inter / union;
 }
 
-/** Dialog words per character - same algorithm as in the EditorRail
- *  cast tab: words from `scriptz-dialog` blocks are assigned to the
- *  most recently preceding `scriptz-character` block. Characters
+/** Dialog words per character - same algorithm as the Inspector cast
+ *  shares: words from `scriptz-dialog` blocks are assigned to the
+ *  most recently preceding `scriptz-character` block (parenthetical
+ *  words are delivery cues and don't count). Characters
  *  without dialog have an entry of `0` (so callers know
  *  they exist). Keys are UPPERCASE because character names
  *  match case-insensitively app-wide.
  *
  *  Single source of truth for this calculation - see `scripts.ts`
- *  (for `characters_meta.share` on save) and `EditorRail.tsx`
- *  (for the cast tab). */
+ *  (for `characters_meta.share` on save); the live Inspector mirrors it
+ *  in `components/Script/timelineMath.ts::liveStats`. */
 export function dialogWordsByCharacter(contentJson: string): Record<string, number> {
   const out: Record<string, number> = {};
   let last: string | null = null;

@@ -93,7 +93,7 @@ export function installColorPicker(
     applyColorOptimistically(upper, color);
     try {
       await api.setCharacterColor(upper, color);
-      // Bump the bus so any other open tabs (= other ScriptView instances)
+      // Bump the bus so every other view of this script (lists, inspector)
       // refetch their script. The active tab updated optimistically and
       // does NOT need to wait for the refetch — the value will match.
       scriptsBus.bump();

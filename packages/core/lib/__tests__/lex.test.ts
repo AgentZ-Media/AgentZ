@@ -10,6 +10,7 @@ import { describe, it, expect } from "vitest";
 import {
   extractBlocks,
   extractCharacterNames,
+  extractPlainText,
   extractTeleprompterText,
   dialogWordsByCharacter,
   wordTokenSet,
@@ -132,6 +133,15 @@ describe("dialogWordsByCharacter", () => {
     expect(dialogWordsByCharacter(json)).toEqual({ STUMM: 0 });
   });
 
+  it("does not count parenthetical words as dialog", () => {
+    const json = lex([
+      { kind: "scriptz-character", text: "Max" },
+      { kind: "scriptz-parenthetical", text: "(sehr leise)" },
+      { kind: "scriptz-dialog", text: "Hallo Welt" },
+    ]);
+    expect(dialogWordsByCharacter(json)).toEqual({ MAX: 2 });
+  });
+
   it("drops dialog before the first character (no anchor)", () => {
     const json = lex([
       { kind: "scriptz-dialog", text: "orphan line" },
@@ -143,14 +153,34 @@ describe("dialogWordsByCharacter", () => {
 });
 
 describe("extractTeleprompterText", () => {
-  it("emits only Character/Dialog/Parenthetical, uppercases the character", () => {
+  it("emits Character, Parenthetical and Dialog", () => {
     const json = lex([
       { kind: "scriptz-action", text: "Es ist Nacht." }, // dropped
       { kind: "scriptz-character", text: "max" },
-      { kind: "scriptz-parenthetical", text: "leise" },
+      { kind: "scriptz-parenthetical", text: "(leise)" },
       { kind: "scriptz-dialog", text: "Hallo." },
     ]);
     expect(extractTeleprompterText(json)).toBe("MAX\n(leise)\nHallo.");
+  });
+
+  it("wraps a parenthetical without its own parentheses exactly once", () => {
+    const json = lex([
+      { kind: "scriptz-character", text: "max" },
+      { kind: "scriptz-parenthetical", text: " leise " },
+      { kind: "scriptz-dialog", text: "Hallo." },
+      { kind: "scriptz-parenthetical", text: "((lacht))" },
+    ]);
+    expect(extractTeleprompterText(json)).toBe("MAX\n(leise)\nHallo.\n(lacht)");
+  });
+
+  it("drops action blocks, also when they are fully in parentheses", () => {
+    const json = lex([
+      { kind: "scriptz-action", text: "(Schnitt)" },
+      { kind: "scriptz-character", text: "max" },
+      { kind: "scriptz-dialog", text: "Hallo." },
+      { kind: "scriptz-action", text: "(Pause)" },
+    ]);
+    expect(extractTeleprompterText(json)).toBe("MAX\nHallo.");
   });
 
   it("returns empty string when no relevant block exists", () => {
@@ -159,6 +189,35 @@ describe("extractTeleprompterText", () => {
       { kind: "scriptz-camera", text: "Weitwinkel" },
     ]);
     expect(extractTeleprompterText(json)).toBe("");
+  });
+});
+
+describe("extractBlocks - legacy block types", () => {
+  it("reports retired block types as action, parenthetical as itself", () => {
+    const json = lex([
+      { kind: "scriptz-camera", text: "Close-Up" },
+      { kind: "scriptz-caption", text: "Büro" },
+      { kind: "scriptz-sfx", text: "Pling" },
+      { kind: "scriptz-parenthetical", text: "(leise)" },
+    ]);
+    expect(extractBlocks(json).map((b) => [b.kind, b.text])).toEqual([
+      ["scriptz-action", "Close-Up"],
+      ["scriptz-action", "Büro"],
+      ["scriptz-action", "Pling"],
+      ["scriptz-parenthetical", "(leise)"],
+    ]);
+  });
+});
+
+describe("extractPlainText", () => {
+  it("writes every block, character upper-cased, parenthetical in parentheses", () => {
+    const json = lex([
+      { kind: "scriptz-action", text: "Büro." },
+      { kind: "scriptz-character", text: "max" },
+      { kind: "scriptz-parenthetical", text: "leise" },
+      { kind: "scriptz-dialog", text: "Hallo." },
+    ]);
+    expect(extractPlainText(json)).toBe("Büro.\n\nMAX\n\n(leise)\n\nHallo.");
   });
 });
 
