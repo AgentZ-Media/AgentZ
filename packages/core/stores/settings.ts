@@ -316,9 +316,8 @@ if (typeof window !== "undefined") {
   });
 }
 
-// If another module import needs the UI before settings.load()
-// has finished (e.g. WebDisclaimerBanner reads navigator language before
-// the boot promise), seed the system language as the default.
+// Seed the system language before settings.load() finishes so early UI
+// (such as the boot screen) already uses the user's language.
 // settings.load() may then overwrite that with the persisted preference.
 if (typeof document !== "undefined") {
   applyResolvedLanguage(detectSystemLanguage());

@@ -13,9 +13,8 @@ length range; plan in [`docs/redesign/umsetzung.md`](../../docs/redesign/umsetzu
 Since then almost all UI and logic lives in `packages/core/` and the
 design system in `packages/design/`; this app is a thin Tauri shell
 (`App.tsx` renders the shared `AppShell` and adds close-flush +
-auto-updater). The original spec (`ScriptZ-Projektplan.md`) describes a
-larger system; **treat the actual code as the source of truth, not the
-spec**, when they disagree.
+auto-updater). Der tatsächliche Code ist die Referenz für das
+aktuelle Verhalten.
 
 ## Path-scoped Rules
 
@@ -28,11 +27,11 @@ Details lazy-load aus [`/.claude/rules/`](../../.claude/rules/):
   `apps/desktop/src/**`, `apps/desktop/src-tauri/**`, `packages/core/**`
   und `packages/design/**`.
 - [`desktop-release.md`](../../.claude/rules/desktop-release.md) -
-  In-App-Updater (`tauri-plugin-updater` + minisign), Six-Spot Version
-  Bump, macOS-`xattr`/SmartScreen-Erstinstall, Windows-Toolchain-Setup.
+  In-App-Updater (`tauri-plugin-updater` + minisign), Versionen in vier
+  Dateien, macOS-`xattr`/SmartScreen-Erstinstall, Windows-Toolchain-Setup.
   Lädt bei Versionsdateien und `src-tauri/**`.
 - [`/.claude/rules/release.md`](../../.claude/rules/release.md) -
-  zentrale Release-Pipeline (4 Jobs, Asset-Naming, Recovery).
+  zentrale Release-Pipeline (3 Jobs, Asset-Naming, Recovery).
 
 ## Top-Level Layout
 
@@ -42,7 +41,6 @@ src/                    Thin Solid shell: index.tsx (adapters + CSS
                         updater), lib/platform.ts (Tauri PlatformAdapter),
                         stores/updates.ts, components/Common/UpdateIndicator
 src-tauri/              Rust backend (Tauri 2): plugin wiring + SQL migrations
-ScriptZ-Projektplan.md  Original spec - outdated; superseded by the code
 package.json            pnpm scripts (dev, tauri:dev, tauri:build, typecheck)
 tsconfig.json
 vite.config.ts
@@ -195,9 +193,3 @@ word goal, streak, sprint timer.
   boot migration sets `app_state["migration.legacy_blocks_v1"]` only
   after a complete run; if a script failed, it retries on the next
   start. Reads normalize on the fly in the meantime.
-
-## Landing mitziehen
-
-Bei jeder User-sichtbaren App-Änderung Landing-Konsistenz prüfen -
-vollständige Auslöserliste in
-[`/.claude/rules/landing-consistency.md`](../../.claude/rules/landing-consistency.md).

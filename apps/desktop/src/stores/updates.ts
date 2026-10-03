@@ -151,6 +151,5 @@ export const updatesStore: UpdatesStore = {
   stopBackgroundPolling,
 };
 
-// Register with @scriptz/core so SettingsDialog can pick it up. Web
-// builds skip this and the "Updates" section stays hidden.
+// Register with @scriptz/core so SettingsDialog can pick it up.
 setUpdatesStore(updatesStore);

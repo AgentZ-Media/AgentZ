@@ -13,8 +13,7 @@
 //  - `characterUsageBus`, which adapters ping whenever a write may have
 //    dropped a name (content save, snapshot restore, purge) and which the
 //    settings list watches to reload after a cleanup,
-//  - the SQL implementation (desktop) of find/prune; the web adapter
-//    brings its own IndexedDB variant on top of the same helpers.
+//  - the SQL implementation of find/prune using the same helpers.
 //
 // "Used" means referenced by any script row - trashed scripts included,
 // because restoring one from the trash should keep its colours. Snapshots

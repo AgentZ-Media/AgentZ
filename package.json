@@ -2,16 +2,13 @@
   "name": "scriptz-monorepo",
   "private": true,
   "version": "0.0.0",
-  "description": "ScriptZ monorepo - desktop app and marketing site.",
+  "description": "ScriptZ desktop app and shared AgentZ design system.",
   "type": "module",
   "scripts": {
     "dev:desktop": "pnpm --filter scriptz tauri:dev",
-    "dev:landing": "pnpm --filter @scriptz/landing dev",
-    "dev:web": "pnpm --filter @scriptz/web dev",
     "build:desktop": "pnpm --filter scriptz tauri:build",
-    "build:landing": "pnpm --filter @scriptz/landing build",
-    "build:web": "pnpm --filter @scriptz/web build",
-    "typecheck": "pnpm -r typecheck"
+    "typecheck": "pnpm -r typecheck",
+    "test": "pnpm -r --if-present test"
   },
   "license": "MIT",
   "packageManager": "pnpm@9.0.0"

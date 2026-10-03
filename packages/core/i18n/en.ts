@@ -291,11 +291,6 @@ export const en: Record<keyof typeof de, string> = {
   // ---------- shortcuts ----------
   "shortcut.key.tab": "Tab",
 
-  // ---------- onboarding ----------
-  "onboarding.appearance.webNote.title": "You're trying out the web version.",
-  "onboarding.appearance.webNote.text": "It runs entirely in your browser - no account, no sync. Your scripts live locally in this browser. For everyday use we recommend the desktop app: faster, offline-stable, dedicated data file.",
-  "onboarding.appearance.webNote.link": "Download here →",
-
   // ---------- ideas ----------
   "ideas.card.linked.title": "Open linked script",
   "ideas.card.linked.stale": "Script deleted",
@@ -308,18 +303,6 @@ export const en: Record<keyof typeof de, string> = {
 
   // ---------- status strip ----------
   "save.error.toast": "Script could not be saved: {message}",
-
-  // ---------- web shell ----------
-  "web.disclaimer.title": "Test editor in the browser.",
-  "web.disclaimer.body": "Your scripts live locally in this browser - no sync, no account. For the full experience",
-  "web.disclaimer.link": "download the desktop app",
-  "web.disclaimer.dismiss": "Got it",
-  "web.disclaimer.dismissAria": "Hide notice",
-  "web.persistDenied.label": "Storage not protected",
-  "web.persistDenied.tooltip": "The browser hasn't granted this site persistent storage. Under storage pressure, your scripts may disappear without warning. Use the desktop app or export to .scriptz regularly for safe data.",
-  "web.gate.title": "Writing happens on the desktop.",
-  "web.gate.text": "ScriptZ's test editor is built for larger screens with a keyboard. Open {url} on a Mac or PC, then you're good to go.",
-  "web.gate.hint": "Tip: if you want the app for keeps, grab the desktop version at {url} - faster, offline, with its own data file.",
 
   // ---------- modal ----------
   "modal.close.aria": "Close",

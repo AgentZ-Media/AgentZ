@@ -1,5 +1,5 @@
-// Full-text snippets from `api.globalSearch` (SQLite FTS5 on desktop,
-// MiniSearch on web) carry the user's raw content with `<mark>` tags
+// Full-text snippets from `api.globalSearch` carry the user's raw
+// content with `<mark>` tags
 // interleaved and no entity escaping. Escape everything, then re-enable the
 // two tags the search produced, before the string reaches `innerHTML`.
 

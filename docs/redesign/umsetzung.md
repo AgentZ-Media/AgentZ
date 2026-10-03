@@ -1,5 +1,7 @@
 # Umsetzung Redesign „Werkbank" - Arbeitsplan & Schnittstellen
 
+> Historischer Redesign-Stand. Alte Web-/Landing-Pfade beschreiben den damaligen Bestand; den aktuellen Umbau dokumentiert [AgentZ Suite](../agentz-suite-fundament.md).
+
 > Interne Doku. Stand: 2026-10-03. Branch: `redesign-werkbank`.
 > Verbindliche Grundlage für alle Arbeitspakete. Visuelle Referenz ist
 > **`docs/redesign/concept.html`** (CSS-Block `.A { … }` = Token-Werte,

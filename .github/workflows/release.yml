@@ -168,23 +168,3 @@ jobs:
           prerelease: false
           projectPath: apps/desktop
           args: --target x86_64-pc-windows-msvc
-
-  # ============================================================
-  # 4) Vercel rebuild for the landing page
-  # ============================================================
-  # Vercel only reacts to git pushes, not to GitHub release events.
-  # Without this step the landing build would bake in the previous
-  # version from the Releases API, because the push happens *before*
-  # the release is published. Runs only after both builds finish so
-  # the landing reliably finds the new bundle URLs (.dmg + .exe)
-  # in the API.
-  trigger-landing:
-    name: Trigger Vercel rebuild
-    needs: [build-macos, build-windows]
-    runs-on: ubuntu-latest
-    steps:
-      - name: Call Vercel deploy hook
-        if: ${{ env.VERCEL_DEPLOY_HOOK_URL != '' }}
-        env:
-          VERCEL_DEPLOY_HOOK_URL: ${{ secrets.VERCEL_DEPLOY_HOOK_URL }}
-        run: curl -fsSL -X POST "$VERCEL_DEPLOY_HOOK_URL"

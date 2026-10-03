@@ -189,5 +189,3 @@ Spuren auf `--fill`.
   nur ohne Bereich und Obergrenze.)
 - Soll „im Bereich" überhaupt sichtbar markiert werden oder komplett
   still bleiben?
-- Landing: Wenn das Feature kommt, gehört es in die Features-Sektion
-  und Vergleichstabelle (siehe `.claude/rules/landing-consistency.md`).

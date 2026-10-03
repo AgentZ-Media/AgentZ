@@ -1,5 +1,5 @@
 // `.scriptz` file format: a simple JSON container that makes a single
-// script exchangeable between devices (web <-> desktop, desktop <-> desktop).
+// script exchangeable between devices.
 //
 // Deliberately NOT in the format:
 //   - `folder_id` (doesn't exist on the target device; import lands in

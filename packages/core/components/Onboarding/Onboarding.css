@@ -28,9 +28,9 @@
 
 .onb-card {
   width: 960px;
-  /* Grows past the concept's 560 px when a step has extra content (e.g. the
-     web note on step 1) instead of clipping the footer; clamps to the window
-     and lets the left column scroll only when the window is really small. */
+  /* Grows past the concept's 560 px when a step needs more room instead of
+     clipping the footer; clamps to the window and lets the left column
+     scroll only when the window is really small. */
   min-height: min(560px, calc(100vh - 72px));
   max-width: 100%;
   max-height: calc(100vh - 72px);
@@ -108,21 +108,6 @@
 }
 .onb-quick {
   margin-top: 16px;
-}
-.onb-web {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  margin-top: 14px;
-  padding: 9px 11px;
-  border-radius: var(--r-3);
-  background: var(--accent-soft);
-  font-size: 12px;
-  line-height: 1.45;
-}
-.onb-web a {
-  font-weight: 600;
-  text-decoration: underline;
 }
 .onb-keys {
   display: grid;

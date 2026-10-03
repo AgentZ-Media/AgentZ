@@ -297,11 +297,6 @@ export const de = {
   // ---------- shortcuts groups ----------
   "shortcut.key.tab": "Tab",
 
-  // ---------- onboarding ----------
-  "onboarding.appearance.webNote.title": "Du nutzt gerade die Web-Version zum Ausprobieren.",
-  "onboarding.appearance.webNote.text": "Sie läuft komplett in deinem Browser - ohne Konto, ohne Sync. Deine Skripte liegen lokal in diesem Browser. Für den Alltag empfehlen wir die Desktop-App: schneller, offline-stabil, eigene Daten-Datei.",
-  "onboarding.appearance.webNote.link": "Hier laden →",
-
   // ---------- ideas ----------
   "ideas.card.linked.title": "Verbundenes Skript öffnen",
   "ideas.card.linked.stale": "Skript gelöscht",
@@ -314,18 +309,6 @@ export const de = {
 
   // ---------- status strip ----------
   "save.error.toast": "Skript konnte nicht gespeichert werden: {message}",
-
-  // ---------- web shell ----------
-  "web.disclaimer.title": "Test-Editor im Browser.",
-  "web.disclaimer.body": "Deine Skripte liegen lokal in diesem Browser - kein Sync, kein Konto. Für die volle Erfahrung",
-  "web.disclaimer.link": "Desktop-App laden",
-  "web.disclaimer.dismiss": "Verstanden",
-  "web.disclaimer.dismissAria": "Hinweis ausblenden",
-  "web.persistDenied.label": "Speicher ungeschützt",
-  "web.persistDenied.tooltip": "Der Browser hat dieser Seite keinen dauerhaften Speicher gegeben. Bei Speicherdruck können deine Skripte ohne Vorwarnung verschwinden. Für sichere Daten die Desktop-App oder regelmäßiger .scriptz-Export.",
-  "web.gate.title": "Schreiben passiert am Desktop.",
-  "web.gate.text": "Der Test-Editor von ScriptZ ist für größere Bildschirme mit Tastatur gebaut. Öffne {url} auf einem Mac oder PC, dann geht's los.",
-  "web.gate.hint": "Tipp: Wer die App fest haben möchte, holt sich die Desktop-Version unter {url} - schneller, offline, mit eigener Daten-Datei.",
 
   // ---------- modal ----------
   "modal.close.aria": "Schließen",

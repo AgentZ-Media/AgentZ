@@ -9,7 +9,7 @@
      traffic lights sit in it, so it is sized to centre our toggle on them. */
   --side-top-h: 44px;
 }
-[data-platform="macos"]:not([data-shell="web"]) .shell-root {
+[data-platform="macos"] .shell-root {
   --side-top-h: 34px;
 }
 
@@ -22,7 +22,7 @@
   /* Left inset for top bars in the main column. Zero next to the sidebar;
      with the sidebar hidden the macOS traffic lights float over the main
      column, so its bars make room for them (`--titlebar-traffic-width` is
-     0 on Windows, Linux and the web). */
+     0 on Windows and Linux). */
   --shell-inset-left: 0px;
 }
 .shell.is-bare {

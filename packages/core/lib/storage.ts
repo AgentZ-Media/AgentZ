@@ -1,26 +1,11 @@
 // High-level storage adapter for @scriptz/core.
 //
-// Sits one layer above DbConnection (see ./platform.ts): while
-// DbConnection abstracts raw `select`/`execute` access (good
-// for sql.js on web, plugin-sql on desktop), StorageAdapter offers
-// typed CRUD methods - "createScript", "listFolders" etc.
+// DbConnection abstracts raw SQL access; StorageAdapter provides typed
+// CRUD methods. The SQL-backed default in ./api.ts uses DbConnection,
+// while alternative hosts can supply a different persistence backend.
 //
-// Why two levels?
-//  - Phase A made DbConnection sufficient for desktop;
-//    core can issue SQL against the Tauri database without knowing
-//    Tauri.
-//  - But as soon as the web variant with IndexedDB / Dexie comes,
-//    the adapter can't parse SQL. The choice: either load sql.js
-//    (DbConnection-compatible, ~1 MB WASM) OR register a separate
-//    web StorageAdapter that talks directly to Dexie.
-//  - This file keeps the choice point open without committing
-//    today. Default registration is the SQL-based
-//    api facade from ./api.ts.
-//
-// The `api` export from ./api.ts is a proxy onto
-// `getStorageAdapter()`, so existing code (19 call sites) keeps
-// running without change, but a later
-// `setStorageAdapter(webImpl)` immediately takes effect.
+// The `api` export is a proxy onto `getStorageAdapter()`, so replacing
+// the adapter takes effect immediately for existing callers.
 
 import type {
   CharacterColorRecord,
@@ -235,8 +220,8 @@ export function validateLengthRange(
 let adapter: StorageAdapter | null = null;
 
 /** Register the high-level storage adapter. Called once at app
- * startup. On Desktop the SQL-backed `api` default registers itself.
- * Web build can register a Dexie- or sql.js-backed alternative. */
+ * startup. The SQL-backed `api` default registers itself; a host can
+ * replace it with another persistence backend. */
 export function setStorageAdapter(a: StorageAdapter): void {
   adapter = a;
 }

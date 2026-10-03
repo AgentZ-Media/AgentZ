@@ -88,15 +88,10 @@ import type {
   SnapshotMeta,
 } from "./types";
 
-// SQL-based default implementation of the StorageAdapter. Goes via
-// the lib/* modules which speak to Tauri's plugin-sql or a sql.js
-// instance in the web build via DbConnection (see ./platform.ts).
-//
-// On module load it is registered as the active adapter via
-// `setStorageAdapter()`. The `api` export below is a proxy onto
-// `getStorageAdapter()`, so a later `setStorageAdapter(dexieImpl)`
-// on the web side takes effect immediately without having to switch
-// the 19 call sites of `api` one by one.
+// SQL-based default implementation of the StorageAdapter. The lib/*
+// modules access the host database via DbConnection (see ./platform.ts).
+// Registered on module load; the `api` proxy reads the active adapter on
+// every call, so hosts can replace storage without changing callers.
 const sqlBackedAdapter: StorageAdapter = {
   // Scripts - fully TS-side since Migration Phase 7d.
   async createScript(input: {
@@ -265,7 +260,7 @@ const sqlBackedAdapter: StorageAdapter = {
   // Export - fully in core since phase 2F: PDF bytes built via
   // pdf-lib (browser-compatible, see ./exportPdf.ts), plaintext via
   // extractTeleprompterText. The PlatformAdapter writes the bytes
-  // out - desktop via save dialog + plugin-fs, web via blob download.
+  // out through the host platform adapter.
   async exportPdf(input: {
     scriptId: string;
     includeHighlighting: boolean;
@@ -389,10 +384,8 @@ const sqlBackedAdapter: StorageAdapter = {
   },
 };
 
-// Default registration on module load. Web builds can call
-// `setStorageAdapter(webImpl)` after this point to replace the SQL impl -
-// `api` (see below) always reads via `getStorageAdapter()`,
-// so the swap takes effect immediately.
+// Default registration on module load. Hosts can replace this with
+// `setStorageAdapter()`; `api` always reads the currently active adapter.
 setStorageAdapter(sqlBackedAdapter);
 
 // Proxy facade for drop-in compatibility. Older code that does
