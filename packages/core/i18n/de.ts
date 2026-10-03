@@ -253,6 +253,8 @@ export const de = {
   "select.exit": "Fertig",
   "select.count": "{count} ausgewählt",
   "select.selectAll": "Alle",
+  "select.all": "Alle auswählen",
+  "select.group": "Alle in „{name}“ auswählen",
   "select.clear": "Auswahl aufheben",
   "select.action.pdf": "Als PDF",
   "select.action.send": "An Studio senden",

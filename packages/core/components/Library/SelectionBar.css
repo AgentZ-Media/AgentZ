@@ -1,0 +1,111 @@
+/* =========================================================================
+   Multi-selection of the list pages (scripts overview + ideas page):
+   floating action bar, checkboxes (row / group / "select all" header).
+   Colours come from @agentz/design tokens only.
+   ========================================================================= */
+
+/* ---------------- Selection bar ---------------- */
+.lib-selbar {
+  position: absolute;
+  left: 50%;
+  bottom: 18px;
+  transform: translateX(-50%);
+  z-index: 40;
+  max-width: calc(100% - 32px);
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 6px 6px 6px 14px;
+  border-radius: var(--r-4);
+  background: var(--surface);
+  box-shadow: var(--shadow-pop);
+  white-space: nowrap;
+  overflow-x: auto;
+  animation: ds-toast-in var(--t-med);
+}
+.lib-selbar-count {
+  margin-right: 6px;
+  font-weight: 700;
+}
+.lib-selbar-div {
+  width: 1px;
+  height: 18px;
+  margin: 0 4px;
+  flex: none;
+  background: var(--line);
+}
+
+/* ---------------- Checkbox ---------------- */
+.selchk {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+  outline: none;
+}
+.selchk-box {
+  width: 15px;
+  height: 15px;
+  flex: none;
+  display: grid;
+  place-items: center;
+  border-radius: 4px;
+  border: 1.5px solid var(--line-strong);
+  background: var(--surface);
+  color: var(--accent-fg);
+  transition: background var(--t-fast), border-color var(--t-fast);
+}
+.selchk:hover .selchk-box {
+  border-color: var(--fg);
+}
+.selchk:focus-visible .selchk-box {
+  box-shadow: 0 0 0 3px var(--fill);
+}
+.selchk-box.is-on {
+  border-color: var(--fg);
+  background: var(--accent);
+}
+.selchk-box svg.i {
+  stroke-width: 2.4;
+}
+.selchk-dash {
+  width: 7px;
+  height: 2px;
+  border-radius: 1px;
+  background: currentColor;
+}
+
+/* "Select all" line above a list while the selection mode is on. The box
+   sits on the same axis as the row checkboxes below. */
+.selhead {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 28px;
+  margin-bottom: 8px;
+  padding: 0 16px;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--muted);
+}
+.selhead .selchk:hover {
+  color: var(--fg);
+}
+.selhead .n {
+  color: var(--faint);
+  font-weight: 500;
+}
+
+/* Group header checkbox of the scripts overview: same axis as the row
+   checkboxes (row border + padding + centred 18px glyph column). */
+.grp-h .selchk {
+  margin-left: 4px;
+}
+.grp-h .selchk + .grp-tog svg.chev {
+  display: none;
+}

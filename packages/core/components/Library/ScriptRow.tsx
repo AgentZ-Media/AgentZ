@@ -17,7 +17,8 @@ export interface ScriptRowProps {
   selectMode: boolean;
   selected: boolean;
   onOpen: () => void;
-  onToggleSelect: () => void;
+  /** Gets the triggering event so shift-click can select a range. */
+  onToggleSelect: (e?: MouseEvent | KeyboardEvent) => void;
   /** Opens the row menu. `anchor` is set when triggered from the "⋯" button. */
   onMenu: (e: MouseEvent, anchor?: HTMLElement) => void;
 }
@@ -64,7 +65,8 @@ export function ScriptRow(props: ScriptRowProps) {
     return { label: formatClock(sec), over: st.state === "over", title };
   });
 
-  const activate = () => (props.selectMode ? props.onToggleSelect() : props.onOpen());
+  const activate = (e?: MouseEvent | KeyboardEvent) =>
+    props.selectMode ? props.onToggleSelect(e) : props.onOpen();
   const title = () => s().title || t("common.untitled");
 
   return (
@@ -91,10 +93,10 @@ export function ScriptRow(props: ScriptRowProps) {
       onClick={(e) => {
         if (!props.selectMode && (e.shiftKey || e.metaKey || e.ctrlKey)) {
           // Modifier click starts / extends a selection, like a file list.
-          props.onToggleSelect();
+          props.onToggleSelect(e);
           return;
         }
-        activate();
+        activate(e);
       }}
       onContextMenu={(e) => {
         e.preventDefault();
@@ -104,7 +106,7 @@ export function ScriptRow(props: ScriptRowProps) {
         if (e.target !== e.currentTarget) return;
         if (e.key === "Enter" || e.key === " ") {
           e.preventDefault();
-          activate();
+          activate(e);
         }
       }}
     >

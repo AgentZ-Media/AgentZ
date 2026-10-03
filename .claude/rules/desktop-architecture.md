@@ -104,8 +104,11 @@ packages/core/
     Library/
       ScriptsPage.tsx      Script list: groups by stage/folder/none, filter,
                            sort, selection mode, length range per row.
-      ScriptRow, PageBar, SelectionBar (multi PDF / Studio / move / stage /
-      trash), ContextMenu, PromptDialog, HandoffDialog (Studio transfer),
+      ScriptRow, PageBar, SelectionBar (shared by scripts + ideas: multi
+      PDF / Studio / move / stage or "Zu Skripten" / trash or delete),
+      SelectCheck (tri-state group / "Alle auswählen" checkbox),
+      selection.ts (pure helpers: checkState, toggleIds, rangeBetween),
+      ContextMenu, PromptDialog, HandoffDialog (Studio transfer),
       TrashPage, actions.ts (shared script/folder ops + toasts), dnd.ts
       (row -> sidebar folder), prefs.ts (grouping/sort in app_state).
     Palette/CommandPalette.tsx   ⌘K: scripts, ideas, commands; empty = Zuletzt.
@@ -152,7 +155,10 @@ packages/core/
         highlight.ts       per-block --char-tint (Character, Dialog,
                            Parenthetical)
         colorPicker.tsx    character colour popover (3 entry points)
-    Ideas/                 IdeasPage (+ parts/), QuickCapture (⌘I modal),
+    Ideas/                 IdeasPage (+ parts/; selection mode like the
+                           scripts page: checkboxes, ⌘A, ⇧-range, bulk move /
+                           convert into scripts of a stage / delete),
+                           QuickCapture (⌘I modal),
                            ideaGroups.ts, similar.ts, folderColor.ts
     Export/                ExportDialog (⌘E, live preview via pdfPreview.ts)
     Settings/              SettingsDialog + sections/ (Appearance, Writing,
