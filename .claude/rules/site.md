@@ -8,7 +8,7 @@ paths:
 - Statische Astro-Seite ohne Laufzeit-JavaScript, Tracking oder Cookies. Nur
   `@agentz/design` als internes Paket; keine Kit- oder Produktmodule importieren.
 - Tokens, Fonts und `.btn` aus dem Design-Paket. Keine eigenen Farbwerte und
-  keine Legacy-Aliase. Icons stammen aus `pnpm build:logo --app <id>`.
+  keine Legacy-Aliase. Icons stammen aus `node packages/design/scripts/build-logo.mjs --app <id>`.
 - `src/apps.ts` ist die datengetriebene App-Liste. Name, ID und echte Taglines in
   DE/EN pflegen. `soon` hat keine Download-Buttons. Erst nach erfolgreichem Release
   beider Installer auf `available` wechseln. Download-URLs aus ID bauen, niemals
