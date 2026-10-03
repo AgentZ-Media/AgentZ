@@ -2,9 +2,9 @@
 // retired block types (camera, caption, sfx) as action blocks (see
 // ./legacyBlocks.ts). Parenthetical is a live block type and stays as is.
 //
-// Runs through the `api` facade, so it works for every storage adapter
-// (SQLite on desktop, Dexie on web). Content is only rewritten when the
-// normalizer actually changed something. The rewrite uses
+// Runs through the `api` facade, so it works for every storage adapter.
+// Content is only rewritten when the normalizer actually changed
+// something. The rewrite uses
 // `internalRewrite: true`, which
 //  - books NO words into the daily word log (the writing counter must not
 //    jump because of a format conversion), and
@@ -18,7 +18,7 @@
 // on the fly.
 //
 // Snapshots are intentionally left as they are - they are normalized when
-// restored (lib/snapshots.ts and the web adapter).
+// restored (lib/snapshots.ts).
 //
 // Called once at boot by the shell (components/Shell/AppShell.tsx), after
 // the storage adapter is registered and before the first script opens:

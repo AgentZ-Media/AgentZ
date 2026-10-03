@@ -59,5 +59,5 @@ export default function App() {
   });
   onCleanup(() => updatesStore.stopBackgroundPolling());
 
-  return <AppShell platform="desktop" sidebarFooterSlot={<UpdateIndicator />} />;
+  return <AppShell sidebarFooterSlot={<UpdateIndicator />} />;
 }

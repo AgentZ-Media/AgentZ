@@ -1,7 +1,7 @@
 // Auto-update service slot for @scriptz/core.
 //
-// The actual updater lives in the host app (Tauri's plugin-updater on
-// desktop, nothing on web). UI in core (SettingsDialog) queries this
+// The actual updater lives in the host app (Tauri's plugin-updater).
+// UI in core (SettingsDialog) queries this
 // slot - if a store is registered, the "Updates" section renders;
 // otherwise it stays hidden.
 //
@@ -44,7 +44,7 @@ export interface UpdatesStore {
 let store: UpdatesStore | null = null;
 
 /** Register the host's updates implementation. Called once at app
- * startup. Web builds skip this and the UI hides the Updates section. */
+ * startup. Hosts without an updater leave this slot unregistered. */
 export function setUpdatesStore(s: UpdatesStore): void {
   store = s;
 }

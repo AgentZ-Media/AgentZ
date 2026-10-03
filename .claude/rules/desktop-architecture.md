@@ -20,8 +20,7 @@ Konzept und Arbeitsplan: [`docs/redesign/umsetzung.md`](docs/redesign/umsetzung.
 visuelle Referenz `docs/redesign/concept.html`, Längenziel-Spec
 [`docs/feature-laengenziel.md`](docs/feature-laengenziel.md).
 
-Der ursprüngliche Projektplan (`ScriptZ-Projektplan.md`) ist veraltet -
-bei Widerspruch gilt der Code.
+Der tatsächliche Code ist die Referenz für das aktuelle Verhalten.
 
 ## Repo-Layout (Detail)
 
@@ -52,12 +51,11 @@ apps/desktop/
                            (import side effects), then the CSS layers
                            (@agentz/design fonts -> tokens -> legacy ->
                            components, then core global.css), mounts <App>.
-    App.tsx                <AppShell platform="desktop"
-                           sidebarFooterSlot={<UpdateIndicator/>}> +
+    App.tsx                <AppShell sidebarFooterSlot={<UpdateIndicator/>}> +
                            onCloseRequested -> flushAll(2000) + updater
                            background polling. Nothing else.
     lib/platform.ts        Tauri PlatformAdapter: plugin-sql Database as
-                           getDb(), dialogs, fs, opener, http, os.
+                           getDb(), dialogs, fs, opener, os.
     lib/tauri.ts           isTauri flag / thin invoke wrapper (rare).
     stores/updates.ts      tauri-plugin-updater, registered into the
                            core `updates` slot.
@@ -75,7 +73,7 @@ packages/design/           @agentz/design - suite design system (see its README)
   icons.ts                 ICONS (24er stroke icons), STAGE_GLYPHS (14er).
   logo.ts                  Dot-matrix Z (LOGO_DOTS ...).
   assets/                  Generated logo files + app icon (SVG, 1024 PNG).
-  scripts/build-logo.mjs   Exports assets/ + landing icons + the full
+  scripts/build-logo.mjs   Exports assets/ + the full
                            Tauri icon set from logo.ts (build:logo).
 
 packages/core/
@@ -87,12 +85,12 @@ packages/core/
                            .modal*, .pill, .cselect*, ...) restyled on tokens.
   components/
     Shell/
-      AppShell.tsx         Shared shell for desktop + web: boot sequence
+      AppShell.tsx         App-Schale: Boot-Sequenz
                            (settings, welcome seed, nav/ui/prefs load,
                            runtime backfill, then migrateLegacyBlocksOnce,
                            then markLibraryReady), sidebar | main layout,
                            route rendering, mounts all dialogs once.
-                           Props: platform, topSlot, sidebarFooterSlot.
+                           Prop: sidebarFooterSlot.
       Sidebar.tsx          Dark sidebar: app row, search + new, "Alle
                            Skripte", Ideen, pipeline (stages), folders,
                            "Zuletzt", footer (WritingCounter, trash,
@@ -294,7 +292,7 @@ Blocktyp und läuft unverändert durch. Deshalb:
 
 - **On-the-fly**: Jeder Pfad, der Content parst, läuft über
   `lib/legacyBlocks.ts` (Editor-Load, `lex.ts`, PDF, Plaintext,
-  `.scriptz`-Import, Snapshot-Restore in `snapshots.ts` und im Web-Adapter,
+  `.scriptz`-Import, Snapshot-Restore in `snapshots.ts`,
   SnapshotsDialog-Vorschau über den Editor-Load). Alte Typen werden zu `scriptz-action`, Text und
   Formatierung bleiben.
 - **Boot-Migration**: `migrateLegacyBlocksOnce()` schreibt einmalig alle
@@ -327,8 +325,7 @@ Blocktyp und läuft unverändert durch. Deshalb:
   Sidebar-Zähler, ScriptsPage-Gruppen, Inspector aktualisieren sich.
 - Auto-Snapshot alle 5 min solange dirty, manuell ⌘⇧S, Cap 50 pro
   Skript (in `createSnapshot` und `restoreSnapshot` erzwungen).
-- Suche: ⌘K -> `api.globalSearch` -> FTS5 BM25 (Desktop) bzw. MiniSearch
-  (Web) -> `SearchHit[]` mit `<mark>`-Snippets.
+- Suche: ⌘K -> `api.globalSearch` -> SQLite-FTS5 BM25 -> `SearchHit[]` mit `<mark>`-Snippets.
 - PDF-Export: `lib/exportPdf.ts` baut die Bytes (pdf-lib, A4,
   Widow/Orphan), das Speichern läuft über `PlatformAdapter.saveAs`
   (Desktop: Tauri-Dialog + plugin-fs). Kein Rust-Code beteiligt.

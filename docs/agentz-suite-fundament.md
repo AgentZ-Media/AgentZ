@@ -1,8 +1,57 @@
 # AgentZ Suite - Plan für das Fundament
 
-> Interne Doku. Stand: 2026-10-03. Status: Plan, noch nicht begonnen.
+> Interne Doku. Stand: 2026-10-03. Status: Phase 1 umgesetzt und lokal geprüft; Review, Merge und externe Schritte offen.
 > Gegengeprüft von GPT-6 Astra (Effort High) am 2026-10-03, Befunde
 > eingearbeitet (siehe Abschnitt 15).
+
+## Umsetzungsstand (2026-10-03)
+
+- **Phase 0, Code:** PR #19 ist gemergt; Ausgangscommit ist
+  `852b20bc63e9de3d6e0ca45711dd5003d4503155`.
+- **Phase 1, lokal:** Web-App, alte Landing und überholte Regeln entfernt;
+  Desktop-Schale von Web-Sonderfällen bereinigt, Root-Testbefehl und
+  MIT-Lizenz ergänzt, Lockfile und aktive Dokumentation aktualisiert.
+  Bundle-Identifier, Datenbankname, Migrationen und persistierte Schlüssel
+  bleiben unverändert. Phase 2 bis 8 sind noch nicht begonnen.
+- **Sicherung:** Vor Phase 1 konsistenter SQLite-Snapshot der lokalen
+  Arbeitsdatenbank; `PRAGMA integrity_check` meldet `ok`.
+- **Automatische Prüfung:** `pnpm install --frozen-lockfile`,
+  `pnpm typecheck`, `pnpm test` (36 Dateien / 261 Tests) und
+  `git diff --check` erfolgreich. Bekannte Warnungen der importseitigen
+  Store-Initialisierung bleiben für Phase 4.0 offen.
+- **Native Builds:** `pnpm build:desktop` erzeugt macOS-App und DMG,
+  endet aber beim Signieren des Updater-Archivs mit einem Fehler:
+  `TAURI_SIGNING_PRIVATE_KEY` ist lokal nicht gesetzt. Das ist keine
+  erfolgreiche Release-Abnahme. Lokale Funktionsprüfung separat mit
+  temporärer QA-App-ID und deaktivierten Updater-Artefakten; die
+  eingecheckte Tauri-Konfiguration bleibt unverändert.
+- **Native Funktionsprüfung:** Separater Release-Build mit
+  `identifier=de.agent-z.scriptz.phase1-smoke`,
+  `productName=ScriptZ Phase 1 QA` und `createUpdaterArtifacts=false`
+  erfolgreich. Gegen eine Kopie der Arbeitsdatenbank getestet: vorhandenes
+  Skript öffnen, neues Skript schreiben/speichern/erneut öffnen,
+  Einstellungen, Ideen und Papierkorb anzeigen, PDF exportieren.
+  Exportdatei geprüft: eine A4-Seite, erwarteter Text, eingebettete
+  iA-Writer-Quattro-Schrift. `/tmp` ist durch die bestehende Dateifreigabe
+  gesperrt; der Export im Benutzerordner funktioniert. QA-App beendet,
+  Testtext in der isolierten DB gespeichert. Die produktive DB stimmt
+  als logischer SQL-Dump mit der Sicherung vor dem Umbau überein.
+  Windows-Build und signierter Update-Zyklus wurden nicht geprüft.
+- **Rechtstexte für Phase 7:** Impressum und Datenschutz liegen im
+  Ausgangscommit unter `apps/landing/src/pages/impressum.astro` bzw.
+  `apps/landing/src/pages/datenschutz.astro`. Wiederherstellbar mit
+  `git show <Ausgangscommit>:<Pfad>`; bei der neuen Website aktualisieren.
+- **Historische Doku:** Dieser Plan und `docs/redesign/` enthalten bewusst
+  noch alte Pfade als Ausgangslage. Der Verweis-Check aus Phase 1 gilt für
+  aktive Quellen, Build-Konfiguration und aktuelle Anleitungen; diese
+  historischen Dokumente und alte Release-Notes sind ausgenommen.
+- **Extern offen:** Vercel-Projekte, Domains, Studio-Ressourcen und das
+  GitHub-Secret `VERCEL_DEPLOY_HOOK_URL` wurden nicht verändert. Das
+  Entfernen ihres Codes deaktiviert bestehende Deployments nicht.
+- **Review:** Phase 1 wird separat über den Branch
+  `t3code/build-shared-software-foundation` gegen `main` geprüft.
+  Merge und Release stehen noch aus; Phase 2 beginnt nach dem Merge
+  auf einem neuen Branch vom aktualisierten `main`.
 
 ## 1. Ziel
 

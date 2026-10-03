@@ -42,19 +42,14 @@ import "../Common/Common.css";
 import "./Shell.css";
 
 export interface AppShellProps {
-  platform: "desktop" | "web";
-  /** Full-width row above the shell (web: disclaimer banner). */
-  topSlot?: JSX.Element;
-  /** Rendered at the bottom of the sidebar (desktop: update indicator,
-   *  web: storage-persistence badge). */
+  /** Rendered at the bottom of the sidebar (e.g. the update indicator). */
   sidebarFooterSlot?: JSX.Element;
 }
 
 /**
- * The Werkbank shell shared by desktop and web: boot sequence, sidebar |
- * main layout, route rendering, global shortcuts and the app-wide dialogs.
- * The host apps only add their platform glue (save flush on close, update
- * indicator, web chrome) around it.
+ * ScriptZ's Werkbank shell: boot sequence, sidebar | main layout, route
+ * rendering, global shortcuts and the app-wide dialogs. The host adds
+ * platform integration (save flush on close, update indicator) around it.
  */
 export function AppShell(props: AppShellProps) {
   const [bootReady, setBootReady] = createSignal(false);
@@ -62,8 +57,8 @@ export function AppShell(props: AppShellProps) {
 
   onMount(async () => {
     try {
-      // Independent boot steps run in parallel (each is an IPC / IndexedDB
-      // roundtrip); a failure here means storage is unusable -> recovery
+      // Independent boot steps run in parallel (each accesses storage);
+      // a failure here means storage is unusable -> recovery
       // screen instead of an app that looks empty.
       await Promise.all([
         settingsStore.load(),
@@ -166,20 +161,19 @@ export function AppShell(props: AppShellProps) {
   const sidebarVisible = () => uiStore.sidebarOpen() && !focused();
 
   return (
-    <div class="app-root shell-root" data-shell-platform={props.platform}>
+    <div class="app-root shell-root">
       <Show
         when={!bootError()}
         fallback={<BootErrorScreen error={bootError()!} onRetry={() => window.location.reload()} />}
       >
         <Show when={bootReady()} fallback={<BootScreen />}>
-          {props.topSlot}
           <div
             class="shell"
             classList={{ "is-bare": !sidebarVisible(), "is-focus": focused() }}
             data-side={sidebarVisible() ? "on" : "off"}
           >
             <Show when={sidebarVisible()}>
-              <Sidebar platform={props.platform} footerSlot={props.sidebarFooterSlot} />
+              <Sidebar footerSlot={props.sidebarFooterSlot} />
             </Show>
             <main class="shell-main">
               <Switch>

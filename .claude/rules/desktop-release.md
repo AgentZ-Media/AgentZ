@@ -8,7 +8,7 @@ paths:
 # Desktop-App: Release + Auto-Update (App-Spezifika)
 
 Ergänzt die zentrale [`release.md`](release.md) um Desktop-spezifische
-Details (Signing, Plattform-Setup, In-App-Updater, Six-Spot-Version-Bump).
+Details (Signing, Plattform-Setup, In-App-Updater, Versionen in vier Dateien).
 
 ## In-App Auto-Update
 
@@ -29,7 +29,7 @@ Die current-version check inside the app uses `@tauri-apps/api/app`'s
 
 ## Release-Pipeline (Desktop-Sicht)
 
-Triggert auf Tags `v*.*.*` (aber nicht `v*.*.*.*`). Vier Jobs
+Triggert auf Tags `v*.*.*` (aber nicht `v*.*.*.*`). Drei Jobs
 sequenziell - vollständige Beschreibung in
 [`release.md`](release.md). Hier nur die App-spezifischen Punkte:
 
@@ -39,31 +39,24 @@ sequenziell - vollständige Beschreibung in
   `x86_64-pc-windows-msvc`. Muss NACH macOS, sonst race condition auf
   das `latest.json`-Asset.
 
-## Six-Spot Version Bump (Desktop)
+## Versions-Bump (Desktop)
 
-Anders als die Repo-Root-Checkliste (4 Stellen) muss der Desktop-Bump
-**sechs** Stellen synchron halten - sonst warnt `tauri build`, der
-CI-Build bricht auf `--frozen-lockfile`, oder die Landing zeigt nach
-einem GitHub-API-Blip die Vorgängerversion:
+Der Desktop-Bump hält dieselben **vier Dateien** wie die zentrale
+Release-Checkliste synchron:
 
-1. [`apps/desktop/package.json`](package.json) → `version`
-2. [`apps/desktop/src-tauri/Cargo.toml`](src-tauri/Cargo.toml) →
-   `[package] version`
-3. [`apps/desktop/src-tauri/Cargo.lock`](src-tauri/Cargo.lock) → der
-   `name = "scriptz"`-Eintrag (cargo schreibt das automatisch um wenn
-   du Cargo.toml änderst, aber comitten musst du es selbst)
-4. [`apps/desktop/src-tauri/tauri.conf.json`](src-tauri/tauri.conf.json)
-   → `version`
-5. [`apps/landing/src/data/site.ts`](../../apps/landing/src/data/site.ts)
-   → `fallbackVersion`
-6. [`/README.md`](../../README.md) (Repo-Root) → das
-   `version-X.Y.Z`-shields.io-Badge oben (die einzige sichtbare
-   Version, die Menschen vor dem Installieren sehen)
+1. `apps/desktop/package.json` → `version`
+2. `apps/desktop/src-tauri/Cargo.toml` → `[package].version`
+3. `apps/desktop/src-tauri/Cargo.lock` → Version des Pakets `scriptz`
+4. `apps/desktop/src-tauri/tauri.conf.json` → `version`
 
-Danach: commit, push `main`, `git tag -a vX.Y.Z -m "ScriptZ vX.Y.Z - …"
-&& git push origin vX.Y.Z`. Der Workflow läuft ~6 Min und produziert
-den Release. Laufende v(X.Y.Z-1)-Instanzen ziehen die neue Version beim
-nächsten stündlichen Poll (oder sofort beim App-Neustart).
+Cargo aktualisiert den Lock-Eintrag beim nächsten Lauf; die Änderung
+muss ebenfalls eingecheckt werden. Das README-Badge lädt die aktuelle
+Release-Version direkt von GitHub und braucht keinen manuellen Bump.
+
+Nach Freigabe und Merge: `git tag -a vX.Y.Z -m "ScriptZ vX.Y.Z"`,
+dann `git push origin vX.Y.Z`. Release-Notes vorher gemäß
+[`release.md`](release.md) anlegen. Laufende Instanzen finden die neue
+Version beim nächsten stündlichen Poll oder beim App-Neustart.
 
 ## Erster manueller Install pro Plattform
 

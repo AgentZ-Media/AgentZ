@@ -23,8 +23,6 @@
 </p>
 
 <p align="center">
-  <a href="https://write-scriptz.com">write-scriptz.com</a> ·
-  <a href="https://app.write-scriptz.com">try in browser</a> ·
   <a href="https://github.com/AgentZ-Media/ScriptZ/releases/latest">download</a>
 </p>
 
@@ -35,34 +33,6 @@
 App opens → you type → format happens → export → done. No login, no cloud, no telemetry, no AI. Everything stays as a single SQLite file on your computer.
 
 **Final Draft** is too heavy. **Google Docs** is too generic. **Arc Studio** wants your subscription. **ScriptZ is the middle nobody else builds.**
-
----
-
-## What it looks like
-
-### Overview – your pipeline at a glance
-
-<p align="center">
-  <img src="apps/landing/public/img/app/overview.png" alt="ScriptZ overview with the sidebar pipeline and scripts grouped by stage" width="900" />
-</p>
-
-A calm sidebar instead of tabs: search & commands (`⌘K`), the pipeline from Ideas to Online, your folders and the scripts you opened last. In the list, scripts are grouped by stage and every row shows its cast and runtime – in red only when it runs past the folder's target length.
-
-### Ideas – capture now, write later
-
-<p align="center">
-  <img src="apps/landing/public/img/app/ideas.png" alt="ScriptZ ideas page with folder chips and an expanded idea" width="900" />
-</p>
-
-Press `⌘I` from anywhere – even in focus mode – type the idea, Enter, you're back where you were. The ideas page is built for 50+ ideas: folder chips, a filter and grouping by month. Every idea opens right inside the list for notes and folder, and `Tab` in the capture field adds a note while you type. `⌘↵` starts a script from the selected idea, and the original note stays visible in the script's inspector.
-
-### Editor – format happens while you type
-
-<p align="center">
-  <img src="apps/landing/public/img/app/editor.png" alt="ScriptZ editor with character colors, inspector and timeline" width="900" />
-</p>
-
-Four block types (Action · Character · Dialog · Parenthetical) on one endless sheet, auto character detection with per-name colors, and an inspector with stage, length vs. target range, speaking shares, the original idea and versions. Press `⌘J` and a timeline under the sheet shows who speaks when.
 
 ---
 
@@ -204,10 +174,6 @@ ScriptZ is open source and not registered with Apple – that's why macOS asks f
 
 ScriptZ doesn't (yet) have an EV code-signing certificate – that's why SmartScreen asks for this step. Auto-updates work without any further friction after that.
 
-### Try it in your browser first
-
-No download required: [app.write-scriptz.com](https://app.write-scriptz.com). Same editor, runs locally in your browser, data stays in IndexedDB. Good for kicking the tires – the desktop app is what we recommend for real work.
-
 ---
 
 ## Tech under the hood
@@ -227,16 +193,14 @@ For the curious – this stays out of the way of writing, but if you want to kno
 
 ## Building from source
 
-This repository is a pnpm monorepo. The app lives in [`apps/desktop/`](apps/desktop/), the browser version in [`apps/web/`](apps/web/), and the marketing site write-scriptz.com in [`apps/landing/`](apps/landing/).
+This repository is a pnpm monorepo. The Tauri app lives in [`apps/desktop/`](apps/desktop/), the editor and application logic in [`packages/core/`](packages/core/), and the shared design system in [`packages/design/`](packages/design/).
 
 ```bash
 pnpm install              # install all workspaces
 pnpm dev:desktop          # Tauri dev (hot-reload frontend + Rust)
 pnpm build:desktop        # build the native binary
-pnpm typecheck            # TypeScript across all apps
-
-pnpm dev:web              # browser version (localhost:5173)
-pnpm dev:landing          # Astro dev server for the landing
+pnpm typecheck            # TypeScript across all workspaces
+pnpm test                 # run workspace tests
 ```
 
 Code conventions are in [`CLAUDE.md`](CLAUDE.md) (monorepo overview) and [`apps/desktop/CLAUDE.md`](apps/desktop/CLAUDE.md) (app details).

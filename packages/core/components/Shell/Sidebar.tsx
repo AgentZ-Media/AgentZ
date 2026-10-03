@@ -20,7 +20,6 @@ import { WritingCounter } from "../Activity/WritingCounter";
 import { folderColor, library } from "./libraryData";
 
 export interface SidebarProps {
-  platform: "desktop" | "web";
   /** Rendered above the footer (desktop: update indicator). */
   footerSlot?: JSX.Element;
 }
@@ -84,7 +83,7 @@ export function Sidebar(props: SidebarProps) {
     !!e.dataTransfer && Array.from(e.dataTransfer.types).includes(SCRIPT_DRAG_MIME);
 
   return (
-    <aside class="side" data-platform-shell={props.platform} aria-label={t("shell.sidebar.aria")}>
+    <aside class="side" aria-label={t("shell.sidebar.aria")}>
       <div class="side-top" data-tauri-drag-region>
         <span class="side-traffic" data-tauri-drag-region aria-hidden="true" />
         <span class="side-sp" data-tauri-drag-region />

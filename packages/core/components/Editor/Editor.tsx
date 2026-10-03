@@ -46,8 +46,7 @@ export interface EditorProps {
   /** Read-only mode for snapshot previews: the script renders identically
    *  but the editor is not editable, no autosave/persistence is wired, and
    *  the mutating plugins (smart-enter, block hotkeys, colour picker, ...)
-   *  are not installed. Additive and defaulting to false, so the existing
-   *  desktop/web apps are completely unaffected. */
+   *  are not installed. Defaults to false for the normal editing flow. */
   readOnly?: boolean;
   /** Quick-mode toggle — when on AND the script has exactly 2 characters,
    * pressing Enter at the end of a Dialog auto-inserts the OTHER character

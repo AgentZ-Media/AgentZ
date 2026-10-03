@@ -11,8 +11,6 @@
  *     scriptz-mark-inverse.svg   bare Z, chalk + highlighter (dark backgrounds)
  *     scriptz-app-icon.svg       app icon ("App-Icon hell" in concept.html)
  *     scriptz-app-icon.png       1024 px raster of the app icon
- *   apps/landing/public/img/icon.png        400 px (favicon, nav)
- *   apps/landing/public/img/icon-large.png  1024 px (OG image, JSON-LD logo)
  *   apps/desktop/src-tauri/icons/**          full Tauri set via `tauri icon`
  *   apps/desktop/src-tauri/icons/icon.iconset/*
  *
@@ -27,7 +25,7 @@
  */
 
 import { execFileSync } from "node:child_process";
-import { copyFileSync, existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join, relative, resolve } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
@@ -156,12 +154,6 @@ const chrome = findChrome();
 const iconPng = join(assetsDir, "scriptz-app-icon.png");
 renderPng(chrome, iconSvg, iconPng, CANVAS);
 console.log("png  -> packages/design/assets/scriptz-app-icon.png");
-
-// Landing (Astro, imports nothing from the workspace - gets copies).
-const landingImg = join(repoRoot, "apps/landing/public/img");
-copyFileSync(iconPng, join(landingImg, "icon-large.png"));
-renderPng(chrome, iconSvg, join(landingImg, "icon.png"), 400);
-console.log("png  -> apps/landing/public/img/{icon,icon-large}.png");
 
 // Desktop: the full Tauri set (icns, ico, Windows Store tiles, iOS, Android).
 const desktopDir = join(repoRoot, "apps/desktop");

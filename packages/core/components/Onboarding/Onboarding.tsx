@@ -21,10 +21,6 @@ const STEPS = 3;
 const COLOR_A = CHARACTER_PALETTE[3];
 const COLOR_B = CHARACTER_PALETTE[4];
 
-function isWebShell(): boolean {
-  return typeof document !== "undefined" && document.documentElement.dataset.shell === "web";
-}
-
 /** First-run onboarding (and "Onboarding erneut zeigen" in the settings):
  *  three steps - appearance, the four blocks, keys - on a full-window
  *  grid. Parameterless, driven by `uiStore.onboardingOpen()`. */
@@ -189,17 +185,6 @@ function StepAppearance() {
     <>
       <h2 class="onb-h">{t("onb.s1.h")}</h2>
       <p class="onb-p">{t("onb.s1.p")}</p>
-      <Show when={isWebShell()}>
-        <div class="onb-web" role="note">
-          <b>{t("onboarding.appearance.webNote.title")}</b>
-          <span>
-            {t("onboarding.appearance.webNote.text")}{" "}
-            <a href="https://write-scriptz.com" target="_blank" rel="noopener">
-              {t("onboarding.appearance.webNote.link")}
-            </a>
-          </span>
-        </div>
-      </Show>
       <div class="onb-ctl">
         <div class="srow">
           <div>

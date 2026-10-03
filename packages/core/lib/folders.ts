@@ -121,8 +121,7 @@ export async function renameFolder(id: string, name: string): Promise<Folder> {
 }
 
 /** Sets (or clears, with null) the folder's target runtime range in whole
- *  seconds. Validation is shared with the web adapter via
- *  `validateLengthRange`. */
+ *  seconds. Uses the adapter-independent `validateLengthRange`. */
 export async function setFolderLengthRange(
   id: string,
   minSec: number | null,

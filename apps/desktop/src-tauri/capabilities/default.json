@@ -54,7 +54,6 @@
       "identifier": "opener:allow-open-url",
       "allow": [
         { "url": "https://github.com/AgentZ-Media/**" },
-        { "url": "https://write-scriptz.com/**" },
         { "url": "https://linktr.ee/deragentz" }
       ]
     },

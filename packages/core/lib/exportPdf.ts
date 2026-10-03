@@ -12,8 +12,8 @@
 // must be aligned with the editor look, otherwise the export
 // and preview diverge.
 //
-// Fonts: both desktop and web host the TTFs at
-// /fonts/iAWriterQuattroS-*.ttf in their respective public/ directory,
+// Fonts: the host serves the TTFs at
+// /fonts/iAWriterQuattroS-*.ttf from its public/ directory,
 // so `fetch("/fonts/...")` works at runtime without path indirection.
 
 import { PDFDocument, rgb, type PDFFont, type PDFPage } from "pdf-lib";
@@ -396,8 +396,7 @@ export interface BuildPdfBytesOptions {
 }
 
 /** Generates the finished PDF bytes for a script. Pure function -
- *  caller decides what happens with the bytes (desktop writes them
- *  via plugin-fs, web triggers a blob download). */
+ *  caller decides what happens with the bytes through the host adapter. */
 export async function buildPdfBytes(
   deps: ExportPdfDeps,
   opts: BuildPdfBytesOptions,

@@ -50,12 +50,8 @@
   );
 }
 
-/* macOS-specific: room for the traffic-light buttons in the top left.
-   Web shells (apps/web) additionally set `data-shell="web"` so a
-   Mac user in the browser doesn't see an empty spacer - there simply
-   are no traffic lights there. Keyboard display (⌘ vs Ctrl) stays
-   unaffected; that hangs off `data-platform`. */
-[data-platform="macos"]:not([data-shell="web"]) {
+/* macOS-specific: room for the traffic-light buttons in the top left. */
+[data-platform="macos"] {
   --titlebar-traffic-width: 78px;
 }
 
