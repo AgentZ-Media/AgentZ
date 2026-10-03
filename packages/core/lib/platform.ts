@@ -99,7 +99,7 @@ export interface PlatformAdapter {
   platform: Platform;
 
   /** True when the host can pick a directory and write multiple files into
-   *  it (desktop). Web sets false and fall back to per-file blob
+   *  it (desktop). Web sets false and falls back to per-file blob
    *  downloads. Lets the multi-PDF export pick the right strategy. */
   supportsDirectoryWrite: boolean;
 

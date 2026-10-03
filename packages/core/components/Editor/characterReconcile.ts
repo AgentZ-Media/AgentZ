@@ -34,9 +34,10 @@ export interface CharacterReconcileHandle {
    *  synchronously inside `editor.getEditorState().read()` — safe to call
    *  on every update listener tick. */
   reconcileLiveCharactersSync: () => boolean;
-  /** Re-walks the editor state and merges in persisted colors from
-   *  the save summary. Names typed mid-flight (not yet persisted) keep their locally-chosen palette color instead of
-   *  reverting to `PENDING_CHAR_COLOR`. Returns whether anything changed. */
+  /** Re-walks the editor state and merges in persisted colors from the
+   *  save summary. Names typed mid-flight (not yet persisted) keep their
+   *  locally-chosen palette color instead of reverting to
+   *  `PENDING_CHAR_COLOR`. Returns whether anything changed. */
   mergeAfterSave: (
     summary: { characters: ScriptCharacter[] },
   ) => boolean;

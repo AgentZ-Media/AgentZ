@@ -17,7 +17,9 @@ interface NavItem {
   id: SettingsSection;
   icon: IconName;
   label: () => string;
-  /** Separator above this entry. */
+  /** Entry of the lower group (Updates, About). The separator is drawn
+   *  above the first visible entry of that group, since Updates only
+   *  exists on desktop. */
   sep?: boolean;
 }
 
@@ -27,8 +29,8 @@ const NAV: NavItem[] = [
   { id: "folders", icon: "folder", label: () => t("prefs.folders.title") },
   { id: "characters", icon: "users", label: () => t("prefs.characters.title") },
   { id: "shortcuts", icon: "keyboard", label: () => t("prefs.shortcuts.title") },
-  { id: "updates", icon: "refresh", label: () => t("prefs.updates.title") },
-  { id: "about", icon: "info", label: () => t("prefs.about.title") },
+  { id: "updates", icon: "refresh", label: () => t("prefs.updates.title"), sep: true },
+  { id: "about", icon: "info", label: () => t("prefs.about.title"), sep: true },
 ];
 
 /** Settings (⌘,). Parameterless: open state and section come from
@@ -70,9 +72,9 @@ export function SettingsDialog() {
       <nav class="set-nav" aria-label={t("prefs.title")} onKeyDown={onNavKey}>
         <div class="set-title">{t("prefs.title")}</div>
         <For each={items()}>
-          {(item) => (
+          {(item, i) => (
             <>
-              <Show when={item.sep}>
+              <Show when={item.sep && !items()[i() - 1]?.sep}>
                 <div class="set-sep" />
               </Show>
               <button

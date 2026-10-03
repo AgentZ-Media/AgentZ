@@ -1,7 +1,8 @@
 # @agentz/design
 
-The design system of the AgentZ suite (ScriptZ Desktop/Web, future apps). Plain CSS + a few typed data modules - no framework code, so
-any app (Solid, Astro, React, static HTML) can use it.
+The design system of the AgentZ suite (ScriptZ Desktop/Web, future apps).
+Plain CSS + a few typed data modules - no framework code, so any app
+(Solid, Astro, React, static HTML) can use it.
 
 Visual reference: `docs/redesign/concept.html` (the "Werkbank" concept).
 
