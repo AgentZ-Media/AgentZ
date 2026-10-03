@@ -83,17 +83,6 @@ export const shellDe = {
   "shell.cmd.stage": "Stufe → {stage}",
 
   // ---------- update indicator (desktop sidebar) ----------
-  "shell.update.available": "{version} verfügbar",
-  "shell.update.ready": "{version} ist bereit",
-  "shell.update.downloading": "Update lädt … {progress} %",
-  "shell.update.error": "Update fehlgeschlagen",
-  "shell.update.action.install": "Installieren",
-  "shell.update.action.restart": "Neu starten",
-  "shell.update.action.retry": "Erneut",
-  "shell.update.title.available": "Update herunterladen und installieren",
-  "shell.update.title.ready": "Neu starten und das Update installieren",
-  "shell.update.title.downloading": "Das Update wird heruntergeladen und installiert",
-  "shell.update.title.error": "Update fehlgeschlagen - erneut versuchen",
 } as const;
 
 export const shellEn: Record<keyof typeof shellDe, string> = {
@@ -177,15 +166,4 @@ export const shellEn: Record<keyof typeof shellDe, string> = {
   "shell.cmd.stage": "Stage → {stage}",
 
   // ---------- update indicator (desktop sidebar) ----------
-  "shell.update.available": "{version} available",
-  "shell.update.ready": "{version} is ready",
-  "shell.update.downloading": "Downloading update … {progress}%",
-  "shell.update.error": "Update failed",
-  "shell.update.action.install": "Install",
-  "shell.update.action.restart": "Restart",
-  "shell.update.action.retry": "Retry",
-  "shell.update.title.available": "Download and install the update",
-  "shell.update.title.ready": "Restart and install the update",
-  "shell.update.title.downloading": "The update is being downloaded and installed",
-  "shell.update.title.error": "Update failed - try again",
 };

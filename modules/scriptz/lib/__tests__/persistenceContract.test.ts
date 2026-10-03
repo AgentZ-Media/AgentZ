@@ -1,7 +1,7 @@
 // These literals describe already-shipped databases. Keep them independent
 // of production constants so an extraction cannot silently rename a key.
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import type { ScriptzApiStorage } from "../storage";
+import type { TestStorage } from "../../test/storage";
 
 const SETTINGS = {
   theme: "dark",
@@ -30,7 +30,7 @@ function memory() {
   const createScript = vi.fn(async () => ({ id: "welcome-id" }));
   const getScript = vi.fn(async (id: string) => ({ id, title: "Welcome", content_json: '{"root":{"children":[]}}' }));
   const operations = { getSetting, setSetting, getAppState, setAppState, listScripts, createScript, getScript };
-  const adapter = new Proxy(operations as unknown as ScriptzApiStorage, {
+  const adapter = new Proxy(operations as unknown as TestStorage, {
     get(target, prop) {
       const value = Reflect.get(target, prop);
       if (value !== undefined) return value;
@@ -42,6 +42,7 @@ function memory() {
 
 let db: ReturnType<typeof memory>;
 let stop: (() => void) | undefined;
+let stopBase: (() => void) | undefined;
 
 beforeEach(async () => {
   vi.resetModules();
@@ -49,11 +50,13 @@ beforeEach(async () => {
   // Import the facade before installing the fake; this also works before
   // the old automatic SQL-adapter registration is removed in Phase 4.0.
   await import("../api");
-  const { setStorageAdapter } = await import("../storage");
-  setStorageAdapter(db.adapter);
+  const { setTestStorage } = await import("../../test/storage");
+  setTestStorage(db.adapter);
 });
 afterEach(() => {
   stop?.();
+  stopBase?.();
+  stopBase = undefined;
   stop = undefined;
   vi.restoreAllMocks();
 });
@@ -61,14 +64,16 @@ afterEach(() => {
 describe("persisted settings contract", () => {
   it("reads all thirteen existing keys and restores their stored values", async () => {
     const { settingsStore: s, startSettingsRuntime } = await import("../../stores/settings");
+    const { baseSettingsStore: base, startBaseSettingsRuntime } = await import("@agentz/kit/stores");
+    stopBase = startBaseSettingsRuntime();
     stop = startSettingsRuntime();
-    await s.load();
+    await Promise.all([base.load(), s.load()]);
     expect(db.getSetting.mock.calls.map(([key]) => key).sort()).toEqual(Object.keys(SETTINGS).sort());
     expect({
-      theme: s.theme(), highlighting: s.highlightingDefault(), updates: s.updateCheckEnabled(),
-      hourly: s.hourlyUpdateCheck(), quick: s.quickModeAutoEnable(), wpm: s.dialogWpm(),
+      theme: base.theme(), highlighting: s.highlightingDefault(), updates: base.updateCheckEnabled(),
+      hourly: base.hourlyUpdateCheck(), quick: s.quickModeAutoEnable(), wpm: s.dialogWpm(),
       focus: s.focusModeDefault(), stats: s.showWritingStats(), paper: s.darkPaper(),
-      language: s.language(), min: s.lengthMinDefaultSec(), max: s.lengthMaxDefaultSec(),
+      language: base.language(), min: s.lengthMinDefaultSec(), max: s.lengthMaxDefaultSec(),
       prune: s.pruneUnusedCharacters(),
     }).toEqual({
       theme: "dark", highlighting: true, updates: false, hourly: false, quick: true,
@@ -78,12 +83,14 @@ describe("persisted settings contract", () => {
 
   it("writes the same key names and string encodings, including unset bounds", async () => {
     const { settingsStore: s, startSettingsRuntime } = await import("../../stores/settings");
+    const { baseSettingsStore: base, startBaseSettingsRuntime } = await import("@agentz/kit/stores");
+    stopBase = startBaseSettingsRuntime();
     stop = startSettingsRuntime();
     await Promise.all([
-      s.setTheme("auto"), s.setHighlightingDefault(false), s.setUpdateCheckEnabled(true),
-      s.setHourlyUpdateCheck(true), s.setQuickModeAutoEnable(false), s.setDialogWpm(180.6),
+      base.setTheme("auto"), s.setHighlightingDefault(false), base.setUpdateCheckEnabled(true),
+      base.setHourlyUpdateCheck(true), s.setQuickModeAutoEnable(false), s.setDialogWpm(180.6),
       s.setFocusModeDefault(false), s.setShowWritingStats(true), s.setDarkPaper(false),
-      s.setLanguage("de"), s.setLengthMinDefaultSec(null), s.setLengthMaxDefaultSec(95.7),
+      base.setLanguage("de"), s.setLengthMinDefaultSec(null), s.setLengthMaxDefaultSec(95.7),
       s.setPruneUnusedCharacters(false),
     ]);
     expect(Object.fromEntries(db.setSetting.mock.calls)).toEqual({
@@ -143,23 +150,28 @@ describe("persisted app_state contract", () => {
   it("restores layout and per-script focus, then writes their existing shapes", async () => {
     db.state.set("ui.layout", '{"sidebar":false,"inspector":false,"timeline":true}');
     db.state.set("script.script-a.focus_mode", "1");
-    const { uiStore } = await import("../../stores/ui");
+    const { uiStore, startUiRuntime } = await import("../../stores/ui");
+    stop = startUiRuntime();
     await uiStore.load();
     expect([uiStore.sidebarOpen(), uiStore.inspectorOpen(), uiStore.timelineOpen()]).toEqual([false, false, true]);
     uiStore.toggleSidebar();
+    await (await import("@agentz/kit/lib")).flushAll();
     expect(JSON.parse(db.state.get("ui.layout")!)).toEqual({ sidebar: true, inspector: false, timeline: true });
     await uiStore.applyFocusForScript("script-a");
     expect(uiStore.focusMode()).toBe(true);
     uiStore.toggleFocus("script-a");
+    await (await import("@agentz/kit/lib")).flushAll();
     expect(db.state.get("script.script-a.focus_mode")).toBe("0");
     uiStore.toggleFocus("script-a");
+    await (await import("@agentz/kit/lib")).flushAll();
     expect(db.state.get("script.script-a.focus_mode")).toBe("1");
     expect(db.getAppState.mock.calls).toEqual([["ui.layout"], ["script.script-a.focus_mode"]]);
   });
 
   it("round-trips library.view grouping, sort and collapsed group IDs", async () => {
     db.state.set("library.view", '{"grouping":"folder","sort":"title","collapsed":["folder-a","online"]}');
-    const { libraryPrefs } = await import("../../components/Library/prefs");
+    const { libraryPrefs, startLibraryPrefs } = await import("../../components/Library/prefs");
+    stop = startLibraryPrefs();
     await libraryPrefs.load();
     expect(libraryPrefs.grouping()).toBe("folder");
     expect(libraryPrefs.sort()).toBe("title");
@@ -167,6 +179,7 @@ describe("persisted app_state contract", () => {
     libraryPrefs.setGrouping("none");
     libraryPrefs.setSort("created");
     libraryPrefs.toggleCollapsed("online");
+    await (await import("@agentz/kit/lib")).flushAll();
     expect(db.getAppState.mock.calls).toEqual([["library.view"]]);
     expect(JSON.parse(db.state.get("library.view")!)).toEqual({ grouping: "none", sort: "created", collapsed: ["folder-a"] });
   });

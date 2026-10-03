@@ -1,9 +1,10 @@
+import { getKvStore, type KvStore } from "@agentz/kit/platform";
+import { createStatePersistence } from "@agentz/kit/stores";
 // View preferences of the scripts page (grouping, sort, collapsed groups),
 // persisted in app_state. Module-level so they survive the page being
 // unmounted while a script is open.
 
 import { createSignal } from "solid-js";
-import { api } from "../../lib/api";
 
 export type Grouping = "stage" | "folder" | "none";
 export type SortKey = "updated" | "created" | "title";
@@ -17,7 +18,26 @@ const [grouping, setGroupingSignal] = createSignal<Grouping>("stage");
 const [sort, setSortSignal] = createSignal<SortKey>("updated");
 const [collapsed, setCollapsedSignal] = createSignal<Set<string>>(new Set(DEFAULT_COLLAPSED));
 
-let loaded = false;
+let runtime: { active: boolean; loaded: boolean; kv: KvStore; writer: ReturnType<typeof createStatePersistence>; stop(): void } | undefined;
+export function startLibraryPrefs(kv = getKvStore()): () => void {
+  if (runtime?.active) return runtime.stop;
+  const writer = createStatePersistence(kv, PREFS_KEY);
+  setGroupingSignal("stage"); setSortSignal("updated"); setCollapsedSignal(new Set(DEFAULT_COLLAPSED));
+  const current = {
+    active: true, loaded: false, kv, writer,
+    stop() {
+      if (!current.active) return;
+      current.active = false; writer.dispose();
+      if (runtime === current) runtime = undefined;
+    },
+  };
+  runtime = current;
+  return current.stop;
+}
+function ensureRuntime() {
+  if (!runtime) startLibraryPrefs();
+  return runtime!;
+}
 
 function isGrouping(v: unknown): v is Grouping {
   return v === "stage" || v === "folder" || v === "none";
@@ -32,7 +52,7 @@ function persist(): void {
     sort: sort(),
     collapsed: [...collapsed()],
   });
-  void api.setAppState(PREFS_KEY, payload).catch(() => {});
+  runtime?.writer.schedule(payload);
 }
 
 export const libraryPrefs = {
@@ -40,15 +60,18 @@ export const libraryPrefs = {
   sort,
   collapsed,
   setGrouping(v: Grouping) {
+    ensureRuntime();
     setGroupingSignal(v);
     persist();
   },
   setSort(v: SortKey) {
+    ensureRuntime();
     setSortSignal(v);
     persist();
   },
   isCollapsed: (key: string) => collapsed().has(key),
   toggleCollapsed(key: string) {
+    ensureRuntime();
     const next = new Set(collapsed());
     if (next.has(key)) next.delete(key);
     else next.add(key);
@@ -56,12 +79,13 @@ export const libraryPrefs = {
     persist();
   },
   async load(isActive: () => boolean = () => true): Promise<void> {
-    if (loaded) return;
+    const current = ensureRuntime();
+    if (current.loaded) return;
     try {
-      const raw = await api.getAppState(PREFS_KEY);
-      if (!isActive()) return;
+      const raw = await current.kv.getAppState(PREFS_KEY);
+      if (!current.active || !isActive()) return;
       if (!raw) {
-        loaded = true;
+        current.loaded = true;
         return;
       }
       const parsed = JSON.parse(raw) as { grouping?: unknown; sort?: unknown; collapsed?: unknown };
@@ -70,7 +94,7 @@ export const libraryPrefs = {
       if (Array.isArray(parsed.collapsed)) {
         setCollapsedSignal(new Set(parsed.collapsed.filter((k): k is string => typeof k === "string")));
       }
-      loaded = true;
+      current.loaded = true;
     } catch {
       /* defaults */
     }

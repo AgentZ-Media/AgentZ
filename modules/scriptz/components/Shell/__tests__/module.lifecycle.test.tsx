@@ -1,23 +1,22 @@
 import { cleanup, render, waitFor } from "@solidjs/testing-library";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import type { ScriptzApiStorage } from "../../../lib/storage";
+import type { PlatformAdapter } from "@agentz/kit/platform";
+import type { TestStorage as CompleteTestStorage } from "../../../test/storage";
 
 // Keep the actual boot, migration, stores, resource fetchers and buses. Only
 // leaf UI is replaced so editor/PDF/dialog setup cannot obscure lifecycle I/O.
 vi.mock("../../Library/ScriptsPage", () => ({ ScriptsPage: () => <div data-testid="library" /> }));
 vi.mock("../../Library/TrashPage", () => ({ TrashPage: () => null }));
-vi.mock("../../Palette/CommandPalette", () => ({ CommandPalette: () => null }));
 vi.mock("../../Script/ScriptScreen", () => ({ ScriptScreen: () => null }));
 vi.mock("../../Script/StageToast", () => ({ StageUndoToast: () => null }));
 vi.mock("../../Ideas/IdeasPage", () => ({ IdeasPage: () => null }));
 vi.mock("../../Ideas/QuickCapture", () => ({ QuickCapture: () => null }));
 vi.mock("../../Export/ExportDialog", () => ({ ExportDialog: () => null }));
-vi.mock("../../Settings/SettingsDialog", () => ({ SettingsDialog: () => null }));
 vi.mock("../../Onboarding/Onboarding", () => ({
   Onboarding: () => null,
   ONBOARDING_KEY: "onboarding_completed_v1",
 }));
-vi.mock("../Sidebar", () => ({ Sidebar: () => null }));
+vi.mock("../Sidebar", () => ({ Sidebar: () => null, SidebarFooter: () => null }));
 
 function deferred<T>() {
   let resolve!: (value: T) => void;
@@ -52,16 +51,19 @@ function testStorage() {
 type TestStorage = ReturnType<typeof testStorage>;
 
 async function loadShell(storage: TestStorage) {
-  const { setStorageAdapter } = await import("../../../lib/storage");
+  const { setTestStorage } = await import("../../../test/storage");
   // Any unexpected operation fails instead of being silently accepted by a
   // general mock adapter, while methods under test stay individually observable.
-  setStorageAdapter(new Proxy(storage, {
+  setTestStorage(new Proxy(storage, {
     get(target, key) {
       if (key in target) return Reflect.get(target, key);
       throw new Error(`Unexpected storage operation: ${String(key)}`);
     },
-  }) as unknown as ScriptzApiStorage);
-  const { AppShell } = await import("../AppShell");
+  }) as unknown as CompleteTestStorage);
+  const { SuiteShell } = await import("@agentz/kit/shell");
+  const { scriptzModule } = await import("../../../module");
+  const platform = { platform: "linux", getVersion: async () => "test" } as PlatformAdapter;
+  const AppShell = () => <SuiteShell module={scriptzModule} platform={platform} />;
   const { uiStore } = await import("../../../stores/ui");
   const { ideasBus } = await import("../../../lib/ideasBus");
   const { dailyStatsBus } = await import("../../../lib/dailyStatsBus");
@@ -89,7 +91,7 @@ afterEach(() => {
   vi.restoreAllMocks();
 });
 
-describe("AppShell lifecycle", () => {
+describe("ScriptZ module lifecycle", () => {
   it("loads data and opens onboarding only after settings and migration finish", async () => {
     const settings = deferred<string | null>();
     const migration = deferred<string | null>();
@@ -98,7 +100,7 @@ describe("AppShell lifecycle", () => {
     const normalRead = storage.getAppState.getMockImplementation()!;
     storage.getAppState.mockImplementation((key) => key === MIGRATION ? migration.promise : normalRead(key));
     const { AppShell, uiStore } = await loadShell(storage);
-    const onboarding = vi.spyOn(uiStore, "openOnboarding");
+    const onboarding = vi.spyOn((await import("@agentz/kit/stores")).shellUi, "openOnboarding");
     const view = render(() => <AppShell />);
     await settleBoot();
     expectNoDataLoads(storage);
@@ -124,7 +126,7 @@ describe("AppShell lifecycle", () => {
     const storage = testStorage();
     storage.getSetting.mockRejectedValue(new Error("Storage unavailable"));
     const { AppShell, uiStore } = await loadShell(storage);
-    const onboarding = vi.spyOn(uiStore, "openOnboarding");
+    const onboarding = vi.spyOn((await import("@agentz/kit/stores")).shellUi, "openOnboarding");
     const error = vi.spyOn(console, "error").mockImplementation(() => {});
     const view = render(() => <AppShell />);
     await waitFor(() => expect(view.getByRole("alert").textContent).toBe("Storage unavailable"));
@@ -144,7 +146,7 @@ describe("AppShell lifecycle", () => {
       storage.getAppState.mockImplementation((key) => key === MIGRATION ? pending.promise : normalRead(key));
     }
     const { AppShell, uiStore } = await loadShell(storage);
-    const onboarding = vi.spyOn(uiStore, "openOnboarding");
+    const onboarding = vi.spyOn((await import("@agentz/kit/stores")).shellUi, "openOnboarding");
     const view = render(() => <AppShell />);
     await settleBoot();
     if (pendingStep === "migration") expect(storage.getAppState).toHaveBeenCalledWith(MIGRATION);
@@ -207,7 +209,7 @@ describe("AppShell lifecycle", () => {
     const normalRead = storage.getAppState.getMockImplementation()!;
     storage.getAppState.mockImplementation((key) => key === ONBOARDING ? pending.promise : normalRead(key));
     const { AppShell, uiStore } = await loadShell(storage);
-    const onboarding = vi.spyOn(uiStore, "openOnboarding");
+    const onboarding = vi.spyOn((await import("@agentz/kit/stores")).shellUi, "openOnboarding");
     const view = render(() => <AppShell />);
     await waitFor(() => expect(storage.getAppState).toHaveBeenCalledWith(ONBOARDING));
     expect(view.queryByTestId("library")).not.toBeNull();

@@ -4,12 +4,12 @@
 
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { LexicalEditor } from "lexical";
-import { getStorageAdapter, setStorageAdapter, type ScriptzApiStorage } from "../../../lib/storage";
+import { getTestStorage, setTestStorage, type TestStorage } from "../../../test/storage";
 import "../../../lib/api";
 import { flushAll } from "@agentz/kit/lib";
 import { createPersistence } from "../persistence";
 
-const originalAdapter = getStorageAdapter();
+const originalAdapter = getTestStorage();
 
 function doc(text: string): string {
   return JSON.stringify({ root: { children: [{ type: "scriptz-action", children: [{ type: "text", text }] }] } });
@@ -46,7 +46,7 @@ function controllableAdapter() {
         });
       }),
   );
-  const adapter = new Proxy({} as ScriptzApiStorage, {
+  const adapter = new Proxy({} as TestStorage, {
     get(_, prop: string) {
       if (prop === "updateScript") return updateScript;
       return vi.fn().mockResolvedValue(undefined);
@@ -69,12 +69,12 @@ beforeEach(() => {
 
 afterEach(() => {
   vi.useRealTimers();
-  setStorageAdapter(originalAdapter);
+  setTestStorage(originalAdapter);
 });
 
 function setup(initial: string) {
   const store = controllableAdapter();
-  setStorageAdapter(store.adapter);
+  setTestStorage(store.adapter);
   const ed = fakeEditor(initial);
   const handle = createPersistence({
     editor: ed.editor,
@@ -90,7 +90,7 @@ describe("createPersistence", () => {
   it("retries the final live draft after teardown even when Lexical has cleared its document", async () => {
     const errorLog = vi.spyOn(console, "error").mockImplementation(() => {});
     const updateScript = vi.fn().mockRejectedValue(new Error("offline"));
-    setStorageAdapter({ updateScript } as unknown as ScriptzApiStorage);
+    setTestStorage({ updateScript } as unknown as TestStorage);
     const original = doc("stored");
     const finalDraft = doc("last live draft");
     const ed = fakeEditor(original);

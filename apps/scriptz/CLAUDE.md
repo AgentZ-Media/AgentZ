@@ -2,9 +2,9 @@
 
 App-Paket: `@agentz/scriptz-app`. Produktmodul: `@agentz/scriptz`.
 Suite-Regeln: [`CLAUDE.md`](../../CLAUDE.md). Der Kit-Kern ist seit
-Phase 4.1 bis 4.3 extrahiert: neutrale UI, i18n, Plattform-Interfaces,
-KvStore und Speicherhelfer. Die gemeinsame Shell folgt innerhalb von
-Phase 4; der Desktop-Host ist erst für Phase 5 geplant.
+Phase 4 extrahiert: SuiteShell, neutrale UI, i18n, Basis-Settings,
+Navigation, Plattform-Interfaces, KvStore und Speicherhelfer.
+Der Desktop-Host ist erst für Phase 5 geplant.
 Prüfungen und offene Punkte stehen im
 [Umsetzungsstand](../../docs/agentz-suite-fortschritt.md).
 
@@ -21,7 +21,7 @@ length range; plan in [`docs/redesign/umsetzung.md`](../../docs/redesign/umsetzu
 Product UI and logic live in `modules/scriptz/`, neutral components
 and infrastructure in `packages/kit/`, and the design system in
 `packages/design/`; this app is a thin Tauri shell
-(`App.tsx` renders the shared `AppShell` and adds close-flush +
+(`App.tsx` renders Kit `SuiteShell` with `scriptzModule` and adds close-flush +
 auto-updater). Der tatsächliche Code ist die Referenz für das
 aktuelle Verhalten.
 
@@ -48,7 +48,7 @@ Details lazy-load aus [`/.claude/rules/`](../../.claude/rules/):
 
 ```
 src/                    Thin Solid shell: index.tsx (adapters + CSS
-                        layers), App.tsx (AppShell + close flush +
+                        layers), App.tsx (SuiteShell + close flush +
                         updater), lib/platform.ts (Tauri PlatformAdapter),
                         stores/updates.ts, components/Common/UpdateIndicator
 src-tauri/              Rust backend (Tauri 2): plugin wiring + SQL migrations
@@ -59,23 +59,28 @@ vite.config.ts
 
 Detail-Layout der Subverzeichnisse: siehe `scriptz-architecture.md`.
 
-## Expliziter App-Lebenszyklus (Phase 4.0)
+## Expliziter App-Lebenszyklus
 
 `src/index.tsx` registriert vor `render()` die Dienste in der Reihenfolge
-`registerDesktopPlatform()` -> `registerSqlStorageAdapter()` ->
-`registerDesktopUpdates()`. Der Import ihrer Dateien startet keine
-anwendungseigene I/O; die SQL-Fassade registriert ihren Default nicht mehr
-beim Import. Solid-generierte JSX-Event-Delegation bleibt Framework-Verhalten.
+`registerDesktopPlatform()` ->
+`setKvStore(createSqlKvStore(() => getPlatformAdapter().getDb()))` ->
+`registerSqlStorageAdapter()` -> `registerDesktopUpdates()`. KvStore und
+Produkt-Storage teilen die Datenbankverbindung, haben aber getrennte APIs.
+Der Import startet keine anwendungseigene I/O; Solid-generierte
+JSX-Event-Delegation bleibt Framework-Verhalten.
 
-`AppShell` startet `startSettingsRuntime()`, `startNavRuntime()` und
-`startRelativeTimeClock()` explizit. Erst nach dem Laden der Boot-Daten
-und der Legacy-Migration starten `startIdeasStore()`,
-`startDailyStatsStore()` und `startLibraryData()`. Die Shell registriert
-Cleanup synchron, beendet alle gestarteten Laufzeiten beim Unmount und
-verhindert den nachträglichen Resource-Start durch einen verspäteten Boot.
-`App` räumt Fenster-Listener und Updater-Polling auf; HMR entsorgt den
-Render-Root. Plattform- und Update-Interfaces sowie Flush-Koordination
-kommen inzwischen aus dem Kit; die konkreten Tauri-Adapter bleiben hier.
+`SuiteShell` startet und lädt Basis-Settings, Sprache und Theme, dann
+`scriptzModule.setup(ctx)`. Das Modul startet Produkt-Settings, Navigation,
+relative Uhr und den fachlichen Boot; erst nach Boot und Legacy-Migration
+folgen Ideen-, Statistik- und Bibliotheksresources. Abbruchsignal,
+`ctx.onDispose()` und `ctx.runOwned()` verhindern verspätete Ressourcen
+und erhalten die Solid-Lebensdauer. Die Shell räumt Runtime und registrierte
+Cleanups auf. `App` räumt Fenster-Listener und Updater-Polling auf;
+HMR entsorgt den Render-Root.
+
+Die App importiert das Produkt über `@agentz/scriptz`, den SQL-Anschluss
+über `@agentz/scriptz/storage` und Produktstyles über
+`@agentz/scriptz/styles.css`. Keine Deep-Imports in Modul-Interna.
 
 ## Conventions (wichtig)
 
@@ -105,10 +110,12 @@ kommen inzwischen aus dem Kit; die konkreten Tauri-Adapter bleiben hier.
   pre-append `$createTextNode("")` - Lexical's reconciler then renders
   nothing useful and WebKit can't place a caret. With no children,
   the reconciler injects a managed `<br>` placeholder automatically.
-- **Solid stores:** small modules under `modules/scriptz/stores/`.
+- **Solid stores:** product state lives in `modules/scriptz/stores/`;
+  base settings, navigation mechanics and common dialog state live in Kit.
   Components subscribe via getters; mutations go through store actions.
-  Navigation is `stores/nav.ts` (routes, history ⌘[ / ⌘], "Zuletzt"),
-  panel/dialog state is `stores/ui.ts`. **No tabs** - the sidebar shell
+  Product navigation in `stores/nav.ts` uses Kit history (⌘[ / ⌘]) and adds
+  routes plus "Zuletzt". Product panels/focus remain in `stores/ui.ts`.
+  **No tabs** - the sidebar shell
   replaced the tab bar in 2026-10.
 - **Exactly four block types: Action (⌘1), Charakter (⌘2), Dialog (⌘3),
   Parenthetical (⌘4).** Parenthetical is NOT retired: it was briefly

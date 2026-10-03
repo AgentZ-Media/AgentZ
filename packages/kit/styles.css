@@ -1,6 +1,7 @@
 /* Product-neutral application base. Load after @agentz/design styles. */
 @import "./ui/Common.css";
 @import "./ui/Modal.css";
+@import "./shell/Shell.css";
 
 * {
   box-sizing: border-box;

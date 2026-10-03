@@ -3,23 +3,15 @@
 
    Colours, type, spacing, radii, motion and the light/dark/dark-paper
    themes come from @agentz/design (tokens.css + legacy.css), which every
-   app shell imports before core's global.css. This file only holds what
+   app shell imports before the module styles. This file only holds what
    is specific to ScriptZ:
 
-   - platform window chrome (traffic-light spacer)
    - the character palette (highlighting feature - the only intentional
      colour source in the editor, see highlight.ts)
    - A4 paper geometry
    ========================================================================= */
 
 :root {
-  /* ---- Platform-specific window chrome ----
-     On macOS the traffic lights sit top left (78 px wide), so the title
-     bar needs room for them. On Windows/Linux the window buttons are on
-     the right - no spacer. `applyPlatformToDocument()` sets
-     `<html data-platform="...">` during adapter setup. */
-  --titlebar-traffic-width: 0px;
-
   /* ---- Character palette (highlighting feature, stays coloured) ---- */
   --char-1: #e0791f;
   --char-2: #3a8ed4;
@@ -48,11 +40,6 @@
   --paper-content-h: calc(
     var(--paper-h) - var(--paper-margin-top) - var(--paper-margin-bottom)
   );
-}
-
-/* macOS-specific: room for the traffic-light buttons in the top left. */
-[data-platform="macos"] {
-  --titlebar-traffic-width: 78px;
 }
 
 /* "auto" theme is resolved in settings.ts via matchMedia to "dark" or

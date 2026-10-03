@@ -5,7 +5,7 @@
 
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { render } from "@solidjs/testing-library";
-import { getStorageAdapter, setStorageAdapter, type ScriptzApiStorage } from "../../../lib/storage";
+import { getTestStorage, setTestStorage, type TestStorage } from "../../../test/storage";
 import "../../../lib/api";
 import type { Idea, ScriptSummary } from "../../../lib/types";
 import { ideasStore, startIdeasStore } from "../../../stores/ideas";
@@ -13,7 +13,7 @@ import { navStore } from "../../../stores/nav";
 import { t } from "../../../i18n";
 import { IdeasPage } from "../IdeasPage";
 
-const originalAdapter = getStorageAdapter();
+const originalAdapter = getTestStorage();
 let stopIdeas: () => void;
 
 const now = Date.now();
@@ -39,16 +39,16 @@ const setStatus = vi.fn(async () => undefined);
 
 beforeAll(async () => {
   Element.prototype.scrollIntoView = function scrollIntoView() {};
-  const fake: Partial<ScriptzApiStorage> = {
+  const fake: Partial<TestStorage> = {
     listIdeas: async () => IDEAS.map((i) => ({ ...i })),
     listFolders: async () => [],
     listScripts: async () => [],
     globalSearch: async () => [],
-    convertIdeaToScript: convert as unknown as ScriptzApiStorage["convertIdeaToScript"],
-    setScriptStatus: setStatus as unknown as ScriptzApiStorage["setScriptStatus"],
+    convertIdeaToScript: convert as unknown as TestStorage["convertIdeaToScript"],
+    setScriptStatus: setStatus as unknown as TestStorage["setScriptStatus"],
   };
-  setStorageAdapter(
-    new Proxy(fake as ScriptzApiStorage, {
+  setTestStorage(
+    new Proxy(fake as TestStorage, {
       get(target, prop: string) {
         return (target as unknown as Record<string, unknown>)[prop] ?? (async () => null);
       },
@@ -61,7 +61,7 @@ beforeAll(async () => {
 
 afterAll(() => {
   stopIdeas();
-  setStorageAdapter(originalAdapter);
+  setTestStorage(originalAdapter);
 });
 
 const tick = () => new Promise((r) => setTimeout(r, 0));

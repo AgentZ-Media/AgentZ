@@ -21,17 +21,17 @@ und Prüfungen fest.
 
 ## Bestand und Ziel auseinanderhalten
 
-**Stand Phase 4.1 bis 4.3:** `apps/scriptz` verdrahtet das Produktmodul
-`modules/scriptz` und Tauri. `packages/kit` enthält neutrale UI, i18n,
-Plattform-Interfaces, KvStore, Toasts und Speicherhelfer. Das ScriptZ-Modul
-behält vorerst AppShell, Einstellungen und Navigation. `packages/design`
-enthält Tokens, CSS, Schriften, Icons und Logo. `tooling/vitest-preset`
-bündelt die Testkonfiguration.
+**Stand Phase 4:** `apps/scriptz` verdrahtet das Produktmodul
+`modules/scriptz` und Tauri. `packages/kit` enthält die gemeinsame
+`SuiteShell`, neutrale UI, i18n, Basis-Settings, Navigation, Plattform-
+Interfaces, KvStore, Toasts und Speicherhelfer. Das ScriptZ-Modul
+exportiert `scriptzModule: AppModule` und liefert Fachlogik und
+Produkt-Erweiterungen. `packages/design` enthält Tokens, CSS, Schriften,
+Icons und Logo; `tooling/vitest-preset` die Testkonfiguration.
 
-**Erst später:** Gemeinsame Shell und Modul-Vertrag folgen innerhalb von
-Phase 4; `packages/desktop` und `crates/agentz-desktop` in Phase 5. Website
-und App-Generator folgen in Phase 7 beziehungsweise 8. Kein Import darf
-deren Existenz voraussetzen.
+**Erst später:** `packages/desktop` und `crates/agentz-desktop` in Phase 5.
+Website und App-Generator folgen in Phase 7 beziehungsweise 8. Kein Import
+darf deren Existenz voraussetzen.
 
 Zielrichtung (die Grenzen werden bereits jetzt per ESLint geprüft):
 
@@ -76,20 +76,22 @@ laufenden Effekte mit Seiteneffekten. Datenzugriff beginnt in einer
 expliziten Initialisierung nach Registrierung des Plattformadapters.
 Timer, Listener und Effekte brauchen einen definierten Aufräumpfad.
 
-Seit Phase 4.0 startet ScriptZ eigene I/O, Timer und Ressourcen nur
-explizit. `apps/scriptz/src/index.tsx` ruft vor `render()` in dieser
-Reihenfolge `registerDesktopPlatform()`, `registerSqlStorageAdapter()`
-und `registerDesktopUpdates()` auf. `AppShell` startet die Einstellungen,
-Navigation und relative Uhr über `startSettingsRuntime()`,
-`startNavRuntime()` und `startRelativeTimeClock()`.
+Der Host registriert Plattform, Kit-KvStore, Produkt-Storage und Updater
+vor `render()`. `SuiteShell` startet den Basis-Settings-Lebenszyklus und
+lädt Sprache/Theme, bevor sie `module.setup(ctx)` aufruft. ScriptZ startet
+dort Produkt-Settings, Navigation und relative Uhr, lädt seine Boot-Daten
+und migriert Legacy-Blöcke. Erst danach starten Ideen-, Statistik- und
+Bibliotheksresources.
 
-Erst nach den Boot-Ladevorgängen und der Legacy-Migration folgen
-`startIdeasStore()`, `startDailyStatsStore()` und `startLibraryData()`.
-Alle liefern Cleanup-Funktionen; `AppShell` beendet die Laufzeiten beim
-Unmount und startet nach einem während des Bootens erfolgten Unmount
-keine nachträglichen Resources. Die Desktop-Schale beendet ebenfalls
-Updater-Polling und Fenster-Listener. Solid-generierte JSX-Event-Delegation
-ist Framework-Verhalten, keine anwendungseigene Import-I/O.
+`ctx.signal` kennzeichnet einen abgebrochenen Boot. Cleanup sofort über
+`ctx.onDispose()` registrieren, nicht erst am Ende einer langen asynchronen
+Initialisierung. Nach jedem `await` das Signal prüfen; reaktive synchrone
+Initialisierung nach einem `await` mit `ctx.runOwned()` an die Shell-Lebensdauer
+binden. Diese Funktion trägt Ownership nicht über ein weiteres `await`.
+Die Shell beendet auch eine erst nach Unmount zurückkehrende Runtime.
+Die Desktop-Schale beendet Updater-Polling und Fenster-Listener.
+Solid-generierte JSX-Event-Delegation ist Framework-Verhalten,
+keine anwendungseigene Import-I/O.
 
 Das Kit deklariert `sideEffects: ["*.css"]` und explizite Subpath-Exporte.
 Die App-/Modulpakete behalten vorerst das Standardverhalten für Laufzeit-
@@ -100,9 +102,8 @@ pauschales `sideEffects: false`.
 
 - ESM mit `"type": "module"`.
 - Explizite `exports` für öffentliche Subpaths; keine Wildcard-Freigabe
-  sämtlicher interner Dateien. ScriptZ behält während der Migration
-  seine bestehenden Wildcard-Subpaths; Phase 4 verengt diese beim
-  Herauslösen des Kits. Asset-Globs im Designpaket bleiben zulässig.
+  sämtlicher interner Dateien. ScriptZ exportiert nur den Moduleinstieg,
+  `./storage` und `./styles.css`. Asset-Globs im Designpaket bleiben zulässig.
 - Neue seiteneffektfreie Laufzeitpakete deklarieren
   `"sideEffects": ["*.css"]`, damit ihre Styles beim Tree-Shaking erhalten
   bleiben. Weitere notwendige Initialisierung explizit deklarieren;
@@ -159,9 +160,9 @@ UI-Dateien freistellen.
 
 ## Wer verantwortet was?
 
-- **Kit:** produktneutrale Solid-UI, i18n-Engine, Toasts, Plattform-
-  Interfaces, KvStore und Speicherhelfer. Shell, Basiseinstellungen und
-  Nav-Fabrik folgen in Phase 4.4/4.5. Kein Wissen über Skripte oder Charaktere.
+- **Kit:** produktneutrale Solid-UI und Shell, i18n, Basis-Settings,
+  Nav-Fabrik, allgemeiner Dialogzustand, Shortcuts, Toasts, Plattform-
+  Interfaces, KvStore und Speicherhelfer. Kein Wissen über Skripte oder Charaktere.
 - **Modul:** Produktdaten, Storage-Interface und dessen SQL-Implementierung,
   Screens, fachliche Stores, eigene i18n-Texte und Einstellungen. Der
   ScriptZ-Editor samt Lexical-Nodes und PDF-Export bleibt hier.
@@ -184,37 +185,66 @@ strukturellen Umbau unverändert zu erhalten.
   Migrationen bleiben Host-Verantwortung. Das Kit greift nur auf
   `settings` und `app_state` zu. `createSqlKvStore(getDb)` erzeugt ihn,
   `setKvStore()` registriert ihn; `getKvStore()` und `kvStore` liefern
-  den Zugriff. ScriptZ registriert beide Speicherteile gemeinsam über
-  `setStorageAdapter()` und die vorläufige `ScriptzApiStorage`-Fassade.
+  den Zugriff. Produkt-Storage wird separat registriert; `ScriptzStorage`
+  enthält ausschließlich fachliche Operationen.
 - `@agentz/kit/i18n`: gemeinsame Sprachauflösung und typsichere Katalog-
   Komposition mit `createI18n()` beziehungsweise `createModuleI18n()`.
   Produktneutrale Texte gehören ins Kit, Produkttexte ins Modul.
 - `@agentz/kit/lib`: `serialSave`, `FlushCoordinator`, `registerFlusher`
   und `flushAll(timeout)`. Ein Flush liefert `{ ok, failed }`; Fehler,
   negative Save-Ergebnisse und Timeouts sind keine erfolgreiche Sicherung.
+  `requireSuccessfulFlush()` bricht abhängige Aktionen bei Fehler ab.
+  Neutrale Formatierung und relative Uhr liegen ebenfalls hier.
   Registrierungen beim Abbau entfernen, ausstehende Saves vorher sichern.
-- `@agentz/kit/stores`: Toast-Zustand.
+- `@agentz/kit/stores`: Toasts, Basis-Settings, allgemeiner Dialogzustand
+  und generische Navigation/Layout-Persistenz. Die Schlüssel `theme`,
+  `language`, `update_check_enabled` und `hourly_update_check` gehören
+  zu den Basis-Settings; `dark_paper` bleibt im Produkt.
 - `@agentz/kit/ui`: neutrale Dialoge, Icons, parametrisierbare App-Markierung,
   Boot-Fehler, Toast-Host und Settings-Bausteine.
+- `@agentz/kit/shell`: `SuiteShell`, Modul-Vertrag, Settings-Dialog,
+  Befehlspalette und Shortcut-Registry.
 - `@agentz/kit/styles.css`: zugehörige Styles mit semantischen Tokens,
   ohne Abhängigkeit von ScriptZ-CSS oder `legacy.css`.
 
 `ExportPdfDeps`, Lexical, Produkt-Routen und Produkt-Storage bleiben im
 ScriptZ-Modul. Keine dauerhaften Reexports alter Modulpfade anlegen.
 
-## Geplanter Modul-Vertrag (Phase 4.5, noch keine API)
+## Modul-Vertrag
 
+Die verbindlichen Typen stehen in `packages/kit/shell/types.ts`.
 `AppModule` beschreibt ID, Namen, Logo, Über-Texte und i18n-Kataloge als
-reine Daten. Sein `setup(ctx)` läuft erst nach Adapter, KvStore,
-Basiseinstellungen, Sprache und Theme. Es liefert Routen, Sidebar,
-optionale Overlays, Einstellungen, Befehle, Tastenkürzel und Onboarding.
-`flushPending` sichert ausstehende Änderungen mit überprüfbarem Ergebnis;
-`dispose` entfernt Timer, Listener und Effekte. `ModuleContext` injiziert
-Plattform, KvStore, Shell-Steuerung und produktbezogene Dienste.
+reine Daten. `setup(ctx)` läuft nach Adapter, KvStore, Basis-Settings,
+Sprache und Theme. Sein `ModuleRuntime` liefert Routen mit Match-Prädikaten,
+Sidebar-Inhalt und optional Footer, Overlays, Einstellungen, Befehle,
+Tastenkürzel und Onboarding. Das Kit kennt die Produkt-Route-Union nicht.
 
-Der Host lädt das Modul später lazy, nachdem er Adapter und Updater
-registriert hat. Das ersetzt **nicht** die Regel gegen I/O beim Import.
-Die konkrete API wird erst bei der Extraktion in Phase 4.5 festgelegt.
+`ModuleContext` injiziert `platform`, `kv`, `shell`, `services` sowie
+`signal`, `onDispose()` und `runOwned()`. `ShellControls` steuert allgemeine
+Dialoge und Sidebar; Fokus blendet die Sidebar aus, ohne die gespeicherte
+Präferenz zu überschreiben. `dispose()` beendet die Runtime;
+`flushPending()` meldet bei Bedarf ein überprüfbares Flush-Ergebnis.
+
+`settings.sections` ergänzt fachliche Seiten; `settings.extend` hängt
+Zeilen an vorhandene Kit-Sektionen. Appearance, Shortcuts, Updates und
+About gehören ins Kit. Die Shortcut-Hilfe entsteht aus derselben Registry
+wie die globalen Handler. Lokale Lexical-/Listen-Handler bleiben lokal und
+können reine Dokumentationseinträge liefern. Kontexte (`shell`, `editor`,
+`list`, `dialog`), Composition und bereits behandelte Events beachten.
+
+Befehlssuche und Ranking bleiben Produktaufgabe; das Kit stellt Palette,
+Abbruchsignal, Ladezustand und Tastaturnavigation bereit. Onboarding-Inhalt
+und Markername kommen vom Modul; die Shell verwaltet Anzeige und Abschluss.
+Persistierte Marker und JSON-Formate niemals im strukturellen Umbau ändern.
+
+## Unabhängige Kit-Abnahme
+
+`packages/kit/__tests__/fixtures/` enthält ein kleines Modul mit eigener
+Route, Einstellungsseite, Overlay und DE-/EN-Texten. Die Tests rendern die
+Shell ohne ScriptZ-Import. `pnpm --filter @agentz/kit test:fixture` startet
+dieselbe Fixture auf `http://127.0.0.1:4174`; die Seite importiert nur
+Design- und Kit-Styles, kein `legacy.css`. Hell/Dunkel sowie Sprache,
+Einstellungen und Shortcuts lassen sich dort unabhängig prüfen.
 
 ## Ports
 

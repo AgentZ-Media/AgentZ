@@ -12,12 +12,15 @@
 // must be aligned with the editor look, otherwise the export
 // and preview diverge.
 //
-// Fonts: the host serves the TTFs at
-// /fonts/iAWriterQuattroS-*.ttf from its public/ directory,
-// so `fetch("/fonts/...")` works at runtime without path indirection.
+// Font assets belong to the product module. Vite resolves their URLs
+// for both the dev server and the bundled desktop application.
 
 import { PDFDocument, rgb, type PDFFont, type PDFPage } from "pdf-lib";
 import fontkit from "@pdf-lib/fontkit";
+import regularFontUrl from "../assets/fonts/iAWriterQuattroS-Regular.ttf?url";
+import boldFontUrl from "../assets/fonts/iAWriterQuattroS-Bold.ttf?url";
+import italicFontUrl from "../assets/fonts/iAWriterQuattroS-Italic.ttf?url";
+import boldItalicFontUrl from "../assets/fonts/iAWriterQuattroS-BoldItalic.ttf?url";
 import { extractBlocks, type ExtractedBlock, type TextRun } from "./lex";
 import type { ScriptCharacter } from "./types";
 
@@ -69,10 +72,10 @@ let cachedFontBytes: {
 async function loadFontBytes() {
   if (cachedFontBytes) return cachedFontBytes;
   const [regular, bold, italic, boldItalic] = await Promise.all([
-    fetchFont("/fonts/iAWriterQuattroS-Regular.ttf"),
-    fetchFont("/fonts/iAWriterQuattroS-Bold.ttf"),
-    fetchFont("/fonts/iAWriterQuattroS-Italic.ttf"),
-    fetchFont("/fonts/iAWriterQuattroS-BoldItalic.ttf"),
+    fetchFont(regularFontUrl),
+    fetchFont(boldFontUrl),
+    fetchFont(italicFontUrl),
+    fetchFont(boldItalicFontUrl),
   ]);
   cachedFontBytes = { regular, bold, italic, boldItalic };
   return cachedFontBytes;

@@ -76,9 +76,6 @@
   place-items: center;
   color: var(--muted);
 }
-.pal-ic svg.st {
-  color: var(--fg);
-}
 .pal-txt {
   flex: 1;
   min-width: 0;
@@ -97,12 +94,6 @@
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-}
-.pal-snip mark {
-  background: var(--accent-soft);
-  color: var(--fg);
-  border-radius: 2px;
-  padding: 0 1px;
 }
 .pal-it kbd {
   flex: none;

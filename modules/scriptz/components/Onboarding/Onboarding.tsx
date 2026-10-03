@@ -1,11 +1,11 @@
-import { For, Match, Show, Switch, createEffect, createSignal } from "solid-js";
-import { api } from "../../lib/api";
+import { settingsStore } from "../../stores/settings";
+import { For, Match, Show, Switch, createEffect, createSignal, onCleanup } from "solid-js";
 import { CHARACTER_PALETTE } from "../../lib/colors";
 import { K } from "@agentz/kit/platform";
 import { getWelcomeScript } from "../../lib/welcome";
 import { navStore } from "../../stores/nav";
-import { settingsStore, type Theme } from "../../stores/settings";
-import { uiStore } from "../../stores/ui";
+import { baseSettingsStore, type Theme } from "@agentz/kit/stores";
+import type { OnboardingProps } from "@agentz/kit/shell";
 import { type LanguagePref } from "@agentz/kit/i18n";
 import { t } from "../../i18n";
 import { AppMark } from "@agentz/kit/ui";
@@ -24,14 +24,16 @@ const COLOR_B = CHARACTER_PALETTE[4];
 
 /** First-run onboarding (and "Onboarding erneut zeigen" in the settings):
  *  three steps - appearance, the four blocks, keys - on a full-window
- *  grid. Parameterless, driven by `uiStore.onboardingOpen()`. */
-export function Onboarding() {
+ *  grid. Its visibility and completion marker belong to the shared shell. */
+export function Onboarding(props: OnboardingProps) {
   const [step, setStep] = createSignal(0);
   const [finishing, setFinishing] = createSignal(false);
 
+  let disposed = false;
+  onCleanup(() => { disposed = true; });
   let wasOpen = false;
   createEffect(() => {
-    const open = uiStore.onboardingOpen();
+    const open = props.open;
     if (open && !wasOpen) {
       setStep(0);
       setFinishing(false);
@@ -39,28 +41,20 @@ export function Onboarding() {
     wasOpen = open;
   });
 
-  async function persistDone() {
-    try {
-      await api.setAppState(ONBOARDING_KEY, "1");
-    } catch {
-      /* non-fatal */
-    }
-  }
-
   async function skip() {
     if (finishing()) return;
     setFinishing(true);
-    await persistDone();
-    uiStore.closeOnboarding();
+    await props.complete();
   }
 
   async function finish() {
     if (finishing()) return;
     setFinishing(true);
-    await persistDone();
-    uiStore.closeOnboarding();
+    await props.complete();
+    if (disposed) return;
     try {
       const welcome = await getWelcomeScript();
+      if (disposed) return;
       if (welcome) {
         navStore.openScript(welcome.id, welcome.title);
         return;
@@ -68,7 +62,7 @@ export function Onboarding() {
     } catch (err) {
       console.warn("[scriptz] welcome resolution failed", err);
     }
-    if (!navStore.isScripts()) navStore.openScripts();
+    if (!disposed && !navStore.isScripts()) navStore.openScripts();
   }
 
   const next = () => (step() >= STEPS - 1 ? void finish() : setStep(step() + 1));
@@ -103,7 +97,7 @@ export function Onboarding() {
 
   return (
     <DialogFrame
-      open={uiStore.onboardingOpen()}
+      open={props.open}
       onClose={() => void skip()}
       label={t("onb.aria")}
       layerClass="onb"
@@ -197,8 +191,8 @@ function StepAppearance() {
                 <button
                   type="button"
                   role="radio"
-                  aria-checked={settingsStore.theme() === th.id}
-                  onClick={() => void settingsStore.setTheme(th.id)}
+                  aria-checked={baseSettingsStore.theme() === th.id}
+                  onClick={() => void baseSettingsStore.setTheme(th.id)}
                 >
                   {th.label}
                 </button>
@@ -216,8 +210,8 @@ function StepAppearance() {
                 <button
                   type="button"
                   role="radio"
-                  aria-checked={settingsStore.language() === l.id}
-                  onClick={() => void settingsStore.setLanguage(l.id)}
+                  aria-checked={baseSettingsStore.language() === l.id}
+                  onClick={() => void baseSettingsStore.setLanguage(l.id)}
                 >
                   {l.label}
                 </button>

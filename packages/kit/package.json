@@ -13,11 +13,13 @@
     "./stores": "./stores/index.ts",
     "./lib": "./lib/index.ts",
     "./ui": "./ui/index.ts",
-    "./styles.css": "./styles.css"
+    "./styles.css": "./styles.css",
+    "./shell": "./shell/index.ts"
   },
   "scripts": {
     "typecheck": "tsc --noEmit",
-    "test": "vitest run"
+    "test": "vitest run",
+    "test:fixture": "vite --config __tests__/fixtures/vite.config.ts"
   },
   "dependencies": {
     "@agentz/design": "workspace:*",
@@ -28,6 +30,7 @@
     "@solidjs/testing-library": "catalog:",
     "typescript": "catalog:",
     "vitest": "catalog:",
-    "vite": "catalog:"
+    "vite": "catalog:",
+    "vite-plugin-solid": "catalog:"
   }
 }

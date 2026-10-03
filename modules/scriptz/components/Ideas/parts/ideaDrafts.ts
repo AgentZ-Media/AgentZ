@@ -118,7 +118,11 @@ function createEntry(idea: Idea): Entry {
         pushToast(t("common.errorPrefix", { message: (err as Error)?.message ?? String(err) }), "error"),
     });
     // Window close / navigation drain this entry even after its panel is gone.
-    const unregister = registerFlusher(() => saver.flush(), `idea:${idea.id}`);
+    const unregister = registerFlusher(async () => {
+      const result = await saver.flush();
+      maybeDrop(entry);
+      return result;
+    }, `idea:${idea.id}`);
     const entry: Entry = {
       id: idea.id,
       title,

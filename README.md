@@ -4,9 +4,8 @@ Local desktop tools for content creators, built in one open-source repository.
 The suite is growing out of ScriptZ: shared design, reusable application
 infrastructure, and independent apps with their own data and releases.
 
-**ScriptZ is the only app currently included.** A shared kit now provides
-neutral UI and infrastructure; extracting the full application shell is
-still in progress. The desktop host, multi-app release pipeline, website,
+**ScriptZ is the only app currently included.** The shared kit provides
+the application shell, neutral UI, settings, navigation, and infrastructure. The desktop host, multi-app release pipeline, website,
 and app generator remain planned work. Progress and architecture decisions
 are tracked in the [foundation plan](docs/agentz-suite-fundament.md) (German).
 
@@ -31,10 +30,10 @@ apps/scriptz/              @agentz/scriptz-app
   src/                    Solid frontend entry point and Tauri adapters
   src-tauri/              Rust plugin wiring, SQLite migrations, app config
 modules/scriptz/          @agentz/scriptz
-                          ScriptZ editor, UI, stores, and application logic
-packages/kit/            @agentz/kit
-                          Neutral Solid UI, i18n, platform ports, KV and saves
-packages/design/         @agentz/design
+                          ScriptZ AppModule, editor, product UI and data
+packages/kit/             @agentz/kit
+                          SuiteShell, settings, navigation, neutral UI and ports
+packages/design/          @agentz/design
                           Shared CSS tokens, primitives, fonts, icons, assets
 tooling/vitest-preset/     Shared Solid/jsdom test configuration
 Cargo.toml / Cargo.lock   Rust workspace and shared dependency lockfile
@@ -51,7 +50,8 @@ The design package provides framework-independent styles and data.
 apps/scriptz → modules/scriptz → packages/kit → packages/design
 ```
 
-The Kit extraction continues with settings and the shared application shell.
+The native app renders `scriptzModule` through the shared `SuiteShell`.
+Product routes, settings sections, commands, and overlays come from the module.
 A later phase will move Tauri integration into `@agentz/desktop` with a shared
 Rust crate; those host packages do not exist yet. The target dependency direction is:
 
@@ -113,6 +113,11 @@ folder and `scriptz.db` as the installed app. Back up your database before
 working on storage, migrations, or app initialization; the
 [foundation plan](docs/agentz-suite-fundament.md#5-datensicherung) describes
 the SQLite backup and isolated-test workflow.
+
+A standalone Kit fixture is available with
+`pnpm --filter @agentz/kit test:fixture` at `http://127.0.0.1:4174`.
+It exercises the shared shell with a small test module and uses no ScriptZ
+module or legacy stylesheet.
 
 Repository conventions live in [CLAUDE.md](CLAUDE.md), ScriptZ details in
 [apps/scriptz/CLAUDE.md](apps/scriptz/CLAUDE.md), package rules in

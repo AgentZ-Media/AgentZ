@@ -1,19 +1,19 @@
 // Tests for the one-time legacy-block boot migration. Runs against an
-// in-memory ScriptzApiStorage stub, so it verifies the adapter-agnostic flow
+// in-memory TestStorage stub, so it verifies the adapter-agnostic flow
 // (flag handling, which scripts get rewritten, internalRewrite flag).
 
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { getStorageAdapter, setStorageAdapter, type ScriptzApiStorage } from "../storage";
+import { getTestStorage, setTestStorage, type TestStorage } from "../../test/storage";
 import "../api";
 import {
   LEGACY_BLOCKS_MIGRATION_FLAG,
   migrateLegacyBlocksOnce,
 } from "../legacyBlocksMigration";
 
-const originalAdapter = getStorageAdapter();
+const originalAdapter = getTestStorage();
 
 afterEach(() => {
-  setStorageAdapter(originalAdapter);
+  setTestStorage(originalAdapter);
 });
 
 function content(type: string, text: string): string {
@@ -30,7 +30,7 @@ function memoryAdapter(scripts: Record<string, string>, opts: { failGet?: string
     expect(q?.includeArchived).toBe(true);
     return Object.keys(scripts).map((id) => ({ id })) as never;
   });
-  const adapter = new Proxy({} as ScriptzApiStorage, {
+  const adapter = new Proxy({} as TestStorage, {
     get(_, prop: string) {
       switch (prop) {
         case "getAppState":
@@ -65,7 +65,7 @@ describe("migrateLegacyBlocksOnce", () => {
       d: content("scriptz-parenthetical", "(leise)"),
     };
     const m = memoryAdapter(scripts);
-    setStorageAdapter(m.adapter);
+    setTestStorage(m.adapter);
 
     await migrateLegacyBlocksOnce();
 
@@ -84,7 +84,7 @@ describe("migrateLegacyBlocksOnce", () => {
   it("does nothing once the flag is set", async () => {
     const m = memoryAdapter({ a: content("scriptz-sfx", "Pling") });
     m.appState.set(LEGACY_BLOCKS_MIGRATION_FLAG, "1");
-    setStorageAdapter(m.adapter);
+    setTestStorage(m.adapter);
 
     await migrateLegacyBlocksOnce();
 
@@ -97,7 +97,7 @@ describe("migrateLegacyBlocksOnce", () => {
       { a: content("scriptz-sfx", "Pling"), b: content("scriptz-camera", "Close") },
       { failGet: "a" },
     );
-    setStorageAdapter(m.adapter);
+    setTestStorage(m.adapter);
     const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
 
     await migrateLegacyBlocksOnce();
@@ -110,7 +110,7 @@ describe("migrateLegacyBlocksOnce", () => {
   it("skips silently when the adapter cannot list scripts", async () => {
     const m = memoryAdapter({});
     m.listScripts.mockRejectedValueOnce(new Error("not supported"));
-    setStorageAdapter(m.adapter);
+    setTestStorage(m.adapter);
     const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
 
     await expect(migrateLegacyBlocksOnce()).resolves.toBeUndefined();

@@ -1,12 +1,13 @@
 import { createEffect, onCleanup, onMount } from "solid-js";
-import { AppShell } from "@agentz/scriptz/components/Shell/AppShell";
+import { SuiteShell } from "@agentz/kit/shell";
+import { scriptzModule } from "@agentz/scriptz";
 import { flushAll } from "@agentz/kit/lib";
-import { settingsStore } from "@agentz/scriptz/stores/settings";
+import { baseSettingsStore } from "@agentz/kit/stores";
 import { UpdateIndicator } from "./components/Common/UpdateIndicator";
 import { updatesStore } from "~/stores/updates";
 
 /**
- * Desktop shell: the shared Werkbank AppShell plus the Tauri-only glue -
+ * Desktop shell: the shared SuiteShell plus the Tauri-only glue -
  * draining pending saves before the window closes and the auto-updater
  * (background polling + the sidebar indicator).
  */
@@ -60,9 +61,9 @@ export default function App() {
   // the sidebar (and with it the indicator) is currently visible. It waits
   // for the settings so a disabled update check is respected.
   createEffect(() => {
-    if (settingsStore.loaded()) updatesStore.startBackgroundPolling();
+    if (baseSettingsStore.loaded()) updatesStore.startBackgroundPolling();
   });
   onCleanup(() => updatesStore.stopBackgroundPolling());
 
-  return <AppShell sidebarFooterSlot={<UpdateIndicator />} />;
+  return <SuiteShell module={scriptzModule} footer={<UpdateIndicator />} />;
 }

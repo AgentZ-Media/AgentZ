@@ -8,7 +8,7 @@ Umbau; die nachfolgende Trennung von Bestand und Ziel ist verbindlich.
 Der [Umsetzungsstand](docs/agentz-suite-fortschritt.md) dokumentiert
 abgeschlossene Schritte, Prüfungen und offene Punkte.
 
-## Aktuelle Struktur (Phase 4.1 bis 4.3)
+## Aktuelle Struktur (Phase 4)
 
 - [`apps/scriptz/`](apps/scriptz/) - `@agentz/scriptz-app`, die dünne
   Tauri-Schale für ScriptZ. Registriert Plattform- und Speicheranbindung,
@@ -17,12 +17,13 @@ abgeschlossene Schritte, Prüfungen und offene Punkte.
   [`apps/scriptz/CLAUDE.md`](apps/scriptz/CLAUDE.md).
 - [`modules/scriptz/`](modules/scriptz/) - `@agentz/scriptz`, derzeit
   **ScriptZ-Logik und Produkt-UI**: Editor, Lexical-Nodes, Plugins,
-  App-Schale, fachliche Stores und Export-Generatoren. Shell, Einstellungen
-  und Navigation werden in den nächsten Schritten getrennt. Darf **nie**
-  `@tauri-apps/*` importieren.
+  fachliche Stores und Export-Generatoren. Exportiert `scriptzModule`
+  als `AppModule`; `setup(ctx)` liefert Produkt-Routen und Erweiterungen
+  für die gemeinsame Shell. Darf **nie** `@tauri-apps/*` importieren.
 - [`packages/kit/`](packages/kit/) - `@agentz/kit`, produktneutrale
-  Solid-Bausteine, i18n-Engine, Plattform-Interfaces, KvStore, Toasts
-  und Speicherkoordination. Kein Tauri und kein Produktwissen.
+  `SuiteShell`, Solid-Bausteine, i18n-Engine, Plattform-Interfaces, KvStore,
+  Basis-Settings, Navigation, Shortcuts, Toasts und Speicherkoordination.
+  Kein Tauri und kein Produktwissen.
 - [`packages/design/`](packages/design/) - `@agentz/design`, das
   Designsystem der Suite: semantische Tokens hell/dunkel, Legacy-Aliasse,
   CSS-Primitive, UI-Schrift, Icons und Logo. Reines CSS und Daten-Module,
@@ -41,8 +42,8 @@ apps/scriptz -> modules/scriptz -> packages/kit -> packages/design
 
 ## Zielstruktur (noch nicht umgesetzt)
 
-Der Kit-Kern ist vorhanden; gemeinsame Shell und Modul-Vertrag folgen
-innerhalb von Phase 4. `@agentz/desktop` und die Rust-Crate
+Kit, gemeinsame Shell und Modul-Vertrag sind vorhanden.
+`@agentz/desktop` und die Rust-Crate
 `crates/agentz-desktop` entstehen in Phase 5. Website und Generator
 folgen später und dürfen heute nicht als vorhanden vorausgesetzt werden.
 
@@ -68,16 +69,17 @@ bleibt ScriptZ.
 
 ## Konventionen während des Umbaus
 
-ScriptZ behält sein Verhalten. Produktlogik und UI leben vorerst in
-`modules/scriptz/`, OS-Integration in `apps/scriptz/`. Allgemeine Bausteine
-werden erst in ihren vorgesehenen Phasen extrahiert.
+ScriptZ behält sein Verhalten. Produktlogik und Produkt-UI leben in
+`modules/scriptz/`, neutrale Shell und Bausteine in `packages/kit/`,
+OS-Integration bis Phase 5 in `apps/scriptz/`.
 
 Das Modul greift über `PlatformAdapter` aus `@agentz/kit/platform` auf
 Plattformdienste zu. Das Kit verantwortet `KvStore` für `settings` und
 `app_state`; das Produkt-Storage in `modules/scriptz/lib/storage.ts`
 beschreibt die fachlichen Datenzugriffe; `lib/api.ts` stellt `registerSqlStorageAdapter()` für die
 explizite Registrierung des SQL-Defaults bereit. Der App-Einstieg
-registriert Plattform, Storage und Updater vor dem Rendern. Die
+registriert Plattform, Kit-KvStore, Produkt-Storage und Updater vor
+dem Rendern. Kit und Produkt teilen die Verbindung, nicht die Interfaces. Die
 SQLite-Verbindung liefert `PlatformAdapter.getDb()`. Neue Datenzugriffe müssen Interface und
 Implementierung aktualisieren. Schemaänderungen laufen über additive
 SQL-Migrationen in `apps/scriptz/src-tauri/`. Änderungen am Datenmodell
@@ -97,15 +99,18 @@ OS-Chrome-Nachbauten (macOS-Trafficlights). `pnpm check:colors`
 prüft diese Grenze mit einer gezielten Ausnahmeliste.
 
 Module dürfen beim Import keine I/O, Resources mit Datenzugriff
-oder Timer starten. Seit Phase 4.0 beginnt ScriptZ seinen eigenen
-Lebenszyklus explizit: `AppShell` startet Einstellungen, Navigation und
-relative Uhr; Ideen, Tagesstatistik und Bibliotheks-Resources folgen
-erst nach den Boot-Schritten und der Legacy-Migration. Beim Unmount
-werden diese Laufzeiten beendet. Solid-generierte JSX-Event-Delegation
-ist von dieser Regel gegen anwendungseigene Import-I/O zu unterscheiden.
-Der Kit-Kern ist extrahiert; die Shell bleibt vorerst im Modul und der
-Desktop-Host in der App. Paket-Konventionen und die Regel der Zwei stehen
-in der Suite-Regel.
+oder Timer starten. `SuiteShell` lädt Basis-Settings, Sprache und Theme,
+dann startet `scriptzModule.setup(ctx)` den Produkt-Lebenszyklus.
+Welcome, Migration, Navigation und Produkt-Resources bleiben im Modul.
+`ctx.signal`, `ctx.onDispose()` und `ctx.runOwned()` sichern den Abbruch
+und die Solid-Lebensdauer auch bei asynchronem Boot. Beim Unmount werden
+alle Laufzeiten beendet. Solid-generierte JSX-Event-Delegation ist von
+der Regel gegen anwendungseigene Import-I/O zu unterscheiden.
+
+Kit-Styles verwenden ausschließlich semantische Tokens. `check:tokens`
+verhindert Legacy-Token-Namen und `legacy.css`-Imports im Kit und in
+neuen Paketen; nur bestehendes ScriptZ behält seine Übergangsschicht.
+Paket-Konventionen und die Regel der Zwei stehen in der Suite-Regel.
 
 ## Path-scoped Rules
 
@@ -144,7 +149,9 @@ Abhängigkeiten verwenden `workspace:*`.
 
 Workspace-Befehle sind auch direkt nutzbar, z. B.
 `pnpm --filter @agentz/scriptz-app tauri:dev` oder
-`pnpm --filter @agentz/scriptz test`. `pnpm install --frozen-lockfile`
+`pnpm --filter @agentz/scriptz test`. Die unabhängige Kit-Fixture startet
+mit `pnpm --filter @agentz/kit test:fixture` auf Port 4174; sie importiert
+kein ScriptZ-Modul und keine Legacy-Styles. `pnpm install --frozen-lockfile`
 sichert nur `pnpm-lock.yaml`, nicht `Cargo.lock`; dafür ist Cargo mit
 `--locked` zuständig. Signierte Updater-Artefakte benötigen den privaten
 Release-Schlüssel; ein lokaler Build ohne diesen ist keine Release-Abnahme.

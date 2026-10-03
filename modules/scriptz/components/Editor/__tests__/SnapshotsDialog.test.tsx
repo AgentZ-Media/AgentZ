@@ -3,13 +3,15 @@
 // of a plain-text dump.
 
 import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from "vitest";
+import { registerFlusher } from "@agentz/kit/lib";
 import { cleanup, render } from "@solidjs/testing-library";
-import { getStorageAdapter, setStorageAdapter, type ScriptzApiStorage } from "../../../lib/storage";
+import { getTestStorage, setTestStorage, type TestStorage } from "../../../test/storage";
 import "../../../lib/api";
 import type { Snapshot, SnapshotMeta } from "../../../lib/types";
 import { SnapshotsDialog } from "../SnapshotsDialog";
 
-const originalAdapter = getStorageAdapter();
+const createSnapshot = vi.fn();
+const originalAdapter = getTestStorage();
 
 const DOC = JSON.stringify({
   root: {
@@ -48,9 +50,10 @@ const metas: SnapshotMeta[] = [
 const contents: Record<string, string> = { "snap-ok": DOC, "snap-broken": "{not json" };
 
 beforeAll(() => {
-  setStorageAdapter(
-    new Proxy({} as ScriptzApiStorage, {
+  setTestStorage(
+    new Proxy({} as TestStorage, {
       get(_, prop: string) {
+        if (prop === "createSnapshot") return createSnapshot;
         if (prop === "listSnapshots") return vi.fn(async () => metas);
         if (prop === "getSnapshot")
           return vi.fn(async (id: string): Promise<Snapshot> => ({
@@ -65,7 +68,7 @@ beforeAll(() => {
 });
 
 afterAll(() => {
-  setStorageAdapter(originalAdapter);
+  setTestStorage(originalAdapter);
 });
 
 afterEach(() => {
@@ -77,6 +80,17 @@ const settle = async () => {
 };
 
 describe("SnapshotsDialog", () => {
+  it("does not create a snapshot of stale content after a failed save", async () => {
+    const unregister = registerFlusher(() => ({ ok: false }), "failed-draft");
+    try {
+      render(() => <SnapshotsDialog scriptId="s1" open onClose={() => {}} />);
+      await settle();
+      document.querySelector<HTMLButtonElement>(".snap-toolbar .btn")!.click();
+      await settle();
+      expect(createSnapshot).not.toHaveBeenCalled();
+    } finally { unregister(); }
+  });
+
   it("renders the selected version with the read-only editor on paper", async () => {
     render(() => (
       <SnapshotsDialog

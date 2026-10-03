@@ -1,6 +1,6 @@
 import { Show } from "solid-js";
-import { settingsStore } from "@agentz/scriptz/stores/settings";
-import { t } from "@agentz/scriptz/i18n";
+import { baseSettingsStore } from "@agentz/kit/stores";
+import { t } from "@agentz/kit/i18n";
 import { updatesStore } from "~/stores/updates";
 import "./UpdateIndicator.css";
 
@@ -65,7 +65,7 @@ export function UpdateIndicator() {
   };
 
   return (
-    <Show when={settingsStore.updateCheckEnabled() && stage() !== "idle"}>
+    <Show when={baseSettingsStore.updateCheckEnabled() && stage() !== "idle"}>
       <button
         type="button"
         class="upd"

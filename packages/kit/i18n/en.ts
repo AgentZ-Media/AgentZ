@@ -2,6 +2,19 @@
 import type { kitDe } from "./de";
 
 export const kitEn: Record<keyof typeof kitDe, string> = {
+  "shell.update.available": "{version} available",
+  "shell.update.ready": "{version} is ready",
+  "shell.update.downloading": "Downloading update … {progress}%",
+  "shell.update.error": "Update failed",
+  "shell.update.action.install": "Install",
+  "shell.update.action.restart": "Restart",
+  "shell.update.action.retry": "Retry",
+  "shell.update.title.available": "Download and install the update",
+  "shell.update.title.ready": "Restart and install the update",
+  "shell.update.title.downloading": "The update is being downloaded and installed",
+  "shell.update.title.error": "Update failed - try again",
+
+  "persistence.saveFailed": "Some changes could not be saved. Please try again.",
   "common.cancel": "Cancel",
   "common.save": "Save",
   "common.delete": "Delete",

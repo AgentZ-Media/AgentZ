@@ -6,15 +6,16 @@
 
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { cleanup, render } from "@solidjs/testing-library";
-import { getStorageAdapter, setStorageAdapter, type ScriptzApiStorage } from "../../../lib/storage";
+import { getTestStorage, setTestStorage, type TestStorage } from "../../../test/storage";
 import "../../../lib/api";
 import { ideasBus } from "../../../lib/ideasBus";
 import type { Folder, Idea } from "../../../lib/types";
 import { ideasStore, startIdeasStore } from "../../../stores/ideas";
-import { navStore } from "../../../stores/nav";
+import { navStore, startNavRuntime } from "../../../stores/nav";
 import { IdeasPage } from "../IdeasPage";
 
-const originalAdapter = getStorageAdapter();
+const originalAdapter = getTestStorage();
+let stopNav: () => void;
 let stopIdeas: () => void;
 
 const db = new Map<string, Idea>();
@@ -38,7 +39,7 @@ function idea(id: string, created_at: number, extra: Partial<Idea> = {}): Idea {
 
 beforeAll(async () => {
   Element.prototype.scrollIntoView = function scrollIntoView() {};
-  const fake: Partial<ScriptzApiStorage> = {
+  const fake: Partial<TestStorage> = {
     listIdeas: async () => [...db.values()].map((i) => ({ ...i })),
     listFolders: async () => FOLDERS,
     listScripts: async () => [],
@@ -62,20 +63,22 @@ beforeAll(async () => {
       return next;
     },
   };
-  setStorageAdapter(
-    new Proxy(fake as ScriptzApiStorage, {
+  setTestStorage(
+    new Proxy(fake as TestStorage, {
       get(target, prop: string) {
         return (target as unknown as Record<string, unknown>)[prop] ?? (async () => null);
       },
     }),
   );
+  stopNav = startNavRuntime();
   stopIdeas = startIdeasStore();
   await navStore.openIdeas(null);
 });
 
 afterAll(() => {
+  stopNav();
   stopIdeas();
-  setStorageAdapter(originalAdapter);
+  setTestStorage(originalAdapter);
 });
 
 beforeEach(async () => {

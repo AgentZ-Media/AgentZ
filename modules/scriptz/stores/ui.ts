@@ -1,5 +1,6 @@
 import { createSignal } from "solid-js";
-import { api } from "../lib/api";
+import { getKvStore, type KvStore } from "@agentz/kit/platform";
+import { createLayoutStore, createStatePersistence, shellUi } from "@agentz/kit/stores";
 import { settingsStore } from "./settings";
 
 /**
@@ -22,33 +23,62 @@ export type SettingsSection =
   | "about";
 
 // ---- panels (persisted) ----
-const [sidebarOpen, setSidebarOpen] = createSignal(true);
-const [inspectorOpen, setInspectorOpen] = createSignal(true);
-const [timelineOpen, setTimelineOpen] = createSignal(false);
+const layout = createLayoutStore({
+  key: LAYOUT_KEY,
+  defaults: { sidebar: true, inspector: true, timeline: false },
+  decode(value) {
+    const parsed = value as Record<string, unknown>;
+    const result: Partial<{ sidebar: boolean; inspector: boolean; timeline: boolean }> = {};
+    for (const key of ["sidebar", "inspector", "timeline"] as const) {
+      if (typeof parsed?.[key] === "boolean") result[key] = parsed[key];
+    }
+    return result;
+  },
+});
+const sidebarOpen = shellUi.sidebarOpen;
+const inspectorOpen = () => layout.state().inspector;
+const timelineOpen = () => layout.state().timeline;
 
 // ---- focus mode (per script override, like before) ----
 const [focusMode, setFocusMode] = createSignal(false);
 const focusOverride = new Map<string, boolean>();
 
 // ---- dialogs (session only) ----
-const [paletteOpen, setPaletteOpen] = createSignal(false);
 const [captureOpen, setCaptureOpen] = createSignal(false);
-const [settingsOpen, setSettingsOpen] = createSignal(false);
-const [settingsSection, setSettingsSection] = createSignal<SettingsSection>("appearance");
 const [exportScriptId, setExportScriptId] = createSignal<string | null>(null);
-const [onboardingOpen, setOnboardingOpen] = createSignal(false);
 const [activityOpen, setActivityOpen] = createSignal(false);
 
 // ---- ideas page: pending "select + reveal this idea" request ----
 const [ideaToReveal, setIdeaToReveal] = createSignal<string | null>(null);
 
-function persistLayout() {
-  const payload = JSON.stringify({
-    sidebar: sidebarOpen(),
-    inspector: inspectorOpen(),
-    timeline: timelineOpen(),
-  });
-  void api.setAppState(LAYOUT_KEY, payload).catch(() => {});
+type UiRuntime = {
+  kv: KvStore;
+  active: boolean;
+  focusWrites: Map<string, ReturnType<typeof createStatePersistence>>;
+  stop(): void;
+};
+let runtime: UiRuntime | undefined;
+export function startUiRuntime(kv = getKvStore()): () => void {
+  if (runtime?.active) return runtime.stop;
+  const stopLayout = layout.start(kv);
+  const unbind = shellUi.setSidebarPersistence((sidebar) => layout.update({ sidebar }));
+  focusOverride.clear(); setFocusMode(false);
+  setCaptureOpen(false); setExportScriptId(null); setActivityOpen(false); setIdeaToReveal(null);
+  const current: UiRuntime = {
+    active: true, kv, focusWrites: new Map(),
+    stop() {
+      if (!current.active) return;
+      current.active = false; unbind(); stopLayout();
+      for (const write of current.focusWrites.values()) write.dispose();
+      if (runtime === current) runtime = undefined;
+    },
+  };
+  runtime = current;
+  return current.stop;
+}
+function ensureRuntime(): UiRuntime {
+  if (!runtime) startUiRuntime();
+  return runtime!;
 }
 
 export const uiStore = {
@@ -57,20 +87,20 @@ export const uiStore = {
   inspectorOpen,
   timelineOpen,
   toggleSidebar() {
-    setSidebarOpen(!sidebarOpen());
-    persistLayout();
+    ensureRuntime();
+    shellUi.toggleSidebar();
   },
   toggleInspector() {
-    setInspectorOpen(!inspectorOpen());
-    persistLayout();
+    ensureRuntime();
+    layout.update({ inspector: !inspectorOpen() });
   },
   toggleTimeline() {
-    setTimelineOpen(!timelineOpen());
-    persistLayout();
+    ensureRuntime();
+    layout.update({ timeline: !timelineOpen() });
   },
   setTimelineOpen(v: boolean) {
-    setTimelineOpen(v);
-    persistLayout();
+    ensureRuntime();
+    layout.update({ timeline: v });
   },
 
   // focus mode
@@ -79,6 +109,7 @@ export const uiStore = {
    *  choice wins, otherwise the global default from the settings. */
   async applyFocusForScript(scriptId: string, isActive: () => boolean = () => true) {
     if (!isActive()) return;
+    const current = ensureRuntime();
     const cached = focusOverride.get(scriptId);
     if (cached !== undefined) {
       setFocusMode(cached);
@@ -86,8 +117,8 @@ export const uiStore = {
     }
     setFocusMode(settingsStore.focusModeDefault());
     try {
-      const raw = await api.getAppState(FOCUS_KEY(scriptId));
-      if (!isActive()) return;
+      const raw = await current.kv.getAppState(FOCUS_KEY(scriptId));
+      if (!current.active || !isActive()) return;
       if (raw === "1" || raw === "0") {
         const v = raw === "1";
         focusOverride.set(scriptId, v);
@@ -99,11 +130,15 @@ export const uiStore = {
   },
   /** ⌘⇧F. Remembers the choice for this script. */
   toggleFocus(scriptId: string | null) {
+    const current = ensureRuntime();
     const next = !focusMode();
     setFocusMode(next);
     if (scriptId) {
       focusOverride.set(scriptId, next);
-      void api.setAppState(FOCUS_KEY(scriptId), next ? "1" : "0").catch(() => {});
+      const key = FOCUS_KEY(scriptId);
+      let write = current.focusWrites.get(key);
+      if (!write) { write = createStatePersistence(current.kv, key); current.focusWrites.set(key, write); }
+      write.schedule(next ? "1" : "0");
     }
   },
   /** Leaving the editor always ends focus mode (lists never dim). */
@@ -112,30 +147,27 @@ export const uiStore = {
   },
 
   // dialogs
-  paletteOpen,
-  openPalette: () => setPaletteOpen(true),
-  closePalette: () => setPaletteOpen(false),
+  paletteOpen: shellUi.paletteOpen,
+  openPalette: shellUi.openPalette,
+  closePalette: shellUi.closePalette,
 
   captureOpen,
   openCapture: () => setCaptureOpen(true),
   closeCapture: () => setCaptureOpen(false),
 
-  settingsOpen,
-  settingsSection,
-  openSettings(section?: SettingsSection) {
-    if (section) setSettingsSection(section);
-    setSettingsOpen(true);
-  },
-  closeSettings: () => setSettingsOpen(false),
-  setSettingsSection,
+  settingsOpen: shellUi.settingsOpen,
+  settingsSection: shellUi.settingsSection,
+  openSettings: shellUi.openSettings,
+  closeSettings: shellUi.closeSettings,
+  setSettingsSection: shellUi.setSettingsSection,
 
   exportScriptId,
   openExport: (scriptId: string) => setExportScriptId(scriptId),
   closeExport: () => setExportScriptId(null),
 
-  onboardingOpen,
-  openOnboarding: () => setOnboardingOpen(true),
-  closeOnboarding: () => setOnboardingOpen(false),
+  onboardingOpen: shellUi.onboardingOpen,
+  openOnboarding: shellUi.openOnboarding,
+  closeOnboarding: shellUi.closeOnboarding,
 
   activityOpen,
   openActivity: () => setActivityOpen(true),
@@ -154,24 +186,16 @@ export const uiStore = {
 
   /** True while any modal dialog is open (global shortcuts back off). */
   anyDialogOpen: () =>
-    paletteOpen() ||
+    shellUi.paletteOpen() ||
     captureOpen() ||
-    settingsOpen() ||
+    shellUi.settingsOpen() ||
     exportScriptId() !== null ||
-    onboardingOpen() ||
+    shellUi.onboardingOpen() ||
     activityOpen(),
 
   async load(isActive: () => boolean = () => true) {
-    try {
-      const raw = await api.getAppState(LAYOUT_KEY);
-      if (!isActive()) return;
-      if (!raw) return;
-      const parsed = JSON.parse(raw) as { sidebar?: boolean; inspector?: boolean; timeline?: boolean };
-      if (typeof parsed.sidebar === "boolean") setSidebarOpen(parsed.sidebar);
-      if (typeof parsed.inspector === "boolean") setInspectorOpen(parsed.inspector);
-      if (typeof parsed.timeline === "boolean") setTimelineOpen(parsed.timeline);
-    } catch {
-      /* defaults */
-    }
+    const current = ensureRuntime();
+    await layout.load(() => current.active && isActive());
+    if (current.active && isActive()) shellUi.setSidebarOpenSilently(layout.state().sidebar);
   },
 };

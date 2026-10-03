@@ -8,6 +8,7 @@
 // and `ESCAPE '\'`, case-insensitive for ASCII.
 
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { registerFlusher } from "@agentz/kit/lib";
 import { serializeCharsMeta } from "../characterColors";
 import {
   characterUsageBus,
@@ -26,7 +27,7 @@ import {
   startCharacterAutoPrune,
 } from "../characterAutoPrune";
 import { getPlatformAdapter, setPlatformAdapter, type DbConnection, type PlatformAdapter } from "@agentz/kit/platform";
-import { getStorageAdapter, setStorageAdapter, type ScriptzApiStorage } from "../storage";
+import { getTestStorage, setTestStorage, type TestStorage } from "../../test/storage";
 import "../api";
 
 const meta = (...names: string[]) => serializeCharsMeta(names.map((name) => ({ name, color: "#e0791f" })));
@@ -100,11 +101,11 @@ const originalPlatform = (() => {
     return null;
   }
 })();
-const originalStorage = getStorageAdapter();
+const originalStorage = getTestStorage();
 
 afterEach(() => {
   if (originalPlatform) setPlatformAdapter(originalPlatform);
-  setStorageAdapter(originalStorage);
+  setTestStorage(originalStorage);
 });
 
 function usePlatform(db: DbConnection) {
@@ -221,13 +222,24 @@ describe("automatic cleanup", () => {
   beforeEach(() => {
     vi.useFakeTimers();
     prune = vi.fn().mockResolvedValue(["B"]);
-    setStorageAdapter({ pruneUnusedCharacterNames: prune } as unknown as ScriptzApiStorage);
+    setTestStorage({ pruneUnusedCharacterNames: prune } as unknown as TestStorage);
   });
 
   afterEach(() => {
     stop?.();
     stop = null;
     vi.useRealTimers();
+  });
+
+  it("does not prune while an unsaved draft failed and resumes after recovery", async () => {
+    stop = startCharacterAutoPrune(() => true);
+    const unregister = registerFlusher(() => ({ ok: false }), "draft");
+    try {
+      await expect(runCharacterPrune()).rejects.toMatchObject({ name: "FlushError", failed: ["draft"] });
+      expect(prune).not.toHaveBeenCalled();
+    } finally { unregister(); }
+    expect(await runCharacterPrune()).toEqual(["B"]);
+    expect(prune).toHaveBeenCalledOnce();
   });
 
   it("debounces drop signals into one pass", async () => {

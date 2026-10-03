@@ -226,6 +226,7 @@ export const de = {
   "idea.quick.toast.remembered": "Idee „{title}\" gemerkt",
 
   // ---------- status strip ----------
+  "save.navigationBlocked": "Änderungen konnten nicht gespeichert werden. Bitte versuche es erneut.",
   "save.error.toast": "Skript konnte nicht gespeichert werden: {message}",
 
   // ---------- character / color picker ----------

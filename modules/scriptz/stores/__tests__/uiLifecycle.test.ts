@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import type { ScriptzApiStorage } from "../../lib/storage";
+import type { TestStorage } from "../../test/storage";
 
 function deferred<T>() {
   let resolve!: (value: T) => void;
@@ -9,9 +9,9 @@ function deferred<T>() {
 
 beforeEach(() => vi.resetModules());
 
-async function install(getAppState: ScriptzApiStorage["getAppState"]) {
-  const { setStorageAdapter } = await import("../../lib/storage");
-  setStorageAdapter({ getAppState } as ScriptzApiStorage);
+async function install(getAppState: TestStorage["getAppState"]) {
+  const { setTestStorage } = await import("../../test/storage");
+  setTestStorage({ getAppState } as TestStorage);
 }
 
 describe("UI reads across shell lifetimes", () => {
@@ -73,4 +73,27 @@ describe("UI reads across shell lifetimes", () => {
     expect(read).toHaveBeenCalledTimes(2);
     expect(libraryPrefs.sort()).toBe("title");
   });
+
+  it("reloads preferences for a new runtime and drains the old view into its original store", async () => {
+    const oldWrites = vi.fn().mockResolvedValue(undefined);
+    const newWrites = vi.fn().mockResolvedValue(undefined);
+    const oldKv = { getAppState: async () => '{"grouping":"folder"}', setAppState: oldWrites,
+      getSetting: async () => null, setSetting: async () => {} };
+    const newKv = { ...oldKv, getAppState: async () => '{"sort":"title"}', setAppState: newWrites };
+    const { libraryPrefs, startLibraryPrefs } = await import("../../components/Library/prefs");
+    const { flushAll } = await import("@agentz/kit/lib");
+    const stopOld = startLibraryPrefs(oldKv);
+    await libraryPrefs.load();
+    libraryPrefs.setGrouping("none");
+    stopOld();
+    const stopNew = startLibraryPrefs(newKv);
+    await libraryPrefs.load();
+    await flushAll();
+    expect(libraryPrefs.grouping()).toBe("stage");
+    expect(libraryPrefs.sort()).toBe("title");
+    expect(oldWrites).toHaveBeenCalledWith("library.view", JSON.stringify({ grouping: "none", sort: "updated", collapsed: ["shot", "online"] }));
+    expect(newWrites).not.toHaveBeenCalled();
+    stopNew();
+  });
+
 });

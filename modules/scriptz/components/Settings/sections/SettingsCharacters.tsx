@@ -2,7 +2,7 @@ import { For, Show, createEffect, createSignal, on } from "solid-js";
 import { api } from "../../../lib/api";
 import { runCharacterPrune } from "../../../lib/characterAutoPrune";
 import { characterUsageBus } from "../../../lib/characterUsage";
-import { flushAll } from "@agentz/kit/lib";
+import { requireSuccessfulFlush } from "@agentz/kit/lib";
 import { scriptsBus } from "../../../lib/scriptsBus";
 import { settingsStore } from "../../../stores/settings";
 import { pushToast } from "@agentz/kit/stores";
@@ -65,7 +65,7 @@ export function SettingsCharacters(props: { onClose(): void }) {
     setChecking(true);
     try {
       // Pending editor saves first, so a name typed a moment ago counts.
-      await flushAll();
+      await requireSuccessfulFlush();
       const [names, all] = await Promise.all([api.findUnusedCharacterNames(), api.listCharacterColors()]);
       setUnused(new Set(names));
       if (names.length === 0) {
@@ -82,6 +82,7 @@ export function SettingsCharacters(props: { onClose(): void }) {
         danger: true,
       });
       if (!ok) return;
+      await requireSuccessfulFlush();
       const removed = await api.pruneUnusedCharacterNames(names);
       setUnused(new Set<string>());
       pushToast(tPlural("prefs.characters.cleanup.done", removed.length), "ok");
@@ -103,7 +104,7 @@ export function SettingsCharacters(props: { onClose(): void }) {
     // Switching it on cleans up right away - what "only keep names in use"
     // promises. Later drops are handled in the background.
     try {
-      await flushAll();
+      await requireSuccessfulFlush();
       const removed = await runCharacterPrune();
       setUnused(new Set<string>());
       if (removed.length > 0) pushToast(tPlural("prefs.characters.cleanup.done", removed.length), "ok");

@@ -8,13 +8,8 @@
   "types": "./index.ts",
   "exports": {
     ".": "./index.ts",
-    "./i18n": "./i18n/index.ts",
-    "./i18n/*": "./i18n/*.ts",
-    "./lib/*": "./lib/*.ts",
-    "./stores/*": "./stores/*.ts",
-    "./components/*.css": "./components/*.css",
-    "./components/*": "./components/*.tsx",
-    "./styles/*.css": "./styles/*.css"
+    "./storage": "./lib/api.ts",
+    "./styles.css": "./styles/global.css"
   },
   "scripts": {
     "typecheck": "tsc --noEmit",
@@ -40,5 +35,8 @@
     "vite-plugin-solid": "catalog:",
     "vitest": "catalog:",
     "@agentz/vitest-preset": "workspace:*"
-  }
+  },
+  "sideEffects": [
+    "*.css"
+  ]
 }

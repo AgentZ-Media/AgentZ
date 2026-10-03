@@ -13,11 +13,11 @@ All persistence, search, export and CRUD lives in TypeScript; the Rust
 crate is reduced to plugin wiring + schema migrations. macOS Apple
 Silicon + Windows x64 are first-class; Linux not (yet) shipped.
 
-Seit Phase 2 des Suite-Fundaments liegt die bisherige App-Logik aus
-dem Redesign „Werkbank" in `modules/scriptz/` (UI, Stores, Logik) und
-`packages/design/` (Designsystem). `apps/scriptz/` ist eine dünne Schale.
-`@agentz/kit` enthält seit Phase 4.1 bis 4.3 die neutralen Bausteine;
-`@agentz/desktop` entsteht erst in Phase 5.
+Produktlogik aus dem Redesign „Werkbank" liegt in `modules/scriptz/`
+(UI, fachliche Stores, Datenmodell, Editor). `packages/design/` enthält
+das Designsystem, `packages/kit/` die gemeinsame Shell und Infrastruktur.
+`apps/scriptz/` verdrahtet `scriptzModule` mit SuiteShell und den nativen
+Adaptern. `@agentz/desktop` entsteht erst in Phase 5.
 Konzept und Arbeitsplan: [`docs/redesign/umsetzung.md`](../../docs/redesign/umsetzung.md),
 visuelle Referenz `docs/redesign/concept.html`, Längenziel-Spec
 [`docs/feature-laengenziel.md`](../../docs/feature-laengenziel.md).
@@ -27,8 +27,8 @@ Seit Phase 3 gelten außerdem die automatischen Paketgrenzen und
 Konventionen aus [`suite-architecture.md`](suite-architecture.md).
 Cargo-Workspace, Lockfile und `target/` liegen im Repo-Root;
 `apps/scriptz/src-tauri/` bleibt das App-Crate mit seinen Migrationen.
-Phase 4.0 hat den Import-Lebenszyklus explizit gemacht. Die Kit-Grundlagen
-sind extrahiert; Shell, Einstellungen und Navigation folgen noch.
+Phase 4 hat Lebenszyklus, Shell, gemeinsame Einstellungen und Navigation
+von der Produktlogik getrennt.
 Prüfungen und offene Punkte stehen im
 [Umsetzungsstand](../../docs/agentz-suite-fortschritt.md).
 
@@ -57,11 +57,12 @@ apps/scriptz/
                            "Legacy-Blöcke").
     capabilities/default.json, tauri.conf.json, Cargo.toml
   src/
-    index.tsx              Explicitly registers platform, SQL and updates
+    index.tsx              Explicitly registers platform, Kit KV, product SQL
+                           and updates
                            before render(), then imports the CSS layers
                            (@agentz/design fonts -> tokens -> legacy ->
                            components, kit styles, then module global.css), mounts <App>.
-    App.tsx                <AppShell sidebarFooterSlot={<UpdateIndicator/>}> +
+    App.tsx                <SuiteShell module={scriptzModule} footer={...}> +
                            onCloseRequested -> flushAll(2000) + updater
                            background polling. Nothing else.
     lib/platform.ts        Tauri PlatformAdapter: plugin-sql Database as
@@ -90,13 +91,21 @@ packages/kit/              @agentz/kit - product-neutral application primitives
   platform/               PlatformAdapter, DbConnection, KvStore + SQL,
                            key helpers, updater slot. No Tauri imports.
   i18n/                   Shared language engine and neutral DE/EN catalog.
-  lib/                    serialSave, FlushCoordinator (result: ok + failed).
-  stores/                 Toast state.
+  lib/                    serialSave, FlushCoordinator (result: ok + failed),
+                           requireSuccessfulFlush, time/number formatting.
+  stores/                 Toasts, baseSettings, createNavStore, createLayoutStore,
+                           state persistence and general shell dialog state.
+  shell/                  SuiteShell, AppModule/ModuleRuntime/ModuleContext,
+                           settings, command palette and shortcut registry.
   ui/                     Modal, ConfirmDialog, ToastHost, Icon, AppMark,
                            BootErrorScreen, DialogFrame, settings primitives.
   styles.css              Neutral CSS on semantic tokens, no legacy aliases.
 
 modules/scriptz/
+  index.ts                Exports scriptzModule: AppModule.
+  module.tsx              Product setup: boot, lifecycle, routes, sidebar,
+                           overlays, commands, settings, onboarding.
+  assets/fonts/           iA Writer Quattro WOFF2 + PDF TTFs and license.
   styles/
     tokens.css             ScriptZ-only tokens: traffic-light spacer,
                            character palette (--char-*), A4 paper geometry.
@@ -105,21 +114,15 @@ modules/scriptz/
                            settings rules are now owned by Kit.
   components/
     Shell/
-      AppShell.tsx         App-Schale: Boot-Sequenz
-                           (settings, welcome seed, nav/ui/prefs load,
-                           runtime backfill, then migrateLegacyBlocksOnce,
-                           then startIdeasStore/startDailyStatsStore/
-                           startLibraryData), sidebar | main layout,
-                           route rendering, mounts all dialogs once.
-                           Prop: sidebarFooterSlot.
-      Sidebar.tsx          Dark sidebar: app row, search + new, "Alle
-                           Skripte", Ideen, pipeline (stages), folders,
-                           "Zuletzt", footer (WritingCounter, trash,
-                           settings, host slot).
+      Sidebar.tsx          Product navigation: search + new, all scripts,
+                           ideas, pipeline stages, folders and recent scripts.
+                           Product footer has writing counter/trash/settings;
+                           Kit owns brand, sidebar frame and host footer slot.
       libraryData.ts       Shared reactive lists (live scripts + folders),
                            refetched on scriptsBus / foldersBus.
-      shortcuts.ts         Global shortcuts (⌘K, ⌘N, ⌘I, ⌘[ ⌘], ⌘\, ⌘⇧\,
-                           ⌘J, ⌘⌥←/→, ⌘⇧F, ⌘E, ⌘, ...), window bubble phase.
+      shortcuts.ts         Product ShortcutDef entries; global handlers are
+                           installed by Kit. Local Lexical/list handlers stay
+                           local and supply documentation-only entries.
     Library/
       ScriptsPage.tsx      Script list: groups by stage/folder/none, filter,
                            sort, selection mode, length range per row.
@@ -130,7 +133,8 @@ modules/scriptz/
       ContextMenu, PromptDialog,
       TrashPage, actions.ts (shared script/folder ops + toasts), dnd.ts
       (row -> sidebar folder), prefs.ts (grouping/sort in app_state).
-    Palette/CommandPalette.tsx   ⌘K: scripts, ideas, commands; empty = Zuletzt.
+    Palette/commands.tsx   Product search/ranking, scripts, ideas and commands;
+                           empty = recent. Kit owns palette UI and query lifetime.
     Script/
       ScriptScreen.tsx     Editor screen ({ scriptId }): TopBar, paper,
                            Inspector, Timeline, focus chrome, recovery.
@@ -182,41 +186,35 @@ modules/scriptz/
                            QuickCapture (⌘I modal),
                            ideaGroups.ts, similar.ts, folderColor.ts
     Export/                ExportDialog (⌘E, live preview via pdfPreview.ts)
-    Settings/              SettingsDialog + sections/ (Appearance, Writing,
-                           Folders incl. length range per folder, Characters,
-                           Shortcuts, Updates, About), rangeInput.ts
-    Onboarding/            Onboarding (3 steps, ONBOARDING_KEY)
+    Settings/              moduleSettings.ts: Writing, Folders, Characters;
+                           DarkPaperSetting extends Kit Appearance.
+                           rangeInput.ts and product field primitives remain.
+    Onboarding/            Product content (3 steps). Kit manages the once flag
+                           onboarding_completed_v1 and completion.
     Activity/              WritingCounter (sidebar footer), ActivityModal
                            (window totals + Heatmap). No goal, no streak.
     Common/                StageGlyph (product status). Neutral components
                            are imported directly from @agentz/kit/ui.
   stores/
-    nav.ts                 Route (scripts | ideas | script | trash),
-                           history (⌘[ / ⌘]), "Zuletzt" (max 8). Persisted
-                           in app_state["nav.state"]; migrates the old
-                           app_state["open_tabs"] once. Every route change
-                           runs flushAll() first.
-    ui.ts                  Sidebar / inspector / timeline (persisted in
-                           app_state["ui.layout"]), focus mode (per-script
-                           override), open dialogs (palette, capture,
-                           settings + section, export, onboarding,
-                           activity). Dialogs are parameterless.
-    settings.ts            theme, language, highlightingDefault, darkPaper,
-                           focusModeDefault (default off), quickMode,
-                           showWritingStats (= writing counter, default on),
-                           dialogWpm, length_min/max_default_sec, update
-                           flags,
-                           pruneUnusedCharacters (default off).
+    nav.ts                 Product Route (scripts | ideas | script | trash),
+                           recent metadata (max 8) and legacy open_tabs decoder.
+                           Kit owns history (⌘[ / ⌘]) and buffered persistence;
+                           nav.state keeps its existing JSON shape.
+    ui.ts                  Inspector, timeline, focus/quick mode and product
+                           dialogs. Binds Kit sidebar state to createLayoutStore
+                           for the unchanged complete ui.layout object.
+    settings.ts            Product settings: highlighting, focus, quick mode,
+                           writing stats, dark paper, words/minute, length
+                           range and unused-character pruning. Kit owns theme,
+                           language and both updater flags.
     dailyStats.ts, ideas.ts, saveStatus.ts
   lib/
     api.ts                 `api.*` facade = proxy onto the registered
-                           ScriptzApiStorage. registerSqlStorageAdapter()
+                           ScriptzStorage. registerSqlStorageAdapter()
                            explicitly installs the SQL-backed default;
                            importing the facade does not register it.
-    storage.ts             ScriptzStorage: product CRUD; ScriptzApiStorage
-                           temporarily composes it with KvStore. Registration
-                           installs the shared KvStore as well.
-                           Includes validateLengthRange.
+    storage.ts             ScriptzStorage: product CRUD only, plus
+                           validateLengthRange. Kit KV is separately registered.
     db.ts                  getDb() via Kit PlatformAdapter.
     types.ts               Script, ScriptSummary (+ status,
                            status_changed_at), Folder (+ length_min_sec,
@@ -243,12 +241,12 @@ modules/scriptz/
     legacyBlocks.ts        normalizeLegacyContent / normalizeLegacyTree.
     legacyBlocksMigration.ts  migrateLegacyBlocksOnce() (boot).
     exportPdf.ts (incl. product ExportPdfDeps), exportSelection.ts (multi PDF),
-    scriptzFile.ts (.scriptz
-    v1, status additive), ideas.ts, dailyWords.ts,
+    scriptzFile.ts (.scriptz v1, status additive), ideas.ts, dailyWords.ts,
     characterColors.ts, characterUsage.ts (welche Registry-Namen noch
     benutzt werden: gestückelter Scan über characters_meta, SQL-Find/Prune,
     characterUsageBus), characterAutoPrune.ts (optionales Auto-Aufräumen,
-    debounced), welcome.ts, format.ts, colors.ts, scriptViewCache.ts,
+    debounced), welcome.ts, format.ts (printed page count), colors.ts,
+    scriptViewCache.ts,
     *Bus.ts (scripts/folders/ideas/dailyStats pub-sub).
   i18n/                    Product catalogs de.ts / en.ts + parts;
                            typed composition with @agentz/kit/i18n.
@@ -325,27 +323,25 @@ Blocktyp und läuft unverändert durch. Deshalb:
 
 ## Data flow
 
-- Host (`apps/scriptz/src/index.tsx`): `registerDesktopPlatform()` ->
-  `registerSqlStorageAdapter()` -> `registerDesktopUpdates()` -> `render()`;
-  anwendungseigene Import-I/O entfällt. Solid-generierte JSX-Event-Delegation
-  bleibt Framework-Verhalten.
-- Shell-Lebenszyklus: `startSettingsRuntime()`, `startNavRuntime()` und
-  `startRelativeTimeClock()` starten beim Aufbau der `AppShell`.
-- Boot (`AppShell`): settings, welcome seed, `navStore.load()`,
-  `uiStore.load()`, library prefs, runtime backfill parallel -> danach
-  `migrateLegacyBlocksOnce()` -> `startIdeasStore()`,
-  `startDailyStatsStore()` und `startLibraryData()` -> `bootReady`.
-  Erst dann laufen die Listen-Resources und kann ein Editor ein Skript
-  öffnen. Runtime-Backfill und Legacy-Migration bleiben fehlertolerant
-  wie bisher; fehlgeschlagene Migrationen werden beim nächsten Start
-  erneut versucht.
-- Cleanup: Die Shell beendet ihre expliziten Laufzeiten beim Unmount.
-  Ein noch laufender Boot darf anschließend keine Resources nachstarten.
-  Die Desktop-Schale beendet Updater-Polling und Fenster-Listener;
-  HMR entsorgt den Render-Root.
-- Navigation: `navStore.go/openScript/back/forward` ruft erst
-  `flushAll()` aus dem Kit auf (Editor-Save, nav-Persist), dann wird
-  die Route gesetzt. Der Koordinator liefert Fehler/Timeouts als Ergebnis.
+- Host (`apps/scriptz/src/index.tsx`): Plattform -> SQL-KvStore ->
+  Produkt-SQL-Adapter -> Updater -> `render()`. Keine anwendungseigene
+  Import-I/O; Solid-generierte JSX-Event-Delegation bleibt Framework-Verhalten.
+- Shell: `SuiteShell` startet Basis-Settings und lädt Theme/Sprache,
+  dann `scriptzModule.setup(ctx)`. Das Modul startet seine eigenen
+  Einstellungen, Navigation, Layout und relative Uhr.
+- Produkt-Boot: Welcome-Seed, Navigation/Layout, Bibliothekspräferenzen
+  und Runtime-Backfill, danach Legacy-Block-Migration und fachliche
+  Resources. Erst die fertige Runtime liefert Routen und Produkt-UI an
+  die Shell. Backfill und Legacy-Migration behalten ihr fehlertolerantes
+  Verhalten; fehlgeschlagene Migrationen werden später erneut versucht.
+- Cleanup: Abbruchsignal und früh registrierte `ctx.onDispose()`-Callbacks
+  schützen auch den asynchronen Boot. `ctx.runOwned()` bindet synchrone
+  reaktive Arbeit nach einem `await` an die Shell-Lebensdauer. Die Shell
+  beendet die Runtime, auch wenn sie erst nach Unmount fertig wird.
+  Die App beendet Updater-Polling/Fenster-Listener; HMR entsorgt den Root.
+- Navigation: Die Kit-Nav-Fabrik ruft vor Routenwechsel `flushAll()` auf.
+  Bei Fehler oder Timeout bleibt die bisherige Route aktiv. Das Modul
+  liefert Routen, „Zuletzt"-Metadaten und die unveränderte JSON-Kodierung.
   `ScriptScreen` mountet pro `scriptId` den Editor.
 - Editor `onUpdate` -> 250 ms debounce (`persistence.ts`) -> JSON ->
   `api.updateScript` -> `lib/scripts.ts` schreibt `content_json`,
@@ -362,5 +358,6 @@ Blocktyp und läuft unverändert durch. Deshalb:
   Skript (in `createSnapshot` und `restoreSnapshot` erzwungen).
 - Suche: ⌘K -> `api.globalSearch` -> SQLite-FTS5 BM25 -> `SearchHit[]` mit `<mark>`-Snippets.
 - PDF-Export: `lib/exportPdf.ts` baut die Bytes (pdf-lib, A4,
-  Widow/Orphan), das Speichern läuft über `PlatformAdapter.saveAs`
+  Widow/Orphan); TTFs kommen per `?url` aus `assets/fonts/` im Modul.
+  Das Speichern läuft über `PlatformAdapter.saveAs`
   (Desktop: Tauri-Dialog + plugin-fs). Kein Rust-Code beteiligt.
