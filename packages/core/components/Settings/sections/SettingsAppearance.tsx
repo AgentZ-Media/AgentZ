@@ -1,84 +1,67 @@
+import { For } from "solid-js";
 import { settingsStore, type Theme } from "../../../stores/settings";
-import { K } from "../../../lib/keys";
 import { t, type LanguagePref } from "../../../i18n";
-import { Toggle } from "./icons";
+import { Row, SectionHead, Switch } from "./parts";
 
-export function SettingsAppearance() {
+export function SettingsAppearance(props: { onClose(): void }) {
+  const themes = (): Array<{ id: Theme; label: string }> => [
+    { id: "light", label: t("theme.light") },
+    { id: "dark", label: t("theme.dark") },
+    { id: "auto", label: t("theme.auto") },
+  ];
+  const languages = (): Array<{ id: LanguagePref; label: string }> => [
+    { id: "de", label: t("lang.de") },
+    { id: "en", label: t("lang.en") },
+    { id: "auto", label: t("lang.auto") },
+  ];
   return (
     <>
-      <h3>{t("settings.section.appearance")}</h3>
-      <div class="settings-pane-sub">{t("settings.appearance.sub")}</div>
-      <div class="settings-row">
-        <div class="settings-row-label">
-          <div class="row-label">{t("lang.label")}</div>
-          <div class="row-help">{t("lang.help")}</div>
+      <SectionHead title={t("prefs.appearance.title")} sub={t("prefs.appearance.sub")} onClose={props.onClose} />
+      <Row label={t("prefs.theme.label")} help={t("prefs.theme.help")}>
+        <div class="seg" role="radiogroup" aria-label={t("prefs.theme.label")}>
+          <For each={themes()}>
+            {(th) => (
+              <button
+                type="button"
+                role="radio"
+                aria-checked={settingsStore.theme() === th.id}
+                onClick={() => void settingsStore.setTheme(th.id)}
+              >
+                {th.label}
+              </button>
+            )}
+          </For>
         </div>
-        <div class="seg" role="group" aria-label={t("settings.section.language")}>
-          {(["de", "en", "auto"] as LanguagePref[]).map((value) => (
-            <button
-              type="button"
-              classList={{ "is-on": settingsStore.language() === value }}
-              onClick={() => void settingsStore.setLanguage(value)}
-            >
-              {value === "de" ? t("lang.de") : value === "en" ? t("lang.en") : t("lang.auto")}
-            </button>
-          ))}
-        </div>
-      </div>
-      <div class="settings-row">
-        <div class="settings-row-label">
-          <div class="row-label">{t("settings.theme.label")}</div>
-          <div class="row-help">{t("settings.theme.help")}</div>
-        </div>
-        <div class="seg" role="group" aria-label={t("settings.theme.aria")}>
-          {(["light", "dark", "auto"] as Theme[]).map((value) => (
-            <button
-              type="button"
-              classList={{ "is-on": settingsStore.theme() === value }}
-              onClick={() => void settingsStore.setTheme(value)}
-            >
-              {value === "light" ? t("theme.light") : value === "dark" ? t("theme.dark") : t("theme.auto")}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      <div class="settings-row">
-        <div class="settings-row-label">
-          <div class="row-label">{t("settings.darkPaper.label")}</div>
-          <div class="row-help">{t("settings.darkPaper.help")}</div>
-        </div>
-        <Toggle
+      </Row>
+      <Row
+        label={t("prefs.darkPaper.label")}
+        help={
+          settingsStore.resolvedTheme() === "dark" ? t("prefs.darkPaper.help") : t("prefs.darkPaper.helpLight")
+        }
+      >
+        <Switch
           checked={settingsStore.darkPaper()}
           onChange={(v) => void settingsStore.setDarkPaper(v)}
           disabled={settingsStore.resolvedTheme() !== "dark"}
-          label={t("settings.darkPaper.aria")}
+          label={t("prefs.darkPaper.label")}
         />
-      </div>
-
-      <div class="settings-row">
-        <div class="settings-row-label">
-          <div class="row-label">{t("settings.focusDefault.label")}</div>
-          <div class="row-help">{t("settings.focusDefault.help", { hotkey: K("Mod+Shift+F") })}</div>
+      </Row>
+      <Row label={t("lang.label")} help={t("lang.help")}>
+        <div class="seg" role="radiogroup" aria-label={t("lang.label")}>
+          <For each={languages()}>
+            {(l) => (
+              <button
+                type="button"
+                role="radio"
+                aria-checked={settingsStore.language() === l.id}
+                onClick={() => void settingsStore.setLanguage(l.id)}
+              >
+                {l.label}
+              </button>
+            )}
+          </For>
         </div>
-        <Toggle
-          checked={settingsStore.focusModeDefault()}
-          onChange={(v) => void settingsStore.setFocusModeDefault(v)}
-          label={t("settings.focusDefault.aria")}
-        />
-      </div>
-
-      <div class="settings-row">
-        <div class="settings-row-label">
-          <div class="row-label">{t("settings.ideasBadge.label")}</div>
-          <div class="row-help">{t("settings.ideasBadge.help")}</div>
-        </div>
-        <Toggle
-          checked={settingsStore.showIdeasBadge()}
-          onChange={(v) => void settingsStore.setShowIdeasBadge(v)}
-          label={t("settings.ideasBadge.aria")}
-        />
-      </div>
+      </Row>
     </>
   );
 }

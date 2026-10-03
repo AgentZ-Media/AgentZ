@@ -19,6 +19,7 @@ import {
 } from "../nodes";
 import type { BlockType } from "../../../lib/types";
 import { K } from "../../../lib/keys";
+import { t } from "../../../i18n";
 
 function findScriptzAncestor(node: LexicalNode | null): BaseScriptzNode | null {
   let cur: LexicalNode | null = node;
@@ -97,51 +98,44 @@ function BlockDropdown(props: DropdownProps) {
   return (
     <div
       class="scriptz-block-dropdown"
+      role="listbox"
+      aria-label={t("script.picker.aria")}
       style={{
         position: "fixed",
-        left: `${props.x}px`,
+        left: `${clampX(props.x)}px`,
         top: `${props.y}px`,
         "z-index": 50,
-        background: "var(--modal-bg)",
-        color: "var(--fg)",
-        border: "1px solid var(--border)",
-        "border-radius": "var(--r-3)",
-        "box-shadow": "var(--shadow-popover)",
-        padding: "4px",
-        "min-width": "180px",
-        "font-family": "var(--font-sans)",
-        "font-size": "var(--fs-13)",
       }}
     >
       <For each={BLOCK_TYPES}>
         {(type, i) => (
           <div
-            classList={{ "scriptz-bd-item": true, "is-active": i() === index() }}
-            style={{
-              padding: "6px 10px",
-              "border-radius": "var(--r-2)",
-              cursor: "pointer",
-              background: i() === index() ? "var(--selected)" : "transparent",
-            }}
+            class="scriptz-bd-item"
+            classList={{ "is-active": i() === index(), "is-current": type === props.current }}
+            role="option"
+            aria-selected={i() === index()}
             onMouseEnter={() => setIndex(i())}
             onMouseDown={(e) => {
               e.preventDefault();
               props.onSelect(type);
             }}
           >
-            <span>{blockLabel(type)}</span>
-            <span
-              class="scriptz-bd-hint"
-              aria-hidden="true"
-              style={{ float: "right", opacity: 0.55, "margin-left": "16px" }}
-            >
+            <span class="scriptz-bd-label">{blockLabel(type)}</span>
+            <kbd class="scriptz-bd-hint" aria-hidden="true">
               {K(BLOCK_HOTKEYS[type])}
-            </span>
+            </kbd>
           </div>
         )}
       </For>
     </div>
   );
+}
+
+const PICKER_WIDTH = 200;
+
+function clampX(x: number): number {
+  const vw = typeof window !== "undefined" ? window.innerWidth : 1200;
+  return Math.max(8, Math.min(x, vw - PICKER_WIDTH - 8));
 }
 
 export function installBlockDropdown(

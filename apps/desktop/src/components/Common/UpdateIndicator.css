@@ -1,39 +1,61 @@
-.update-pill {
-  display: inline-flex;
+/* Update card in the sidebar footer (concept `.upd`). Sits on the dark
+   sidebar, so it reads the --side-* tokens. */
+.upd {
+  width: 100%;
+  flex: none;
+  display: flex;
   align-items: center;
   gap: 8px;
-  padding: 5px 12px;
-  border-radius: var(--r-pill);
-  background: var(--primary-bg);
-  color: var(--primary-fg);
-  font-family: var(--font-sans);
-  font-size: var(--fs-12);
+  margin: 0 0 8px;
+  padding: 8px 10px;
+  border-radius: var(--r-3);
+  background: var(--side-hover);
+  color: var(--side-fg);
+  font: 12px/1.3 var(--ui);
+  text-align: left;
+  animation: upd-in var(--t-slow);
+  transition: background var(--t-fast);
+}
+.upd:hover:not(:disabled) {
+  background: var(--side-active);
+}
+.upd:disabled {
+  cursor: default;
+}
+.upd:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+.upd-txt {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.upd-txt b {
+  color: var(--side-strong);
   font-weight: 600;
-  border: 1px solid var(--primary-border);
-  transition: background var(--t-fast), border-color var(--t-fast),
-    transform var(--t-fast), opacity var(--t-med);
-  animation: update-pill-fade-in var(--t-slow);
-  opacity: 1;
 }
-.update-pill:hover {
-  background: var(--primary-bg-hover);
-  border-color: var(--brand-500);
+.upd-act {
+  margin-left: auto;
+  flex: none;
+  color: var(--accent);
+  font-weight: 600;
 }
-.update-pill:active { transform: translateY(1px); }
-.update-dot {
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background: var(--brand-500);
-  box-shadow: 0 0 0 0 var(--ring-brand-strong);
-  animation: update-dot-pulse 1.6s ease-out infinite;
+.upd.is-busy .upd-txt {
+  color: var(--side-muted);
 }
-@keyframes update-dot-pulse {
-  0%   { box-shadow: 0 0 0 0 var(--ring-brand-strong); }
-  70%  { box-shadow: 0 0 0 8px transparent; }
-  100% { box-shadow: 0 0 0 0 transparent; }
+.upd.is-error .upd-txt {
+  color: var(--side-fg);
 }
-@keyframes update-pill-fade-in {
-  from { opacity: 0; transform: translateY(-4px); }
-  to   { opacity: 1; transform: translateY(0); }
+
+@keyframes upd-in {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }

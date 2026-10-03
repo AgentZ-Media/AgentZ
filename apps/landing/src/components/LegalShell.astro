@@ -2,12 +2,13 @@
 /**
  * LegalShell - the editor look for Impressum and Datenschutz.
  *
- * Mirrors the landing layout: small hero on top, below that the
- * app chrome (tab bar + toolbar) with an active script tab, then
- * a paper sheet with the editor's block classes. Content comes in
- * via <slot/> and should be formatted in v2-block classes
- * (CAPTION for section headings, ACTION for normal paragraphs,
- * SFX for inline accents, etc.).
+ * Mirrors the landing layout: small hero on top, below that a
+ * single app header bar (history arrow, breadcrumb with the two
+ * legal pages, "Zur App" button - no tabs, like
+ * the app), then a paper sheet with the editor's block classes.
+ * Content comes in via <slot/> and is formatted in v2-block classes
+ * (`v2-caption` for section headings, `v2-action` for paragraphs).
+ * The heading classes are page styling here, not editor block types.
  *
  * Styling and markup are deliberately duplicated with index.astro
  * instead of a shared stylesheet - the legal pages rarely change,
@@ -18,7 +19,7 @@ import { site } from "../data/site";
 import SiteFooter from "./SiteFooter.astro";
 
 interface Props {
-  /** Which tab in the bar is marked active. */
+  /** Which legal page is marked active in the breadcrumb. */
   activeTab: "impressum" | "datenschutz";
   /** Toolbar title and content of the hero H1. */
   title: string;
@@ -47,53 +48,30 @@ const { activeTab, title, subtitle } = Astro.props;
         <span class="dot dot-green"></span>
       </div>
 
-      <div class="v2-tabs">
-        <a class="v2-tab v2-tab-icon" href="/" aria-label="Zur Startseite">
-          <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
-            <path d="M3 11l9-8 9 8"/><path d="M5 10v10h14V10"/>
-          </svg>
-        </a>
+      <a class="v2-hist-btn" href="/" aria-label="Zurück zur Startseite">
+        <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.2" aria-hidden="true"><polyline points="15 18 9 12 15 6"/></svg>
+      </a>
+
+      <nav class="v2-crumb" aria-label="Rechtliches">
+        <span class="v2-crumb-root">ScriptZ</span>
+        <span class="v2-crumb-sep" aria-hidden="true">/</span>
         <a
-          class={`v2-tab v2-tab-script ${activeTab === "impressum" ? "is-active" : ""}`}
+          class:list={["v2-crumb-link", activeTab === "impressum" && "is-active"]}
           href="/impressum"
-        >
-          <span class="v2-tab-ic">
-            <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/></svg>
-          </span>
-          <span class="v2-tab-title">Impressum</span>
-        </a>
+          aria-current={activeTab === "impressum" ? "page" : undefined}
+        >Impressum</a>
         <a
-          class={`v2-tab v2-tab-script ${activeTab === "datenschutz" ? "is-active" : ""}`}
+          class:list={["v2-crumb-link", activeTab === "datenschutz" && "is-active"]}
           href="/datenschutz"
-        >
-          <span class="v2-tab-ic">
-            <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/></svg>
-          </span>
-          <span class="v2-tab-title">Datenschutz</span>
-        </a>
-      </div>
+          aria-current={activeTab === "datenschutz" ? "page" : undefined}
+        >Datenschutz</a>
+      </nav>
 
       <div class="v2-status">
         <a class="v2-status-pill" href={site.github} target="_blank" rel="noopener">
           <span class="v2-dot v2-dot-on"></span>
           Open Source
         </a>
-      </div>
-    </header>
-
-    <div class="v2-toolbar">
-      <a class="v2-toolbar-back" href="/" aria-label="Zurück zur Startseite">
-        <svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor" stroke-width="2.4" aria-hidden="true">
-          <polyline points="15 18 9 12 15 6"/>
-        </svg>
-        Übersicht
-      </a>
-      <div class="v2-toolbar-title">{title}</div>
-      <div class="v2-toolbar-pills">
-        <span class="v2-pill is-active">ACTION <span class="v2-kbd">1</span></span>
-        <span class="v2-pill v2-pill-more">…</span>
-      </div>
-      <div class="v2-toolbar-actions">
         <a class="v2-toolbar-btn" href="/">
           <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" aria-hidden="true">
             <polyline points="15 18 9 12 15 6"/>
@@ -101,7 +79,7 @@ const { activeTab, title, subtitle } = Astro.props;
           Zur App
         </a>
       </div>
-    </div>
+    </header>
 
   </div>
 
@@ -216,63 +194,36 @@ const { activeTab, title, subtitle } = Astro.props;
   .v2-traffic .dot-yellow { background: #febc2e; }
   .v2-traffic .dot-green  { background: #28c840; }
 
-  .v2-tabs {
-    flex: 1;
-    display: flex;
-    align-items: center;
-    gap: 4px;
-    min-width: 0;
-    overflow-x: auto;
-    scrollbar-width: none;
-  }
-  .v2-tabs::-webkit-scrollbar { display: none; }
-
-  .v2-tab {
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    height: 30px;
-    padding: 0 12px;
-    border: 1px solid transparent;
-    border-radius: 8px;
-    background: transparent;
+  .v2-hist-btn {
+    flex: none;
+    width: 26px;
+    height: 26px;
+    display: grid;
+    place-items: center;
+    border-radius: 6px;
     color: var(--v2-ink-muted);
     text-decoration: none;
-    transition: all 120ms ease;
-    font-size: 12px;
-    font-weight: 500;
-    min-width: 0;
-    flex-shrink: 0;
   }
-  .v2-tab:hover {
-    background: var(--v2-hover);
-    color: var(--v2-ink);
-  }
-  .v2-tab.is-active {
-    background: var(--v2-paper);
-    color: var(--v2-ink);
-    border-color: var(--v2-border);
-    box-shadow: 0 1px 2px rgba(28,24,20,0.05);
-  }
-  .v2-tab-icon {
-    width: 38px;
-    padding: 0;
-    justify-content: center;
-  }
-  .v2-tab-script {
-    min-width: 110px;
-    max-width: 200px;
-    flex: 0 1 170px;
-  }
-  .v2-tab-ic { flex-shrink: 0; opacity: 0.7; }
-  .v2-tab.is-active .v2-tab-ic { opacity: 1; }
-  .v2-tab-title {
+  .v2-hist-btn:hover { background: var(--v2-hover); color: var(--v2-ink); }
+  .v2-crumb {
     flex: 1;
-    overflow: hidden;
-    text-overflow: ellipsis;
+    min-width: 0;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 13px;
     white-space: nowrap;
-    text-align: left;
+    overflow: hidden;
   }
+  .v2-crumb-root, .v2-crumb-sep { color: var(--v2-ink-faint); }
+  .v2-crumb-link {
+    padding: 3px 8px;
+    border-radius: 6px;
+    color: var(--v2-ink-muted);
+    text-decoration: none;
+  }
+  .v2-crumb-link:hover { background: var(--v2-hover); color: var(--v2-ink); }
+  .v2-crumb-link.is-active { color: var(--v2-ink); font-weight: 700; }
 
   .v2-status {
     display: inline-flex;
@@ -302,70 +253,6 @@ const { activeTab, title, subtitle } = Astro.props;
     display: inline-block;
   }
 
-  /* === Toolbar ============================================ */
-  .v2-toolbar {
-    display: flex;
-    align-items: center;
-    gap: 14px;
-    padding: 8px 14px;
-    background: var(--v2-paper);
-    border-bottom: 1px solid var(--v2-border);
-  }
-  .v2-toolbar-back {
-    display: inline-flex;
-    align-items: center;
-    gap: 4px;
-    padding: 4px 10px;
-    border-radius: 6px;
-    background: transparent;
-    color: var(--v2-ink-muted);
-    font-size: 12px;
-    text-decoration: none;
-  }
-  .v2-toolbar-back:hover { background: var(--v2-hover); color: var(--v2-ink); }
-  .v2-toolbar-title {
-    flex: 1;
-    font-weight: 700;
-    font-size: 13px;
-    color: var(--v2-ink);
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    letter-spacing: -0.01em;
-  }
-  .v2-toolbar-pills { display: inline-flex; gap: 4px; flex-shrink: 0; }
-  .v2-pill {
-    display: inline-flex;
-    align-items: center;
-    gap: 5px;
-    padding: 4px 10px;
-    border-radius: 999px;
-    background: rgba(28,24,20,0.04);
-    color: var(--v2-ink-muted);
-    font-size: 10px;
-    font-weight: 700;
-    letter-spacing: 0.04em;
-    text-transform: uppercase;
-  }
-  .v2-pill.is-active { background: var(--v2-ink); color: #fff; }
-  .v2-kbd {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    min-width: 16px;
-    height: 14px;
-    padding: 0 3px;
-    border-radius: 3px;
-    background: rgba(255,255,255,0.18);
-    color: inherit;
-    font-size: 9px;
-    font-weight: 600;
-    opacity: 0.85;
-  }
-  .v2-pill:not(.is-active) .v2-kbd { background: rgba(28,24,20,0.07); }
-  .v2-pill-more { padding: 4px 8px; }
-
-  .v2-toolbar-actions { flex-shrink: 0; }
   .v2-toolbar-btn {
     display: inline-flex;
     align-items: center;
@@ -485,8 +372,7 @@ const { activeTab, title, subtitle } = Astro.props;
   @media (max-width: 880px) {
     .v2-hero { padding: 36px 18px 24px; }
     .v2-paper { padding: 28px 24px 32px; margin: 16px auto 0; }
-    .v2-toolbar-title { display: none; }
-    .v2-toolbar-pills { display: none; }
+    .v2-crumb-root, .v2-crumb-sep { display: none; }
   }
   /* On mobile completely without app chrome - navigation comes from
      MobileNav.astro (sticky bar on top + drawer). */
@@ -510,6 +396,5 @@ const { activeTab, title, subtitle } = Astro.props;
   @media (max-width: 560px) {
     .v2-shell { font-size: 13px; }
     .v2-paper { padding: 20px 18px 24px; }
-    .v2-tab-script { min-width: 90px; }
   }
 </style>

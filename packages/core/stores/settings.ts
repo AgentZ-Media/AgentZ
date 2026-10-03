@@ -22,9 +22,6 @@ const [focusModeDefault, setFocusModeDefault] = createSignal<boolean>(false);
 // Per-script manual toggle still wins — once the writer overrides it on a
 // script, that decision sticks across character-count changes.
 const [quickModeAutoEnable, setQuickModeAutoEnable] = createSignal<boolean>(false);
-// @deprecated Ideas-tab badge setting - the tab bar is gone in the Werkbank
-// redesign. Kept until the integration phase removes its last readers.
-const [showIdeasBadge, setShowIdeasBadge] = createSignal<boolean>(true);
 // Show the adaptive writing counter (sidebar footer: words this week /
 // month / year / total, see lib/writingCounter.ts). Key kept from the old
 // "writing stats" switch; default ON since the redesign - the counter has
@@ -36,22 +33,9 @@ const [showWritingStats, setShowWritingStats] = createSignal<boolean>(true);
 // Only applies when the resolved theme is actually "dark" (light
 // mode ignores the setting; in auto mode it depends on the system).
 const [darkPaper, setDarkPaper] = createSignal<boolean>(false);
-// @deprecated Weekly word goal - replaced by the adaptive writing counter
-// in the Werkbank redesign. Getter/setter stay until the integration phase
-// removes the last readers (TabBar, MomentumStrip, settings section).
-// Weekly goal in words. Default 1500 - calibrated for 7 scripts at
-// ~200 words each (short-form average) plus a bit of headroom. Read by
-// the momentum strip on the home page and by the status strip in the tab
-// bar. Weekly instead of daily granularity, because creators rarely
-// write a script every day - daily "0 / 250 W" counters
-// create pressure rather than motivation.
-const WEEKLY_WORD_GOAL_DEFAULT = 1500;
-const WEEKLY_WORD_GOAL_MIN = 200;
-const WEEKLY_WORD_GOAL_MAX = 50000;
-const [weeklyWordGoal, setWeeklyWordGoal] = createSignal<number>(WEEKLY_WORD_GOAL_DEFAULT);
 
-// Words per minute for the runtime estimate in the cast rail.
-// Default 210 is calibrated for TikTok / sketch pace (see EditorRail.tsx).
+// Words per minute for the runtime estimate (inspector, list, timeline).
+// Default 210 is calibrated for TikTok / sketch pace.
 // Classic screenplay pace is around 150, fast speech around ~250.
 const DIALOG_WPM_DEFAULT = 210;
 const DIALOG_WPM_MIN = 80;
@@ -99,11 +83,6 @@ function resolveTheme(t: Theme): "dark" | "light" {
 const [resolvedTheme, setResolvedTheme] = createSignal<"dark" | "light">(
   resolveTheme(theme()),
 );
-
-function clampGoal(n: number): number {
-  if (!Number.isFinite(n)) return WEEKLY_WORD_GOAL_DEFAULT;
-  return Math.max(WEEKLY_WORD_GOAL_MIN, Math.min(WEEKLY_WORD_GOAL_MAX, Math.round(n)));
-}
 
 /** Normalizes a stored/typed range bound: non-negative whole seconds or
  *  null. Ordering (min < max) is the UI's job - lib/lengthGoal.ts treats
@@ -161,13 +140,6 @@ export const settingsStore = {
     setQuickModeAutoEnable(v);
     await api.setSetting("quick_mode_auto_enable", v ? "1" : "0");
   },
-  /** @deprecated Ideas-tab badge; removed in the integration phase. */
-  showIdeasBadge,
-  /** @deprecated Ideas-tab badge; removed in the integration phase. */
-  setShowIdeasBadge: async (v: boolean) => {
-    setShowIdeasBadge(v);
-    await api.setSetting("show_ideas_badge", v ? "1" : "0");
-  },
   showWritingStats,
   setShowWritingStats: async (v: boolean) => {
     setShowWritingStats(v);
@@ -179,17 +151,6 @@ export const settingsStore = {
     await api.setSetting("dark_paper", v ? "1" : "0");
   },
   resolvedTheme,
-  /** @deprecated Weekly goal; replaced by the adaptive writing counter. */
-  weeklyWordGoal,
-  /** @deprecated Weekly goal; replaced by the adaptive writing counter. */
-  setWeeklyWordGoal: async (v: number) => {
-    const next = clampGoal(v);
-    setWeeklyWordGoal(next);
-    await api.setSetting("weekly_word_goal", String(next));
-  },
-  WEEKLY_WORD_GOAL_MIN,
-  WEEKLY_WORD_GOAL_MAX,
-  WEEKLY_WORD_GOAL_DEFAULT,
   dialogWpm,
   setDialogWpm: async (v: number) => {
     const next = clampWpm(v);
@@ -228,17 +189,14 @@ export const settingsStore = {
   },
   loaded,
   async load() {
-    const [t, hd, uce, huc, qmae, wwg, dwgLegacy, wpm, fmd, sib, sws, dp, lang, scc, lmin, lmax] = await Promise.all([
+    const [t, hd, uce, huc, qmae, wpm, fmd, sws, dp, lang, scc, lmin, lmax] = await Promise.all([
       api.getSetting("theme"),
       api.getSetting("highlighting_default"),
       api.getSetting("update_check_enabled"),
       api.getSetting("hourly_update_check"),
       api.getSetting("quick_mode_auto_enable"),
-      api.getSetting("weekly_word_goal"),
-      api.getSetting("daily_word_goal"),
       api.getSetting("dialog_wpm"),
       api.getSetting("focus_mode_default"),
-      api.getSetting("show_ideas_badge"),
       api.getSetting("show_writing_stats"),
       api.getSetting("dark_paper"),
       api.getSetting("language"),
@@ -252,7 +210,6 @@ export const settingsStore = {
     if (huc) setHourlyUpdateCheck(huc === "1");
     if (qmae) setQuickModeAutoEnable(qmae === "1");
     if (fmd) setFocusModeDefault(fmd === "1");
-    if (sib) setShowIdeasBadge(sib === "1");
     if (sws) setShowWritingStats(sws === "1");
     if (dp) setDarkPaper(dp === "1");
     if (scc) setStudioConnectCodeSignal(scc);
@@ -265,22 +222,6 @@ export const settingsStore = {
       setLanguagePref(lang);
     }
     applyLanguage(language());
-    // Weekly goal: new key takes precedence. Legacy migration from the old
-    // daily goal x7 if no weekly goal has been persisted yet -
-    // that keeps the setup effort for upgrading users at zero.
-    if (wwg) {
-      const parsed = Number(wwg);
-      if (Number.isFinite(parsed)) setWeeklyWordGoal(clampGoal(parsed));
-    } else if (dwgLegacy) {
-      const parsed = Number(dwgLegacy);
-      if (Number.isFinite(parsed)) {
-        const migrated = clampGoal(parsed * 7);
-        setWeeklyWordGoal(migrated);
-        // Persist immediately as well so the migrate happens only once
-        // (otherwise the next boot would read the legacy field again).
-        void api.setSetting("weekly_word_goal", String(migrated));
-      }
-    }
     if (wpm) {
       const parsed = Number(wpm);
       if (Number.isFinite(parsed)) setDialogWpm(clampWpm(parsed));

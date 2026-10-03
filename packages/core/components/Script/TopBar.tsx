@@ -1,0 +1,268 @@
+import { Show, createEffect, createSignal, onCleanup, type JSX } from "solid-js";
+import { Icon, type IconName } from "../Common/Icon";
+import { navStore } from "../../stores/nav";
+import { saveStatusStore } from "../../stores/saveStatus";
+import { INBOX_FOLDER_ID } from "../../lib/folders";
+import type { Folder, ScriptStatus } from "../../lib/types";
+import { K } from "../../lib/keys";
+import { t } from "../../i18n";
+import { StageChip } from "./StageChip";
+import { TitleInput } from "./TitleInput";
+
+export interface TopBarProps {
+  scriptId: string;
+  title: string;
+  folder: Folder | null;
+  status: ScriptStatus;
+  /** Set to the script id once when an "Unbenannt" script opens, so the
+   *  title input grabs focus and selects its text. */
+  focusTitleFor: string | null;
+  onTitleAutoFocused(): void;
+  onRename(next: string): void;
+
+  quickAvailable: boolean;
+  quickOn: boolean;
+  onToggleQuick(): void;
+  colorsOn: boolean;
+  onToggleColors(): void;
+
+  inspectorVisible: boolean;
+  onToggleInspector(): void;
+  onExport(): void;
+}
+
+/** Top bar of the script screen (concept `#tpl-bar`). */
+export function TopBar(props: TopBarProps) {
+  const openFolder = () => {
+    navStore.openScripts({ folderId: props.folder?.id ?? INBOX_FOLDER_ID });
+  };
+
+  return (
+    <header class="ss-bar" aria-label={t("script.bar.aria")}>
+      <div class="ss-hist">
+        <button
+          type="button"
+          class="ss-hist-btn"
+          disabled={!navStore.canBack()}
+          title={t("script.bar.backTitle", { hotkey: K("Mod+[") })}
+          aria-label={t("script.bar.backTitle", { hotkey: K("Mod+[") })}
+          onMouseDown={(e) => e.preventDefault()}
+          onClick={() => navStore.back()}
+        >
+          <Icon name="left" />
+        </button>
+        <button
+          type="button"
+          class="ss-hist-btn"
+          disabled={!navStore.canForward()}
+          title={t("script.bar.forwardTitle", { hotkey: K("Mod+]") })}
+          aria-label={t("script.bar.forwardTitle", { hotkey: K("Mod+]") })}
+          onMouseDown={(e) => e.preventDefault()}
+          onClick={() => navStore.forward()}
+        >
+          <Icon name="right" />
+        </button>
+      </div>
+
+      <nav class="ss-crumb">
+        <button
+          type="button"
+          class="ss-crumb-folder"
+          title={
+            props.folder
+              ? t("script.bar.folderTitle", { folder: props.folder.name })
+              : t("script.bar.noFolderTitle")
+          }
+          onMouseDown={(e) => e.preventDefault()}
+          onClick={openFolder}
+        >
+          {props.folder?.name ?? t("script.bar.noFolder")}
+        </button>
+        <span class="ss-crumb-sep" aria-hidden="true">/</span>
+        <TitleInput
+          class="ss-crumb-title"
+          title={props.title}
+          focusFor={props.focusTitleFor}
+          onAutoFocused={props.onTitleAutoFocused}
+          scriptId={props.scriptId}
+          onCommit={props.onRename}
+        />
+      </nav>
+
+      <span class="ss-sp" />
+
+      <SaveStatus />
+
+      <StageChip scriptId={props.scriptId} status={props.status} />
+
+      <div class="tg-group" role="group" aria-label={t("script.toggle.aria")}>
+        <TipToggle
+          icon="bolt"
+          on={props.quickOn}
+          disabled={!props.quickAvailable}
+          ariaLabel={t("script.toggle.quick.aria")}
+          tipTitle={
+            !props.quickAvailable
+              ? t("script.toggle.quick.naTitle")
+              : props.quickOn
+                ? t("script.toggle.quick.onTitle")
+                : t("script.toggle.quick.offTitle")
+          }
+          tipBody={
+            !props.quickAvailable
+              ? t("script.toggle.quick.naBody")
+              : props.quickOn
+                ? t("script.toggle.quick.onBody")
+                : t("script.toggle.quick.offBody")
+          }
+          onClick={props.onToggleQuick}
+        />
+        <TipToggle
+          icon="marker"
+          on={props.colorsOn}
+          ariaLabel={t("script.toggle.colors.aria")}
+          tipTitle={props.colorsOn ? t("script.toggle.colors.onTitle") : t("script.toggle.colors.offTitle")}
+          tipBody={props.colorsOn ? t("script.toggle.colors.onBody") : t("script.toggle.colors.offBody")}
+          onClick={props.onToggleColors}
+        />
+      </div>
+
+      <button
+        type="button"
+        class="btn"
+        title={t("script.bar.exportTitle", { hotkey: K("Mod+E") })}
+        onMouseDown={(e) => e.preventDefault()}
+        onClick={props.onExport}
+      >
+        <Icon name="export" size={14} />
+        {t("script.bar.export")}
+        <kbd>{K("Mod+E")}</kbd>
+      </button>
+
+      <button
+        type="button"
+        class="btn icon ss-insp-toggle"
+        classList={{ "is-on": props.inspectorVisible }}
+        aria-pressed={props.inspectorVisible}
+        title={t("script.bar.inspectorTitle", { hotkey: K("Mod+Shift+\\") })}
+        aria-label={t("script.bar.inspectorTitle", { hotkey: K("Mod+Shift+\\") })}
+        onMouseDown={(e) => e.preventDefault()}
+        onClick={props.onToggleInspector}
+      >
+        <Icon name="inspector" />
+      </button>
+    </header>
+  );
+}
+
+function SaveStatus() {
+  const st = () => saveStatusStore.status();
+  return (
+    <span
+      class="ss-saved"
+      classList={{ "is-saving": st() === "saving", "is-error": st() === "error" }}
+      title={st() === "error" ? t("script.save.errorTitle") : undefined}
+      role="status"
+    >
+      {st() === "saving"
+        ? t("script.save.saving")
+        : st() === "error"
+          ? t("script.save.error")
+          : t("script.save.saved")}
+    </span>
+  );
+}
+
+interface TipToggleProps {
+  icon: IconName;
+  on: boolean;
+  disabled?: boolean;
+  ariaLabel: string;
+  tipTitle: string;
+  tipBody: string;
+  onClick(): void;
+}
+
+const TIP_WIDTH = 232;
+const TIP_DELAY_MS = 350;
+
+/** Icon toggle with the dark explanatory tooltip from the concept
+ *  (`.tg-tip`): bold state line + one sentence on what it does. */
+function TipToggle(props: TipToggleProps) {
+  const [tip, setTip] = createSignal<{ left: number; arrow: number } | null>(null);
+  let btnRef: HTMLButtonElement | undefined;
+  let timer: ReturnType<typeof setTimeout> | null = null;
+
+  const place = () => {
+    if (!btnRef) return;
+    const group = btnRef.parentElement;
+    if (!group) return;
+    const g = group.getBoundingClientRect();
+    const b = btnRef.getBoundingClientRect();
+    const center = b.left + b.width / 2 - g.left;
+    // Keep the tip inside the window; the arrow keeps pointing at the button.
+    const maxLeft = window.innerWidth - g.left - TIP_WIDTH - 8;
+    const left = Math.min(center - 23, maxLeft);
+    setTip({ left, arrow: Math.max(10, Math.min(TIP_WIDTH - 20, center - left - 5)) });
+  };
+
+  const show = (immediate = false) => {
+    if (timer) clearTimeout(timer);
+    if (immediate) {
+      place();
+      return;
+    }
+    timer = setTimeout(place, TIP_DELAY_MS);
+  };
+  const hide = () => {
+    if (timer) clearTimeout(timer);
+    timer = null;
+    setTip(null);
+  };
+  onCleanup(hide);
+
+  // Re-place when the state flips while the tip is visible (texts change).
+  createEffect(() => {
+    void props.on;
+    if (tip()) queueMicrotask(place);
+  });
+
+  const style = (): JSX.CSSProperties => {
+    const p = tip();
+    return p ? { left: `${p.left}px`, "--tip-arrow": `${p.arrow}px` } : {};
+  };
+
+  return (
+    <>
+      <button
+        ref={btnRef}
+        type="button"
+        class="btn icon"
+        classList={{ "is-on": props.on, "is-na": !!props.disabled }}
+        aria-pressed={props.on}
+        aria-disabled={props.disabled ? "true" : undefined}
+        aria-label={props.ariaLabel}
+        onMouseEnter={() => show()}
+        onMouseLeave={hide}
+        onFocus={(e) => {
+          if (e.currentTarget.matches(":focus-visible")) show(true);
+        }}
+        onBlur={hide}
+        onMouseDown={(e) => e.preventDefault()}
+        onClick={() => {
+          if (!props.disabled) props.onClick();
+        }}
+      >
+        <Icon name={props.icon} />
+      </button>
+      <Show when={tip()}>
+        <div class="tg-tip ss-tip" role="tooltip" style={style()}>
+          <b>{props.tipTitle}</b>
+          <span>{props.tipBody}</span>
+        </div>
+      </Show>
+    </>
+  );
+}
+
+export default TopBar;

@@ -20,7 +20,7 @@ export function installCanvasFocus(
     // Click landed inside the editor — let Lexical place the caret
     // at the actual click location.
     if (target.closest(".editor-root")) return;
-    // Don't intercept controls (toggle pill, status strip, dropdowns,
+    // Don't intercept controls (buttons, inputs, dropdowns, recovery panel,
     // etc.) — the user clicked something else on purpose.
     if (
       target.closest("button") ||
@@ -28,7 +28,7 @@ export function installCanvasFocus(
       target.closest("textarea") ||
       target.closest(".scriptz-block-dropdown") ||
       target.closest(".scriptz-character-dropdown") ||
-      target.closest(".script-status")
+      target.closest(".recovery-panel")
     ) {
       return;
     }

@@ -1,17 +1,8 @@
 /* =========================================================================
-   ScriptZ — script-shell + paper canvas.
-   Parchment desk surrounding a white paper sheet with subtle shadow.
-   Status strip at the bottom.
+   ScriptZ - paper canvas + sheet (concept `.canvas`, `.sheet`).
+   Shared by the Werkbank script screen (components/Script) and Studio's
+   script editor. Design tokens only.
    ========================================================================= */
-
-.script-shell {
-  flex: 1 1 0;
-  min-height: 0;
-  display: flex;
-  flex-direction: column;
-  background: var(--bg);
-  overflow: hidden;
-}
 
 /* ---- Paper canvas ---------------------------------------------------- */
 .paper-canvas {
@@ -25,10 +16,9 @@
   align-items: center;
   padding: var(--sp-5);
   scroll-padding-top: 60px;
-  /* Word-style affordance: the entire paper area looks editable, so
-     the I-beam cursor signals that a click anywhere will land the
-     caret somewhere sensible. Buttons and toggles override this with
-     their own cursor declarations (pointer/not-allowed). */
+  /* Word-style affordance: the whole desk reads as "more editor" - a click
+     anywhere lands the caret (see Editor/canvasFocus.ts). Controls set
+     their own cursor. */
   cursor: text;
 }
 .paper-canvas .paper-sheet {
@@ -36,173 +26,61 @@
 }
 
 /* ---- Paper sheet -----------------------------------------------------
-   Endless paper sheet that grows with the content. Deliberately NO
-   visible A4 page breaks in the editor: a TikTok / reels script
-   thinks in seconds, not in pages - page logic belongs in the
-   PDF export, not in the writing environment. Min height = one A4
-   page so an empty script doesn't look like a stub. Width
-   stays A4-compliant so what you type visually approximates
-   the PDF. */
+   One endless sheet that grows with the content. Deliberately NO page
+   numbers and NO page breaks: a short-form script thinks in seconds, not
+   pages - pages only exist in the PDF export. The width stays A4 so what
+   you type approximates the PDF; the minimum height of one page keeps an
+   empty script from looking like a stub. */
 .paper-sheet {
   position: relative;
   width: var(--paper-w);
+  max-width: 100%;
   min-height: var(--paper-h);
   padding: var(--paper-margin-top) 0 var(--paper-margin-bottom);
-  background: var(--paper-bg);
+  background: var(--paper);
   color: var(--paper-fg);
-  border-radius: var(--r-4);
+  border-radius: 3px;
   box-shadow: var(--shadow-paper);
-  /* In the flex container of paper-canvas, min-content would otherwise be 0 -
-     without flex-shrink:0 the page collapses in short windows. */
+  /* Inside the flex column of the canvas min-content would otherwise be
+     0 - without flex-shrink:0 the sheet collapses in short windows. */
   flex-shrink: 0;
+  transition: box-shadow var(--t-med);
 }
-
-/* ---- Status strip at the bottom --------------------------------------
-   Solid cream background — the paper slides cleanly under it instead of
-   bleeding through a fading gradient. The hairline border establishes a
-   clear horizon between paper area and chrome. */
-.script-status {
-  position: sticky;
-  bottom: 0;
-  z-index: 4;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: var(--sp-3) var(--sp-5);
-  font-family: var(--font-sans);
-  font-size: var(--fs-12);
-  color: var(--fg-muted);
-  background: var(--bg);
-  border-top: 1px solid var(--border);
-  user-select: none;
-  flex-shrink: 0;
-}
-
-.script-status .saving-indicator {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-}
-.script-status .dot {
-  width: 7px;
-  height: 7px;
-  border-radius: 50%;
-  background: var(--fg-disabled);
-}
-.script-status .dot.saving {
-  background: var(--brand-500);
-  animation: pulse-dot 1.4s ease-in-out infinite;
-}
-@keyframes pulse-dot {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.4; }
-}
-
-/* ---- Quick-mode toggle ---------------------------------------------------
-   Floating pill, top-right of the script shell. Lit when on, greyed when
-   not enough/too many characters to make sense. */
-.quick-mode-toggle {
-  position: absolute;
-  top: var(--sp-3);
-  right: var(--sp-5);
-  z-index: 5;
-  width: 32px;
-  height: 32px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: 999px;
-  border: 1px solid var(--border);
-  background: var(--bg-elev-1);
-  color: var(--fg-muted);
-  cursor: pointer;
-  transition: background var(--t-fast), color var(--t-fast),
-    border-color var(--t-fast), opacity var(--t-fast);
-}
-.quick-mode-toggle:hover:not(:disabled) {
-  background: var(--bg-elev-2);
-  color: var(--fg);
-  border-color: var(--border-strong);
-}
-.quick-mode-toggle.is-on {
-  background: var(--brand-500);
-  color: #fff;
-  border-color: var(--brand-500);
-}
-.quick-mode-toggle.is-on:hover:not(:disabled) {
-  background: var(--brand-600, var(--brand-500));
-  color: #fff;
-}
-.quick-mode-toggle.is-disabled,
-.quick-mode-toggle:disabled {
-  opacity: 0.45;
-  cursor: not-allowed;
-}
-
-/* The script-shell needs a positioning context for the floating toggle. */
-.script-shell {
-  position: relative;
-}
-
-/* ---- Focus-mode eye toggle ----------------------------------------------
-   When focus mode is active (toolbar + rail hide away), a discreet
-   eye button appears top-right to exit. Deliberately no
-   "✕" — that felt counterproductive in testing (chat 1). */
-.focus-toggle {
-  position: fixed;
-  /* In focus mode the editor toolbar + editor rail hide; only the
-     titlebar (34 px) stays — the eye button sits directly below its
-     bottom edge, top-right flush with minimal breathing room. On web,
-     the disclaimer banner shifts us down via --web-header-offset;
-     on desktop the variable falls back to 0px. */
-  top: calc(40px + var(--web-header-offset, 0px));
-  right: 20px;
-  z-index: 10;
-  width: 32px;
-  height: 32px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: 999px;
-  color: var(--text-subtle);
-  box-shadow: var(--shadow-paper);
-  cursor: pointer;
-  transition: all var(--t-fast);
-}
-.focus-toggle:hover { color: var(--text); }
 
 /* ---- Recovery panel -------------------------------------------------
    Shown in place of the editor when content_json fails to parse. The
-   editor stays unmounted (so auto-save doesn't overwrite the broken
-   data) until the writer either restores from a snapshot or accepts a
-   fresh empty start. */
+   editor stays unmounted (so auto-save doesn't overwrite the broken data)
+   until the writer restores a snapshot or accepts an empty start. */
 .recovery-panel {
   width: var(--paper-content-w);
   max-width: 100%;
   margin: 0 auto;
   padding: var(--sp-6);
-  background: var(--paper-bg);
-  color: var(--paper-fg);
-  border-radius: var(--r-3);
-  border: 1px solid var(--border);
-  box-shadow: var(--shadow-paper);
-  font-family: var(--font-sans);
-  /* Recovery view isn't editable — restore the regular pointer so the
-     I-beam from `.paper-canvas` doesn't suggest typing is possible. */
+  background: var(--surface);
+  color: var(--fg);
+  border: 1px solid var(--line);
+  border-radius: var(--r-pop);
+  box-shadow: var(--shadow-raise);
+  font-family: var(--ui);
+  /* Not editable - drop the canvas I-beam. */
   cursor: default;
 }
 .recovery-title {
   margin: 0 0 var(--sp-3);
   font-size: var(--fs-16);
   font-weight: 700;
-  color: var(--status-err, var(--brand-500));
+  color: var(--warn);
 }
 .recovery-body {
   margin: 0 0 var(--sp-3);
   font-size: var(--fs-14);
   line-height: 1.5;
+}
+.recovery-body.muted {
+  color: var(--muted);
+}
+.recovery-body.small {
+  font-size: var(--fs-13);
 }
 .recovery-actions {
   display: flex;
@@ -213,7 +91,7 @@
 .recovery-details {
   margin-top: var(--sp-5);
   font-size: var(--fs-12);
-  color: var(--fg-muted);
+  color: var(--muted);
 }
 .recovery-details summary {
   cursor: pointer;
@@ -222,11 +100,11 @@
 .recovery-raw {
   margin-top: var(--sp-2);
   padding: var(--sp-3);
-  background: var(--bg-elev-1);
+  background: var(--surface-2);
   border-radius: var(--r-2);
   max-height: 240px;
   overflow: auto;
-  font-family: var(--font-mono, ui-monospace, monospace);
+  font-family: var(--type);
   font-size: var(--fs-11);
   white-space: pre-wrap;
   word-break: break-all;

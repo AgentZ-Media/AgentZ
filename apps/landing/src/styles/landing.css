@@ -99,7 +99,17 @@
     color: #8a8276;
   }
 
-  /* === Shell container ====================================== */
+  /* === Shell container ======================================
+     Mirrors the "Werkbank" app layout: sidebar | main column.
+     Like an app window: capped at 1600 px viewport, centered and
+     with a subtle shadow/border. The grid stays with the website
+     (body) and shows on the left/right of the box - exactly like
+     a real app window on the desktop. Inside the box there is NO
+     grid, because the app itself has none either.
+
+     `overflow: clip` (not `hidden`) rounds the corners of the
+     sidebar and header bar without creating a scroll container,
+     so `position: sticky` inside keeps working. */
   .v2-shell {
     --v2-bg: #f5f3ee;
     --v2-paper: #ffffff;
@@ -110,65 +120,49 @@
     --v2-border-strong: rgba(28,24,20,0.18);
     --v2-hover: rgba(28,24,20,0.05);
     --v2-paper-w: 820px;
+    --v2-side-w: 216px;
 
     /* hexToTint(#e0791f, 0.28) → rgb(247, 222, 197) */
     --v2-tint-timo: rgb(247, 222, 197);
     /* hexToTint(#d04141, 0.28) → rgb(243, 207, 207) */
     --v2-tint-axel: rgb(243, 207, 207);
 
+    display: grid;
+    grid-template-columns: var(--v2-side-w) minmax(0, 1fr);
     background: var(--v2-bg);
     color: var(--v2-ink);
     font-family: var(--font-sans);
     font-size: 14px;
     line-height: 1.55;
-    /* Narrow breathing room below the paper, instead of a wide
-       empty strip. */
-    padding-bottom: 24px;
-    /* Like an app window: capped at 1600 px viewport, centered and
-       with a subtle shadow/border. The grid stays with the website
-       (body) and shows on the left/right of the box - exactly like
-       a real app window on the desktop. Inside the box there is NO
-       grid, because the app itself has none either: just the warm
-       cream background and the white paper on top.
-
-       border-radius is also applied to .v2-titlebar (above) so the
-       sticky chrome keeps the rounded corners while scrolling and
-       doesn't poke past the shell corners (see rule below). */
     max-width: 1600px;
     margin: 0 auto;
     border-radius: 12px;
+    overflow: clip;
     box-shadow:
       0 1px 2px rgba(28, 24, 20, 0.04),
       0 24px 60px rgba(28, 24, 20, 0.10),
       0 0 0 1px rgba(28, 24, 20, 0.06);
   }
 
-  /* === Chrome wrapper: titlebar + toolbar as 1 sticky block === */
-  .v2-chrome {
+  /* === Sidebar ===============================================
+     Ink instead of the app's graphite - the landing stays
+     monochrome. Sticky, one viewport tall, scrolls with the page
+     only at the very end of the shell. */
+  .v2-side {
     position: sticky;
     top: 0;
-    z-index: 30;
-    background: var(--v2-bg);
-    /* No margin/padding between titlebar+toolbar - they sit directly
-       next to each other. So there is no grid stripe in between. */
-  }
-
-  /* === Titlebar ============================================ */
-  .v2-titlebar {
+    align-self: start;
+    height: 100vh;
     display: flex;
-    align-items: center;
-    gap: 12px;
-    padding: 8px 14px;
-    background: var(--v2-bg);
-    border-bottom: 1px solid var(--v2-border);
-    /* Mirrors the shell radius. Important: without this rule the
-       titlebar - being sticky - would poke past the shell's
-       rounded corners, because .v2-shell has no overflow:hidden
-       (which would break position:sticky). */
-    border-top-left-radius: 12px;
-    border-top-right-radius: 12px;
+    flex-direction: column;
+    gap: 2px;
+    padding: 12px 10px 12px;
+    background: var(--v2-ink);
+    color: rgba(255,255,255,0.82);
+    font-size: 13px;
+    overflow: hidden;
   }
-  .v2-traffic { display: flex; gap: 6px; padding-right: 6px; }
+  .v2-traffic { display: flex; gap: 6px; padding: 4px 6px 14px; }
   .v2-traffic .dot {
     width: 12px;
     height: 12px;
@@ -180,91 +174,155 @@
   .v2-traffic .dot-yellow { background: #febc2e; }
   .v2-traffic .dot-green  { background: #28c840; }
 
-  .v2-tabs {
-    flex: 1;
+  .v2-side-app {
     display: flex;
     align-items: center;
-    gap: 4px;
-    min-width: 0;
-    overflow-x: auto;
-    scrollbar-width: none;
-  }
-  .v2-tabs::-webkit-scrollbar { display: none; }
-
-  .v2-tab {
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    height: 30px;
-    padding: 0 12px;
-    border: 1px solid transparent;
-    border-radius: 8px;
-    background: transparent;
-    color: var(--v2-ink-muted);
-    cursor: pointer;
-    transition: all 120ms ease;
-    font-size: 12px;
-    font-weight: 500;
-    min-width: 0;
-    flex-shrink: 0;
-    font-family: inherit;
-  }
-  .v2-tab:hover {
-    background: var(--v2-hover);
-    color: var(--v2-ink);
-  }
-  .v2-tab.is-active {
-    background: var(--v2-paper);
-    color: var(--v2-ink);
-    border-color: var(--v2-border);
-    box-shadow: 0 1px 2px rgba(28,24,20,0.05);
-  }
-  .v2-tab-icon {
-    width: 38px;
-    padding: 0;
-    justify-content: center;
-    position: relative;
-  }
-  .v2-tab-badge {
-    /* Positioned within the tab bounds because .v2-tabs also clips
-       vertically due to overflow-x: auto. */
-    position: absolute;
-    top: 2px;
-    right: 2px;
-    min-width: 14px;
-    height: 14px;
-    border-radius: 999px;
-    background: #1c1814;
+    gap: 10px;
+    padding: 4px 8px 14px;
     color: #fff;
-    font-size: 9px;
+    text-decoration: none;
     font-weight: 700;
-    display: inline-flex;
+    font-size: 14px;
+    letter-spacing: -0.01em;
+  }
+  .v2-side-mark {
+    width: 28px;
+    height: 28px;
+    flex: none;
+    border-radius: 8px;
+    background: #fff;
+    color: var(--v2-ink);
+    display: grid;
+    place-items: center;
+  }
+  .v2-side-mark svg { fill: currentColor; }
+
+  .v2-side-nav { display: flex; flex-direction: column; gap: 1px; min-height: 0; }
+  .v2-side-item {
+    display: flex;
     align-items: center;
-    justify-content: center;
-    padding: 0 3px;
-    line-height: 1;
+    gap: 9px;
+    height: 30px;
+    padding: 0 8px;
+    border-radius: 6px;
+    color: rgba(255,255,255,0.82);
+    text-decoration: none;
+    transition: background 120ms ease, color 120ms ease;
   }
-  .v2-tab-script {
-    min-width: 110px;
-    max-width: 200px;
-    flex: 0 1 170px;
+  .v2-side-item svg { flex: none; opacity: 0.6; }
+  .v2-side-item:hover { background: rgba(255,255,255,0.07); color: #fff; }
+  .v2-side-item.is-active { background: rgba(255,255,255,0.13); color: #fff; font-weight: 600; }
+  .v2-side-item.is-active svg { opacity: 1; }
+  .v2-side-lbl { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .v2-side-n {
+    margin-left: auto;
+    font-size: 12px;
+    color: rgba(255,255,255,0.5);
+    font-variant-numeric: tabular-nums;
   }
-  .v2-tab-ic { flex-shrink: 0; opacity: 0.7; }
-  .v2-tab.is-active .v2-tab-ic { opacity: 1; }
-  .v2-tab-title {
+  .v2-side-h {
+    display: flex;
+    align-items: center;
+    height: 28px;
+    margin-top: 12px;
+    padding: 0 8px;
+    color: rgba(255,255,255,0.45);
+    font-size: 10.5px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+  .v2-side-foot {
+    margin-top: auto;
+    padding: 12px 8px 4px;
+    border-top: 1px solid rgba(255,255,255,0.1);
+    font-size: 12px;
+    line-height: 1.35;
+    color: rgba(255,255,255,0.5);
+    cursor: default;
+  }
+  .v2-side-count {
+    display: block;
+    color: #fff;
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* === Main column + header bar ============================ */
+  .v2-main {
+    min-width: 0;
+    /* Narrow breathing room below the paper, instead of a wide
+       empty strip. */
+    padding-bottom: 24px;
+  }
+  .v2-chrome {
+    position: sticky;
+    top: 0;
+    z-index: 30;
+    background: var(--v2-bg);
+  }
+  .v2-bar {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    height: 48px;
+    padding: 0 14px 0 10px;
+    background: var(--v2-bg);
+    border-bottom: 1px solid var(--v2-border);
+  }
+  .v2-hist { display: flex; gap: 2px; flex: none; }
+  .v2-hist-btn {
+    width: 26px;
+    height: 26px;
+    display: grid;
+    place-items: center;
+    border-radius: 6px;
+    color: var(--v2-ink-muted);
+  }
+  a.v2-hist-btn:hover { background: var(--v2-hover); color: var(--v2-ink); }
+  .v2-hist-btn.is-off { color: var(--v2-ink-faint); opacity: 0.5; }
+  .v2-crumb {
     flex: 1;
+    min-width: 0;
+    display: flex;
+    align-items: baseline;
+    gap: 6px;
+    font-size: 13px;
+    white-space: nowrap;
+    overflow: hidden;
+  }
+  .v2-crumb-root, .v2-crumb-sep { color: var(--v2-ink-faint); flex: none; }
+  .v2-crumb b {
+    font-weight: 700;
+    color: var(--v2-ink);
     overflow: hidden;
     text-overflow: ellipsis;
-    white-space: nowrap;
-    text-align: left;
+    letter-spacing: -0.01em;
   }
-  .v2-status {
+  .v2-bar-saved {
+    flex: none;
+    font-size: 12px;
+    color: var(--v2-ink-faint);
+  }
+  /* Stage chip - the app's pipeline stage, monochrome here. */
+  .v2-stage-chip {
+    flex: none;
     display: inline-flex;
     align-items: center;
     gap: 6px;
-    flex-shrink: 0;
+    height: 28px;
+    padding: 0 10px;
+    border: 1px solid var(--v2-border);
+    border-radius: 999px;
+    background: var(--v2-paper);
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--v2-ink);
+    cursor: default;
   }
+
   .v2-status-pill {
+    flex: none;
     display: inline-flex;
     align-items: center;
     gap: 6px;
@@ -284,13 +342,13 @@
      active value is a darkened pill, the inactive one is a
      clickable link. */
   .v2-lang {
+    flex: none;
     display: inline-flex;
     align-items: center;
     padding: 2px;
     background: var(--v2-paper);
     border: 1px solid var(--v2-border);
     border-radius: 999px;
-    margin-right: 2px;
   }
   .v2-lang-pill {
     display: inline-flex;
@@ -322,73 +380,8 @@
     display: inline-block;
   }
 
-  /* === Toolbar (block pills) ============================= */
-  .v2-toolbar {
-    display: flex;
-    align-items: center;
-    gap: 14px;
-    padding: 8px 14px;
-    background: var(--v2-paper);
-    border-bottom: 1px solid var(--v2-border);
-  }
-  .v2-toolbar-back {
-    display: inline-flex;
-    align-items: center;
-    gap: 4px;
-    padding: 4px 10px;
-    border-radius: 6px;
-    background: transparent;
-    border: 0;
-    color: var(--v2-ink-muted);
-    font-size: 12px;
-    cursor: pointer;
-    font-family: inherit;
-  }
-  .v2-toolbar-back:hover { background: var(--v2-hover); color: var(--v2-ink); }
-  .v2-toolbar-title {
-    flex: 1;
-    font-weight: 700;
-    font-size: 13px;
-    color: var(--v2-ink);
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    letter-spacing: -0.01em;
-  }
-  .v2-toolbar-pills { display: inline-flex; gap: 4px; flex-shrink: 0; }
-  .v2-pill {
-    display: inline-flex;
-    align-items: center;
-    gap: 5px;
-    padding: 4px 10px;
-    border-radius: 999px;
-    background: rgba(28,24,20,0.04);
-    color: var(--v2-ink-muted);
-    font-size: 10px;
-    font-weight: 700;
-    letter-spacing: 0.04em;
-    text-transform: uppercase;
-  }
-  .v2-pill.is-active { background: var(--v2-ink); color: #fff; }
-  .v2-kbd {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    min-width: 16px;
-    height: 14px;
-    padding: 0 3px;
-    border-radius: 3px;
-    background: rgba(255,255,255,0.18);
-    color: inherit;
-    font-size: 9px;
-    font-weight: 600;
-    opacity: 0.85;
-  }
-  .v2-pill:not(.is-active) .v2-kbd { background: rgba(28,24,20,0.07); }
-  .v2-pill-more { padding: 4px 8px; }
-
-  .v2-toolbar-actions { flex-shrink: 0; }
   .v2-toolbar-btn {
+    flex: none;
     display: inline-flex;
     align-items: center;
     gap: 5px;
@@ -410,7 +403,7 @@
      shell-padding-bottom. */
   .v2-paper {
     width: var(--v2-paper-w);
-    max-width: calc(100vw - 48px);
+    max-width: calc(100% - 48px);
     margin: 24px auto 0;
     background: var(--v2-paper);
     padding: 40px 64px 32px;
@@ -449,11 +442,14 @@
   .v2-block.v2-dialog + .v2-block.v2-character {
     margin-top: 14px;
   }
-  .v2-block.v2-caption + * { margin-top: 14px; }
-  * + .v2-block.v2-caption { margin-top: 32px; }
+  .v2-block.v2-scene + * { margin-top: 14px; }
+  * + .v2-block.v2-scene { margin-top: 32px; }
 
   .v2-action { text-align: left; }
-  .v2-caption {
+  /* Scene line: an Action block typed in caps. The editor only has
+     Action, Character and Dialog - headings like "INT. ..." are just
+     Action text, set bold here because they double as page headings. */
+  .v2-scene {
     font-weight: 700;
     letter-spacing: 0.04em;
     text-transform: uppercase;
@@ -466,6 +462,8 @@
     letter-spacing: 0.06em;
     margin-top: 18px;
   }
+  /* Parentheticals are no longer a block type in the app. The class
+     stays only for older blog posts rendered via remarkDialogue. */
   .v2-parenthetical {
     margin-left: 22%;
     margin-right: 22%;
@@ -478,24 +476,6 @@
     margin-right: 16%;
     text-align: left;
   }
-  .v2-camera {
-    text-align: right;
-    text-transform: uppercase;
-    letter-spacing: 0.04em;
-    font-weight: 700;
-    font-size: 13px;
-    color: var(--v2-ink-muted);
-  }
-  .v2-sfx {
-    text-align: left;
-    font-weight: 500;
-    letter-spacing: 0.02em;
-    font-size: 13px;
-    color: var(--v2-ink-muted);
-    text-transform: uppercase;
-    margin-top: 14px;
-  }
-
   /* === Character highlighting: per-line via box-decoration-break.
      Exactly like in Editor.css for span[data-lexical-text]. The
      <span class="v2-t"> wraps the entire text - the background
@@ -509,8 +489,6 @@
   .v2-block[data-speaker="TIMO"] .v2-t { background: var(--v2-tint-timo); }
   .v2-block[data-speaker="AXEL"] .v2-t { background: var(--v2-tint-axel); }
 
-  /* SFX may contain a "plain" span without highlight */
-  .v2-t-plain { font-style: italic; text-transform: none; color: var(--v2-ink-muted); }
 
   /* === Jump buttons under each tab ======================= */
   .v2-jump {
@@ -973,8 +951,13 @@
     color: var(--v2-ink-muted);
   }
 
-  /* === Ideas view (1:1 replica) ========================== */
-  .v2-ideas-head { margin-bottom: 24px; }
+  /* === Ideas page (replica of the app's ideas page) ======== */
+  .v2-ideas-head {
+    display: flex;
+    align-items: baseline;
+    flex-wrap: wrap;
+    gap: 6px 14px;
+  }
   .v2-ideas-h {
     font-size: 32px;
     font-weight: 700;
@@ -982,28 +965,48 @@
     color: var(--v2-ink);
     margin: 0;
   }
+  .v2-ideas-meta {
+    font-size: 13px;
+    color: var(--v2-ink-faint);
+    font-variant-numeric: tabular-nums;
+  }
   .v2-ideas-sub {
-    margin: 8px 0 0;
+    margin: 8px 0 20px;
     color: var(--v2-ink-muted);
     font-size: 14px;
     max-width: 56ch;
     line-height: 1.55;
   }
 
+  .v2-ikbd {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 18px;
+    height: 18px;
+    padding: 0 4px;
+    border-radius: 4px;
+    background: rgba(28,24,20,0.07);
+    color: var(--v2-ink-muted);
+    font-family: inherit;
+    font-size: 10.5px;
+    font-weight: 600;
+    line-height: 1;
+  }
+  .v2-ikbd + .v2-ikbd { margin-left: 2px; }
+  .v2-ikbd-inv { background: rgba(255,255,255,0.18); color: #fff; }
+
   .v2-ideas-input {
     display: flex;
     align-items: center;
     gap: 10px;
-    padding: 14px 18px;
-    border: 1px solid var(--v2-border);
+    padding: 12px 14px;
+    border: 1px solid var(--v2-border-strong);
     border-radius: 8px;
     background: #fff;
-    color: var(--v2-ink-muted);
-    cursor: text;
-    margin-bottom: 18px;
-    transition: border-color 120ms ease;
+    color: var(--v2-ink-faint);
+    margin-bottom: 14px;
   }
-  .v2-ideas-input:hover { border-color: var(--v2-border-strong); }
   .v2-ideas-input-plus {
     display: inline-flex;
     align-items: center;
@@ -1015,152 +1018,150 @@
     font-size: 14px;
     font-weight: 700;
     color: var(--v2-ink);
+    flex: none;
   }
-  .v2-ideas-input-text { font-size: 14px; }
+  .v2-ideas-input-text { flex: 1; min-width: 0; font-size: 14px; }
+  .v2-ideas-input-hint { font-size: 11px; color: var(--v2-ink-faint); white-space: nowrap; }
 
-  .v2-ideas-controls {
+  .v2-ideas-chips {
     display: flex;
     align-items: center;
     flex-wrap: wrap;
-    gap: 10px;
-    margin-bottom: 14px;
+    gap: 6px;
+    margin-bottom: 18px;
   }
-  .v2-ideas-search {
+  .v2-fchip {
     display: inline-flex;
     align-items: center;
-    gap: 8px;
-    padding: 6px 12px;
+    gap: 6px;
+    height: 28px;
+    padding: 0 11px;
     border: 1px solid var(--v2-border);
     border-radius: 999px;
     background: #fff;
-    color: var(--v2-ink-faint);
-    font-size: 12px;
-    flex: 1;
-    min-width: 160px;
-  }
-  .v2-ideas-filters {
-    display: inline-flex;
-    gap: 2px;
-    padding: 2px;
-    border: 1px solid var(--v2-border);
-    border-radius: 999px;
-    background: #fff;
-  }
-  .v2-ideas-filter {
-    display: inline-flex;
-    align-items: center;
-    gap: 4px;
-    padding: 4px 12px;
-    border-radius: 999px;
-    background: transparent;
     color: var(--v2-ink-muted);
     font-size: 12px;
     font-weight: 600;
-    cursor: pointer;
-    border: 0;
-    font-family: inherit;
+    white-space: nowrap;
   }
-  .v2-ideas-filter:hover:not(.is-active) {
-    background: var(--v2-hover);
-    color: var(--v2-ink);
-  }
-  .v2-ideas-filter.is-active {
-    background: var(--v2-ink);
-    color: #fff;
-  }
-  .v2-ideas-filter-c {
-    opacity: 0.7;
-    font-weight: 500;
-  }
-  .v2-ideas-sort {
-    font-size: 12px;
-    color: var(--v2-ink-muted);
+  .v2-fchip i { width: 7px; height: 7px; border-radius: 999px; display: inline-block; }
+  .v2-fchip em { font-style: normal; font-weight: 500; opacity: 0.6; font-variant-numeric: tabular-nums; }
+  .v2-fchip.is-active { background: var(--v2-ink); border-color: var(--v2-ink); color: #fff; }
+  .v2-fchip-sm { height: 24px; padding: 0 9px; }
+  .v2-ideas-filter {
     margin-left: auto;
+    display: inline-flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    min-width: 150px;
+    height: 28px;
+    padding: 0 6px 0 11px;
+    border: 1px solid var(--v2-border);
+    border-radius: 6px;
+    background: #fff;
+    color: var(--v2-ink-faint);
+    font-size: 12px;
   }
 
-  .v2-ideas-list { list-style: none; padding: 0; margin: 0; }
-  .v2-idea-card {
+  .v2-ideas-layout {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 232px;
+    gap: 18px;
+    align-items: start;
+  }
+  .v2-igrp-h {
     display: flex;
-    align-items: flex-start;
-    gap: 12px;
-    padding: 16px 18px;
+    align-items: baseline;
+    gap: 6px;
+    margin: 0 0 6px;
+    font-size: 10.5px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--v2-ink-faint);
+  }
+  .v2-igrp-h em { font-style: normal; font-weight: 500; letter-spacing: 0; }
+  .v2-ilist { list-style: none; padding: 0; margin: 0 0 18px; }
+  .v2-irow {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto auto;
+    grid-template-areas:
+      "ti fo ag"
+      "nt nt nt";
+    gap: 2px 12px;
+    padding: 9px 10px;
+    border-radius: 6px;
+    border-bottom: 1px solid var(--v2-border);
+  }
+  .v2-irow.is-selected {
+    background: rgba(28,24,20,0.05);
+    box-shadow: inset 2px 0 0 var(--v2-ink);
+  }
+  .v2-irow-ti { grid-area: ti; font-size: 13.5px; font-weight: 700; color: var(--v2-ink); line-height: 1.4; }
+  .v2-irow-nt {
+    grid-area: nt;
+    font-size: 12.5px;
+    color: var(--v2-ink-muted);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .v2-irow-fo {
+    grid-area: fo;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 12px;
+    color: var(--v2-ink-muted);
+    white-space: nowrap;
+  }
+  .v2-irow-fo i { width: 7px; height: 7px; border-radius: 999px; display: inline-block; }
+  .v2-irow-ag { grid-area: ag; font-size: 12px; color: var(--v2-ink-faint); white-space: nowrap; font-variant-numeric: tabular-nums; }
+  .v2-ideas-keys { margin: 0; font-size: 11.5px; color: var(--v2-ink-faint); }
+
+  .v2-idet {
+    position: sticky;
+    top: 72px;
+    padding: 16px;
     border: 1px solid var(--v2-border);
     border-radius: 8px;
-    background: #fff;
-    margin-bottom: 10px;
-    transition: all 120ms ease;
+    background: var(--v2-bg);
   }
-  .v2-idea-card:hover {
-    border-color: var(--v2-border-strong);
-    transform: translateY(-1px);
-    box-shadow: 0 4px 12px rgba(28,24,20,0.06);
-  }
-  .v2-idea-dot {
-    width: 8px;
-    height: 8px;
-    border-radius: 999px;
-    background: #e0791f;
-    margin-top: 7px;
-    flex-shrink: 0;
-  }
-  .v2-idea-body { flex: 1; min-width: 0; }
-  .v2-idea-title {
-    margin: 0 0 4px;
-    font-size: 14px;
-    font-weight: 700;
-    color: var(--v2-ink);
-    line-height: 1.4;
-  }
-  .v2-idea-text {
-    margin: 0 0 6px;
-    font-size: 13px;
-    color: var(--v2-ink-muted);
-    line-height: 1.5;
-  }
-  .v2-idea-age {
-    font-size: 11px;
-    color: var(--v2-ink-faint);
-  }
-  .v2-idea-actions {
-    display: inline-flex;
-    align-items: center;
-    gap: 4px;
-    flex-shrink: 0;
-  }
-  .v2-idea-btn {
-    padding: 5px 12px;
-    border-radius: 6px;
-    border: 1px solid var(--v2-border);
-    background: #fff;
-    color: var(--v2-ink);
-    font-size: 12px;
-    font-weight: 600;
-    cursor: pointer;
-    font-family: inherit;
-  }
-  .v2-idea-btn:hover {
-    background: var(--v2-ink);
-    color: #fff;
-    border-color: var(--v2-ink);
-  }
-  .v2-idea-trash {
-    width: 28px;
-    height: 28px;
-    border-radius: 6px;
-    border: 0;
-    background: transparent;
-    color: var(--v2-ink-faint);
-    cursor: pointer;
-    display: inline-flex;
+  .v2-idet-top { font-size: 11px; color: var(--v2-ink-faint); margin-bottom: 8px; }
+  .v2-idet-t { font-size: 16px; font-weight: 700; line-height: 1.3; color: var(--v2-ink); margin-bottom: 8px; }
+  .v2-idet-n { margin: 0 0 14px; font-size: 13px; line-height: 1.5; color: var(--v2-ink-muted); }
+  .v2-idet-meta { margin: 0 0 14px; display: grid; gap: 8px; font-size: 12px; }
+  .v2-idet-meta > div { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+  .v2-idet-meta dt { color: var(--v2-ink-faint); }
+  .v2-idet-meta dd { margin: 0; color: var(--v2-ink); }
+  .v2-idet-start {
+    display: flex;
     align-items: center;
     justify-content: center;
+    gap: 8px;
+    height: 36px;
+    border-radius: 6px;
+    background: var(--v2-ink);
+    color: #fff;
+    font-size: 13px;
+    font-weight: 600;
   }
-  .v2-idea-trash:hover {
-    background: rgba(208,65,65,0.10);
-    color: #d04141;
+  .v2-idet-foot {
+    display: flex;
+    justify-content: space-between;
+    margin-top: 10px;
+    font-size: 12px;
+    color: var(--v2-ink-faint);
+  }
+
+  @media (max-width: 1000px) {
+    .v2-ideas-layout { grid-template-columns: 1fr; }
+    .v2-idet { position: static; }
   }
 
   .v2-ideas-hint {
+
     margin-top: 24px;
     padding: 14px 18px;
     border: 1px dashed var(--v2-border-strong);
@@ -1183,8 +1184,8 @@
 
   /* === Footer styling lives in components/SiteFooter.astro === */
 
-  /* === Sprint pill ====================================== */
-  .v2-sprint {
+  /* === Runtime pill ===================================== */
+  .v2-runpill {
     position: fixed;
     bottom: 18px;
     right: 18px;
@@ -1200,17 +1201,42 @@
     font-weight: 600;
     box-shadow: 0 1px 1px rgba(0,0,0,0.04), 0 8px 24px rgba(0,0,0,0.18);
   }
-  .v2-sprint-ring { display: inline-flex; }
-  .v2-sprint-progress {
+  .v2-runpill-ring { display: inline-flex; }
+  .v2-runpill-progress {
     /* Smooth run when the user scrolls in bigger jumps
        (mouse-wheel click, anchor jump). With normal scroll
        pacing barely perceptible because scroll events fire
        often enough. */
     transition: stroke-dashoffset 120ms cubic-bezier(0.2, 0.8, 0.2, 1);
   }
-  .v2-sprint-txt { white-space: nowrap; font-variant-numeric: tabular-nums; }
+  .v2-runpill-txt { white-space: nowrap; font-variant-numeric: tabular-nums; }
 
   /* === Responsive ========================================= */
+  /* Below 1180 px the sidebar collapses to icons, like the app's
+     narrow layout - the sheet keeps its width. */
+  @media (max-width: 1180px) {
+    .v2-shell { --v2-side-w: 60px; }
+    .v2-side { padding: 12px 8px; align-items: center; }
+    .v2-traffic { gap: 4px; padding: 4px 0 12px; }
+    .v2-side-app { padding: 4px 0 12px; }
+    /* Labels stay in the accessibility tree, only visually hidden. */
+    .v2-side-lbl {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      overflow: hidden;
+      clip: rect(0 0 0 0);
+      white-space: nowrap;
+    }
+    .v2-side-name,
+    .v2-side-n,
+    .v2-side-h,
+    .v2-side-foot { display: none; }
+    .v2-side-nav { align-items: center; }
+    .v2-side-item { width: 36px; justify-content: center; padding: 0; }
+    .v2-side-h + .v2-side-item { margin-top: 12px; }
+    .v2-bar-saved { display: none; }
+  }
   @media (max-width: 880px) {
     .v2-hero { padding: 56px 18px 36px; }
     .v2-paper {
@@ -1224,17 +1250,12 @@
     .v2-noai-grid { grid-template-columns: 1fr; }
     .v2-dialog, .v2-parenthetical { margin-left: 0; margin-right: 0; }
     .v2-parenthetical { margin-left: 8%; }
-    .v2-toolbar-title { display: none; }
-    .v2-toolbar-pills { display: none; }
-    .v2-status-saved { display: none; }
-    .v2-idea-actions { flex-direction: column-reverse; align-items: stretch; }
+    .v2-crumb-root, .v2-crumb-sep { display: none; }
   }
 
   @media (max-width: 560px) {
     .v2-shell { font-size: 13px; }
     .v2-hero { padding: 40px 14px 28px; }
-    .v2-toolbar { padding: 6px 10px; gap: 8px; }
-    .v2-tab-script { min-width: 90px; }
     .v2-paper { padding: 20px 18px 32px; }
     .v2-download-h { font-size: 18px; }
   }
@@ -1242,7 +1263,7 @@
   /* === Mobile stack mode ==================================
      On narrow viewports the landing flips from the app replica
      into a classic top-to-bottom page:
-     - Chrome (traffic light, tabs, toolbar, sprint pill) is
+     - Chrome (sidebar, header bar, runtime pill) is
        removed from the flow entirely because a simulated app at
        375 px explains nothing - it only gets in the way.
        Navigation is handled by the `MobileNav` component instead
@@ -1253,18 +1274,20 @@
     /* Shell loses the box look (border, shadow, radius). The page
        flows edge-to-edge like a normal marketing page. */
     .v2-shell {
+      display: block;
       max-width: 100%;
       border-radius: 0;
       box-shadow: none;
-      padding-bottom: 0;
     }
+    .v2-main { padding-bottom: 0; }
 
-    /* Remove app chrome entirely from the flow: titlebar (traffic
-       light, tabs, status pills), toolbar (back, pills, download
-       button) and the floating sprint pill. Mobile-nav handles
+    /* Remove app chrome entirely from the flow: sidebar, header
+       bar (history, crumb, stage chip, download button) and the
+       floating runtime pill. Mobile-nav handles
        navigation, the PageHero per route provides title + CTA. */
+    .v2-side,
     .v2-chrome { display: none; }
-    .v2-sprint { display: none; }
+    .v2-runpill { display: none; }
 
     /* Paper edge-to-edge, no box look. */
     .v2-paper {
@@ -1373,12 +1396,11 @@
   }
 
   /* === Anchor as pseudo-button: reset text-decoration ====
-     The tab bar, the toolbar-back and the jump buttons used to be
-     `<button>` and are now real navigation links (`<a>`). The
-     default underline on links has to go, otherwise it looks
-     clunky.                                                          */
-  a.v2-tab,
-  a.v2-toolbar-back,
+     Sidebar items, history arrows and the jump buttons are real
+     navigation links (`<a>`). The default underline on links has
+     to go, otherwise it looks clunky.                                */
+  a.v2-side-item,
+  a.v2-hist-btn,
   a.v2-jump-btn {
     text-decoration: none;
     cursor: pointer;
@@ -1460,7 +1482,7 @@
   .v2-home-grid {
     margin-top: 18px;
     display: grid;
-    grid-template-columns: repeat(3, 1fr);
+    grid-template-columns: repeat(2, 1fr);
     gap: 14px;
   }
   .v2-home-card {
@@ -1564,3 +1586,7 @@
     .v2-home-grid { grid-template-columns: 1fr; }
     .v2-home-block { padding: 28px 0; }
   }
+
+  /* Anchor targets inside the sheet (e.g. `#length` on the why
+     route) stay clear of the sticky header bar. */
+  .v2-paper [id] { scroll-margin-top: 72px; }

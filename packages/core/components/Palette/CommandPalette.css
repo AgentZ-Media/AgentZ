@@ -1,0 +1,143 @@
+/* =========================================================================
+   Command palette (⌘K). Not in the concept - built in its language: a
+   `.dlg` in the upper third (`.scrim.top`, like quick capture), one big
+   search input, grouped results with `.menu-h` headers, key hints below.
+   ========================================================================= */
+
+.pal-scrim {
+  z-index: 120;
+}
+.dlg.pal {
+  width: 600px;
+  display: flex;
+  flex-direction: column;
+  max-height: min(560px, calc(100vh - 14vh - 48px));
+}
+
+.pal-in {
+  height: 54px;
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  padding: 0 14px 0 18px;
+  border-bottom: 1px solid var(--line-soft);
+  color: var(--muted);
+}
+.pal-input,
+.pal-input:hover,
+.pal-input:focus {
+  flex: 1;
+  min-width: 0;
+  height: 100%;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  outline: none;
+  color: var(--fg);
+  font: 500 16px/1.2 var(--ui);
+}
+.pal-input::placeholder {
+  color: var(--faint);
+}
+
+.pal-list {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 4px 6px 6px;
+}
+.pal-grp + .pal-grp {
+  margin-top: 2px;
+}
+.pal-grp .menu-h {
+  padding: 10px 10px 4px;
+}
+
+.pal-it {
+  min-height: 36px;
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  padding: 5px 10px;
+  border-radius: var(--r-3);
+  color: var(--fg);
+  cursor: pointer;
+}
+.pal-it.on {
+  background: var(--fill);
+}
+.pal-ic {
+  width: 16px;
+  flex: none;
+  display: grid;
+  place-items: center;
+  color: var(--muted);
+}
+.pal-ic svg.st {
+  color: var(--fg);
+}
+.pal-txt {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+.pal-lbl {
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.pal-txt small {
+  font-size: 12px;
+  color: var(--faint);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.pal-snip mark {
+  background: var(--accent-soft);
+  color: var(--fg);
+  border-radius: 2px;
+  padding: 0 1px;
+}
+.pal-it kbd {
+  flex: none;
+}
+.pal-enter {
+  width: 16px;
+  flex: none;
+  display: grid;
+  place-items: center;
+  color: var(--faint);
+  visibility: hidden;
+}
+.pal-it.on .pal-enter {
+  visibility: visible;
+}
+
+.pal-empty {
+  padding: 22px 12px;
+  color: var(--muted);
+  text-align: center;
+}
+
+.pal-foot {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 9px 16px;
+  border-top: 1px solid var(--line-soft);
+  background: var(--surface-2);
+  color: var(--faint);
+  font-size: 11.5px;
+}
+.pal-foot span {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}

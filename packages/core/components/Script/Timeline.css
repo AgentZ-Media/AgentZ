@@ -1,0 +1,357 @@
+/* =========================================================================
+   Script screen - timeline under the paper (concept `.tl*`, `.mini`,
+   `.lane`, `.z-*`, `.axis`, `.legend`, `.tip`). All positions are
+   percentages of the visible time window, set inline by Timeline.tsx.
+   Design tokens only; character colours arrive inline (user data).
+   ========================================================================= */
+
+.tl {
+  flex: none;
+  position: relative;
+  z-index: 3;
+  border-top: 1px solid var(--line);
+  background: var(--surface);
+  font: 13px/1.45 var(--ui);
+  color: var(--fg);
+  user-select: none;
+}
+
+.tl .tl-bar {
+  height: 40px;
+  display: grid;
+  grid-template-columns: 132px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 14px;
+  padding: 0 14px 0 10px;
+}
+
+.tl .tl-tog {
+  justify-self: start;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  height: 28px;
+  padding: 0 8px;
+  border: 0;
+  border-radius: var(--r-2);
+  background: transparent;
+  color: var(--muted);
+  font: 600 13px/1 var(--ui);
+  white-space: nowrap;
+  cursor: pointer;
+}
+.tl .tl-tog:hover {
+  background: var(--fill);
+  color: var(--fg);
+}
+.tl .tl-tog:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 1px;
+}
+.tl .tl-tog kbd {
+  margin-left: 2px;
+}
+
+.tl .tl-len {
+  justify-self: end;
+  color: var(--faint);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+}
+.tl .tl-len b {
+  color: var(--fg);
+  font-weight: 700;
+}
+.tl .tl-len b.over,
+.tl .tl-len em {
+  color: var(--warn);
+}
+.tl .tl-len em {
+  font-style: normal;
+  font-weight: 600;
+  margin-left: 8px;
+}
+.tl .tl-len em.calm {
+  color: var(--muted);
+}
+
+/* ---------- mini track (collapsed) ---------- */
+.tl .tl-mini {
+  position: relative;
+  min-width: 0;
+}
+.tl .mini {
+  position: relative;
+  height: 10px;
+  border-radius: 3px;
+  background: var(--fill);
+  overflow: hidden;
+  cursor: pointer;
+}
+.tl .mini > i,
+.tl .lane > i {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  min-width: 2px;
+}
+.tl .seg-char {
+  background: var(--muted);
+}
+.tl .seg-anon {
+  background: var(--muted);
+}
+.tl .seg-act {
+  background: var(--faint);
+  opacity: 0.6;
+}
+
+/* ---------- zones ---------- */
+.tl .z-hook,
+.tl .z-range,
+.tl .z-goal,
+.tl .z-over,
+.tl .z-head {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  pointer-events: none;
+}
+.tl .z-hook {
+  left: 0;
+  background: color-mix(in srgb, var(--accent) 55%, transparent);
+  mix-blend-mode: multiply;
+}
+[data-theme="dark"] .tl .z-hook {
+  background: color-mix(in srgb, var(--accent) 22%, transparent);
+  mix-blend-mode: normal;
+}
+.tl .z-range {
+  background: var(--range-fill);
+  border-left: 1.5px dashed var(--muted);
+}
+.tl .z-goal {
+  width: 1.5px;
+  margin-left: -0.75px;
+  background: var(--warn);
+}
+.tl .z-over {
+  background: repeating-linear-gradient(
+    -45deg,
+    transparent 0 3px,
+    color-mix(in srgb, var(--warn) 14%, transparent) 3px 6px
+  );
+}
+.tl .z-head {
+  width: 2px;
+  margin-left: -1px;
+  background: var(--fg);
+  border-radius: 1px;
+  transition: left var(--t-fast);
+}
+.tl .mini .z-head {
+  top: 0;
+  bottom: 0;
+}
+
+/* ---------- expanded body ---------- */
+.tl .tl-body {
+  display: grid;
+  grid-template-columns: 74px minmax(0, 1fr) 16px;
+  padding: 2px 0 14px 10px;
+}
+.tl .tl-names > div {
+  height: 26px;
+  display: flex;
+  align-items: center;
+  padding-left: 8px;
+  font: 700 10.5px/1 var(--type);
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: color-mix(in srgb, var(--c, var(--muted)) 72%, var(--fg));
+}
+.tl .tl-names > div:first-child {
+  height: 22px;
+}
+.tl .tl-names > div.is-action,
+.tl .tl-names > div.is-anon {
+  color: var(--faint);
+}
+
+.tl .tl-area {
+  position: relative;
+  min-width: 0;
+}
+.tl .axis {
+  position: relative;
+  height: 22px;
+  color: var(--faint);
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+}
+.tl .axis > span {
+  position: absolute;
+  top: 3px;
+  transform: translateX(-50%);
+  white-space: nowrap;
+}
+.tl .axis > span.first {
+  transform: none;
+}
+.tl .axis > span.last {
+  left: 100%;
+  transform: translateX(-100%);
+}
+.tl .axis > .rmin {
+  color: var(--fg);
+  font-weight: 700;
+}
+.tl .axis > .goal {
+  color: var(--warn);
+  font-weight: 700;
+}
+.tl .axis > .rbar {
+  top: auto;
+  bottom: 1px;
+  height: 3px;
+  transform: none;
+  border-radius: 2px;
+  background: var(--muted);
+  opacity: 0.45;
+}
+
+.tl .lane {
+  position: relative;
+  height: 18px;
+  margin: 4px 0;
+  border-radius: 3px;
+  background: var(--fill);
+  overflow: hidden;
+}
+.tl .lane > i {
+  top: 2px;
+  bottom: 2px;
+  border-radius: 2px;
+  cursor: pointer;
+}
+.tl .lane > i.is-hover {
+  box-shadow: 0 0 0 2px var(--surface), 0 0 0 3.5px var(--fg);
+  z-index: 2;
+}
+
+/* Zones overlay spans every lane, below the axis row. */
+.tl .tl-zones {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 22px;
+  bottom: 0;
+  pointer-events: none;
+}
+.tl .z-head.with-label::before {
+  content: attr(data-t);
+  position: absolute;
+  top: -21px;
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 3px 5px;
+  border-radius: var(--r-1);
+  background: var(--fg);
+  color: var(--bg);
+  font: 700 10.5px/1 var(--ui);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+/* ---------- tooltip ---------- */
+.tl .tl-tip {
+  position: absolute;
+  z-index: 5;
+  width: 270px;
+  padding: 10px 12px;
+  border-radius: 9px;
+  background: var(--fg);
+  color: var(--bg);
+  font-size: 12px;
+  line-height: 1.4;
+  box-shadow: var(--shadow-toast);
+  pointer-events: none;
+}
+.tl .tl-tip b {
+  font: 700 10.5px/1 var(--type);
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+.tl .tl-tip .tc {
+  margin-left: 6px;
+  opacity: 0.6;
+  font-variant-numeric: tabular-nums;
+}
+.tl .tl-tip p {
+  margin: 5px 0 6px;
+  font-family: var(--type);
+  font-size: 12px;
+}
+.tl .tl-tip small {
+  display: block;
+  opacity: 0.55;
+  font-size: 11.5px;
+}
+.tl .tl-tip::after {
+  content: "";
+  position: absolute;
+  bottom: -5px;
+  left: var(--tip-arrow, 26px);
+  width: 10px;
+  height: 10px;
+  background: var(--fg);
+  transform: rotate(45deg);
+}
+
+/* ---------- legend ---------- */
+.tl .legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 16px;
+  padding: 0 16px 12px 92px;
+  color: var(--faint);
+  font-size: 11.5px;
+}
+.tl .legend > span {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.tl .legend i {
+  display: inline-block;
+  width: 14px;
+  height: 8px;
+  border-radius: 2px;
+}
+.tl .legend .lg-hook {
+  background: color-mix(in srgb, var(--accent) 80%, transparent);
+}
+.tl .legend .lg-range {
+  background: var(--range-fill);
+  border-left: 1.5px dashed var(--muted);
+}
+.tl .legend .lg-max {
+  width: 2px;
+  background: var(--warn);
+}
+.tl .legend .lg-over {
+  background: repeating-linear-gradient(
+    -45deg,
+    transparent 0 3px,
+    color-mix(in srgb, var(--warn) 30%, transparent) 3px 6px
+  );
+}
+.tl .legend .lg-hint {
+  margin-left: auto;
+}

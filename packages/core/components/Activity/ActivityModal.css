@@ -1,0 +1,71 @@
+/* Activity dialog: four word totals + the 365-day heatmap. Tokens only. */
+
+.dlg.act {
+  width: 760px;
+  max-width: calc(100vw - 48px);
+}
+.act-in {
+  padding: 20px 22px 22px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+.act-cards {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+}
+.act-card {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 12px 14px;
+  border-radius: var(--r-pop);
+  border: 1px solid var(--line);
+  background: var(--surface-2);
+}
+.act-card-l {
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--faint);
+}
+.act-card b {
+  font-size: 22px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  line-height: 1.15;
+}
+.act-card-u {
+  color: var(--muted);
+  font-size: 12px;
+}
+.act-hm {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 14px 16px 12px;
+  border-radius: var(--r-pop);
+  border: 1px solid var(--line);
+}
+.act-hm-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 16px;
+}
+.act-hm-head b {
+  font-weight: 700;
+}
+.act-hm-head span {
+  color: var(--muted);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+
+@media (max-width: 700px) {
+  .act-cards {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}

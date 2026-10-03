@@ -1,22 +1,21 @@
-/* Persistence-denied badge. Floats in the bottom left, subtle but
-   not dismissable - unlike the WebDisclaimerBanner. Should be
-   noticeable without dominating the UI. */
+/* Persistence-denied badge. Floats in the bottom right corner (the bottom
+   left belongs to the sidebar footer), subtle but not dismissable - unlike
+   the WebDisclaimerBanner. Should be noticeable without dominating the UI. */
 .storage-persist-badge {
   position: fixed;
   bottom: 12px;
-  left: 12px;
+  right: 12px;
   z-index: 90; /* below toasts (200) + modals (100), above editor chrome */
   display: inline-flex;
   align-items: center;
   gap: 6px;
   padding: 6px 10px;
-  border-radius: 999px;
-  background: var(--danger-soft, #fde8d9);
-  color: var(--status-warn, #b9651b);
-  border: 1px solid var(--danger-border, rgba(185, 101, 27, 0.25));
-  font-size: 11px;
-  font-family: var(--font-sans, system-ui, sans-serif);
-  line-height: 1;
+  border-radius: var(--r-pill);
+  background: var(--warn-soft);
+  color: var(--warn);
+  border: 1px solid color-mix(in srgb, var(--warn) 28%, transparent);
+  box-shadow: var(--shadow-raise);
+  font: 600 11px/1 var(--ui);
   pointer-events: auto;
   user-select: none;
   cursor: default;
@@ -24,10 +23,4 @@
 
 .storage-persist-badge svg {
   flex: 0 0 auto;
-}
-
-[data-theme="dark"] .storage-persist-badge {
-  background: rgba(185, 101, 27, 0.18);
-  color: #f5b97a;
-  border-color: rgba(245, 185, 122, 0.28);
 }

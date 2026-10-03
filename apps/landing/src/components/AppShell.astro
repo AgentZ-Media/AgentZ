@@ -2,19 +2,20 @@
 /**
  * AppShell - the app showcase on the landing.
  *
- * Contains: titlebar with tab bar (real `<a>` links instead of JS
- * tabs), toolbar with pills + download button, footer, sprint pill,
- * and the inline script for platform detect, copy button, screenshot
- * gallery, sprint progress and language-toggle persistence.
+ * Mirrors the "Werkbank" app shell: a dark sidebar on the left (app
+ * mark, route links as real `<a>` elements, writing-counter echo in
+ * the footer), a header bar on top of the main column (history
+ * arrows, breadcrumb, stage chip, language toggle, download button)
+ * and the white sheet in the middle. A floating runtime pill echoes
+ * the app's length estimate.
  *
- * What is NOT in here: the hero (home only), the section markup per
- * tab (comes in via `<slot/>`). That keeps each page small and able
- * to carry its own title/meta.
+ * What is NOT in here: the hero (comes from PageHero above the
+ * shell), the section markup per route (comes in via `<slot/>`).
+ * That keeps each page small and able to carry its own title/meta.
  *
- * View transitions: the chrome carries `transition:persist` so it
- * isn't re-mounted on route change. Active-tab and toolbar-title
- * updates happen in the `astro:after-swap` handler in Base.astro,
- * not here.
+ * View transitions: the chrome is re-rendered on every route change
+ * (no `transition:persist`), so labels follow the language. The
+ * inline script is re-run from Base.astro after every swap.
  */
 import { getLatestRelease, site } from "../data/site";
 import { routePath, switchLangPath, t, type Lang, type RouteKey } from "../i18n";
@@ -23,14 +24,13 @@ import "../styles/landing.css";
 
 interface Props {
   lang: Lang;
-  /** Which content tab does this page belong to? Determines the
-   *  `is-active` class on the tab button and the toolbar title. For
-   *  blog posts `activeTab` is still `"blog"` but there is no tab in
-   *  the tab bar - the bar shows no "is-active" class, because blog
-   *  isn't rendered there as a tab. */
+  /** Which route does this page belong to? Determines the
+   *  `is-active` class in the sidebar and the header-bar title. Blog
+   *  pages pass `"blog"`, which has no sidebar entry - nothing is
+   *  marked active then. */
   activeTab: RouteKey;
-  /** Optional: overrides the toolbar title. Blog-post pages pass the
-   *  post title here instead of a generic tab label. */
+  /** Optional: overrides the header-bar title. Blog-post pages pass
+   *  the post title here instead of a generic route label. */
   toolbarTitleOverride?: string;
   /** Optional: overrides the target URL of the language toggle. Used
    *  for blog posts, where the slug may or may not exist and the page
@@ -45,10 +45,8 @@ const otherLang: Lang = lang === "de" ? "en" : "de";
 const currentRoutePath = routePath(lang, activeTab);
 const switchHref = switchLangHrefOverride ?? switchLangPath(lang, otherLang, currentRoutePath);
 
-// Toolbar title per active tab. The download tab additionally depends
-// on the platform; the inline script adjusts that via a data attribute.
-// Blog also passes through here but has no dedicated tab in the tab
-// bar - the title is still useful in case no override applies.
+// Header-bar title per route. The download route additionally depends
+// on the platform; the inline script swaps it via data attributes.
 const titleKeyMap: Record<RouteKey, Parameters<typeof t>[1]> = {
   home: "tab.home.long",
   warum: "tab.warum.long",
@@ -60,9 +58,10 @@ const titleKeyMap: Record<RouteKey, Parameters<typeof t>[1]> = {
   blog: "blog.toolbar.title.index",
 };
 const toolbarTitle = toolbarTitleOverride ?? t(lang, titleKeyMap[activeTab]);
+const isDownload = activeTab === "download" && !toolbarTitleOverride;
 
-// Paths per tab in the current language, computed once so the markup
-// below stays readable.
+// Paths per route in the current language, computed once so the
+// markup below stays readable.
 const links = {
   home: routePath(lang, "home"),
   ideen: routePath(lang, "ideen"),
@@ -74,85 +73,129 @@ const links = {
   blog: routePath(lang, "blog"),
 };
 
-// Ideas list for the tab badge (count of open ideas). In the footer
-// and sprint logic the exact entries aren't needed - only in the
-// ideas tab itself, where IdeenSection renders them independently.
+// "Scripts" group in the sidebar: every content route reads like a
+// script the visitor can open.
+const scriptRoutes: { key: RouteKey; labelKey: Parameters<typeof t>[1] }[] = [
+  { key: "warum", labelKey: "tab.warum.short" },
+  { key: "quickmodus", labelKey: "tab.quickmodus.short" },
+  { key: "no-ai", labelKey: "tab.noai.short" },
+  { key: "vergleich", labelKey: "tab.compare.short" },
+  { key: "download", labelKey: "tab.download.short" },
+];
+
+// Count of sample ideas on the ideas route (IdeenSection renders six).
 const openIdeasCount = 6;
+
+// Dot-matrix Z (6 x 5) - same geometry as the app mark. Row-major
+// [col, row] pairs; `soft` dots render at reduced opacity.
+const zDots: [number, number][] = [
+  [0, 0], [1, 0], [2, 0], [3, 0], [4, 0],
+  [3, 1], [4, 1],
+  [2, 2], [3, 2],
+  [1, 3], [2, 3],
+  [0, 4], [1, 4],
+  [0, 5], [1, 5], [2, 5], [3, 5], [4, 5],
+];
+const zSoft: [number, number][] = [[0, 1], [1, 1], [2, 1], [2, 4], [3, 4], [4, 4]];
 
 // Pass JS-side strings down to the inline script.
 const jsStrings = {
   copy: t(lang, "install.copy"),
   copied: t(lang, "install.copied"),
   copyManual: t(lang, "install.copyManual"),
-  sprintLabel: t(lang, "sprint.label"),
-  sprintFormat: "{r} / {t} W",
+  runLabel: t(lang, "runpill.label"),
+  wordsUnit: t(lang, "side.counter.unit"),
+  locale: lang === "de" ? "de-DE" : "en-US",
 };
 ---
 
 <div class="v2-shell" data-theme="light">
 
-  <!-- Chrome (titlebar + toolbar) - re-rendered on every route
-       change. NO `transition:persist`, otherwise the tab labels
-       stay in the first page's language and the language toggle
-       doesn't swap its active pill. View transitions still deliver
-       the soft cross-fade.                                              -->
-  <div class="v2-chrome">
+  <!-- SIDEBAR - echoes the app's sidebar: app mark, links, counter. -->
+  <aside class="v2-side" aria-label={t(lang, "side.aria")}>
+    <div class="v2-traffic" aria-hidden="true">
+      <span class="dot dot-red"></span>
+      <span class="dot dot-yellow"></span>
+      <span class="dot dot-green"></span>
+    </div>
 
-    <!-- TAB-BAR -->
-    <header class="v2-titlebar">
-      <div class="v2-traffic" aria-hidden="true">
-        <span class="dot dot-red"></span>
-        <span class="dot dot-yellow"></span>
-        <span class="dot dot-green"></span>
-      </div>
+    <a class="v2-side-app" href={links.home} aria-label={t(lang, "tab.home.aria")}>
+      <span class="v2-side-mark" aria-hidden="true">
+        <svg viewBox="0 0 50 60" width="12" height="15">
+          {zDots.map(([c, r]) => <circle cx={5 + c * 10} cy={5 + r * 10} r="3.1" />)}
+          {zSoft.map(([c, r]) => <circle cx={5 + c * 10} cy={5 + r * 10} r="3.1" opacity="0.5" />)}
+        </svg>
+      </span>
+      <span class="v2-side-name">ScriptZ</span>
+    </a>
 
-      <div class="v2-tabs">
-        <a class:list={["v2-tab", "v2-tab-icon", activeTab === "home" && "is-active"]} href={links.home} data-tab="home" data-title={t(lang, "tab.home.long")} aria-label={t(lang, "tab.home.aria")}>
+    <nav class="v2-side-nav">
+      <a class:list={["v2-side-item", activeTab === "home" && "is-active"]} href={links.home} aria-current={activeTab === "home" ? "page" : undefined}>
+        <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+          <rect x="4" y="4" width="16" height="16" rx="2"/><path d="M8 9h8M8 13h8M8 17h5"/>
+        </svg>
+        <span class="v2-side-lbl">{t(lang, "tab.home.title")}</span>
+      </a>
+      <a class:list={["v2-side-item", activeTab === "ideen" && "is-active"]} href={links.ideen} aria-current={activeTab === "ideen" ? "page" : undefined}>
+        <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+          <path d="M9 18h6"/><path d="M10 22h4"/>
+          <path d="M12 2a7 7 0 0 0-4 12.7c.6.5 1 1.2 1 2V18h6v-1.3c0-.8.4-1.5 1-2A7 7 0 0 0 12 2z"/>
+        </svg>
+        <span class="v2-side-lbl">{t(lang, "tab.ideas.title")}</span>
+        <span class="v2-side-n">{openIdeasCount}</span>
+      </a>
+
+      <div class="v2-side-h">{t(lang, "side.section.scripts")}</div>
+      {scriptRoutes.map(({ key, labelKey }) => (
+        <a class:list={["v2-side-item", activeTab === key && "is-active"]} href={links[key]} aria-current={activeTab === key ? "page" : undefined}>
           <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
-            <path d="M3 11l9-8 9 8"/><path d="M5 10v10h14V10"/>
+            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/>
           </svg>
+          <span class="v2-side-lbl">{t(lang, labelKey)}</span>
         </a>
-        <a class:list={["v2-tab", "v2-tab-icon", activeTab === "ideen" && "is-active"]} href={links.ideen} data-tab="ideen" data-title={t(lang, "tab.ideas.title")} aria-label={t(lang, "tab.ideas.aria")}>
-          <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
-            <path d="M9 18h6"/><path d="M10 22h4"/>
-            <path d="M12 2a7 7 0 0 0-4 12.7c.6.5 1 1.2 1 2V18h6v-1.3c0-.8.4-1.5 1-2A7 7 0 0 0 12 2z"/>
+      ))}
+    </nav>
+
+    <!-- Writing-counter echo: word count of the current page. -->
+    <div class="v2-side-foot" title={t(lang, "side.counter.title")}>
+      <b class="v2-side-count" id="side-count">&nbsp;</b>
+      <span class="v2-side-count-sub">{t(lang, "side.counter.sub")}</span>
+    </div>
+  </aside>
+
+  <div class="v2-main">
+    <!-- HEADER BAR - re-rendered on every route change. -->
+    <div class="v2-chrome">
+      <header class="v2-bar">
+        <div class="v2-hist">
+          <a class="v2-hist-btn" href={links.home} aria-label={t(lang, "toolbar.back.aria")}>
+            <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.2" aria-hidden="true"><polyline points="15 18 9 12 15 6"/></svg>
+          </a>
+          <span class="v2-hist-btn is-off" aria-hidden="true">
+            <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.2"><polyline points="9 18 15 12 9 6"/></svg>
+          </span>
+        </div>
+
+        <div class="v2-crumb">
+          <span class="v2-crumb-root">ScriptZ</span>
+          <span class="v2-crumb-sep" aria-hidden="true">/</span>
+          <b
+            id="toolbar-title"
+            data-title-mac={isDownload ? t(lang, "tab.download.long.mac") : undefined}
+            data-title-win={isDownload ? t(lang, "tab.download.long.win") : undefined}
+          >{toolbarTitle}</b>
+        </div>
+
+        <span class="v2-bar-saved">{t(lang, "status.saved")}</span>
+
+        <span class="v2-stage-chip" title={t(lang, "toolbar.stage.title")}>
+          <svg viewBox="0 0 14 14" width="12" height="12" aria-hidden="true">
+            <circle cx="7" cy="7" r="6" fill="currentColor"/>
+            <path d="M4.6 7.2l1.7 1.7 3.2-3.4" fill="none" stroke="#fff" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
           </svg>
-          <span class="v2-tab-badge">{openIdeasCount}</span>
-        </a>
+          {t(lang, "toolbar.stage")}
+        </span>
 
-        <a class:list={["v2-tab", "v2-tab-script", activeTab === "warum" && "is-active"]} href={links.warum} data-tab="warum" data-title={t(lang, "tab.warum.long")}>
-          <span class="v2-tab-ic">
-            <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/></svg>
-          </span>
-          <span class="v2-tab-title">{t(lang, "tab.warum.short")}</span>
-        </a>
-        <a class:list={["v2-tab", "v2-tab-script", activeTab === "quickmodus" && "is-active"]} href={links.quickmodus} data-tab="quickmodus" data-title={t(lang, "tab.quickmodus.long")}>
-          <span class="v2-tab-ic">
-            <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/></svg>
-          </span>
-          <span class="v2-tab-title">{t(lang, "tab.quickmodus.short")}</span>
-        </a>
-        <a class:list={["v2-tab", "v2-tab-script", activeTab === "no-ai" && "is-active"]} href={links["no-ai"]} data-tab="no-ai" data-title={t(lang, "tab.noai.long")}>
-          <span class="v2-tab-ic">
-            <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/></svg>
-          </span>
-          <span class="v2-tab-title">{t(lang, "tab.noai.short")}</span>
-        </a>
-        <a class:list={["v2-tab", "v2-tab-script", activeTab === "vergleich" && "is-active"]} href={links.vergleich} data-tab="vergleich" data-title={t(lang, "tab.compare.long")}>
-          <span class="v2-tab-ic">
-            <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/></svg>
-          </span>
-          <span class="v2-tab-title">{t(lang, "tab.compare.short")}</span>
-        </a>
-        <a class:list={["v2-tab", "v2-tab-script", "js-tab-download", activeTab === "download" && "is-active"]} href={links.download} data-tab="download" data-title={t(lang, "tab.download.long.mac")} data-title-mac={t(lang, "tab.download.long.mac")} data-title-win={t(lang, "tab.download.long.win")}>
-          <span class="v2-tab-ic">
-            <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/></svg>
-          </span>
-          <span class="v2-tab-title">{t(lang, "tab.download.short")}</span>
-        </a>
-      </div>
-
-      <div class="v2-status">
         <div class="v2-lang" role="group" aria-label={t(lang, "lang.toggle.aria")}>
           {lang === "de" ? (
             <>
@@ -166,33 +209,12 @@ const jsStrings = {
             </>
           )}
         </div>
+
         <a class="v2-status-pill" href={site.github} target="_blank" rel="noopener">
           <span class="v2-dot v2-dot-on"></span>
           {t(lang, "status.opensource")}
         </a>
-        <span class="v2-status-pill v2-status-saved">
-          <span class="v2-dot v2-dot-on"></span>
-          {t(lang, "status.saved")}
-        </span>
-      </div>
-    </header>
 
-    <!-- TOOLBAR -->
-    <div class="v2-toolbar">
-      <a class="v2-toolbar-back" href={links.home} data-tab="home" aria-label={t(lang, "toolbar.back.aria")}>
-        <svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor" stroke-width="2.4" aria-hidden="true">
-          <polyline points="15 18 9 12 15 6"/>
-        </svg>
-        {t(lang, "toolbar.back.label")}
-      </a>
-      <div class="v2-toolbar-title" id="toolbar-title">{toolbarTitle}</div>
-      <div class="v2-toolbar-pills">
-        <span class="v2-pill is-active">{t(lang, "toolbar.pill.action")} <span class="v2-kbd">1</span></span>
-        <span class="v2-pill">{t(lang, "toolbar.pill.character")} <span class="v2-kbd">2</span></span>
-        <span class="v2-pill">{t(lang, "toolbar.pill.dialog")} <span class="v2-kbd">3</span></span>
-        <span class="v2-pill v2-pill-more">…</span>
-      </div>
-      <div class="v2-toolbar-actions">
         <a
           class="v2-toolbar-btn js-platform-cta"
           href={release.dmgUrl}
@@ -207,32 +229,32 @@ const jsStrings = {
           </svg>
           {t(lang, "toolbar.download")}
         </a>
-      </div>
+      </header>
     </div>
 
-  </div><!-- /v2-chrome -->
+    <!-- PAPER (section content + footer) - swaps per route. -->
+    <main class="v2-paper" id="paper">
+      <slot />
 
-  <!-- PAPER (section content + footer) - swaps per route. -->
-  <main class="v2-paper" id="paper">
-    <slot />
+      <!-- Footer - one component for all shells (see SiteFooter.astro) -->
+      <SiteFooter lang={lang} />
+    </main>
+  </div>
 
-    <!-- Footer - one component for all shells (see SiteFooter.astro) -->
-    <SiteFooter lang={lang} />
-  </main>
-
-  <!-- SPRINT PILL - re-renders per route (word count is page-
-       specific anyway, and the label has to follow language switches). -->
+  <!-- RUNTIME PILL - echoes the app's length estimate: how long the
+       current page would take to say out loud, with scroll progress
+       as the playhead. Re-renders per route. -->
   <div
-    class="v2-sprint"
-    id="sprint"
-    data-label={jsStrings.sprintLabel}
-    data-format={jsStrings.sprintFormat}
+    class="v2-runpill"
+    id="runpill"
+    data-label={jsStrings.runLabel}
+    title={t(lang, "runpill.title")}
   >
-    <span class="v2-sprint-ring">
+    <span class="v2-runpill-ring">
       <svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true">
         <circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="2" stroke-opacity="0.22"/>
         <circle
-          class="v2-sprint-progress"
+          class="v2-runpill-progress"
           cx="12" cy="12" r="9"
           fill="none"
           stroke="currentColor"
@@ -244,11 +266,11 @@ const jsStrings = {
         />
       </svg>
     </span>
-    <span class="v2-sprint-txt">{jsStrings.sprintLabel}</span>
+    <span class="v2-runpill-txt">{jsStrings.runLabel}</span>
   </div>
 </div><!-- /v2-shell -->
 
-<!-- Platform CTA update + sprint recount + copy button + language
+<!-- Platform CTA update + page counters + copy button + language
      toggle persistence + screenshot gallery. Runs on first load and
      is re-triggered in Base.astro after every ClientRouter swap
      (astro:page-load). Hence `is:inline` without `data-astro-rerun`. -->
@@ -271,11 +293,13 @@ const jsStrings = {
       if (labelEl) labelEl.textContent = (isWin ? labelWin : labelMac) || labelEl.textContent;
     });
 
-    var dlTab = document.querySelector('.js-tab-download');
-    if (dlTab) {
-      var tMac = dlTab.getAttribute('data-title-mac');
-      var tWin = dlTab.getAttribute('data-title-win');
-      dlTab.setAttribute('data-title', (isWin ? tWin : tMac) || dlTab.getAttribute('data-title'));
+    // Header-bar title on the download route follows the platform.
+    var titleEl = document.getElementById('toolbar-title');
+    if (titleEl) {
+      var tMac = titleEl.getAttribute('data-title-mac');
+      var tWin = titleEl.getAttribute('data-title-win');
+      var next = isWin ? tWin : tMac;
+      if (next) titleEl.textContent = next;
     }
 
     // ===== Screenshot gallery =====================================
@@ -321,41 +345,51 @@ const jsStrings = {
       btn.addEventListener('click', handler);
     });
 
-    // ===== Sprint pill: word-count recount ========================
-    var sprintEl = document.getElementById('sprint');
-    var sprintTxt = document.querySelector('.v2-sprint-txt');
-    var sprintRing = document.querySelector('.v2-sprint-progress');
-    var paper = document.getElementById('paper');
-    var sprintLabel = sprintEl ? sprintEl.getAttribute('data-label') || 'Sprint' : 'Sprint';
-    var sprintFormat = sprintEl ? sprintEl.getAttribute('data-format') || '{r} / {t} W' : '{r} / {t} W';
+    // ===== Page counters: words (sidebar) + runtime (pill) ========
+    // Same estimate the app uses for spoken length: 210 words per
+    // minute (the app's default speaking rate).
+    var WPM = 210;
     var RING_CIRC = 56.5487;
+    var paper = document.getElementById('paper');
+    var contentEl = paper ? paper.querySelector('.v2-tab-content, .blog-post, .blog-index') : null;
+    var text = contentEl ? contentEl.textContent.trim() : '';
+    var words = text ? text.split(/\s+/).length : 0;
 
-    if (sprintTxt && paper) {
-      var contentEl = paper.querySelector('.v2-tab-content');
-      var text = contentEl ? contentEl.textContent.trim() : '';
-      var words = text ? text.split(/\s+/).length : 0;
-      sprintTxt.dataset.total = String(words);
+    var countEl = document.getElementById('side-count');
+    if (countEl) {
+      countEl.textContent = words > 0
+        ? words.toLocaleString(jsStrings.locale) + ' ' + jsStrings.wordsUnit
+        : '';
+    }
 
-      // Remove the old scroll listener from window if present
-      if (window.__sprintScrollHandler) {
-        window.removeEventListener('scroll', window.__sprintScrollHandler);
-      }
+    var fmt = function (sec) {
+      var s = Math.max(0, Math.round(sec));
+      var m = Math.floor(s / 60);
+      var r = s % 60;
+      return m + ':' + (r < 10 ? '0' : '') + r;
+    };
+
+    var pillTxt = document.querySelector('.v2-runpill-txt');
+    var pillRing = document.querySelector('.v2-runpill-progress');
+    if (window.__runpillScrollHandler) {
+      window.removeEventListener('scroll', window.__runpillScrollHandler);
+    }
+    if (pillTxt) {
+      var totalSec = Math.round((words / WPM) * 60);
       var updateProgress = function () {
-        var total = parseInt(sprintTxt.dataset.total || '0', 10);
         var top = window.scrollY;
         var max = Math.max(document.documentElement.scrollHeight - window.innerHeight, 1);
         var ratio = Math.min(Math.max(top / max, 0), 1);
-        if (sprintRing) {
-          sprintRing.setAttribute('stroke-dashoffset', String(RING_CIRC * (1 - ratio)));
+        if (pillRing) {
+          pillRing.setAttribute('stroke-dashoffset', String(RING_CIRC * (1 - ratio)));
         }
-        if (total === 0) {
-          sprintTxt.textContent = sprintLabel;
+        if (totalSec === 0) {
+          pillTxt.textContent = jsStrings.runLabel;
           return;
         }
-        var read = Math.round(ratio * total);
-        sprintTxt.textContent = sprintFormat.replace('{r}', String(read)).replace('{t}', String(total));
+        pillTxt.textContent = jsStrings.runLabel + ' ' + fmt(ratio * totalSec) + ' / ' + fmt(totalSec);
       };
-      window.__sprintScrollHandler = updateProgress;
+      window.__runpillScrollHandler = updateProgress;
       updateProgress();
       window.addEventListener('scroll', updateProgress, { passive: true });
     }

@@ -12,12 +12,11 @@ const { lang } = Astro.props;
 ---
 
 <section class="v2-tab-content is-active" data-content="no-ai" data-section-title={t(lang, "tab.noai.long")}>
-  <h1 class="v2-block v2-caption">{t(lang, "noai.caption")}</h1>
+  <h1 class="v2-block v2-action v2-scene">{t(lang, "noai.caption")}</h1>
 
   <div class="v2-block v2-action">{t(lang, "noai.action1")}</div>
 
   <div class="v2-block v2-character" data-speaker="AXEL"><span class="v2-t">AXEL</span></div>
-  <div class="v2-block v2-parenthetical" data-speaker="AXEL"><span class="v2-t">{t(lang, "noai.axel1.paren")}</span></div>
   <div class="v2-block v2-dialog" data-speaker="AXEL"><span class="v2-t">{t(lang, "noai.axel1.dialog")}</span></div>
 
   <div class="v2-block v2-character" data-speaker="TIMO"><span class="v2-t">TIMO</span></div>
@@ -29,7 +28,7 @@ const { lang } = Astro.props;
   <div class="v2-block v2-character" data-speaker="TIMO"><span class="v2-t">TIMO</span></div>
   <div class="v2-block v2-dialog" data-speaker="TIMO"><span class="v2-t">{t(lang, "noai.timo2.dialog")}</span></div>
 
-  <div class="v2-block v2-camera">{t(lang, "noai.camera")}</div>
+  <div class="v2-block v2-action">{t(lang, "noai.beat")}</div>
 
   <div class="v2-noai-grid">
     <div class="v2-noai-card">

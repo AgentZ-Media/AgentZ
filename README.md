@@ -40,29 +40,29 @@ App opens → you type → format happens → export → done. No login, no clou
 
 ## What it looks like
 
-### Overview – your scripts, characters, and writing streak in one place
+### Overview – your pipeline at a glance
 
 <p align="center">
-  <img src="apps/landing/public/img/app/overview.png" alt="ScriptZ overview with script list, characters and weekly goal" width="900" />
+  <img src="apps/landing/public/img/app/overview.png" alt="ScriptZ overview with the sidebar pipeline and scripts grouped by stage" width="900" />
 </p>
 
-Folders, smart filters, character chips per script, weekly word goal, and a GitHub-style activity heatmap that turns your writing habit into something you can see.
+A calm sidebar instead of tabs: search & commands (`⌘K`), the pipeline from Ideas to Online, your folders and the scripts you opened last. In the list, scripts are grouped by stage and every row shows its cast and runtime – in red only when it runs past the folder's target length.
 
-### Ideas Inbox – capture now, write later
+### Ideas – capture now, write later
 
 <p align="center">
-  <img src="apps/landing/public/img/app/ideas.png" alt="ScriptZ ideas inbox" width="900" />
+  <img src="apps/landing/public/img/app/ideas.png" alt="ScriptZ ideas page with folder chips and detail panel" width="900" />
 </p>
 
-Press `⌘I` from anywhere – overlay opens, type the idea, Enter, you're back where you were. One click turns any idea into a new script with the notes already in the first ACTION block.
+Press `⌘I` from anywhere – even in focus mode – type the idea, Enter, you're back where you were. The ideas page is built for 50+ ideas: folder chips, a filter, grouping by month and a detail panel. `⌘↵` starts a script from the selected idea, and the original note stays visible in the script's inspector.
 
 ### Editor – format happens while you type
 
 <p align="center">
-  <img src="apps/landing/public/img/app/editor.png" alt="ScriptZ editor with character highlights and cast sidebar" width="900" />
+  <img src="apps/landing/public/img/app/editor.png" alt="ScriptZ editor with character colors, inspector and timeline" width="900" />
 </p>
 
-Seven block types (Action · Character · Dialog · Parenthetical · Camera · Caption · SFX), auto character detection with per-name colors, a live cast panel with speaking-time bars, and a built-in sprint timer for focused writing.
+Three block types (Action · Character · Dialog) on one endless sheet, auto character detection with per-name colors, and an inspector with stage, length vs. target range, speaking shares, the original idea and versions. Press `⌘J` and a timeline under the sheet shows who speaks when.
 
 ---
 
@@ -72,36 +72,45 @@ Seven block types (Action · Character · Dialog · Parenthetical · Camera · C
 
 Two speakers in your script? After every dialog line, **one Enter** jumps the cursor to the other character, right into the next dialog. No Tab, no typing the speaker name, no second Enter. Saves two keystrokes per switch – about a minute per 60-second reel.
 
-The moment a third character shows up, Quick Mode pauses on its own. Drop back to two, and it's back. No switch, no setting.
+The moment a third character shows up, Quick Mode pauses on its own. Drop back to two, and it's back. It switches itself on – the toggle in the header bar is only there if you ever want it off.
 
 ### ✍️ Format happens, you don't
 
+- Three block types, nothing to learn: **Action**, **Character**, **Dialog**. `⌘1`–`⌘3` switches, `Tab` opens the block picker, `Enter` moves on to the block you most likely want next.
 - Character names auto-centered and visually all-caps – without rewriting your data.
-- Typing `(` mid-dialog drops you into a Parenthetical block. `)` jumps you back out.
-- `⌘1`–`⌘7` switches block type. `Tab` opens the block picker.
-- Bold and underline where they make sense. Italic is left alone, because `⌘I` belongs to the Ideas Inbox.
+- One endless writing sheet. Pages only exist where they belong: in the PDF.
+- Bold and underline where they make sense. Italic is left alone, because `⌘I` belongs to quick capture.
+- Coming from an older version? Parenthetical, Camera, Caption and SFX blocks are converted to Action automatically – your text stays.
 
 ### 🎨 Characters as first-class citizens
 
-Every character gets its own color, automatically. The cast panel shows everyone's speaking share as a tinted bar. Autocomplete predicts who's likely to speak next, based on the actual dialog flow. All per-script – no global address book, no setup.
+Every character gets its own color, automatically. The inspector shows everyone's share of the speaking time. Autocomplete predicts who's likely to speak next, based on the actual dialog flow. All per-script – no global address book, no setup.
+
+### ⏱️ Target length + timeline
+
+Give a folder a target range – say `0:45–1:05` – or set a global default. Below the range you get a quiet hint, inside it everything stays neutral, and only past the upper bound does the runtime turn red ("10 s too long"). The range answers a question you ask anyway; it judges the script, not you.
+
+`⌘J` opens the timeline under the sheet: one lane per speaker, the hook zone (first 3 seconds), the target band and the upper-bound line, with a playhead that follows your cursor. Hover a segment to highlight its line on the sheet, click it to jump there. The runtime is an estimate based on your speaking rate (default 210 WPM).
+
+### 🗂️ A pipeline from idea to online
+
+Every script has a stage: **Ideas → Writing → Ready to shoot → Shot → Online**. The sidebar shows how many pieces sit in each stage, the stage chip in the header bar moves a script along (`⌘⌥→` / `⌘⌥←`). Folders stay what they're good at: topic, client, series.
 
 ### 📄 Export 1:1 like on paper
 
-PDF export with the embedded iA Writer Quattro font, optional title page, and the same character highlights as in the editor – tight per-line pills, not block-wide bands. Plain text for teleprompters. Print-ready A4 with widow/orphan control so character names and dialog never split.
+The export dialog shows a live preview of the first page. PDF export with the embedded iA Writer Quattro font, optional title page, and the same character highlights as in the editor – tight per-line pills, not block-wide bands. Plain text for teleprompters, `.scriptz` files to move a script between machines. Print-ready A4 with widow/orphan control so character names and dialog never split.
 
 ### 🔁 Auto-snapshots, no panic
 
-Every 5 minutes ScriptZ takes a silent snapshot. Manual one with `⌘⇧S`. Up to 50 versions per script, restorable anytime via `⌘⇧H`. Right next to your text, not buried in a modal.
+Every 5 minutes ScriptZ takes a silent snapshot. Manual one with `⌘⇧S`. Up to 50 versions per script, restorable anytime via `⌘⇧H` – and listed in the inspector, right next to your text.
 
-### 🔥 Motivation without pressure
+### 🌱 A writing counter, not a scoreboard
 
-- **Weekly goal** in the title bar (default 1,500 words/week, configurable).
-- **Streak pill** counts consecutive writing days. Click opens the activity overview with a 365-day heatmap.
-- **Sprint timer** in the editor: 5 / 15 / 25 minutes with a word counter. Pomodoro for writing, no extra app.
+No weekly goal, no streak, no sprint timer. The sidebar shows a calm counter – "1,240 words this week" – and falls back to the month or year when the week is still empty, so it doesn't greet you with a zero. When you only want the sheet, focus mode (`⌘⇧F`) hides the sidebar, inspector and timeline.
 
 ### 🧠 No AI. On purpose.
 
-No "improve this" button. No autocomplete beyond character names from your own script. No chat sidebar. Your voice is the product – if a model writes half of it, half the voice is the model's. The sprint timer and the Ideas Inbox are there for the moments you'd otherwise reach for ChatGPT.
+No "improve this" button. No autocomplete beyond character names from your own script. No chat sidebar. Your voice is the product – if a model writes half of it, half the voice is the model's. Quick capture and focus mode are there for the moments you'd otherwise reach for ChatGPT.
 
 ### 🔒 Local. Offline. Yours.
 
@@ -111,21 +120,20 @@ No login. No cloud. No telemetry. The entire app is a `~10 MB` native binary plu
 
 ## Compared to what you might be using
 
-|                              | ScriptZ | Final Draft | Google Docs | Arc Studio |
-|------------------------------|:-------:|:-----------:|:-----------:|:----------:|
-| Local & offline              | ✅      | ✅          | ❌          | ❌         |
-| No account / login           | ✅      | ⚠️          | ❌          | ❌         |
-| No telemetry                 | ✅      | ⚠️          | ❌          | ❌         |
-| App start under 1s           | ✅      | ❌          | —           | ⚠️         |
-| Short-form / sketch layout   | ✅      | ❌          | ❌          | ⚠️         |
-| Seven block types            | ✅      | ⚠️          | ❌          | ✅         |
-| Auto character colors        | ✅      | ❌          | ❌          | ✅         |
-| Quick Mode (2 speakers)      | ✅      | ❌          | ❌          | ❌         |
-| Speaker prediction           | ✅      | ❌          | ❌          | ❌         |
-| Streak / weekly goal         | ✅      | ❌          | ❌          | ❌         |
-| Built-in sprint timer        | ✅      | ❌          | ❌          | ❌         |
-| Ideas Inbox with quick capture | ✅    | ❌          | ❌          | ❌         |
-| Free                         | ✅      | ❌          | ✅          | ⚠️         |
+|                                        | ScriptZ | Final Draft | Google Docs | Arc Studio |
+|----------------------------------------|:-------:|:-----------:|:-----------:|:----------:|
+| Local & offline                        | ✅      | ✅          | ❌          | ❌         |
+| No account / login                     | ✅      | ⚠️          | ❌          | ❌         |
+| No telemetry                           | ✅      | ⚠️          | ❌          | ❌         |
+| App start under 1s                     | ✅      | ❌          | —           | ⚠️         |
+| Short-form / sketch layout             | ✅      | ❌          | ❌          | ⚠️         |
+| Auto character colors                  | ✅      | ❌          | ❌          | ✅         |
+| Quick Mode (2 speakers)                | ✅      | ❌          | ❌          | ❌         |
+| Speaker prediction                     | ✅      | ❌          | ❌          | ❌         |
+| Target length range + speaker timeline | ✅      | ❌          | ❌          | ❌         |
+| Pipeline stages (idea → online)        | ✅      | ❌          | ❌          | ⚠️         |
+| Ideas page with quick capture          | ✅      | ❌          | ❌          | ❌         |
+| Free                                   | ✅      | ❌          | ✅          | ⚠️         |
 
 ---
 
@@ -135,31 +143,34 @@ No login. No cloud. No telemetry. The entire app is a `~10 MB` native binary plu
 
 | Shortcut | Action |
 |---|---|
-| `⌘N` | New script |
-| `⌘T` | Open overview |
-| `⌘W` | Close active tab |
-| `⌘K` | Command bar |
+| `⌘K` | Search & commands (empty shows recently opened) |
+| `⌘N` | New script (in the current folder) |
+| `⌘I` | Capture an idea (works anywhere, even in focus mode) |
+| `⌘[` / `⌘]` | Back / forward |
+| `⌘\` | Show / hide sidebar |
+| `⌘⇧\` | Show / hide inspector |
 | `⌘,` | Settings |
-| `⌘⌥←` / `⌘⌥→` | Previous / next tab |
-| `⌘I` | Ideas quick-capture (works anywhere, even in the editor) |
 
 ### Script view
 
 | Shortcut | Action |
 |---|---|
+| `⌘J` | Show / hide timeline |
+| `⌘⌥→` / `⌘⌥←` | Next / previous stage |
+| `⌘⇧F` | Focus mode |
 | `⌘E` | Export dialog |
 | `⌘⇧S` | Manual snapshot |
-| `⌘⇧H` | Snapshot history |
+| `⌘⇧H` | Version history |
 
 ### Editor
 
 | Shortcut | Action |
 |---|---|
-| `⌘1` … `⌘7` | Switch block type (Action … SFX) |
-| `⌘B` / `⌘U` | Bold / Underline (Action & Dialog) |
+| `⌘1` / `⌘2` / `⌘3` | Action / Character / Dialog |
 | `Tab` | Block-type picker for the current block |
 | `Enter` | Smart-advance to the next block type |
-| `⌘↵` | Convert idea to new script (in the Ideas drawer) |
+| `⌘B` / `⌘U` | Bold / Underline (Action & Dialog) |
+| `⌘↵` | Start a script from the selected idea (on the ideas page) |
 
 > On Windows, `⌘` means `Ctrl`. The app handles that automatically – the labels you see in-app match your platform.
 
@@ -207,7 +218,7 @@ For the curious – this stays out of the way of writing, but if you want to kno
 | UI | [Solid.js](https://solidjs.com) + TypeScript |
 | Editor | [Lexical](https://lexical.dev) (vanilla, no `@lexical/react`) |
 | Storage | SQLite with FTS5 for full-text search |
-| Font | iA Writer Quattro (SIL OFL 1.1) |
+| Fonts | iA Writer Quattro on the sheet, Schibsted Grotesk for the UI (both SIL OFL 1.1, bundled offline) |
 | Auto-update | `tauri-plugin-updater` with signed releases |
 
 ---
@@ -238,7 +249,7 @@ Code conventions are in [`CLAUDE.md`](CLAUDE.md) (monorepo overview) and [`apps/
 ## License & credits
 
 - **MIT License** – see [LICENSE](LICENSE).
-- Font: **iA Writer Quattro** © Information Architects Inc., SIL OFL 1.1.
+- Fonts: **iA Writer Quattro** © Information Architects Inc., SIL OFL 1.1 · **Schibsted Grotesk** © The Schibsted Grotesk Project Authors, SIL OFL 1.1.
 - Built by [AgentZ](https://linktr.ee/deragentz).
 
 <p align="center">

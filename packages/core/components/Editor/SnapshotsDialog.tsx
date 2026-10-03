@@ -3,6 +3,7 @@ import { Modal } from "../Common/Modal";
 import { confirmDialog } from "../Common/ConfirmDialog";
 import { api } from "../../lib/api";
 import { scriptsBus } from "../../lib/scriptsBus";
+import { flushAll } from "../../lib/saveFlush";
 import { formatAbsolute } from "../../lib/format";
 import type { Snapshot, SnapshotMeta } from "../../lib/types";
 import { pushToast } from "../../stores/toasts";
@@ -33,7 +34,7 @@ export function SnapshotsDialog(props: SnapshotsDialogProps) {
   );
 
   const ensureSelection = () => {
-    const list = snapshots();
+    const list = snapshots.latest;
     if (!list || list.length === 0) {
       if (selectedId() !== null) setSelectedId(null);
       return;
@@ -58,7 +59,7 @@ export function SnapshotsDialog(props: SnapshotsDialogProps) {
   );
 
   const previewText = createMemo(() => {
-    const snap = selectedSnap();
+    const snap = selectedSnap.latest;
     if (!snap) return "";
     // Old snapshots may hold retired block types - preview them as they
     // would be restored (parentheticals wrapped in "( … )").
@@ -105,6 +106,10 @@ export function SnapshotsDialog(props: SnapshotsDialogProps) {
     });
     if (!ok) return;
     try {
+      // Write any buffered keystrokes first: the editor is remounted with
+      // the restored content afterwards, and a save still pending in the
+      // old instance would otherwise overwrite the restore on teardown.
+      await flushAll();
       await api.restoreSnapshot(id);
       scriptsBus.bump();
       pushToast(t("snapshots.toast.restored"), "ok");
@@ -152,7 +157,7 @@ export function SnapshotsDialog(props: SnapshotsDialogProps) {
           class="snap-list"
           tabIndex={0}
           onKeyDown={(e) => {
-            const list = snapshots() ?? [];
+            const list = snapshots.latest ?? [];
             if (list.length === 0) return;
             const idx = list.findIndex((s) => s.id === selectedId());
             if (e.key === "ArrowDown") {
@@ -174,10 +179,10 @@ export function SnapshotsDialog(props: SnapshotsDialogProps) {
           }}
         >
           <Show
-            when={(snapshots()?.length ?? 0) > 0}
+            when={(snapshots.latest?.length ?? 0) > 0}
             fallback={<div class="snap-empty">{t("snapshots.empty")}</div>}
           >
-            <For each={snapshots()}>
+            <For each={snapshots.latest}>
               {(snap) => (
                 <button
                   class={`snap-item${snap.id === selectedId() ? " is-active" : ""}`}
@@ -195,7 +200,7 @@ export function SnapshotsDialog(props: SnapshotsDialogProps) {
         </div>
         <div class="snap-preview">
           <Show
-            when={selectedSnap()}
+            when={selectedSnap.latest}
             fallback={<div class="snap-empty">{t("snapshots.noneSelected")}</div>}
           >
             <pre class="snap-preview-text">{previewText() || t("snapshots.previewEmpty")}</pre>

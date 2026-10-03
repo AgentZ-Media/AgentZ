@@ -1,13 +1,12 @@
-import { Show, createSignal, createMemo, createEffect, For, type Component } from "solid-js";
-import { Modal } from "../Common/Modal";
-import { api } from "../../lib/api";
+import { For, Match, Show, Switch, createEffect, createMemo } from "solid-js";
 import { getUpdatesStore } from "../../lib/updates";
+import { uiStore, type SettingsSection } from "../../stores/ui";
 import { t } from "../../i18n";
-import {
-  TypeIcon, EditIcon, PaletteIcon, KbdIcon, SendIcon, ShieldIcon, InfoIcon,
-} from "./sections/icons";
+import { Icon, type IconName } from "../Common/Icon";
+import { DialogFrame } from "./DialogFrame";
 import { SettingsAppearance } from "./sections/SettingsAppearance";
-import { SettingsEditor } from "./sections/SettingsEditor";
+import { SettingsWriting } from "./sections/SettingsWriting";
+import { SettingsFolders } from "./sections/SettingsFolders";
 import { SettingsCharacters } from "./sections/SettingsCharacters";
 import { SettingsShortcuts } from "./sections/SettingsShortcuts";
 import { SettingsStudio } from "./sections/SettingsStudio";
@@ -15,129 +14,126 @@ import { SettingsUpdates } from "./sections/SettingsUpdates";
 import { SettingsAbout } from "./sections/SettingsAbout";
 import "./SettingsDialog.css";
 
-const updates = () => getUpdatesStore();
-
-type SectionId =
-  | "appearance"
-  | "editor"
-  | "characters"
-  | "shortcuts"
-  | "studio"
-  | "updates"
-  | "about";
-
-interface SectionDef {
-  id: SectionId;
-  label: string;
-  Icon: Component;
+interface NavItem {
+  id: SettingsSection;
+  icon: IconName;
+  label: () => string;
+  /** Separator above this entry. */
+  sep?: boolean;
 }
 
-function allSections(): SectionDef[] {
-  return [
-    { id: "appearance", label: t("settings.section.appearance"), Icon: TypeIcon },
-    { id: "editor",     label: t("settings.section.editor"),     Icon: EditIcon },
-    { id: "characters", label: t("settings.section.characters"), Icon: PaletteIcon },
-    { id: "shortcuts",  label: t("settings.section.shortcuts"),  Icon: KbdIcon },
-    { id: "studio",     label: t("settings.section.studio"),     Icon: SendIcon },
-    { id: "updates",    label: t("settings.section.updates"),    Icon: ShieldIcon },
-    { id: "about",      label: t("settings.section.about"),      Icon: InfoIcon },
-  ];
-}
+const NAV: NavItem[] = [
+  { id: "appearance", icon: "sun", label: () => t("prefs.appearance.title") },
+  { id: "writing", icon: "pen", label: () => t("prefs.writing.title") },
+  { id: "folders", icon: "folder", label: () => t("prefs.folders.title") },
+  { id: "characters", icon: "users", label: () => t("prefs.characters.title") },
+  { id: "shortcuts", icon: "keyboard", label: () => t("prefs.shortcuts.title") },
+  { id: "studio", icon: "cloud", label: () => t("prefs.studio.title"), sep: true },
+  { id: "updates", icon: "refresh", label: () => t("prefs.updates.title") },
+  { id: "about", icon: "info", label: () => t("prefs.about.title") },
+];
 
-export interface SettingsDialogProps {
-  open: boolean;
-  onClose(): void;
-  onStartOnboarding?(): void;
-}
+/** Settings (⌘,). Parameterless: open state and section come from
+ *  `uiStore.settingsOpen()` / `uiStore.settingsSection()`. "Updates" only
+ *  exists where the host registered an updates store (desktop). */
+export function SettingsDialog() {
+  const updates = () => getUpdatesStore();
+  const items = createMemo(() => NAV.filter((n) => n.id !== "updates" || updates() !== null));
+  const section = () => uiStore.settingsSection();
+  const updateReady = () => {
+    const stage = updates()?.stage();
+    return stage === "available" || stage === "ready";
+  };
 
-export function SettingsDialog(props: SettingsDialogProps) {
-  const [section, setSection] = createSignal<SectionId>("appearance");
-
-  // Characters section is hidden when no override exists. We track the
-  // count here so the nav can react, and bump a tick whenever the dialog
-  // opens to make the section refresh itself.
-  const [overrideCount, setOverrideCount] = createSignal(0);
-  const [reloadTick, setReloadTick] = createSignal(0);
-
-  // Refresh whenever the dialog opens. We also load the count once here so
-  // the nav decision is correct before the Characters section ever mounts.
+  // A section that doesn't exist on this platform falls back to the first.
   createEffect(() => {
-    if (!props.open) return;
-    setReloadTick((n) => n + 1);
-    void (async () => {
-      try {
-        const all = await api.listCharacterColors();
-        setOverrideCount(all.filter((r) => r.override_color !== null).length);
-      } catch {
-        setOverrideCount(0);
-      }
-    })();
+    if (!items().some((n) => n.id === section())) uiStore.setSettingsSection("appearance");
   });
 
-  const sections = createMemo<SectionDef[]>(() => {
-    let list = allSections();
-    if (overrideCount() === 0) list = list.filter((s) => s.id !== "characters");
-    if (!updates()) list = list.filter((s) => s.id !== "updates");
-    return list;
-  });
-
+  const close = () => uiStore.closeSettings();
+  let body: HTMLDivElement | undefined;
   createEffect(() => {
-    if (!sections().some((s) => s.id === section())) {
-      setSection("appearance");
-    }
+    void section();
+    body?.scrollTo({ top: 0 });
   });
+
+  const onNavKey = (e: KeyboardEvent) => {
+    if (e.key !== "ArrowDown" && e.key !== "ArrowUp") return;
+    e.preventDefault();
+    const list = items();
+    const i = list.findIndex((n) => n.id === section());
+    const next = list[(i + (e.key === "ArrowDown" ? 1 : -1) + list.length) % list.length];
+    uiStore.setSettingsSection(next.id);
+    (e.currentTarget as HTMLElement).querySelector<HTMLElement>(`[data-sec="${next.id}"]`)?.focus();
+  };
 
   return (
-    <Modal
-      open={props.open}
-      onClose={props.onClose}
-      title={t("settings.title")}
-      maxWidth={760}
-    >
-      <div class="settings-grid">
-        <nav class="settings-nav" aria-label={t("settings.aria.sections")}>
-          <For each={sections()}>
-            {(s) => (
+    <DialogFrame open={uiStore.settingsOpen()} onClose={close} label={t("prefs.title")} class="set">
+      <nav class="set-nav" aria-label={t("prefs.title")} onKeyDown={onNavKey}>
+        <div class="set-title">{t("prefs.title")}</div>
+        <For each={items()}>
+          {(item) => (
+            <>
+              <Show when={item.sep}>
+                <div class="set-sep" />
+              </Show>
               <button
                 type="button"
-                class="settings-nav-btn"
-                classList={{ "is-active": section() === s.id }}
-                onClick={() => setSection(s.id)}
+                class="set-it"
+                classList={{ on: section() === item.id }}
+                aria-current={section() === item.id ? "page" : undefined}
+                data-sec={item.id}
+                data-autofocus={section() === item.id ? "" : undefined}
+                onClick={() => uiStore.setSettingsSection(item.id)}
               >
-                <span class="settings-nav-ic"><s.Icon /></span>
-                <span>{s.label}</span>
+                <Icon name={item.icon} size={14} />
+                <span>{item.label()}</span>
+                <Show when={item.id === "updates" && updateReady()}>
+                  <span class="set-badge" aria-label={t("prefs.updates.badge")}>
+                    1
+                  </span>
+                </Show>
               </button>
-            )}
-          </For>
-        </nav>
-
-        <div class="settings-pane">
-          <Show when={section() === "appearance"}>
-            <SettingsAppearance />
-          </Show>
-          <Show when={section() === "editor"}>
-            <SettingsEditor />
-          </Show>
-          <Show when={section() === "characters"}>
-            <SettingsCharacters
-              reloadTick={reloadTick()}
-              onCountChange={setOverrideCount}
+            </>
+          )}
+        </For>
+      </nav>
+      <div class="set-body" ref={body}>
+        <Switch>
+          <Match when={section() === "appearance"}>
+            <SettingsAppearance onClose={close} />
+          </Match>
+          <Match when={section() === "writing"}>
+            <SettingsWriting onClose={close} />
+          </Match>
+          <Match when={section() === "folders"}>
+            <SettingsFolders onClose={close} />
+          </Match>
+          <Match when={section() === "characters"}>
+            <SettingsCharacters onClose={close} />
+          </Match>
+          <Match when={section() === "shortcuts"}>
+            <SettingsShortcuts onClose={close} />
+          </Match>
+          <Match when={section() === "studio"}>
+            <SettingsStudio onClose={close} />
+          </Match>
+          <Match when={section() === "updates" && updates()}>
+            {(u) => <SettingsUpdates updates={u()} onClose={close} />}
+          </Match>
+          <Match when={section() === "about"}>
+            <SettingsAbout
+              onClose={close}
+              onShowOnboarding={() => {
+                uiStore.closeSettings();
+                uiStore.openOnboarding();
+              }}
             />
-          </Show>
-          <Show when={section() === "shortcuts"}>
-            <SettingsShortcuts />
-          </Show>
-          <Show when={section() === "studio"}>
-            <SettingsStudio />
-          </Show>
-          <Show when={section() === "updates"}>
-            <SettingsUpdates />
-          </Show>
-          <Show when={section() === "about"}>
-            <SettingsAbout onStartOnboarding={props.onStartOnboarding} />
-          </Show>
-        </div>
+          </Match>
+        </Switch>
       </div>
-    </Modal>
+    </DialogFrame>
   );
 }
+
+export default SettingsDialog;

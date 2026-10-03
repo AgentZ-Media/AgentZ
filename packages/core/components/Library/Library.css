@@ -1,0 +1,633 @@
+/* =========================================================================
+   Library: scripts overview, trash, page bar, row menus, selection bar.
+   Visual reference: docs/redesign/concept.html screen "Übersicht"
+   (`.bar`, `.lib`, `.grp`, `.rows`, `.row`, `.teaser`, `.who`).
+   Colours come from @agentz/design tokens only.
+   ========================================================================= */
+
+.lib-page {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+  background: var(--bg);
+  animation: ds-fade-in var(--t-fast);
+}
+
+/* ---------------- Page bar ---------------- */
+.pbar {
+  height: 48px;
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 14px 0 calc(12px + var(--shell-inset-left, 0px));
+  border-bottom: 1px solid var(--line);
+  background: var(--bg);
+  user-select: none;
+}
+.pbar-hist {
+  display: flex;
+  gap: 2px;
+  margin-right: 4px;
+}
+.pbar-hist-btn {
+  width: 26px;
+  height: 26px;
+  display: grid;
+  place-items: center;
+  border-radius: var(--r-2);
+  color: var(--muted);
+  transition: background var(--t-fast), color var(--t-fast);
+}
+.pbar-hist-btn:hover:not(:disabled) {
+  background: var(--fill);
+  color: var(--fg);
+}
+.pbar-hist-btn:disabled {
+  color: var(--faint);
+  opacity: 0.6;
+  cursor: default;
+}
+.pbar-crumb {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  color: var(--muted);
+  white-space: nowrap;
+}
+.pbar-crumb b {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: var(--fg);
+  font-weight: 600;
+}
+.pbar-sp {
+  flex: 1;
+  align-self: stretch;
+}
+.pbar .btn.ghost.is-on {
+  background: var(--fill);
+  color: var(--fg);
+}
+.pbar .btn.ghost svg.i {
+  color: inherit;
+}
+
+/* ---------------- Scroll area + head ---------------- */
+.lib-scroll {
+  flex: 1 1 0;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  container-type: inline-size;
+}
+.lib-scroll.has-selbar {
+  padding-bottom: 72px;
+}
+.lib {
+  max-width: 1180px;
+  padding: 26px 32px 40px;
+}
+.lib-head {
+  display: flex;
+  align-items: flex-end;
+  gap: 14px;
+  margin-bottom: 22px;
+}
+.lib-head-main {
+  min-width: 0;
+  flex: 1;
+}
+.lib-head h1 {
+  margin: 0;
+  font-size: 26px;
+  line-height: 1.1;
+  font-weight: 800;
+  letter-spacing: -0.025em;
+  color: var(--fg);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.week {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 10px;
+}
+.week > span,
+.week-btn {
+  height: 24px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 9px;
+  border-radius: var(--r-2);
+  border: 1px solid var(--line);
+  background: var(--surface);
+  color: var(--muted);
+  font-size: 12px;
+  white-space: nowrap;
+}
+.week > span b {
+  color: var(--fg);
+  font-weight: 700;
+}
+.week > .week-lbl {
+  padding-left: 0;
+  border-color: transparent;
+  background: transparent;
+  color: var(--faint);
+  font-weight: 600;
+}
+.week-btn {
+  transition: border-color var(--t-fast), color var(--t-fast);
+}
+.week-btn:hover {
+  border-color: var(--line-strong);
+  color: var(--fg);
+}
+
+.lib-filter.field-box {
+  width: 210px;
+  flex: none;
+  padding: 0 8px 0 10px;
+  cursor: text;
+}
+.lib-filter-x {
+  width: 18px;
+  height: 18px;
+  display: grid;
+  place-items: center;
+  margin-left: auto;
+  border-radius: var(--r-1);
+  color: var(--faint);
+}
+.lib-filter-x:hover {
+  background: var(--fill);
+  color: var(--fg);
+}
+
+/* ---------------- Groups ---------------- */
+.grp {
+  margin-bottom: 16px;
+}
+.grp-h {
+  min-height: 26px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 12px 4px;
+  font-weight: 700;
+  font-size: 12.5px;
+}
+.grp-tog {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0;
+  color: var(--fg);
+  font-weight: 700;
+}
+.grp-tog:disabled,
+.grp-tog.is-static {
+  cursor: default;
+}
+.grp-tog .n {
+  color: var(--faint);
+  font-weight: 500;
+}
+.grp-tog svg.chev {
+  position: absolute;
+  left: -16px;
+  color: var(--faint);
+  opacity: 0;
+  transition: opacity var(--t-fast);
+}
+.grp:hover .grp-tog svg.chev,
+.grp-tog:focus-visible svg.chev,
+.grp-tog svg.chev.is-shown {
+  opacity: 1;
+}
+.grp-sp {
+  flex: 1;
+}
+.grp-act {
+  margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 2px 6px;
+  margin-right: -6px;
+  border-radius: var(--r-1);
+  color: var(--faint);
+  font-weight: 500;
+  font-size: 12.5px;
+  transition: background var(--t-fast), color var(--t-fast);
+}
+button.grp-act:hover {
+  background: var(--fill);
+  color: var(--fg);
+}
+.grp-act.is-static {
+  cursor: default;
+}
+
+.grp.is-closed .grp-h {
+  gap: 22px;
+}
+.grp.is-closed .grp-tog {
+  color: var(--muted);
+}
+.grp.is-closed .grp-tog:hover {
+  color: var(--fg);
+}
+
+.fdot {
+  width: 7px;
+  height: 7px;
+  margin: 0 3.5px;
+  flex: none;
+  display: inline-block;
+  border-radius: 50%;
+  background: var(--faint);
+}
+
+.rows {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--r-pop);
+  overflow: hidden;
+}
+
+/* ---------------- Rows ---------------- */
+.lrow,
+.trow {
+  position: relative;
+  height: 52px;
+  display: grid;
+  grid-template-columns: 18px minmax(0, 1fr) 128px 132px 54px 82px;
+  gap: 14px;
+  align-items: center;
+  padding: 0 14px;
+  border-top: 1px solid var(--line-soft);
+  color: var(--fg);
+  cursor: default;
+  outline: none;
+  transition: background var(--t-fast);
+}
+.lrow:first-child,
+.trow:first-child {
+  border-top: 0;
+}
+.lrow:hover,
+.lrow:focus-visible {
+  background: var(--surface-2);
+}
+.lrow:focus-visible {
+  box-shadow: inset 3px 0 0 var(--fg);
+}
+.lrow.is-dragging {
+  opacity: 0.5;
+}
+.lrow.is-selecting {
+  cursor: pointer;
+}
+.lrow.is-selected {
+  background: var(--accent-soft);
+}
+.lrow.is-selected::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 3px;
+  background: var(--accent);
+}
+
+.lrow-glyph {
+  display: grid;
+  place-items: center;
+  color: var(--fg);
+}
+.lrow-check {
+  width: 15px;
+  height: 15px;
+  display: grid;
+  place-items: center;
+  border-radius: 4px;
+  border: 1.5px solid var(--line-strong);
+  background: var(--surface);
+  color: var(--accent-fg);
+}
+.lrow.is-selected .lrow-check {
+  border-color: var(--fg);
+  background: var(--accent);
+}
+.lrow.is-selected .lrow-check svg.i {
+  stroke-width: 2.4;
+}
+
+.lrow-t {
+  min-width: 0;
+}
+.lrow-title {
+  display: block;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.lrow-t small {
+  display: block;
+  font-size: 12px;
+  font-weight: 400;
+  color: var(--faint);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.lrow-snippet mark {
+  background: var(--accent-soft);
+  color: var(--fg);
+  border-radius: 2px;
+  padding: 0 1px;
+}
+.lrow-f {
+  color: var(--muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.lrow-cast {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  overflow: hidden;
+}
+.who {
+  padding: 4px 5px;
+  border-radius: 3px;
+  background: var(--fill);
+  color: var(--muted);
+  font: 700 10px/1 var(--type);
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+.who-more {
+  color: var(--faint);
+  font-size: 11px;
+}
+.lrow-rt {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  color: var(--muted);
+}
+.lrow-rt.over {
+  color: var(--warn);
+  font-weight: 600;
+}
+.lrow-u {
+  text-align: right;
+  color: var(--faint);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Hover: "open" + "⋯" replace the date, the runtime stays. */
+.lrow-act {
+  position: absolute;
+  right: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  display: none;
+  gap: 4px;
+}
+.lrow:hover .lrow-act,
+.lrow:focus-within .lrow-act {
+  display: flex;
+}
+.lrow:hover .lrow-u,
+.lrow:focus-within .lrow-u {
+  visibility: hidden;
+}
+.lrow-act-btn {
+  width: 30px;
+  height: 26px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--r-2);
+  border: 1px solid var(--line);
+  background: var(--surface);
+  color: var(--muted);
+  transition: border-color var(--t-fast), color var(--t-fast);
+}
+.lrow-act-btn:hover {
+  border-color: var(--line-strong);
+  color: var(--fg);
+}
+
+/* Narrow main column (small window, sidebar open): drop the folder
+   column first, then the cast. */
+@container (max-width: 820px) {
+  .lrow {
+    grid-template-columns: 18px minmax(0, 1fr) 132px 54px 82px;
+  }
+  .lrow-f {
+    display: none;
+  }
+}
+@container (max-width: 640px) {
+  .lrow {
+    grid-template-columns: 18px minmax(0, 1fr) 54px 82px;
+  }
+  .lrow-cast {
+    display: none;
+  }
+  .lib-head {
+    flex-wrap: wrap;
+  }
+}
+
+/* Trash rows: glyph | title | deleted | actions */
+.trow {
+  grid-template-columns: 18px minmax(0, 1fr) 150px auto;
+}
+.trow svg.st {
+  color: var(--faint);
+}
+.trow-act {
+  display: flex;
+  gap: 6px;
+}
+
+/* ---------------- Ideas teaser ---------------- */
+.teaser {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+  margin-bottom: 16px;
+  border-radius: var(--r-pop);
+  border: 1px dashed var(--line-strong);
+  background: var(--surface-2);
+  color: var(--fg);
+  text-align: left;
+  transition: border-color var(--t-fast), background var(--t-fast);
+}
+.teaser:hover {
+  border-color: var(--muted);
+  background: var(--surface);
+}
+.teaser .teaser-glyph {
+  color: var(--muted);
+}
+.teaser > div {
+  flex: 1;
+  min-width: 0;
+}
+.teaser b {
+  display: block;
+  font-weight: 700;
+}
+.teaser > div span {
+  display: block;
+  color: var(--muted);
+  font-size: 12px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.teaser .btn {
+  margin-left: auto;
+  pointer-events: none;
+}
+.teaser .btn svg.i {
+  color: var(--muted);
+}
+
+/* ---------------- Empty / loading / more ---------------- */
+.lib-loading {
+  height: 120px;
+}
+.lib-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 28px 24px;
+  margin-bottom: 16px;
+  border-radius: var(--r-pop);
+  border: 1px dashed var(--line-strong);
+  background: var(--surface-2);
+}
+.lib-empty-h {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--fg);
+}
+.lib-empty-sub {
+  max-width: 52ch;
+  color: var(--muted);
+  line-height: var(--lh-normal);
+}
+.lib-empty-sub kbd {
+  margin: 0 2px;
+}
+.lib-empty .btn {
+  margin-top: 6px;
+}
+.lib-more {
+  display: flex;
+  justify-content: center;
+  margin: -4px 0 16px;
+}
+
+/* ---------------- Context menu surface ---------------- */
+.menu.ctx-pop {
+  position: fixed;
+  z-index: 150;
+  max-height: calc(100vh - 16px);
+  overflow-y: auto;
+  animation: ds-fade-in var(--t-fast);
+}
+.ctx-pop .menu-it .ctx-chev {
+  margin-left: auto;
+  display: inline-flex;
+  color: var(--faint);
+}
+.ctx-pop .menu-it .ck + .ctx-chev,
+.ctx-pop .menu-it kbd + .ctx-chev {
+  margin-left: 6px;
+}
+.ctx-pop .menu-it svg.st {
+  color: var(--fg);
+}
+.ctx-pop .menu-it .fdot {
+  margin: 0 3.5px;
+}
+
+/* ---------------- Selection bar ---------------- */
+.lib-selbar {
+  position: absolute;
+  left: 50%;
+  bottom: 18px;
+  transform: translateX(-50%);
+  z-index: 40;
+  max-width: calc(100% - 32px);
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 6px 6px 6px 14px;
+  border-radius: var(--r-4);
+  background: var(--surface);
+  box-shadow: var(--shadow-pop);
+  white-space: nowrap;
+  overflow-x: auto;
+  animation: ds-toast-in var(--t-med);
+}
+.lib-selbar-count {
+  margin-right: 6px;
+  font-weight: 700;
+}
+.lib-selbar-div {
+  width: 1px;
+  height: 18px;
+  margin: 0 4px;
+  flex: none;
+  background: var(--line);
+}
+
+/* ---------------- Prompt dialog ---------------- */
+.prompt-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.prompt-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--muted);
+}
+.prompt-field input.field {
+  width: 100%;
+  height: 34px;
+  font-size: 14px;
+}
+.prompt-hint {
+  font-size: 12px;
+  color: var(--faint);
+}
+.prompt-hint.is-warn {
+  color: var(--warn);
+}

@@ -1,0 +1,36 @@
+/* Folder picker (chip trigger + popover). Colours: design tokens only; the
+   folder dot colour arrives as the --dot custom property (data colour). */
+
+.fdot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  flex: none;
+  display: inline-block;
+  background: var(--dot, var(--faint));
+}
+
+.fm-chip {
+  max-width: 220px;
+}
+.fm-chip .fm-name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.fm-chip:disabled {
+  opacity: 0.55;
+  cursor: default;
+}
+
+.fm-menu {
+  position: fixed;
+  z-index: 150;
+  max-height: 320px;
+  overflow-y: auto;
+  outline: none;
+  animation: ds-fade-in var(--t-fast);
+}
+.fm-menu .menu-it .fdot {
+  margin: 0 4px;
+}
