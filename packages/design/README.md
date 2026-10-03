@@ -45,7 +45,7 @@ TypeScript data:
 
 ```ts
 import { ICONS, type IconName, STAGE_GLYPHS } from "@agentz/design/icons";
-import { LOGO_DOTS, LOGO_VIEWBOX, LOGO_DOT_R } from "@agentz/design/logo";
+import { LOGOS, createLogo, type LogoId } from "@agentz/design/logo";
 ```
 
 `ICONS[name]` is the inner markup for a `viewBox="0 0 24 24"` stroke icon;
@@ -53,28 +53,44 @@ import { LOGO_DOTS, LOGO_VIEWBOX, LOGO_DOT_R } from "@agentz/design/logo";
 
 ## Logo and app icon
 
-`logo.ts` is the single source of truth for the dot-matrix Z. In-app it is
-drawn by `AppMark` (`modules/scriptz/components/Common/AppMark.tsx`, styles
-`.app-mark` in `components.css`). Standalone files live in `assets/`:
+`logo.ts` is the registry of product marks (`LOGOS[id]`), including the
+independent `suite` entry for AgentZ and `scriptz` with its unchanged
+original dot geometry. New apps receive `createLogo(initial, accent?)`,
+a letter in the same dot-matrix family. The shared Kit `AppMark` selects a
+registry entry and exposes the supplied app name as its accessible label.
+
+Standalone assets live in `assets/`:
 
 | File | Use |
 |---|---|
-| `scriptz-app-icon.svg` / `.png` (1024 px) | The app icon ("App-Icon hell" in the concept): white sheet with paper grid, ink + graphite dots, macOS icon grid (824 px tile, 100 px inset, 22.5 % corner radius). README, favicons, press. |
-| `scriptz-mark.svg` | Bare Z for light backgrounds (ink + graphite). |
-| `scriptz-mark-inverse.svg` | Bare Z for dark backgrounds (chalk + highlighter). |
-
-All of them - plus every shipped raster copy - are generated, never edited
-by hand:
+| `<id>-app-icon.svg` / `.png` | Accent-yellow app tile and dark dot glyph, matching the in-app mark; PNG is 1024 px when generated with Chrome. |
+| `<id>-mark.svg` | Bare glyph for light backgrounds. |
+| `<id>-mark-inverse.svg` | Bare glyph for dark backgrounds, using the registry accent. |
+| `placeholder/` | Bundled AgentZ suite icon set for machines without Chrome. |
 
 ```bash
-pnpm --filter @agentz/design build:logo   # needs Node >= 22.18 + Google Chrome
+pnpm --filter @agentz/design build:logo --app scriptz
+pnpm --filter @agentz/design build:logo --app suite
+node packages/design/scripts/build-logo.mjs --app <id> --svg-only
 ```
 
-The script writes `assets/` and the complete Tauri icon set
-(`apps/scriptz/src-tauri/icons/`, via `tauri icon`: icns, ico, Windows
-Store tiles, iOS, Android). To change the icon, change
-`logo.ts` or the palette at the top of `scripts/build-logo.mjs` (keep it in
-sync with `.app-mark.is-light` / `.is-dark`) and rerun the script.
+The builder needs Node >= 22.18. Google Chrome or Chromium renders the PNG;
+set `CHROME=/absolute/path/to/chrome` when auto-discovery does not find it.
+Run `pnpm install` first so the target app's Tauri CLI is available. For an
+app, the builder writes `apps/<id>/src-tauri/icons/` (ICNS, ICO, PNGs and
+mobile variants through `tauri icon`) plus `apps/site/public/img/<id>.png`.
+The `suite` entry only exports design assets and the website image.
+
+Without Chrome, it copies the bundled suite placeholder set instead. The
+set contains every format referenced by a generated desktop Tauri config,
+so the app can still build. `PLACEHOLDER.md` in the icon directory makes
+that provenance visible; rerunning with Chrome replaces it with the real
+glyph and removes the marker. `--fallback` forces this path for checks.
+An available browser or Tauri CLI that fails is reported as an error.
+
+Change product geometry/accent in `LOGOS`, then rerun the builder. The
+`new-app:logos` marker is maintained by the app generator. Never edit
+raster exports by hand.
 
 ## The one rule
 
