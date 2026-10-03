@@ -1,4 +1,14 @@
-import { For, Show, createEffect, createMemo, createResource, createSignal, onCleanup, onMount } from "solid-js";
+import {
+  For,
+  Show,
+  createEffect,
+  createMemo,
+  createResource,
+  createSignal,
+  onCleanup,
+  onMount,
+  untrack,
+} from "solid-js";
 import { api } from "../../lib/api";
 import { foldersBus } from "../../lib/foldersBus";
 import { scriptsBus } from "../../lib/scriptsBus";
@@ -148,8 +158,9 @@ export function IdeasPage() {
     }
   }
 
-  // Keep a valid selection: follow a freshly created idea once it shows
-  // up, otherwise fall back to the first visible row.
+  // Keep a valid selection: follow a wanted idea (freshly created, or
+  // revealed via palette / similar link) once it shows up, otherwise fall
+  // back to the first visible row.
   createEffect(() => {
     const ids = visibleIds();
     const want = wanted();
@@ -159,7 +170,15 @@ export function IdeasPage() {
         selectOnly(want, true);
         return;
       }
-      if (ideas().some((i) => i.id === want)) setWanted(null);
+      const g = groups().find((gr) => gr.items.some((i) => i.id === want));
+      if (g) {
+        // In a collapsed group or beyond the month cap: open it up, the
+        // next run selects and scrolls to it.
+        if (!isOpen(g)) setGroupOpen({ ...groupOpen(), [g.id]: true });
+        if (!shownItems(g).some((i) => i.id === want)) setGroupFull({ ...groupFull(), [g.id]: true });
+        return;
+      }
+      if (ideas().some((i) => i.id === want)) setWanted(null); // hidden by a filter
       else return; // not loaded yet
     }
     const p = primary();
@@ -300,15 +319,30 @@ export function IdeasPage() {
     return visible().filter((i) => sel.has(i.id));
   };
 
-  function openSimilarIdea(id: string) {
+  /** Selects `id` and scrolls it into view, first clearing whatever hides
+   *  it: the text filter, "show used", the folder chip. Collapsed groups and
+   *  the month cap are opened by the selection effect above. */
+  function revealIdea(id: string) {
     const idea = ideas().find((i) => i.id === id);
-    if (!idea) return;
-    setQuery("");
-    if (idea.used_at && !showUsed()) setShowUsed(true);
-    const fid = activeFolder();
-    if (fid !== null && (fid === INBOX_FOLDER_ID ? !!idea.folder_id : idea.folder_id !== fid)) setFolder(null);
+    if (idea) {
+      if (scopeIdeas([idea], { query: query(), showUsed: true }).length === 0) setQuery("");
+      if (idea.used_at && !showUsed()) setShowUsed(true);
+      if (inFolder([idea], activeFolder()).length === 0) {
+        // The folder filter lives in the route, which applies after the
+        // save flush - select once it did.
+        void navStore.openIdeas(null).then(() => setWanted(id));
+        return;
+      }
+    }
     setWanted(id);
   }
+
+  // Reveal requests from outside the page (command palette).
+  createEffect(() => {
+    if (uiStore.ideaToReveal() === null) return;
+    const id = uiStore.takeIdeaReveal();
+    if (id) untrack(() => revealIdea(id));
+  });
 
   // ---- keyboard ----
   const onKey = (e: KeyboardEvent) => {
@@ -689,7 +723,7 @@ export function IdeasPage() {
                   onDelete={(idea) => void removeIdeas([idea])}
                   onMove={(idea, fid) => void moveIdeas([idea], fid)}
                   onOpenScript={(sid, title) => navStore.openScript(sid, title)}
-                  onSelectIdea={openSimilarIdea}
+                  onSelectIdea={revealIdea}
                   onLeave={() => listRef?.focus()}
                 />
               )}

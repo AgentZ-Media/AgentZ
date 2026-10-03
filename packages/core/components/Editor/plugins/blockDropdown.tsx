@@ -20,6 +20,7 @@ import {
 import type { BlockType } from "../../../lib/types";
 import { K } from "../../../lib/keys";
 import { t } from "../../../i18n";
+import { dismissOnDialog, focusWithin } from "../../Common/dismissOnDialog";
 
 function findScriptzAncestor(node: LexicalNode | null): BaseScriptzNode | null {
   let cur: LexicalNode | null = node;
@@ -47,6 +48,10 @@ interface DropdownProps {
   current: BlockType | null;
   onSelect: (type: BlockType) => void;
   onClose: () => void;
+  /** Closes without refocusing the editor (a dialog took over). */
+  onDismiss: () => void;
+  /** The editor's root element: keys only count while focus is in it. */
+  root: () => HTMLElement | null;
 }
 
 function BlockDropdown(props: DropdownProps) {
@@ -54,7 +59,21 @@ function BlockDropdown(props: DropdownProps) {
     Math.max(0, BLOCK_TYPES.findIndex((t) => t === props.current)),
   );
 
+  // The picker keeps the caret (focus) in the editor. A dialog opening on
+  // top - or focus leaving the editor otherwise - closes it, so Enter or
+  // the arrows typed into the dialog never change the block behind it.
+  dismissOnDialog({
+    open: () => true,
+    inside: (node) => {
+      if (props.root()?.contains(node)) return true;
+      const el = node instanceof Element ? node : node.parentElement;
+      return !!el?.closest(".scriptz-block-dropdown");
+    },
+    dismiss: () => props.onDismiss(),
+  });
+
   const onKey = (e: KeyboardEvent) => {
+    if (!focusWithin(props.root())) return;
     // stopImmediatePropagation IN ADDITION to preventDefault: Lexical hangs its
     // own keydown listener on the editor root and dispatches
     // KEY_ENTER_COMMAND / arrow-key caret movement from there. preventDefault
@@ -145,13 +164,13 @@ export function installBlockDropdown(
   let dispose: (() => void) | null = null;
   let container: HTMLDivElement | null = null;
 
-  const close = () => {
+  const close = (refocus = true) => {
     if (dispose) dispose();
     dispose = null;
     if (container && container.parentNode) container.parentNode.removeChild(container);
     container = null;
     // Refocus the editor so typing continues normally.
-    queueMicrotask(() => editor.focus());
+    if (refocus) queueMicrotask(() => editor.focus());
   };
 
   const open = (x: number, y: number, current: BlockType | null) => {
@@ -190,6 +209,8 @@ export function installBlockDropdown(
           current={current}
           onSelect={onSelect}
           onClose={close}
+          onDismiss={() => close(false)}
+          root={() => editor.getRootElement()}
         />
       ),
       container,

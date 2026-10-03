@@ -269,6 +269,12 @@ export function installCharacterDropdown(
 
   const onKey = (ev: KeyboardEvent) => {
     if (!open()) return;
+    // Only while the caret is actually in the editor: the selection stays in
+    // the character block when focus moves to a dialog (⌘I, ⌘K) or the
+    // colour popover, and Enter / arrows there must not pick a name.
+    const root = editor.getRootElement();
+    const active = document.activeElement;
+    if (!root || !active || !root.contains(active)) return;
     const list = filteredEntries();
     if (list.length === 0) return;
     if (ev.key === "ArrowDown") {

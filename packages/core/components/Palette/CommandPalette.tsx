@@ -327,7 +327,11 @@ export function CommandPalette() {
         label: i.title,
         sub: (i.notes ?? "").split(/\r?\n/).find((l) => l.trim().length > 0)?.trim(),
         icon: () => <StageGlyph stage="idea" />,
-        run: () => navStore.openIdeas(i.folder_id),
+        run: () => {
+          // The ideas page selects + reveals it (clearing filters that hide it).
+          uiStore.revealIdea(i.id);
+          if (!navStore.isIdeas()) void navStore.openIdeas(i.folder_id);
+        },
       }));
 
     const cmds = commands().filter((c) =>

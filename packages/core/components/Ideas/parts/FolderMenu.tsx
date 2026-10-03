@@ -1,6 +1,7 @@
 import { For, Show, createSignal, onCleanup } from "solid-js";
 import { Portal } from "solid-js/web";
 import { Icon } from "../../Common/Icon";
+import { dismissOnDialog } from "../../Common/dismissOnDialog";
 import { t } from "../../../i18n";
 import type { Folder } from "../../../lib/types";
 import { folderColor } from "../folderColor";
@@ -92,6 +93,14 @@ export function FolderMenu(props: FolderMenuProps) {
       close();
     }
   }
+
+  // A dialog opening on top closes the menu instead of leaving it open
+  // (and focusable) behind the scrim.
+  dismissOnDialog({
+    open,
+    inside: (node) => !!(trigger?.contains(node) || menu?.contains(node)),
+    dismiss: () => close(false),
+  });
 
   const onDocDown = (e: MouseEvent) => {
     if (!open()) return;

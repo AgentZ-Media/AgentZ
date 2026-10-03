@@ -1,9 +1,6 @@
-import { For, Show, createResource, createSignal, onCleanup, onMount } from "solid-js";
+import { For, Show, createEffect, createResource, on, onCleanup, onMount } from "solid-js";
 import { api } from "../../../lib/api";
-import { ideasStore } from "../../../stores/ideas";
-import { pushToast } from "../../../stores/toasts";
-import { registerFlusher } from "../../../lib/saveFlush";
-import { createSerialSaver } from "../../../lib/serialSave";
+import { acquireIdeaDraft, releaseIdeaDraft } from "./ideaDrafts";
 import { getCurrentLocale, t } from "../../../i18n";
 import { K } from "../../../lib/keys";
 import type { Folder, Idea, ScriptStatus, ScriptSummary } from "../../../lib/types";
@@ -35,61 +32,39 @@ export interface IdeaDetailProps {
   onLeave(): void;
 }
 
-const SAVE_DELAY_MS = 600;
-
-interface IdeaDraft {
-  title: string;
-  notes: string;
-}
-
 function stageLabel(status: ScriptStatus): string {
   return t(`stage.${status}` as "stage.writing" | "stage.ready" | "stage.shot" | "stage.online");
 }
 
 /** Right-hand panel of the ideas page: editable title + notes (autosave),
  *  folder, created date, "start as script" and similar pieces. Mounted
- *  once per selected idea id (the page keys it), so drafts never leak
- *  between ideas. */
+ *  once per selected idea id (the page keys it). The drafts live per idea
+ *  id outside the panel (see ideaDrafts.ts): switching away and back
+ *  before a save landed shows the pending text, never stale cached notes. */
 export function IdeaDetail(props: IdeaDetailProps) {
   const idea = () => props.ideas.find((i) => i.id === props.ideaId) ?? null;
   const initial = idea();
-  const [title, setTitle] = createSignal(initial?.title ?? "");
-  const [notes, setNotes] = createSignal(initial?.notes ?? "");
-  const used = () => !!idea()?.used_at;
-  let titleRef: HTMLTextAreaElement | undefined;
-  let notesRef: HTMLTextAreaElement | undefined;
-
   // Title + notes autosave. Writes are serialized; each queued save reads
   // the newest drafts when it runs and diffs them against what the last
   // ACKNOWLEDGED write stored - never against the asynchronously refreshed
   // props, which lag behind an in-flight save.
-  const saver = createSerialSaver<IdeaDraft>({
-    initial: { title: initial?.title ?? "", notes: initial?.notes ?? "" },
-    read: () => ({ title: title().trim(), notes: notes() }),
-    isClean: (d, b) => (!d.title || d.title === b.title) && d.notes === b.notes,
-    delayMs: SAVE_DELAY_MS,
-    async write(d, b) {
-      const cur = idea();
-      if (!cur || cur.used_at) return b;
-      const patch: { id: string; title?: string; notes?: string } = { id: cur.id };
-      if (d.title && d.title !== b.title) patch.title = d.title;
-      if (d.notes !== b.notes) patch.notes = d.notes;
-      await ideasStore.updateIdea(patch);
-      return { title: patch.title ?? b.title, notes: patch.notes ?? b.notes };
-    },
-    onError: (err) =>
-      pushToast(t("common.errorPrefix", { message: (err as Error)?.message ?? String(err) }), "error"),
-  });
+  const draft = initial ? acquireIdeaDraft(initial) : null;
+  const title = () => draft?.title() ?? "";
+  const notes = () => draft?.notes() ?? "";
+  const setTitle = (v: string) => draft?.setTitle(v);
+  const setNotes = (v: string) => draft?.setNotes(v);
+  const used = () => !!idea()?.used_at;
+  let titleRef: HTMLTextAreaElement | undefined;
+  let notesRef: HTMLTextAreaElement | undefined;
 
-  const schedule = () => saver.schedule();
+  const schedule = () => draft?.saver.schedule();
   /** Drains the latest drafts and every write still in flight. */
-  const flush = () => saver.flush();
+  const flush = () => draft?.saver.flush() ?? Promise.resolve();
 
-  const unregister = registerFlusher(flush);
   onCleanup(() => {
-    // Idea switch / page leave: write what's left, and keep the window-
-    // close flusher registered until that write settled.
-    void saver.flush().finally(unregister);
+    // Idea switch / page leave: write what's left. The draft entry keeps
+    // its window-close flusher until that write settled.
+    if (draft) releaseIdeaDraft(draft);
   });
 
   function autoGrow(el: HTMLTextAreaElement | undefined) {
@@ -97,6 +72,9 @@ export function IdeaDetail(props: IdeaDetailProps) {
     el.style.height = "auto";
     el.style.height = `${el.scrollHeight}px`;
   }
+
+  // The title can change without an input event (resync from the store).
+  createEffect(on(title, () => autoGrow(titleRef), { defer: true }));
 
   onMount(() => {
     autoGrow(titleRef);
@@ -191,7 +169,7 @@ export function IdeaDetail(props: IdeaDetailProps) {
             }}
             onBlur={() => {
               // An emptied title is never saved - show the stored one again.
-              if (!title().trim()) setTitle(saver.baseline().title);
+              if (!title().trim() && draft) setTitle(draft.saver.baseline().title);
               void flush();
             }}
             onKeyDown={(e) => fieldKeys(e, "title")}

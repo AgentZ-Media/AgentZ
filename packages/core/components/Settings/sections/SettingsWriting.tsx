@@ -22,6 +22,7 @@ function WpmField() {
   const saver = createSerialSaver<string, number>({
     initial: settingsStore.dialogWpm(),
     read: () => text(),
+    isClean: (raw, base) => raw.trim() === String(base),
     async write(raw, base) {
       const n = Number(raw.trim());
       if (!raw.trim() || !Number.isFinite(n)) {
@@ -41,11 +42,20 @@ function WpmField() {
   onCleanup(() => {
     void commit().finally(unregister);
   });
+  // Arrow keys only edit the draft and go through the same saver as typing,
+  // so steps are serialized with commits and covered by flush (dialog
+  // close, window close). Steps from what the field shows, not from the
+  // store, which lags behind a queued save.
   const step = (delta: number) => {
-    const next = settingsStore.dialogWpm() + delta;
-    void settingsStore.setDialogWpm(next);
-    setText(String(settingsStore.dialogWpm()));
-    saver.resetBaseline(settingsStore.dialogWpm());
+    const raw = text().trim();
+    const n = Number(raw);
+    const from = raw && Number.isFinite(n) ? n : settingsStore.dialogWpm();
+    const next = Math.max(
+      settingsStore.DIALOG_WPM_MIN,
+      Math.min(settingsStore.DIALOG_WPM_MAX, Math.round(from + delta)),
+    );
+    setText(String(next));
+    saver.schedule();
   };
   return (
     <label class="num-f">

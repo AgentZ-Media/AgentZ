@@ -40,6 +40,9 @@ const [exportScriptId, setExportScriptId] = createSignal<string | null>(null);
 const [onboardingOpen, setOnboardingOpen] = createSignal(false);
 const [activityOpen, setActivityOpen] = createSignal(false);
 
+// ---- ideas page: pending "select + reveal this idea" request ----
+const [ideaToReveal, setIdeaToReveal] = createSignal<string | null>(null);
+
 function persistLayout() {
   const payload = JSON.stringify({
     sidebar: sidebarOpen(),
@@ -136,6 +139,17 @@ export const uiStore = {
   activityOpen,
   openActivity: () => setActivityOpen(true),
   closeActivity: () => setActivityOpen(false),
+
+  /** Idea the ideas page should select and scroll into view (command
+   *  palette, links). The page consumes it via `takeIdeaReveal()` as soon
+   *  as it is mounted, clearing filters / expanding groups as needed. */
+  ideaToReveal,
+  revealIdea: (id: string) => setIdeaToReveal(id),
+  takeIdeaReveal(): string | null {
+    const id = ideaToReveal();
+    if (id !== null) setIdeaToReveal(null);
+    return id;
+  },
 
   /** True while any modal dialog is open (global shortcuts back off). */
   anyDialogOpen: () =>

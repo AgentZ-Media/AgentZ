@@ -5,6 +5,7 @@ import { SCRIPT_STATUSES, type ScriptStatus } from "../../lib/types";
 import { K } from "../../lib/keys";
 import { t } from "../../i18n";
 import { setStageWithUndo, stageLabel } from "./stageActions";
+import { dismissOnDialog, focusWithin } from "../Common/dismissOnDialog";
 
 export interface StageChipProps {
   scriptId: string;
@@ -25,12 +26,22 @@ export function StageChip(props: StageChipProps) {
 
   // Where the keyboard was before the menu took focus (usually the editor).
   let returnFocus: HTMLElement | null = null;
-  const close = (refocusChip = false) => {
+  /** "back": where the keyboard was before; "chip": the chip itself;
+   *  "none": leave focus alone (a dialog took over). */
+  const close = (refocus: "back" | "chip" | "none" = "back") => {
     setOpen(false);
-    const target = refocusChip ? chipRef : returnFocus;
+    const target = refocus === "chip" ? chipRef : refocus === "back" ? returnFocus : null;
     returnFocus = null;
     if (target && target.isConnected) target.focus();
   };
+
+  // A dialog opening on top (⌘I, ⌘K, a confirm ...) closes the menu, so
+  // its key handler can never act on keys typed into the dialog.
+  dismissOnDialog({
+    open,
+    inside: (node) => !!wrapRef?.contains(node),
+    dismiss: () => close("none"),
+  });
 
   const pick = (status: ScriptStatus) => {
     close();
@@ -57,6 +68,8 @@ export function StageChip(props: StageChipProps) {
     };
     const onKey = (ev: KeyboardEvent) => {
       if (ev.metaKey || ev.ctrlKey || ev.altKey) return;
+      // Only while the keyboard is in the menu (it takes focus on open).
+      if (!focusWithin(wrapRef)) return;
       const n = SCRIPT_STATUSES.length;
       const digit = /^[1-9]$/.test(ev.key) ? Number(ev.key) : 0;
       if (digit >= 1 && digit <= n) {
@@ -78,7 +91,7 @@ export function StageChip(props: StageChipProps) {
       } else if (ev.key === "Escape" || ev.key === "Tab") {
         ev.preventDefault();
         ev.stopPropagation();
-        close(true);
+        close("chip");
       }
     };
     document.addEventListener("mousedown", onDown, true);

@@ -1,5 +1,6 @@
 import { createSignal, createEffect } from "solid-js";
 import { api } from "../lib/api";
+import { registerFlusher } from "../lib/saveFlush";
 import {
   applyResolvedLanguage,
   detectSystemLanguage,
@@ -102,6 +103,32 @@ function clampWpm(n: number): number {
   return Math.max(DIALOG_WPM_MIN, Math.min(DIALOG_WPM_MAX, Math.round(n)));
 }
 
+// Settings writes: every setter updates its signal synchronously and queues
+// the storage write behind the previous write of the same key. Rapid
+// toggles (on/off/on) thereby land in order - the last choice is what
+// stays stored - and flushAll() (route change, window close) waits for
+// writes still in flight. Errors still reject the setter's promise.
+const settingWrites = new Map<string, Promise<void>>();
+const pendingSettingWrites = new Set<Promise<void>>();
+
+function persistSetting(key: string, value: string): Promise<void> {
+  const prev = settingWrites.get(key) ?? Promise.resolve();
+  const write = prev.catch(() => {}).then(() => api.setSetting(key, value));
+  settingWrites.set(key, write);
+  pendingSettingWrites.add(write);
+  void write
+    .catch(() => {})
+    .finally(() => {
+      pendingSettingWrites.delete(write);
+      if (settingWrites.get(key) === write) settingWrites.delete(key);
+    });
+  return write;
+}
+
+registerFlusher(async () => {
+  await Promise.allSettled([...pendingSettingWrites]);
+});
+
 function applyLanguage(pref: LanguagePref): void {
   const lang: Language = resolveLanguage(pref);
   applyResolvedLanguage(lang);
@@ -113,49 +140,49 @@ export const settingsStore = {
     setTheme(v);
     // dataset.theme is set by the createEffect below — no redundant
     // writing here anymore.
-    await api.setSetting("theme", v);
+    await persistSetting("theme", v);
   },
   highlightingDefault,
   setHighlightingDefault: async (v: boolean) => {
     setHighlightingDefault(v);
-    await api.setSetting("highlighting_default", v ? "1" : "0");
+    await persistSetting("highlighting_default", v ? "1" : "0");
   },
   updateCheckEnabled,
   setUpdateCheckEnabled: async (v: boolean) => {
     setUpdateCheckEnabled(v);
-    await api.setSetting("update_check_enabled", v ? "1" : "0");
+    await persistSetting("update_check_enabled", v ? "1" : "0");
   },
   hourlyUpdateCheck,
   setHourlyUpdateCheck: async (v: boolean) => {
     setHourlyUpdateCheck(v);
-    await api.setSetting("hourly_update_check", v ? "1" : "0");
+    await persistSetting("hourly_update_check", v ? "1" : "0");
   },
   focusModeDefault,
   setFocusModeDefault: async (v: boolean) => {
     setFocusModeDefault(v);
-    await api.setSetting("focus_mode_default", v ? "1" : "0");
+    await persistSetting("focus_mode_default", v ? "1" : "0");
   },
   quickModeAutoEnable,
   setQuickModeAutoEnable: async (v: boolean) => {
     setQuickModeAutoEnable(v);
-    await api.setSetting("quick_mode_auto_enable", v ? "1" : "0");
+    await persistSetting("quick_mode_auto_enable", v ? "1" : "0");
   },
   showWritingStats,
   setShowWritingStats: async (v: boolean) => {
     setShowWritingStats(v);
-    await api.setSetting("show_writing_stats", v ? "1" : "0");
+    await persistSetting("show_writing_stats", v ? "1" : "0");
   },
   darkPaper,
   setDarkPaper: async (v: boolean) => {
     setDarkPaper(v);
-    await api.setSetting("dark_paper", v ? "1" : "0");
+    await persistSetting("dark_paper", v ? "1" : "0");
   },
   resolvedTheme,
   dialogWpm,
   setDialogWpm: async (v: number) => {
     const next = clampWpm(v);
     setDialogWpm(next);
-    await api.setSetting("dialog_wpm", String(next));
+    await persistSetting("dialog_wpm", String(next));
   },
   DIALOG_WPM_MIN,
   DIALOG_WPM_MAX,
@@ -165,27 +192,27 @@ export const settingsStore = {
   setLengthMinDefaultSec: async (v: number | null) => {
     const next = cleanLengthSec(v);
     setLengthMinDefaultSecSignal(next);
-    await api.setSetting("length_min_default_sec", next === null ? "" : String(next));
+    await persistSetting("length_min_default_sec", next === null ? "" : String(next));
   },
   /** Default range upper bound in seconds; null = unset. */
   lengthMaxDefaultSec,
   setLengthMaxDefaultSec: async (v: number | null) => {
     const next = cleanLengthSec(v);
     setLengthMaxDefaultSecSignal(next);
-    await api.setSetting("length_max_default_sec", next === null ? "" : String(next));
+    await persistSetting("length_max_default_sec", next === null ? "" : String(next));
   },
   studioConnectCode,
   setStudioConnectCode: async (v: string) => {
     const next = v.trim();
     setStudioConnectCodeSignal(next);
-    await api.setSetting("studio_connect_code", next);
+    await persistSetting("studio_connect_code", next);
   },
   /** Current user choice "auto" | "de" | "en". */
   language,
   setLanguage: async (v: LanguagePref) => {
     setLanguagePref(v);
     applyLanguage(v);
-    await api.setSetting("language", v);
+    await persistSetting("language", v);
   },
   loaded,
   async load() {

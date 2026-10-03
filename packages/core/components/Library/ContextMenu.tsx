@@ -1,6 +1,7 @@
 import { createSignal, onCleanup, onMount, For, Show, type JSX } from "solid-js";
 import { Portal } from "solid-js/web";
 import { Icon, type IconName } from "../Common/Icon";
+import { dismissOnDialog } from "../Common/dismissOnDialog";
 
 /**
  * Floating menu in the design-system look (`.menu` / `.menu-it`). Used for
@@ -60,6 +61,14 @@ export function ContextMenu(props: ContextMenuProps) {
     if (target?.closest(".ctx-pop")) return;
     props.onClose();
   };
+  // A dialog opening on top (⌘I, ⌘K, ...) closes the menu, so its capture
+  // key handler never eats Escape / arrows meant for the dialog.
+  dismissOnDialog({
+    open: () => true,
+    inside: (node) => !!(node instanceof Element ? node : node.parentElement)?.closest(".ctx-pop"),
+    dismiss: () => props.onClose(),
+  });
+
   const onKey = (e: KeyboardEvent) => {
     if (e.key === "Escape") {
       e.preventDefault();
