@@ -7,19 +7,25 @@ infrastructure, and independent apps with their own data and releases.
 **ScriptZ is the only app currently included.** The shared kit provides
 the application shell, neutral UI, settings, navigation, and infrastructure.
 The shared desktop host supplies native integration and safe shutdown.
-The multi-app release pipeline, website, and app generator remain planned work. Progress and architecture decisions
+The release pipeline supports independent app channels. The website and app
+generator remain planned work. Progress and architecture decisions
 are tracked in the [foundation plan](docs/agentz-suite-fundament.md) (German).
 
 ## Apps
 
 | App | Purpose | Platforms | Source | Download |
 |---|---|---|---|---|
-| **ScriptZ** | Offline script editor for TikTok, Reels, YouTube Shorts, and sketches | macOS Apple Silicon, Windows x64 | [App](apps/scriptz/) · [Module](modules/scriptz/) | [Latest release](https://github.com/AgentZ-Media/AgentZ/releases/latest) |
+| **ScriptZ** | Offline script editor for TikTok, Reels, YouTube Shorts, and sketches | macOS Apple Silicon, Windows x64 | [App](apps/scriptz/) · [Module](modules/scriptz/) | [App channel](https://github.com/AgentZ-Media/AgentZ/releases/tag/scriptz-latest) |
 
 ScriptZ combines automatic script formatting, two-speaker Quick Mode,
 character colors, runtime estimates, a speaker timeline, ideas, snapshots,
 and PDF export. It uses a local SQLite database and needs no account.
 Its editor and writing workflow stay intact during the suite migration.
+
+The new `scriptz-latest` channel becomes available with the first suite
+release; its publication and live update test are still pending. Stable
+download links are [macOS Apple Silicon](https://github.com/AgentZ-Media/AgentZ/releases/download/scriptz-latest/scriptz-macos-arm64.dmg)
+and [Windows x64](https://github.com/AgentZ-Media/AgentZ/releases/download/scriptz-latest/scriptz-windows-x64-setup.exe).
 
 For first-time installation, see the
 [macOS and Windows instructions](docs/release-notes/_install_footer.md).
@@ -40,6 +46,7 @@ crates/agentz-desktop/     Shared Rust plugins, menus and lifecycle handshake
 packages/design/          @agentz/design
                           Shared CSS tokens, primitives, fonts, icons, assets
 tooling/vitest-preset/     Shared Solid/jsdom test configuration
+tooling/release/           Version bump, release validation and channel publishing
 Cargo.toml / Cargo.lock   Rust workspace and shared dependency lockfile
 tsconfig.base.json        Shared TypeScript compiler options
 docs/release-notes/
@@ -131,12 +138,20 @@ Repository conventions live in [CLAUDE.md](CLAUDE.md), ScriptZ details in
 
 ## Releases
 
-Releases currently use `vX.Y.Z` tags and publish ScriptZ for macOS and
-Windows through GitHub Actions. ScriptZ notes live in
-[`docs/release-notes/scriptz/`](docs/release-notes/scriptz/); the shared
-installation footer remains one directory above. App-prefixed tags and
-independent release channels are planned for a later foundation phase.
-See the [release checklist](.claude/rules/release.md) before publishing.
+Releases use `<app-id>-v<semver>` tags, such as `scriptz-v0.9.0`.
+Each app publishes macOS and Windows builds, then updates its own
+`<app-id>-latest` channel. App releases do not replace GitHub's repository-wide
+“Latest”. Historical `v0.x.y` tags remain available.
+
+`pnpm release:bump <app> <version>` updates all four native/package version
+files together. Notes live in `docs/release-notes/<app>/`; the workflow adds
+the shared installation footer. A manually dispatched release workflow is
+always a build-only rehearsal: no publication, signing secrets, or channel
+changes. See the [release checklist](.claude/rules/release.md) before publishing.
+
+Existing ScriptZ 0.8.4 installations still use the old channel. Once 0.9.0
+is published, install it manually once to adopt the app-specific updater.
+Publication and the real 0.9.0 → 0.9.1 update remain separate acceptance checks.
 
 ## License and credits
 

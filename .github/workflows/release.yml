@@ -2,169 +2,187 @@ name: Release
 
 on:
   push:
-    tags:
-      - 'v*.*.*'
-      - '!v*.*.*.*'
+    tags: ['*-v*.*.*']
+  workflow_dispatch:
+    inputs:
+      app:
+        description: 'App ID to build without publishing (for example scriptz)'
+        required: true
+        default: scriptz
+        type: string
 
 permissions:
-  contents: write
+  contents: read
+
+# Re-running a tag must not race its own uploads. Different versions can build
+# concurrently; their pointer publications are serialized separately below.
+concurrency:
+  group: release-${{ github.ref }}-${{ inputs.app || 'tag' }}
+  cancel-in-progress: false
 
 jobs:
-  # ============================================================
-  # 1) Prepare release notes
-  # ============================================================
-  # Reads the per-version changelog file + the static install footer
-  # and passes them as a single output so both build jobs see the same
-  # body. Aborts if the changelog file is missing - this way no release
-  # can accidentally ship with the previous description.
-  prepare-notes:
-    name: Prepare release notes
+  prepare:
+    name: Validate app and prepare release
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     outputs:
-      body: ${{ steps.notes.outputs.body }}
+      app_id: ${{ steps.prepare.outputs.app_id }}
+      version: ${{ steps.prepare.outputs.version }}
+      tag: ${{ steps.prepare.outputs.tag }}
+      release_id: ${{ steps.prepare.outputs.release_id }}
+      dry_run: ${{ steps.prepare.outputs.dry_run }}
     steps:
-      - name: Checkout
-        uses: actions/checkout@v6
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24
+      - id: prepare
+        name: Validate versions and notes; create non-latest release for tag events only
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          INPUT_APP: ${{ inputs.app }}
+        run: node tooling/release/prepare.mjs
 
-      - name: Build release body
-        id: notes
-        run: |
-          NOTES_FILE="docs/release-notes/scriptz/${GITHUB_REF_NAME}.md"
-          FOOTER_FILE="docs/release-notes/_install_footer.md"
-          if [ ! -f "$NOTES_FILE" ]; then
-            echo "::error::Missing $NOTES_FILE - create it before tagging (see /CLAUDE.md release-checklist)."
-            exit 1
-          fi
-          if [ ! -f "$FOOTER_FILE" ]; then
-            echo "::error::Missing $FOOTER_FILE."
-            exit 1
-          fi
-          {
-            echo "body<<EOF_RELEASE_BODY"
-            cat "$NOTES_FILE"
-            echo
-            cat "$FOOTER_FILE"
-            echo "EOF_RELEASE_BODY"
-          } >> "$GITHUB_OUTPUT"
-
-  # ============================================================
-  # 2) macOS build (Apple Silicon)
-  # ============================================================
-  # Runs first and creates the GitHub release object, including the
-  # initial `latest.json` with the darwin-aarch64 entry for the
-  # auto-updater. Pinned to macos-26 (Tahoe) so the SDK matches what
-  # users running Tahoe see locally.
   build-macos:
     name: Build macOS (Apple Silicon)
-    needs: prepare-notes
+    needs: prepare
     runs-on: macos-26
+    permissions:
+      contents: write
     steps:
-      - name: Checkout
-        uses: actions/checkout@v6
-
-      - name: Install Rust toolchain
-        uses: dtolnay/rust-toolchain@stable
+      - uses: actions/checkout@v6
+      - uses: dtolnay/rust-toolchain@stable
         with:
           targets: aarch64-apple-darwin
-
-      - name: Rust cache
-        uses: swatinem/rust-cache@v2
+      - uses: swatinem/rust-cache@v2
         with:
           workspaces: . -> target
-          key: macos
-
-      - name: Setup pnpm
-        # Version comes from packageManager in the repo-root package.json,
-        # so local and CI use the same pnpm version. No value specified
-        # here - otherwise the two sources collide (ERR_PNPM_BAD_PM_VERSION).
-        uses: pnpm/action-setup@v6
-
-      - name: Setup Node
-        uses: actions/setup-node@v6
+          key: ${{ needs.prepare.outputs.app_id }}-macos
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v6
         with:
           node-version: 24
           cache: pnpm
-
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
-
-      - name: Build and release (macOS)
+      - run: pnpm install --frozen-lockfile
+      - name: Preserve completed platform assets on rerun
+        id: guard
+        if: needs.prepare.outputs.dry_run == 'false'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          RELEASE_TAG: ${{ needs.prepare.outputs.tag }}
+          RELEASE_PLATFORM: darwin-aarch64
+        run: node tooling/release/platform-guard.mjs
+      - name: Build and upload signed release assets
+        if: needs.prepare.outputs.dry_run == 'false' && steps.guard.outputs.complete != 'true'
         uses: tauri-apps/tauri-action@v0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          # Tauri updater signing keys. Required so tauri-action emits the
-          # signed `latest.json` manifest + `.app.tar.gz` bundle that the
-          # in-app updater polls for. Set these as repo secrets:
-          #   - TAURI_SIGNING_PRIVATE_KEY: contents of ~/.tauri/scriptz_updater.key
-          #   - TAURI_SIGNING_PRIVATE_KEY_PASSWORD: password if the key has one
-          #     (leave empty if generated with --no-password)
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
         with:
-          tagName: ${{ github.ref_name }}
-          releaseName: 'ScriptZ ${{ github.ref_name }}'
-          releaseBody: ${{ needs.prepare-notes.outputs.body }}
-          releaseDraft: false
-          prerelease: false
-          projectPath: apps/scriptz
+          releaseId: ${{ needs.prepare.outputs.release_id }}
+          tagName: ${{ needs.prepare.outputs.tag }}
+          projectPath: apps/${{ needs.prepare.outputs.app_id }}
           args: --target aarch64-apple-darwin -- --locked
+      - name: Build only (no signing secrets, tag, release, or updater manifest)
+        if: needs.prepare.outputs.dry_run == 'true'
+        uses: tauri-apps/tauri-action@v0
+        with:
+          projectPath: apps/${{ needs.prepare.outputs.app_id }}
+          includeUpdaterJson: false
+          args: >-
+            --target aarch64-apple-darwin
+            --config '{"bundle":{"createUpdaterArtifacts":false}}'
+            -- --locked
+      - name: Save dry-run bundles
+        if: needs.prepare.outputs.dry_run == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ needs.prepare.outputs.app_id }}-macos-arm64-dry-run
+          path: target/aarch64-apple-darwin/release/bundle/dmg/*.dmg
+          if-no-files-found: error
+          retention-days: 7
 
-  # ============================================================
-  # 3) Windows build (x64 NSIS)
-  # ============================================================
-  # Runs AFTER the macOS build because tauri-action finds the existing
-  # `latest.json` in the release and merges the windows-x86_64 entry
-  # into the existing manifest. Running in parallel would cause the
-  # two latest.json uploads to overwrite each other.
-  # Visual Studio Build Tools + WebView2 are already preinstalled on
-  # windows-latest - no extra setup needed.
   build-windows:
     name: Build Windows (x64)
-    needs: [prepare-notes, build-macos]
+    # tauri-action merges latest.json; concurrent platform uploads lose entries.
+    needs: [prepare, build-macos]
     runs-on: windows-latest
+    permissions:
+      contents: write
     steps:
-      - name: Checkout
-        uses: actions/checkout@v6
-
-      - name: Install Rust toolchain
-        uses: dtolnay/rust-toolchain@stable
+      - uses: actions/checkout@v6
+      - uses: dtolnay/rust-toolchain@stable
         with:
           targets: x86_64-pc-windows-msvc
-
-      - name: Rust cache
-        uses: swatinem/rust-cache@v2
+      - uses: swatinem/rust-cache@v2
         with:
           workspaces: . -> target
-          key: windows
-
-      - name: Setup pnpm
-        uses: pnpm/action-setup@v6
-
-      - name: Setup Node
-        uses: actions/setup-node@v6
+          key: ${{ needs.prepare.outputs.app_id }}-windows
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v6
         with:
           node-version: 24
           cache: pnpm
-
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
-
-      - name: Build and release (Windows)
+      - run: pnpm install --frozen-lockfile
+      - name: Preserve completed platform assets on rerun
+        id: guard
+        if: needs.prepare.outputs.dry_run == 'false'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          RELEASE_TAG: ${{ needs.prepare.outputs.tag }}
+          RELEASE_PLATFORM: windows-x86_64
+        run: node tooling/release/platform-guard.mjs
+      - name: Build and upload signed release assets
+        if: needs.prepare.outputs.dry_run == 'false' && steps.guard.outputs.complete != 'true'
         uses: tauri-apps/tauri-action@v0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
         with:
-          # tagName references the release that build-macos created.
-          # tauri-action detects the existing release by tag name and
-          # appends assets instead of creating a new one. `latest.json`
-          # is merged: the existing darwin-aarch64 entry stays,
-          # windows-x86_64 is added alongside.
-          tagName: ${{ github.ref_name }}
-          releaseName: 'ScriptZ ${{ github.ref_name }}'
-          releaseBody: ${{ needs.prepare-notes.outputs.body }}
-          releaseDraft: false
-          prerelease: false
-          projectPath: apps/scriptz
+          releaseId: ${{ needs.prepare.outputs.release_id }}
+          tagName: ${{ needs.prepare.outputs.tag }}
+          projectPath: apps/${{ needs.prepare.outputs.app_id }}
+          updaterJsonPreferNsis: true
           args: --target x86_64-pc-windows-msvc -- --locked
+      - name: Build only (no signing secrets, tag, release, or updater manifest)
+        if: needs.prepare.outputs.dry_run == 'true'
+        uses: tauri-apps/tauri-action@v0
+        with:
+          projectPath: apps/${{ needs.prepare.outputs.app_id }}
+          includeUpdaterJson: false
+          args: >-
+            --target x86_64-pc-windows-msvc
+            --config '{"bundle":{"createUpdaterArtifacts":false}}'
+            -- --locked
+      - name: Save dry-run bundles
+        if: needs.prepare.outputs.dry_run == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ needs.prepare.outputs.app_id }}-windows-x64-dry-run
+          path: target/x86_64-pc-windows-msvc/release/bundle/nsis/*.exe
+          if-no-files-found: error
+          retention-days: 7
+
+  publish-pointer:
+    name: Publish app download and updater pointer
+    needs: [prepare, build-macos, build-windows]
+    if: needs.prepare.outputs.dry_run == 'false'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    concurrency:
+      group: pointer-${{ needs.prepare.outputs.app_id }}
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24
+      - name: Verify signed assets, protect against rollback, publish installers then manifest
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          RELEASE_TAG: ${{ needs.prepare.outputs.tag }}
+        run: node tooling/release/pointer.mjs
