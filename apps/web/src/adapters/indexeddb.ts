@@ -22,9 +22,11 @@ import {
 import { getPlatformAdapter } from "@scriptz/core/lib/platform";
 import {
   setStorageAdapter,
+  validateLengthRange,
   type ExportResult,
   type StorageAdapter,
 } from "@scriptz/core/lib/storage";
+import { normalizeLegacyContent } from "@scriptz/core/lib/legacyBlocks";
 import {
   defaultScriptzFilename,
   parseScriptzBytes,
@@ -53,11 +55,13 @@ import type {
   Idea,
   Script,
   ScriptCharacter,
+  ScriptStatus,
   ScriptSummary,
   SearchHit,
   Snapshot,
   SnapshotMeta,
 } from "@scriptz/core/lib/types";
+import { isScriptStatus } from "@scriptz/core/lib/types";
 
 const MAX_SNAPSHOTS_PER_SCRIPT = 50;
 
@@ -77,6 +81,12 @@ interface ScriptRow {
   dialog_word_count: number;
   direction_block_count: number;
   folder_id: string | null;
+  // Werkbank redesign (desktop migration 007). Optional because rows
+  // written before the redesign don't carry them; reads default to
+  // "writing" / null. Not indexed (status filtering runs in JS), so no
+  // Dexie version bump is needed.
+  status?: ScriptStatus;
+  status_changed_at?: number | null;
 }
 
 interface FolderRow {
@@ -84,6 +94,21 @@ interface FolderRow {
   name: string;
   created_at: number;
   updated_at: number;
+  // Target runtime range in whole seconds; optional for pre-redesign rows.
+  length_min_sec?: number | null;
+  length_max_sec?: number | null;
+}
+
+function folderRowToFolder(f: FolderRow, scriptCount: number): Folder {
+  return {
+    id: f.id,
+    name: f.name,
+    created_at: f.created_at,
+    updated_at: f.updated_at,
+    script_count: scriptCount,
+    length_min_sec: f.length_min_sec ?? null,
+    length_max_sec: f.length_max_sec ?? null,
+  };
 }
 
 interface SnapshotRow {
@@ -322,6 +347,8 @@ function rowToSummary(r: ScriptRow): ScriptSummary {
     dialog_word_count: r.dialog_word_count,
     direction_block_count: r.direction_block_count,
     folder_id: r.folder_id,
+    status: isScriptStatus(r.status) ? r.status : "writing",
+    status_changed_at: r.status_changed_at ?? null,
   };
 }
 
@@ -383,7 +410,11 @@ class IndexedDbStorage implements StorageAdapter {
     const id = crypto.randomUUID();
     const now = Date.now();
     const title = input.title ?? t("common.untitled");
-    const contentJson = input.initialContentJson ?? emptyLexicalState();
+    // Imported / duplicated content may still carry retired block types.
+    const contentJson =
+      input.initialContentJson !== undefined
+        ? normalizeLegacyContent(input.initialContentJson).json
+        : emptyLexicalState();
     const folderId = input.folderId ?? null;
 
     const summary = await db.transaction(
@@ -423,6 +454,8 @@ class IndexedDbStorage implements StorageAdapter {
           dialog_word_count: runtime.dialogWords,
           direction_block_count: runtime.directionBlocks,
           folder_id: folderId,
+          status: "writing",
+          status_changed_at: null,
         };
         await db.scripts.put(row);
         return rowToSummary(row);
@@ -447,9 +480,11 @@ class IndexedDbStorage implements StorageAdapter {
     highlightingEnabled?: number | null;
     contentJson?: string;
     characters?: ScriptCharacter[];
+    internalRewrite?: boolean;
   }): Promise<ScriptSummary> {
     ensurePersisted();
     const now = Date.now();
+    const internal = input.internalRewrite === true;
     // We record word deltas inside the same transaction as the script
     // update - hence daily_word_log + character_colors are also in it.
     let delta = 0;
@@ -470,13 +505,15 @@ class IndexedDbStorage implements StorageAdapter {
           row.updated_at = now;
         }
         if (input.contentJson !== undefined) {
-          const newWordCount = countWords(input.contentJson);
-          const runtime = runtimeStatsFromContent(input.contentJson);
+          // Never persist retired block types (cheap no-op for normal content).
+          const contentJson = normalizeLegacyContent(input.contentJson).json;
+          const newWordCount = countWords(contentJson);
+          const runtime = runtimeStatsFromContent(contentJson);
           const colors = await this.loadColorMap();
           const existing = parseChars(row.characters_meta);
           const { chars, newDefaults } = reconcileChars(
             existing,
-            input.contentJson,
+            contentJson,
             colors,
           );
           for (const [n, c] of newDefaults) {
@@ -490,17 +527,20 @@ class IndexedDbStorage implements StorageAdapter {
           }
           // Sentinel -1 from migration 003: the first save only normalizes
           // the count, without booking the existing total as "written today".
+          // Internal rewrites (legacy-block migration) only normalize the
+          // count and keep updated_at - converting is not writing.
           const isFirstMeasurement = row.last_word_count < 0;
-          const candidateDelta = isFirstMeasurement
-            ? 0
-            : newWordCount - row.last_word_count;
+          const candidateDelta =
+            isFirstMeasurement || internal
+              ? 0
+              : newWordCount - row.last_word_count;
 
-          row.content_json = input.contentJson;
+          row.content_json = contentJson;
           row.characters_meta = serializeChars(chars);
           row.last_word_count = newWordCount;
           row.dialog_word_count = runtime.dialogWords;
           row.direction_block_count = runtime.directionBlocks;
-          row.updated_at = now;
+          if (!internal) row.updated_at = now;
           delta = candidateDelta;
         }
         if (input.characters !== undefined && input.contentJson === undefined) {
@@ -538,6 +578,7 @@ class IndexedDbStorage implements StorageAdapter {
     limit?: number;
     offset?: number;
     folderId?: string | null;
+    status?: ScriptStatus;
   } = {}): Promise<ScriptSummary[]> {
     // Full scan plus in-memory filter. At < 1000 scripts irrelevant -
     // the sort below runs on the JS array anyway.
@@ -559,6 +600,10 @@ class IndexedDbStorage implements StorageAdapter {
       list = list.filter((s) => s.folder_id === null);
     } else if (query.folderId !== undefined && query.folderId !== null) {
       list = list.filter((s) => s.folder_id === query.folderId);
+    }
+    if (query.status !== undefined) {
+      const wanted = query.status;
+      list = list.filter((s) => (isScriptStatus(s.status) ? s.status : "writing") === wanted);
     }
     const sort = query.sort ?? "updated";
     list.sort((a, b) => {
@@ -618,6 +663,26 @@ class IndexedDbStorage implements StorageAdapter {
     return rowToSummary(r);
   }
 
+  async setScriptStatus(id: string, status: ScriptStatus): Promise<ScriptSummary> {
+    if (!isScriptStatus(status)) {
+      throw new Error(`invalid script status: ${String(status)}`);
+    }
+    ensurePersisted();
+    return db.transaction("rw", db.scripts, async () => {
+      const row = await db.scripts.get(id);
+      if (!row) throw new Error(`not found: script ${id}`);
+      const current = isScriptStatus(row.status) ? row.status : "writing";
+      // Re-selecting the current stage keeps status_changed_at stable;
+      // updated_at is never touched (a stage change is not an edit).
+      if (current !== status) {
+        row.status = status;
+        row.status_changed_at = Date.now();
+        await db.scripts.put(row);
+      }
+      return rowToSummary(row);
+    });
+  }
+
   async backfillRuntimeStats(): Promise<void> {
     const sentinels = await db.scripts
       .filter((s) => s.dialog_word_count < 0 || s.direction_block_count < 0)
@@ -647,13 +712,7 @@ class IndexedDbStorage implements StorageAdapter {
         counts.set(s.folder_id, (counts.get(s.folder_id) ?? 0) + 1);
       }
     }
-    const list: Folder[] = rows.map((f) => ({
-      id: f.id,
-      name: f.name,
-      created_at: f.created_at,
-      updated_at: f.updated_at,
-      script_count: counts.get(f.id) ?? 0,
-    }));
+    const list: Folder[] = rows.map((f) => folderRowToFolder(f, counts.get(f.id) ?? 0));
     list.sort((a, b) => localeCompare(a.name, b.name));
     return list;
   }
@@ -668,8 +727,12 @@ class IndexedDbStorage implements StorageAdapter {
     if (!trimmed) throw new Error("folder name must not be empty");
     const id = crypto.randomUUID();
     const now = Date.now();
-    await db.folders.put({ id, name: trimmed, created_at: now, updated_at: now });
-    return { id, name: trimmed, created_at: now, updated_at: now, script_count: 0 };
+    const row: FolderRow = {
+      id, name: trimmed, created_at: now, updated_at: now,
+      length_min_sec: null, length_max_sec: null,
+    };
+    await db.folders.put(row);
+    return folderRowToFolder(row, 0);
   }
 
   async renameFolder(id: string, name: string): Promise<Folder> {
@@ -682,7 +745,27 @@ class IndexedDbStorage implements StorageAdapter {
     const script_count = await db.scripts
       .filter((s) => s.folder_id === id && s.archived_at === null)
       .count();
-    return { ...f, script_count };
+    return folderRowToFolder(f, script_count);
+  }
+
+  async setFolderLengthRange(
+    id: string,
+    minSec: number | null,
+    maxSec: number | null,
+  ): Promise<Folder> {
+    const range = validateLengthRange(minSec, maxSec);
+    ensurePersisted();
+    const updated = await db.folders.update(id, {
+      length_min_sec: range.minSec,
+      length_max_sec: range.maxSec,
+      updated_at: Date.now(),
+    });
+    if (updated === 0) throw new Error(`not found: folder ${id}`);
+    const f = (await db.folders.get(id))!;
+    const script_count = await db.scripts
+      .filter((s) => s.folder_id === id && s.archived_at === null)
+      .count();
+    return folderRowToFolder(f, script_count);
   }
 
   async deleteFolder(id: string): Promise<void> {
@@ -788,8 +871,9 @@ class IndexedDbStorage implements StorageAdapter {
         trigger: "auto", created_at: now,
       });
       await this.trimSnapshots(script.id);
+      // Pre-redesign snapshots may contain retired block types.
       await db.scripts.update(script.id, {
-        content_json: snap.content_json,
+        content_json: normalizeLegacyContent(snap.content_json).json,
         updated_at: now,
       });
     });
@@ -1080,6 +1164,7 @@ class IndexedDbStorage implements StorageAdapter {
       highlighting_enabled: s.highlighting_enabled,
       created_at: s.created_at,
       updated_at: s.updated_at,
+      status: s.status,
     });
     return getPlatformAdapter().saveAs(
       {
@@ -1101,6 +1186,10 @@ class IndexedDbStorage implements StorageAdapter {
       title: parsed.script.title,
       initialContentJson: JSON.stringify(parsed.script.contentJson),
     });
+    // Carry the production stage over (new scripts start at "writing").
+    if (parsed.script.status !== "writing") {
+      await this.setScriptStatus(created.id, parsed.script.status);
+    }
     return { scriptId: created.id, title: created.title };
   }
 
@@ -1181,7 +1270,8 @@ class IndexedDbStorage implements StorageAdapter {
       return i;
     });
 
-    const notesAsAction = input.notesAsAction ?? true;
+    // Default false since the Werkbank redesign: the notes stay on the idea.
+    const notesAsAction = input.notesAsAction ?? false;
     const seed = buildScriptSeed({ notes: notesAsAction ? idea.notes : "" });
     // The new script inherits the idea's folder unless the caller picks a
     // different one - so a "Kunde X" idea converts into a "Kunde X" script.

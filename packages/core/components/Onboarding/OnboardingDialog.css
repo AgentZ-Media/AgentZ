@@ -326,7 +326,6 @@
    editor (see Editor.css from .block-scriptz-character):
    - Character centered, ALLCAPS via text-transform, bold + letter-spacing 0.06em
    - Dialog with margin 0 16%
-   - Parenthetical with margin 0 22%, italic, muted color
    - Tint nur auf dem inneren Text-Span via box-decoration-break: clone +
      padding 1px 4px + border-radius 3px (also "Pill um den Text" statt
      "ganze Blockbreite"), Mix toward white bei 28% – matcht den Tint,
@@ -360,13 +359,6 @@
   line-height: 1.55;
   background: transparent;
 }
-.ob-hl-block[data-kind="caption"] {
-  font-weight: 700;
-  letter-spacing: 0.04em;
-  font-size: var(--fs-11);
-  color: rgba(28, 24, 20, 0.7);
-  margin-bottom: 2px;
-}
 .ob-hl-block[data-kind="action"] {
   color: rgba(28, 24, 20, 0.85);
   margin-bottom: 4px;
@@ -383,13 +375,6 @@
   margin-right: 16%;
   text-align: left;
 }
-.ob-hl-block[data-kind="parenthetical"] {
-  margin-left: 22%;
-  margin-right: 22%;
-  font-style: italic;
-  color: rgba(28, 24, 20, 0.65);
-  text-align: left;
-}
 
 /* Tint only on the text span. Padding + radius match Editor.css. */
 .ob-hl-text {
@@ -401,8 +386,7 @@
   transition: background 260ms cubic-bezier(0.2, 0.8, 0.2, 1);
 }
 .ob-hl-preview[data-on="1"] .ob-hl-block[data-kind="character"] > .ob-hl-text,
-.ob-hl-preview[data-on="1"] .ob-hl-block[data-kind="dialog"] > .ob-hl-text,
-.ob-hl-preview[data-on="1"] .ob-hl-block[data-kind="parenthetical"] > .ob-hl-text {
+.ob-hl-preview[data-on="1"] .ob-hl-block[data-kind="dialog"] > .ob-hl-text {
   background: color-mix(in srgb, var(--ob-tint, transparent) 28%, #ffffff);
 }
 

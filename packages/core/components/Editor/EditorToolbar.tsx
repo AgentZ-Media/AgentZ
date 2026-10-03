@@ -12,11 +12,9 @@ interface BlockDef {
   hint: string;
 }
 
-// Primaries are the three block types a solo talking-head or
-// 2-person sketch script practically always needs. The rest (paren.,
-// camera, caption, SFX) lives behind a "+/..." expand button so
-// the toolbar doesn't feel overloaded for the target audience
-// (TikTok / Reels) - they remain directly accessible via tab picker and ⌘4..7.
+// The three block types (Action, Character, Dialog) - the full set since
+// the block-type reduction. This toolbar is replaced by the Werkbank head
+// bar; kept compiling until then.
 function primaryBlocks(): BlockDef[] {
   return [
     { id: "scriptz-action",    label: t("block.action"),    hint: K("Mod+1") },
@@ -24,22 +22,6 @@ function primaryBlocks(): BlockDef[] {
     { id: "scriptz-dialog",    label: t("block.dialog"),    hint: K("Mod+3") },
   ];
 }
-
-function secondaryBlocks(): BlockDef[] {
-  return [
-    { id: "scriptz-parenthetical", label: t("block.parenthetical"), hint: K("Mod+4") },
-    { id: "scriptz-camera",        label: t("block.camera"),        hint: K("Mod+5") },
-    { id: "scriptz-caption",       label: t("block.caption"),       hint: K("Mod+6") },
-    { id: "scriptz-sfx",           label: t("block.sfx"),           hint: K("Mod+7") },
-  ];
-}
-
-const SECONDARY_IDS: BlockType[] = [
-  "scriptz-parenthetical",
-  "scriptz-camera",
-  "scriptz-caption",
-  "scriptz-sfx",
-];
 
 export interface EditorToolbarProps {
   /** Current script title — shown as a controlled inline input. */
@@ -74,14 +56,6 @@ export interface EditorToolbarProps {
 
 export function EditorToolbar(props: EditorToolbarProps) {
   const [draftTitle, setDraftTitle] = createSignal(props.title);
-  const [secondaryOpen, setSecondaryOpen] = createSignal(false);
-
-  createEffect(() => {
-    const ab = props.activeBlock;
-    if (ab && SECONDARY_IDS.includes(ab as BlockType)) {
-      setSecondaryOpen(true);
-    }
-  });
 
   createEffect(() => {
     setDraftTitle(props.title);
@@ -158,45 +132,6 @@ export function EditorToolbar(props: EditorToolbarProps) {
             </button>
           )}
         </For>
-        <Show when={secondaryOpen()}>
-          <span class="block-toolbar-sep" aria-hidden="true" />
-          <For each={secondaryBlocks()}>
-            {(b) => (
-              <button
-                type="button"
-                onMouseDown={(e) => e.preventDefault()}
-                classList={{ "is-active": props.activeBlock === b.id }}
-                title={`${b.label}  ${b.hint}`}
-                onClick={() => clickBlock(b.id)}
-                disabled={!props.editor}
-                aria-disabled={!props.editor}
-                aria-pressed={props.activeBlock === b.id}
-              >
-                <span class="block-toolbar-label">{b.label}</span>
-                <span class="block-toolbar-hint" aria-hidden="true">{b.hint}</span>
-              </button>
-            )}
-          </For>
-        </Show>
-        <button
-          type="button"
-          class="block-toolbar-more"
-          onMouseDown={(e) => e.preventDefault()}
-          onClick={() => setSecondaryOpen((v) => !v)}
-          title={
-            secondaryOpen()
-              ? t("editor.toolbar.more.titleOpen")
-              : t("editor.toolbar.more.titleClose")
-          }
-          aria-expanded={secondaryOpen()}
-          aria-label={
-            secondaryOpen()
-              ? t("editor.toolbar.more.ariaOpen")
-              : t("editor.toolbar.more.ariaClose")
-          }
-        >
-          {secondaryOpen() ? "–" : "+"}
-        </button>
       </div>
 
       <Show when={props.quickModeAvailable()}>

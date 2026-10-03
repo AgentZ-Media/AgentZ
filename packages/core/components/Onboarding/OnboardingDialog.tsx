@@ -321,7 +321,7 @@ function StepAppearance(props: { webIntro?: boolean }) {
 }
 
 function ObHlBlock(props: {
-  kind: "caption" | "action" | "character" | "dialog" | "parenthetical";
+  kind: "action" | "character" | "dialog";
   tint?: string;
   text: string;
 }) {

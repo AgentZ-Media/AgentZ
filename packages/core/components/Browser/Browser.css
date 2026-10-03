@@ -57,7 +57,7 @@
   gap: 10px;
   height: 36px;
   padding: 0 14px;
-  background: var(--paper);
+  background: var(--surface);
   border: 1px solid var(--border);
   border-radius: var(--r-pill);
   transition: all var(--t-fast);
@@ -124,7 +124,7 @@
 }
 .viewseg button:hover { color: var(--text); }
 .viewseg button.is-on {
-  background: var(--paper);
+  background: var(--surface);
   color: var(--ink-700);
   box-shadow: 0 1px 2px rgba(28, 24, 20, 0.10);
 }
@@ -230,24 +230,24 @@
 /* Real folders set themselves subtly apart from the "All" filter chip so
    they read as a sort target (rather than just a filter). */
 .folder-chip.is-folder {
-  background: var(--paper);
+  background: var(--surface);
   border-color: var(--border);
   color: var(--ink-700);
   padding: 0 12px;
 }
 .folder-chip.is-folder:hover {
   border-color: var(--border-strong);
-  background: var(--paper);
+  background: var(--surface);
 }
 .folder-chip.is-active {
-  background: var(--paper);
+  background: var(--surface);
   color: var(--ink-700);
   border-color: var(--border-strong);
   box-shadow: 0 1px 2px rgba(28, 24, 20, 0.08);
 }
 .folder-chip.is-drop-target {
   border-color: var(--ink-500);
-  background: var(--paper);
+  background: var(--surface);
   box-shadow: 0 0 0 3px var(--ring-brand);
 }
 .folder-chip-icon {
@@ -445,7 +445,7 @@
   letter-spacing: 0.04em;
   text-transform: uppercase;
   color: var(--char-color);
-  background: color-mix(in oklab, var(--char-color) 12%, var(--paper));
+  background: color-mix(in oklab, var(--char-color) 12%, var(--surface));
   border-radius: var(--r-pill);
   white-space: nowrap;
 }
@@ -470,7 +470,7 @@
   flex-direction: column;
   min-height: 200px;
   padding: 0;
-  background: var(--paper);
+  background: var(--surface);
   border: 1px solid var(--border);
   border-radius: var(--r-4);
   cursor: pointer;
@@ -557,7 +557,7 @@
   width: 8px;
   height: 8px;
   border-radius: 50%;
-  box-shadow: 0 0 0 1.5px var(--paper);
+  box-shadow: 0 0 0 1.5px var(--surface);
 }
 
 /* ---- Empty / Welcome ---- */
@@ -575,7 +575,7 @@
   width: 56px;
   height: 56px;
   border-radius: var(--r-4);
-  background: var(--paper);
+  background: var(--surface);
   border: 1px solid var(--border);
   display: flex;
   align-items: center;
@@ -624,7 +624,7 @@
   position: fixed;
   z-index: 31;
   min-width: 200px;
-  background: var(--paper);
+  background: var(--surface);
   border: 1px solid var(--border);
   border-radius: var(--r-4);
   box-shadow: var(--shadow-popover);
@@ -695,7 +695,7 @@
   overflow-y: auto;
   flex: 1;
   min-height: 0;
-  background: var(--paper);
+  background: var(--surface);
   border: 1px solid var(--border);
   border-radius: var(--r-4);
 }
@@ -739,7 +739,7 @@
   z-index: 50;
   min-width: 220px;
   padding: 4px;
-  background: var(--paper);
+  background: var(--surface);
   border: 1px solid var(--border);
   border-radius: var(--r-3);
   box-shadow: var(--shadow-popover);

@@ -75,7 +75,7 @@
 }
 .editor-title-input:hover { background: var(--hover); }
 .editor-title-input:focus {
-  background: var(--paper);
+  background: var(--surface);
   border-color: var(--border-focus);
   box-shadow: 0 0 0 4px var(--ring-brand);
 }
@@ -114,7 +114,7 @@
 }
 .block-toolbar button:hover { color: var(--text); }
 .block-toolbar button.is-active {
-  background: var(--paper);
+  background: var(--surface);
   color: var(--ink-700);
   box-shadow: 0 1px 2px rgba(28, 24, 20, 0.10);
 }
@@ -168,7 +168,7 @@
   gap: 6px;
   height: 28px;
   padding: 0 10px;
-  background: var(--paper);
+  background: var(--surface);
   border: 1px solid var(--border);
   border-radius: var(--r-3);
   color: var(--text-subtle);
@@ -189,7 +189,7 @@
   transform: translateY(0.5px) scale(0.985);
 }
 .editor-toolbar-action.is-on {
-  background: var(--paper);
+  background: var(--surface);
   color: var(--ink-700);
   border-color: var(--ink-500);
   box-shadow: 0 0 0 1px var(--ink-500);

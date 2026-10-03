@@ -163,7 +163,7 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  background: var(--paper);
+  background: var(--surface);
   border: 1px solid var(--border);
   border-radius: 999px;
   color: var(--text-subtle);

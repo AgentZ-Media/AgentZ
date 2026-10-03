@@ -3,8 +3,12 @@
 // Lossy on purpose - feeds FTS5 and the plain-text export, NOT round-trip
 // rendering.
 //
-// Mirrors src-tauri/src/lex.rs byte-for-byte during the Rust -> TS migration.
-// Both modules coexist until Phase 11 retires the Rust copy.
+// Retired block types (parenthetical, camera, caption, sfx) are converted
+// to action blocks before extraction (see ./legacyBlocks.ts), so every
+// consumer - FTS, exports, word counts, runtime, character reconciliation -
+// sees the same three block types as the editor.
+
+import { mayContainLegacyBlocks, normalizeLegacyTree } from "./legacyBlocks";
 
 /** A contiguous text fragment with uniform inline formatting.
  *  Mirrors Lexical's per-TextNode `format` bitfield: bit 0 = bold,
@@ -34,10 +38,6 @@ const SCRIPTZ_KINDS = new Set([
   "scriptz-action",
   "scriptz-character",
   "scriptz-dialog",
-  "scriptz-parenthetical",
-  "scriptz-camera",
-  "scriptz-caption",
-  "scriptz-sfx",
 ]);
 
 export function extractBlocks(contentJson: string): ExtractedBlock[] {
@@ -47,6 +47,7 @@ export function extractBlocks(contentJson: string): ExtractedBlock[] {
   } catch {
     return [];
   }
+  if (mayContainLegacyBlocks(contentJson)) normalizeLegacyTree(v);
   const root = isObject(v) && "root" in v ? (v as Record<string, unknown>).root : v;
   const out: ExtractedBlock[] = [];
   walk(root, out);
@@ -129,15 +130,6 @@ export function extractPlainText(contentJson: string): string {
       case "scriptz-character":
         out += b.text.toUpperCase();
         break;
-      case "scriptz-parenthetical": {
-        const trimmed = trimParens(b.text);
-        out += "(" + trimmed + ")";
-        break;
-      }
-      case "scriptz-sfx":
-        if (!b.text.toUpperCase().startsWith("SFX:")) out += "SFX: ";
-        out += b.text;
-        break;
       default:
         out += b.text;
     }
@@ -145,27 +137,42 @@ export function extractPlainText(contentJson: string): string {
   return out;
 }
 
+/** True for an action block that is fully wrapped in parentheses, e.g.
+ *  "(leise)" - the form former parenthetical blocks take after the
+ *  block-type reduction, and how writers now note delivery cues. */
+export function isParenCueText(text: string): boolean {
+  const t = text.trim();
+  return t.length >= 2 && t.startsWith("(") && t.endsWith(")");
+}
+
 export function extractTeleprompterText(contentJson: string): string {
-  // Plain-Text export per spec: only Character, Dialog, Parenthetical.
+  // Plain-text (teleprompter) export: only what is spoken - Character and
+  // Dialog. Delivery cues - action blocks fully wrapped in "( … )" that sit
+  // inside a speech run (after a Character or Dialog block) - are kept,
+  // so content that used to be a parenthetical block still shows up in
+  // the export exactly as before the block-type reduction.
   const blocks = extractBlocks(contentJson);
   let out = "";
+  let inSpeech = false;
   for (const b of blocks) {
     switch (b.kind) {
       case "scriptz-character":
         if (out.length > 0) out += "\n\n";
         out += b.text.toUpperCase();
+        inSpeech = true;
         break;
       case "scriptz-dialog":
         if (out.length > 0) out += "\n";
         out += b.text;
+        inSpeech = true;
         break;
-      case "scriptz-parenthetical": {
-        if (out.length > 0) out += "\n";
-        const trimmed = trimParens(b.text);
-        out += "(" + trimmed + ")";
-        break;
-      }
       default:
+        if (inSpeech && isParenCueText(b.text)) {
+          if (out.length > 0) out += "\n";
+          out += "(" + trimParens(b.text.trim()) + ")";
+        } else {
+          inSpeech = false;
+        }
         break;
     }
   }

@@ -9,6 +9,10 @@
 //  - Placeholders with `{name}` (e.g. "Moved to „{folder}"").
 //  - Plural rules via `_one`/`_other` suffix using Intl.PluralRules.
 
+import { shellDe } from "./parts/shell";
+import { scriptDe } from "./parts/script";
+import { dialogsDe } from "./parts/dialogs";
+
 export const de = {
   // ---------- common ----------
   "common.cancel": "Abbrechen",
@@ -109,10 +113,18 @@ export const de = {
   "block.action": "Action",
   "block.character": "Charakter",
   "block.dialog": "Dialog",
-  "block.parenthetical": "Paren.",
-  "block.camera": "Kamera",
-  "block.caption": "Caption",
-  "block.sfx": "SFX",
+
+  // ---------- script stages (Werkbank pipeline) ----------
+  "stage.idea": "Idee",
+  "stage.writing": "Schreiben",
+  "stage.ready": "Drehbereit",
+  "stage.shot": "Gedreht",
+  "stage.online": "Online",
+
+  // ---------- length goal (target range) ----------
+  "length.range.both": "{min}-{max}",
+  "length.range.maxOnly": "bis {max}",
+  "length.range.minOnly": "ab {min}",
 
   // ---------- browser / file overview ----------
   "browser.search.placeholder": "Skripte, Charaktere, Inhalte durchsuchen ...",
@@ -253,16 +265,14 @@ export const de = {
 
   // ---------- validation errors (thrown from lib, surfaced as toasts) ----------
   "folder.error.emptyName": "Ordnername darf nicht leer sein",
+  "folder.error.lengthInvalid": "Die Zielzeit muss eine ganze Zahl von Sekunden sein (0 oder mehr).",
+  "folder.error.lengthOrder": "Das Minimum muss kleiner als das Maximum sein.",
   "idea.error.emptyTitle": "Ideen-Titel darf nicht leer sein",
 
   // ---------- editor toolbar ----------
   "editor.toolbar.back": "Übersicht",
   "editor.toolbar.back.title": "Zurück zur Übersicht",
   "editor.toolbar.blockGroup": "Block-Typ",
-  "editor.toolbar.more.titleOpen": "Weniger Block-Typen anzeigen",
-  "editor.toolbar.more.titleClose": "Weitere Block-Typen (Paren./Kamera/Caption/SFX)",
-  "editor.toolbar.more.ariaOpen": "Weniger Block-Typen anzeigen",
-  "editor.toolbar.more.ariaClose": "Weitere Block-Typen anzeigen",
   "editor.toolbar.quickOn": "Quick-Modus aus",
   "editor.toolbar.quickOff": "Quick-Modus an (Enter im Dialog → anderer Charakter)",
   "editor.toolbar.quickAria": "Quick-Modus",
@@ -488,12 +498,8 @@ export const de = {
   "shortcut.blockAction": "Block-Typ → Action",
   "shortcut.blockCharacter": "Block-Typ → Charakter",
   "shortcut.blockDialog": "Block-Typ → Dialog",
-  "shortcut.blockParenthetical": "Block-Typ → Parenthetical",
-  "shortcut.blockCamera": "Block-Typ → Kamera",
-  "shortcut.blockCaption": "Block-Typ → Caption",
-  "shortcut.blockSfx": "Block-Typ → SFX",
   "shortcut.smartEnter": "Smart-Enter: nächster passender Block",
-  "shortcut.formatting": "Fett / Kursiv / Unterstrichen",
+  "shortcut.formatting": "Fett / Unterstrichen",
   "shortcut.exportScript": "Skript exportieren",
   "shortcut.focusMode": "Fokus-Modus an/aus",
   "shortcut.snapshotCreate": "Manuellen Snapshot anlegen",
@@ -672,4 +678,9 @@ export const de = {
   "error.scriptz.missingContent": "Feld `script.contentJson` fehlt oder ist kein Objekt.",
   "error.scriptz.missingCharacters": "Feld `script.characters` fehlt oder ist kein Array.",
   "error.scriptz.invalidCharacter": "script.characters[{index}] hat ungültige name/color-Felder.",
+
+  // ---------- redesign parts ----------
+  ...shellDe,
+  ...scriptDe,
+  ...dialogsDe,
 } as const;

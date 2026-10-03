@@ -7,6 +7,7 @@ import { formatAbsolute } from "../../lib/format";
 import type { Snapshot, SnapshotMeta } from "../../lib/types";
 import { pushToast } from "../../stores/toasts";
 import { t } from "../../i18n";
+import { normalizeLegacyContent } from "../../lib/legacyBlocks";
 import "./SnapshotsDialog.css";
 
 export interface SnapshotsDialogProps {
@@ -59,7 +60,9 @@ export function SnapshotsDialog(props: SnapshotsDialogProps) {
   const previewText = createMemo(() => {
     const snap = selectedSnap();
     if (!snap) return "";
-    return extractPreview(snap.content_json);
+    // Old snapshots may hold retired block types - preview them as they
+    // would be restored (parentheticals wrapped in "( … )").
+    return extractPreview(normalizeLegacyContent(snap.content_json).json);
   });
 
   const onCreateManual = async () => {

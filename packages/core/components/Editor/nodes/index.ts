@@ -1,21 +1,15 @@
 import type { BlockType } from "../../../lib/types";
+import { t, type TranslationKey } from "../../../i18n";
 import { ScriptzActionNode } from "./ScriptzActionNode";
 import { ScriptzCharacterNode } from "./ScriptzCharacterNode";
 import { ScriptzDialogNode } from "./ScriptzDialogNode";
-import { ScriptzParentheticalNode } from "./ScriptzParentheticalNode";
-import { ScriptzCameraNode } from "./ScriptzCameraNode";
-import { ScriptzCaptionNode } from "./ScriptzCaptionNode";
-import { ScriptzSfxNode } from "./ScriptzSfxNode";
 
-export {
-  ScriptzActionNode,
-  ScriptzCharacterNode,
-  ScriptzDialogNode,
-  ScriptzParentheticalNode,
-  ScriptzCameraNode,
-  ScriptzCaptionNode,
-  ScriptzSfxNode,
-};
+// Three block types since the Werkbank redesign. Retired types
+// (parenthetical, camera, caption, sfx) have no node class anymore - stored
+// content is converted to action by lib/legacyBlocks.ts before Lexical
+// parses it.
+
+export { ScriptzActionNode, ScriptzCharacterNode, ScriptzDialogNode };
 
 export {
   $createScriptzActionNode,
@@ -29,22 +23,6 @@ export {
   $createScriptzDialogNode,
   $isScriptzDialogNode,
 } from "./ScriptzDialogNode";
-export {
-  $createScriptzParentheticalNode,
-  $isScriptzParentheticalNode,
-} from "./ScriptzParentheticalNode";
-export {
-  $createScriptzCameraNode,
-  $isScriptzCameraNode,
-} from "./ScriptzCameraNode";
-export {
-  $createScriptzCaptionNode,
-  $isScriptzCaptionNode,
-} from "./ScriptzCaptionNode";
-export {
-  $createScriptzSfxNode,
-  $isScriptzSfxNode,
-} from "./ScriptzSfxNode";
 
 export { BaseScriptzNode } from "./BaseScriptzNode";
 export type { SerializedScriptzNode } from "./BaseScriptzNode";
@@ -54,28 +32,30 @@ export const SCRIPTZ_NODES = [
   ScriptzActionNode,
   ScriptzCharacterNode,
   ScriptzDialogNode,
-  ScriptzParentheticalNode,
-  ScriptzCameraNode,
-  ScriptzCaptionNode,
-  ScriptzSfxNode,
 ] as const;
 
-export const BLOCK_TAGS: Record<BlockType, string> = {
-  "scriptz-action": "Action",
-  "scriptz-character": "Charakter",
-  "scriptz-dialog": "Dialog",
-  "scriptz-parenthetical": "Parenthetical",
-  "scriptz-camera": "Kamera",
-  "scriptz-caption": "Caption",
-  "scriptz-sfx": "SFX",
-};
-
+/** Block types in picker / hotkey order (⌘1 Action, ⌘2 Character,
+ *  ⌘3 Dialog). */
 export const BLOCK_TYPES: BlockType[] = [
   "scriptz-action",
   "scriptz-character",
   "scriptz-dialog",
-  "scriptz-parenthetical",
-  "scriptz-camera",
-  "scriptz-caption",
-  "scriptz-sfx",
 ];
+
+const BLOCK_LABEL_KEYS: Record<BlockType, TranslationKey> = {
+  "scriptz-action": "block.action",
+  "scriptz-character": "block.character",
+  "scriptz-dialog": "block.dialog",
+};
+
+/** Localized, user-visible block type label. */
+export function blockLabel(type: BlockType): string {
+  return t(BLOCK_LABEL_KEYS[type]);
+}
+
+/** Hotkey (K() notation) that sets the block type directly. */
+export const BLOCK_HOTKEYS: Record<BlockType, string> = {
+  "scriptz-action": "Mod+1",
+  "scriptz-character": "Mod+2",
+  "scriptz-dialog": "Mod+3",
+};

@@ -30,11 +30,13 @@ import type {
   Idea,
   Script,
   ScriptCharacter,
+  ScriptStatus,
   ScriptSummary,
   SearchHit,
   Snapshot,
   SnapshotMeta,
 } from "./types";
+import { t } from "../i18n";
 
 export interface CreateScriptInput {
   title?: string;
@@ -48,6 +50,13 @@ export interface UpdateScriptInput {
   highlightingEnabled?: number | null;
   contentJson?: string;
   characters?: ScriptCharacter[];
+  /** Internal content rewrite (e.g. the legacy-block boot migration in
+   *  `lib/legacyBlocksMigration.ts`): the new content is stored and all
+   *  derived stats (word count sentinel, runtime stats, characters, FTS)
+   *  are refreshed, but NO words are booked into the daily word log and
+   *  `updated_at` stays untouched, so a migration neither inflates the
+   *  writing counter nor reorders "recently edited" lists. Not for UI use. */
+  internalRewrite?: boolean;
 }
 
 export interface ListScriptsQuery {
@@ -58,6 +67,8 @@ export interface ListScriptsQuery {
   limit?: number;
   offset?: number;
   folderId?: string | null;
+  /** Only scripts in this production stage. undefined = all stages. */
+  status?: ScriptStatus;
 }
 
 export interface CreateIdeaInput {
@@ -77,6 +88,9 @@ export interface UpdateIdeaInput {
 export interface ConvertIdeaInput {
   ideaId: string;
   folderId?: string | null;
+  /** If true, the idea's notes are seeded as the first action block of the
+   *  new script. Default FALSE since the Werkbank redesign: the notes stay
+   *  on the idea and the inspector shows them under "Aus der Idee". */
   notesAsAction?: boolean;
 }
 
@@ -110,6 +124,10 @@ export interface StorageAdapter {
   emptyTrash(): Promise<void>;
   duplicateScript(id: string): Promise<ScriptSummary>;
   renameScript(id: string, title: string): Promise<ScriptSummary>;
+  /** Moves a script to another production stage. Sets
+   *  `status_changed_at = Date.now()` when the status actually changes;
+   *  does not touch `updated_at` (a stage change is not an edit). */
+  setScriptStatus(id: string, status: ScriptStatus): Promise<ScriptSummary>;
   backfillRuntimeStats(): Promise<void>;
 
   // ===== Folders =====
@@ -117,6 +135,14 @@ export interface StorageAdapter {
   countLiveScripts(): Promise<number>;
   createFolder(name: string): Promise<Folder>;
   renameFolder(id: string, name: string): Promise<Folder>;
+  /** Sets the folder's target runtime range in whole seconds. null clears a
+   *  bound. Throws when a bound is negative / not an integer or when both
+   *  are set and min >= max (see `validateLengthRange`). */
+  setFolderLengthRange(
+    id: string,
+    minSec: number | null,
+    maxSec: number | null,
+  ): Promise<Folder>;
   deleteFolder(id: string): Promise<void>;
   moveScript(scriptId: string, folderId: string | null): Promise<void>;
   moveScripts(scriptIds: string[], folderId: string | null): Promise<void>;
@@ -172,6 +198,29 @@ export interface StorageAdapter {
   // ===== Writing statistics =====
   loadDailyWords(days?: number): Promise<DailyWordEntry[]>;
   loadDailyStats(): Promise<DailyStatsSummary>;
+}
+
+/** Shared validation for `setFolderLengthRange` (all adapters). Returns the
+ *  normalized pair or throws a user-facing (translated) error. Rules:
+ *  null = unset; otherwise a non-negative whole number of seconds; when
+ *  both are set, min must be strictly below max. */
+export function validateLengthRange(
+  minSec: number | null,
+  maxSec: number | null,
+): { minSec: number | null; maxSec: number | null } {
+  const check = (v: number | null): number | null => {
+    if (v === null) return null;
+    if (typeof v !== "number" || !Number.isInteger(v) || v < 0) {
+      throw new Error(t("folder.error.lengthInvalid"));
+    }
+    return v;
+  };
+  const min = check(minSec);
+  const max = check(maxSec);
+  if (min !== null && max !== null && min >= max) {
+    throw new Error(t("folder.error.lengthOrder"));
+  }
+  return { minSec: min, maxSec: max };
 }
 
 let adapter: StorageAdapter | null = null;

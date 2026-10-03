@@ -1,0 +1,13 @@
+/* =========================================================================
+   @agentz/design - fonts.css
+
+   Schibsted Grotesk (variable, 400-900, SIL OFL 1.1), bundled offline
+   via @fontsource-variable/schibsted-grotesk - no CDN request.
+
+   Fontsource registers the family as "Schibsted Grotesk Variable";
+   `--ui` in tokens.css lists both names, so a locally installed static
+   "Schibsted Grotesk" also works.
+   ========================================================================= */
+
+@import "@fontsource-variable/schibsted-grotesk/wght.css";
+@import "@fontsource-variable/schibsted-grotesk/wght-italic.css";

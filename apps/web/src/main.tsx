@@ -15,12 +15,19 @@ import { render } from "solid-js/web";
 //    default right after its self-registration. From now on every
 //    `api.*` call goes against IndexedDB. On the first write the
 //    adapter runs `navigator.storage.persist()` (best-effort, no dialog).
-// 4. Only then import global.css + App - global.css pulls in tokens
-//    and fonts via @import, and the app tree mounts afterwards.
+// 4. Only then import the styles (@agentz/design layers, then core's
+//    global.css) + App, and the app tree mounts afterwards.
 import "./lib/platform";
 import "@scriptz/core/lib/api";
 import "./adapters/indexeddb";
 
+// Styles: design system first (fonts -> tokens -> legacy aliases ->
+// component primitives), then core's global.css, which pulls in the
+// ScriptZ tokens (paper geometry, character palette) and the paper font.
+import "@agentz/design/fonts.css";
+import "@agentz/design/tokens.css";
+import "@agentz/design/legacy.css";
+import "@agentz/design/components.css";
 import "@scriptz/core/styles/global.css";
 import App from "./App";
 import { DesktopOnlyGate } from "./components/DesktopOnlyGate";

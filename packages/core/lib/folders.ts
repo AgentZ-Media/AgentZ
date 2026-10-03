@@ -13,6 +13,7 @@
 // is independent.
 
 import { getDb } from "./db";
+import { validateLengthRange } from "./storage";
 import type { Folder } from "./types";
 import { t } from "../i18n";
 
@@ -29,6 +30,35 @@ interface FolderRow {
   created_at: number;
   updated_at: number;
   script_count: number;
+  length_min_sec: number | null;
+  length_max_sec: number | null;
+}
+
+const FOLDER_SELECT = `SELECT f.id, f.name, f.created_at, f.updated_at,
+            f.length_min_sec, f.length_max_sec,
+            (SELECT COUNT(*) FROM scripts s
+              WHERE s.folder_id = f.id AND s.archived_at IS NULL) AS script_count
+     FROM folders f`;
+
+function rowToFolder(r: FolderRow): Folder {
+  return {
+    id: r.id,
+    name: r.name,
+    created_at: r.created_at,
+    updated_at: r.updated_at,
+    script_count: r.script_count,
+    length_min_sec: r.length_min_sec ?? null,
+    length_max_sec: r.length_max_sec ?? null,
+  };
+}
+
+async function getFolder(id: string): Promise<Folder> {
+  const db = await getDb();
+  const rows = await db.select<FolderRow[]>(`${FOLDER_SELECT} WHERE f.id = $1`, [id]);
+  if (rows.length === 0) {
+    throw new Error(`not found: folder ${id}`);
+  }
+  return rowToFolder(rows[0]);
 }
 
 /** Total count of live (non-archived) scripts. Drives the "All" chip in
@@ -44,13 +74,10 @@ export async function countLiveScripts(): Promise<number> {
 
 export async function listFolders(): Promise<Folder[]> {
   const db = await getDb();
-  return db.select<FolderRow[]>(
-    `SELECT f.id, f.name, f.created_at, f.updated_at,
-            (SELECT COUNT(*) FROM scripts s
-              WHERE s.folder_id = f.id AND s.archived_at IS NULL) AS script_count
-     FROM folders f
-     ORDER BY f.name COLLATE NOCASE ASC`,
+  const rows = await db.select<FolderRow[]>(
+    `${FOLDER_SELECT} ORDER BY f.name COLLATE NOCASE ASC`,
   );
+  return rows.map(rowToFolder);
 }
 
 export async function createFolder(name: string): Promise<Folder> {
@@ -71,6 +98,8 @@ export async function createFolder(name: string): Promise<Folder> {
     created_at: now,
     updated_at: now,
     script_count: 0,
+    length_min_sec: null,
+    length_max_sec: null,
   };
 }
 
@@ -88,21 +117,27 @@ export async function renameFolder(id: string, name: string): Promise<Folder> {
   if (res.rowsAffected === 0) {
     throw new Error(`not found: folder ${id}`);
   }
-  const cntRows = await db.select<{ n: number }[]>(
-    "SELECT COUNT(*) AS n FROM scripts WHERE folder_id = $1 AND archived_at IS NULL",
-    [id],
+  return getFolder(id);
+}
+
+/** Sets (or clears, with null) the folder's target runtime range in whole
+ *  seconds. Validation is shared with the web adapter via
+ *  `validateLengthRange`. */
+export async function setFolderLengthRange(
+  id: string,
+  minSec: number | null,
+  maxSec: number | null,
+): Promise<Folder> {
+  const range = validateLengthRange(minSec, maxSec);
+  const db = await getDb();
+  const res = await db.execute(
+    "UPDATE folders SET length_min_sec = $1, length_max_sec = $2, updated_at = $3 WHERE id = $4",
+    [range.minSec, range.maxSec, Date.now(), id],
   );
-  const createdRows = await db.select<{ created_at: number }[]>(
-    "SELECT created_at FROM folders WHERE id = $1",
-    [id],
-  );
-  return {
-    id,
-    name: trimmed,
-    created_at: createdRows[0]?.created_at ?? now,
-    updated_at: now,
-    script_count: cntRows[0]?.n ?? 0,
-  };
+  if (res.rowsAffected === 0) {
+    throw new Error(`not found: folder ${id}`);
+  }
+  return getFolder(id);
 }
 
 /** FK ON DELETE SET NULL takes care of orphaned scripts - they reappear

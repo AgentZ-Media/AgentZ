@@ -40,7 +40,7 @@
   display: flex;
   flex-direction: column;
   gap: 2px;
-  background: var(--paper-2);
+  background: var(--surface-2);
   /* Own scrollbar only in case the nav list ever gets longer than the
      modal - with the current 6 tabs that never happens, but it's
      cheap future-proofing. */
@@ -68,7 +68,7 @@
   color: var(--text);
 }
 .settings-nav-btn.is-active {
-  background: var(--paper);
+  background: var(--surface);
   color: var(--ink-700);
   border-color: var(--border);
   box-shadow: 0 1px 2px rgba(28, 24, 20, 0.08);
@@ -146,7 +146,7 @@
   width: 16px;
   height: 16px;
   border-radius: 50%;
-  background: var(--paper);
+  background: var(--surface);
   box-shadow: 0 1px 2px rgba(28, 24, 20, 0.18);
   transition: transform var(--t-fast);
 }
@@ -181,7 +181,7 @@
 }
 .seg button:hover { color: var(--text); }
 .seg button.is-on {
-  background: var(--paper);
+  background: var(--surface);
   color: var(--ink-700);
   box-shadow: 0 1px 2px rgba(28, 24, 20, 0.10);
 }
@@ -198,7 +198,7 @@
   padding: 6px 10px;
   border: 1px solid var(--border);
   border-radius: var(--r-2);
-  background: var(--paper);
+  background: var(--surface);
   font-family: var(--font-mono);
   font-size: 13px;
   text-align: right;
@@ -226,7 +226,7 @@
   padding: 8px 10px;
   border: 1px solid var(--border);
   border-radius: var(--r-2);
-  background: var(--paper);
+  background: var(--surface);
   font-family: var(--font-mono);
   font-size: 12px;
   color: var(--text);

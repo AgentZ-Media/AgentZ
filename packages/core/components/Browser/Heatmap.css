@@ -68,9 +68,9 @@
 }
 .hm-cell-pad { background: transparent; }
 .hm-cell[data-l="0"] { background: rgba(28, 24, 20, 0.05); }
-.hm-cell[data-l="1"] { background: color-mix(in oklab, var(--ink-700) 18%, var(--paper, var(--bg-elev-1))); }
-.hm-cell[data-l="2"] { background: color-mix(in oklab, var(--ink-700) 36%, var(--paper, var(--bg-elev-1))); }
-.hm-cell[data-l="3"] { background: color-mix(in oklab, var(--ink-700) 60%, var(--paper, var(--bg-elev-1))); }
+.hm-cell[data-l="1"] { background: color-mix(in oklab, var(--ink-700) 18%, var(--surface)); }
+.hm-cell[data-l="2"] { background: color-mix(in oklab, var(--ink-700) 36%, var(--surface)); }
+.hm-cell[data-l="3"] { background: color-mix(in oklab, var(--ink-700) 60%, var(--surface)); }
 .hm-cell[data-l="4"] { background: var(--ink-700); }
 
 .hm-cell:hover {

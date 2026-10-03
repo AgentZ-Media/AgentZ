@@ -15,13 +15,13 @@ import {
 import { installSmartEnter } from "./plugins/smartEnter";
 import { installBlockDropdown } from "./plugins/blockDropdown";
 import { installAllCaps } from "./plugins/allcaps";
-import { installParentheticalLive } from "./plugins/parentheticalLive";
 import { installInlineFormat } from "./plugins/inlineFormat";
 import { installBlockHotkeys } from "./plugins/blockHotkeys";
 import { installCharacterDropdown } from "./plugins/characterDropdown";
 import { installHighlight } from "./plugins/highlight";
 import { installColorPicker } from "./plugins/colorPicker";
 import { api } from "../../lib/api";
+import { normalizeLegacyContent } from "../../lib/legacyBlocks";
 import { settingsStore } from "../../stores/settings";
 import { K } from "../../lib/keys";
 import { t } from "../../i18n";
@@ -135,7 +135,11 @@ export function Editor(props: EditorProps) {
     let loaded = false;
     if (props.initialContentJson) {
       try {
-        const state = editor.parseEditorState(props.initialContentJson);
+        // Retired block types (parenthetical, camera, caption, sfx) have no
+        // node class anymore - convert them to action before parsing, or
+        // Lexical would reject the whole state.
+        const { json } = normalizeLegacyContent(props.initialContentJson);
+        const state = editor.parseEditorState(json);
         editor.setEditorState(state);
         loaded = true;
       } catch (err) {
@@ -199,7 +203,6 @@ export function Editor(props: EditorProps) {
           getCharacters: () => liveCharacters(),
         });
     const teardownAllCaps = readOnly ? noop : installAllCaps(editor);
-    const teardownParen = readOnly ? noop : installParentheticalLive(editor);
     const teardownInlineFmt = readOnly ? noop : installInlineFormat(editor);
     const teardownBlockHK = readOnly ? noop : installBlockHotkeys(editor);
     const teardownBlockDD = readOnly ? noop : installBlockDropdown(editor, hostRef);
@@ -341,7 +344,6 @@ export function Editor(props: EditorProps) {
       teardownBlockDD();
       teardownBlockHK();
       teardownInlineFmt();
-      teardownParen();
       teardownAllCaps();
       teardownSmartEnter();
       teardownHistory();
@@ -387,7 +389,7 @@ export function Editor(props: EditorProps) {
             if (typeof p === "string") return p;
             if (p.slot === "tab") return <span class="kbd kbd-inline">{t("shortcut.key.tab")}</span>;
             if (p.slot === "first") return <span class="kbd kbd-inline">{K("Mod+1")}</span>;
-            return <span class="kbd kbd-inline">{K("Mod+7")}</span>;
+            return <span class="kbd kbd-inline">{K("Mod+3")}</span>;
           });
         })()}
       </div>

@@ -1,0 +1,209 @@
+/* =========================================================================
+   @agentz/design - tokens.css
+
+   Layer 1 (primitives: type scale, spacing, radii, motion) and
+   layer 2 (semantic colour roles). Components only ever read the
+   semantic names; the dark theme swaps values, never selectors.
+
+   Colour values are taken 1:1 from docs/redesign/concept.html
+   (`.A` = light, `.A.dark` = dark). A few roles the concept uses inline
+   (scrim, dialog shadow, toast shadow, "saved" green, strong hairline,
+   text selection, paper hairline/tint) are lifted into tokens here so no
+   component has to carry a raw colour.
+
+   Theme switching: `<html data-theme="light|dark">`. The writing surface
+   ("paper") stays light in the dark theme unless `<html data-paper="dark">`
+   is set as well (the user's "dark paper" setting).
+
+   Another app of the suite re-themes by overriding `--accent` (and maybe
+   `--side-bg`) - nothing else.
+   ========================================================================= */
+
+/* ---------------------------------------------------------------------
+   Primitives (theme-independent)
+   --------------------------------------------------------------------- */
+:root {
+  /* Type families. The UI font ships with this package (fonts.css);
+     the writing font is provided by the consuming app. */
+  --ui: "Schibsted Grotesk Variable", "Schibsted Grotesk", system-ui, -apple-system,
+    "Segoe UI", Roboto, sans-serif;
+  --type: "iA Writer Quattro", ui-monospace, "SF Mono", Menlo, "Cascadia Mono", Consolas,
+    "DejaVu Sans Mono", monospace;
+
+  /* Type scale */
+  --fs-11: 11px;
+  --fs-12: 12px;
+  --fs-13: 13px;
+  --fs-14: 14px;
+  --fs-15: 15px;
+  --fs-16: 16px;
+  --fs-18: 18px;
+  --fs-20: 20px;
+  --fs-24: 24px;
+  --fs-28: 28px;
+
+  --lh-snug: 1.4;
+  --lh-ui: 1.45;
+  --lh-normal: 1.55;
+  --lh-relaxed: 1.7;
+
+  /* Spacing */
+  --sp-1: 4px;
+  --sp-2: 8px;
+  --sp-3: 12px;
+  --sp-4: 16px;
+  --sp-5: 20px;
+  --sp-6: 24px;
+  --sp-7: 32px;
+  --sp-8: 40px;
+  --sp-9: 48px;
+
+  /* Radii. --r-ctl = buttons/inputs, --r-pop = menus/popovers,
+     --r-dlg = dialogs (values from the concept). */
+  --r-1: 4px;
+  --r-2: 6px;
+  --r-3: 8px;
+  --r-4: 12px;
+  --r-5: 16px;
+  --r-ctl: 7px;
+  --r-pop: 10px;
+  --r-dlg: 14px;
+  --r-pill: 999px;
+
+  /* Motion */
+  --ease: cubic-bezier(0.2, 0.8, 0.2, 1);
+  --t-fast: 120ms var(--ease);
+  --t-med: 220ms var(--ease);
+  --t-slow: 380ms var(--ease);
+}
+
+/* ---------------------------------------------------------------------
+   Light theme (concept `.A`)
+   --------------------------------------------------------------------- */
+:root,
+[data-theme="light"] {
+  color-scheme: light;
+
+  /* Sidebar - dark in both themes */
+  --side-bg: #1b1e24;
+  --side-hover: #23272f;
+  --side-active: #2c313b;
+  --side-fg: #d3d6dc;
+  --side-muted: #868b96;
+  --side-line: #2a2e36;
+  --side-strong: #ffffff;
+
+  /* Surfaces + text */
+  --bg: #f3f4f6;
+  --surface: #ffffff;
+  --surface-2: #f8f9fa;
+  --fill: #eceef1;
+  --fg: #14161b;
+  --muted: #5d6170;
+  --faint: #9a9fab;
+  --line: #e3e5e9;
+  --line-soft: #eef0f2;
+  --line-strong: #d3d6dc;
+
+  /* Writing surface */
+  --paper: #ffffff;
+  --paper-fg: #16181d;
+  --paper-muted: #6b6f78;
+  --paper-line: rgba(20, 22, 27, 0.16);
+  --paper-tint: rgba(20, 22, 27, 0.07);
+
+  /* Elevation */
+  --shadow-paper: 0 1px 2px rgba(20, 22, 27, 0.06), 0 10px 30px rgba(20, 22, 27, 0.06);
+  --shadow-pop: 0 16px 40px rgba(20, 22, 27, 0.16), 0 0 0 1px rgba(20, 22, 27, 0.07);
+  --shadow-raise: 0 1px 2px rgba(20, 22, 27, 0.06), 0 6px 16px rgba(20, 22, 27, 0.08);
+  --shadow-dlg: 0 30px 80px rgba(15, 17, 21, 0.35), 0 0 0 1px rgba(15, 17, 21, 0.06);
+  --shadow-toast: 0 10px 30px rgba(0, 0, 0, 0.2);
+  --scrim: rgba(15, 17, 21, 0.32);
+
+  /* Accent ("Textmarker") + signal colours */
+  --accent: #ffe14d;
+  --accent-fg: #14161b;
+  --accent-soft: #fff6c2;
+  --warn: #d2452f;
+  --warn-soft: #fdebe7;
+  --ok: #3fae74;
+  --range-fill: rgba(20, 22, 27, 0.07);
+  --focus: #14161b;
+  --selection: rgba(255, 225, 77, 0.55);
+  /* kbd / chips sitting on an ink (--fg) background */
+  --on-ink-fill: rgba(255, 255, 255, 0.16);
+}
+
+/* ---------------------------------------------------------------------
+   Dark theme (concept `.A.dark`). The paper stays a light sheet here -
+   only `[data-paper="dark"]` below turns it dark.
+   --------------------------------------------------------------------- */
+[data-theme="dark"] {
+  color-scheme: dark;
+
+  --side-bg: #0f1114;
+  --side-hover: #181b20;
+  --side-active: #23272e;
+  --side-line: #1d2025;
+
+  --bg: #16181d;
+  --surface: #1c1f25;
+  --surface-2: #1f2228;
+  --fill: #272b32;
+  --fg: #e8eaee;
+  --muted: #a0a5b0;
+  --faint: #6c717c;
+  --line: #2a2e35;
+  --line-soft: #23262c;
+  --line-strong: #383d46;
+
+  /* Light sheet on a dark desk, slightly dimmed so it doesn't glare. */
+  --paper: #f5f6f8;
+  --paper-fg: #16181d;
+  --paper-muted: #6b6f78;
+  --paper-line: rgba(20, 22, 27, 0.16);
+  --paper-tint: rgba(20, 22, 27, 0.08);
+
+  --shadow-paper: 0 0 0 1px rgba(255, 255, 255, 0.04), 0 18px 40px rgba(0, 0, 0, 0.35);
+  --shadow-pop: 0 18px 44px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(255, 255, 255, 0.07);
+  --shadow-raise: 0 1px 2px rgba(0, 0, 0, 0.3), 0 6px 16px rgba(0, 0, 0, 0.35);
+  --shadow-dlg: 0 30px 80px rgba(0, 0, 0, 0.6), 0 0 0 1px rgba(255, 255, 255, 0.07);
+  --shadow-toast: 0 10px 30px rgba(0, 0, 0, 0.45);
+  --scrim: rgba(0, 0, 0, 0.5);
+
+  --accent-soft: rgba(255, 225, 77, 0.12);
+  --warn: #ff7a66;
+  --warn-soft: rgba(255, 122, 102, 0.12);
+  --ok: #5cc48d;
+  --range-fill: rgba(255, 255, 255, 0.07);
+  --focus: #e8eaee;
+  --selection: rgba(255, 225, 77, 0.3);
+  --on-ink-fill: rgba(0, 0, 0, 0.12);
+}
+
+/* Dark paper: only when the resolved theme is dark AND the user enabled
+   the dark-paper setting. Touches paper tokens only. */
+[data-theme="dark"][data-paper="dark"] {
+  --paper: #1e2127;
+  --paper-fg: #e6e8ec;
+  --paper-muted: #9097a3;
+  --paper-line: rgba(255, 255, 255, 0.16);
+  --paper-tint: rgba(255, 255, 255, 0.08);
+}
+
+/* Respect the system reduced-motion preference. */
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --t-fast: 0.01ms linear;
+    --t-med: 0.01ms linear;
+    --t-slow: 0.01ms linear;
+  }
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

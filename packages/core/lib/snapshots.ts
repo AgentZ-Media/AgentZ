@@ -19,6 +19,7 @@
 
 import { getDb } from "./db";
 import { refreshFtsForScript } from "./fts";
+import { normalizeLegacyContent } from "./legacyBlocks";
 import type { Snapshot, SnapshotMeta } from "./types";
 
 const MAX_SNAPSHOTS_PER_SCRIPT = 50;
@@ -93,7 +94,10 @@ export async function restoreSnapshot(snapshotId: string): Promise<void> {
   if (rows.length === 0) {
     throw new Error(`not found: snapshot ${snapshotId}`);
   }
-  const { script_id: scriptId, content_json: restoredContent } = rows[0];
+  const scriptId = rows[0].script_id;
+  // Snapshots taken before the block-type reduction may still contain
+  // retired block types - restore them as action blocks.
+  const restoredContent = normalizeLegacyContent(rows[0].content_json).json;
 
   const now = Date.now();
 

@@ -143,14 +143,34 @@ describe("dialogWordsByCharacter", () => {
 });
 
 describe("extractTeleprompterText", () => {
-  it("emits only Character/Dialog/Parenthetical, uppercases the character", () => {
+  it("emits Character/Dialog plus paren cues inside a speech run", () => {
     const json = lex([
       { kind: "scriptz-action", text: "Es ist Nacht." }, // dropped
+      { kind: "scriptz-character", text: "max" },
+      { kind: "scriptz-action", text: "(leise)" },
+      { kind: "scriptz-dialog", text: "Hallo." },
+    ]);
+    expect(extractTeleprompterText(json)).toBe("MAX\n(leise)\nHallo.");
+  });
+
+  it("keeps the output of legacy parenthetical blocks unchanged", () => {
+    const json = lex([
       { kind: "scriptz-character", text: "max" },
       { kind: "scriptz-parenthetical", text: "leise" },
       { kind: "scriptz-dialog", text: "Hallo." },
     ]);
     expect(extractTeleprompterText(json)).toBe("MAX\n(leise)\nHallo.");
+  });
+
+  it("drops paren-only action outside of a speech run", () => {
+    const json = lex([
+      { kind: "scriptz-action", text: "(Schnitt)" },
+      { kind: "scriptz-character", text: "max" },
+      { kind: "scriptz-dialog", text: "Hallo." },
+      { kind: "scriptz-action", text: "Er geht." },
+      { kind: "scriptz-action", text: "(Pause)" },
+    ]);
+    expect(extractTeleprompterText(json)).toBe("MAX\nHallo.");
   });
 
   it("returns empty string when no relevant block exists", () => {
@@ -159,6 +179,23 @@ describe("extractTeleprompterText", () => {
       { kind: "scriptz-camera", text: "Weitwinkel" },
     ]);
     expect(extractTeleprompterText(json)).toBe("");
+  });
+});
+
+describe("extractBlocks - legacy block types", () => {
+  it("reports retired block types as action", () => {
+    const json = lex([
+      { kind: "scriptz-camera", text: "Close-Up" },
+      { kind: "scriptz-caption", text: "Büro" },
+      { kind: "scriptz-sfx", text: "Pling" },
+      { kind: "scriptz-parenthetical", text: "leise" },
+    ]);
+    expect(extractBlocks(json).map((b) => [b.kind, b.text])).toEqual([
+      ["scriptz-action", "Close-Up"],
+      ["scriptz-action", "Büro"],
+      ["scriptz-action", "Pling"],
+      ["scriptz-action", "(leise)"],
+    ]);
   });
 });
 

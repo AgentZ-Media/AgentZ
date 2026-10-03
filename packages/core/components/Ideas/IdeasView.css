@@ -53,7 +53,7 @@
   gap: 10px;
   height: 44px;
   padding: 0 14px;
-  background: var(--paper);
+  background: var(--surface);
   border: 1px solid var(--border);
   border-radius: var(--r-pill);
   box-shadow: 0 1px 0 rgba(28, 24, 20, 0.02);
@@ -117,7 +117,7 @@
   gap: 8px;
   height: 34px;
   padding: 0 12px;
-  background: var(--paper);
+  background: var(--surface);
   border: 1px solid var(--border);
   border-radius: var(--r-pill);
   transition: all var(--t-fast);
@@ -177,7 +177,7 @@
 }
 .ideas-view-segs button:hover { color: var(--text); }
 .ideas-view-segs button.is-on {
-  background: var(--paper);
+  background: var(--surface);
   color: var(--text);
   box-shadow: 0 1px 2px rgba(28, 24, 20, 0.06);
 }
@@ -203,7 +203,7 @@
   height: 30px;
   padding: 0 28px 0 10px;
   border: 1px solid var(--border);
-  background: var(--paper);
+  background: var(--surface);
   color: var(--text);
   border-radius: var(--r-md, 6px);
   font-size: 12px;
@@ -225,7 +225,7 @@
 }
 
 .idea-card {
-  background: var(--paper);
+  background: var(--surface);
   border: 1px solid var(--border);
   border-radius: 10px;
   transition: border-color var(--t-fast), box-shadow var(--t-fast),
@@ -364,7 +364,7 @@
   padding: 0 12px;
   border-radius: var(--r-pill);
   border: 1px solid var(--border-strong);
-  background: var(--paper);
+  background: var(--surface);
   color: var(--text);
   font-size: 12px;
   font-weight: 500;

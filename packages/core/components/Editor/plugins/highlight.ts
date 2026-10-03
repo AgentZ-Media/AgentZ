@@ -1,4 +1,4 @@
-// Per-character tint for Charakter / Dialog / Parenthetical blocks.
+// Per-character tint for Charakter / Dialog blocks.
 //
 // CLAUDE.md is strict about not mutating Lexical text-node state during
 // keystrokes — but applying a CSS custom property on the rendered DOM
@@ -16,12 +16,9 @@ import type { LexicalEditor } from "lexical";
 import { $getRoot } from "lexical";
 import { $isScriptzCharacterNode } from "../nodes";
 import type { ScriptCharacter } from "../../../lib/types";
+import { isParenCueText } from "../../../lib/lex";
 
-const TINT_BLOCKS = new Set([
-  "scriptz-character",
-  "scriptz-dialog",
-  "scriptz-parenthetical",
-]);
+const TINT_BLOCKS = new Set(["scriptz-character", "scriptz-dialog"]);
 
 /** Convert "#rrggbb" plus an alpha factor (0..1) into a "rgb(r,g,b)"
  * blended **toward white** — default look on light paper. Matches
@@ -98,10 +95,12 @@ export function installHighlight(
         if ($isScriptzCharacterNode(child)) {
           const name = child.getTextContent().trim().toUpperCase();
           currentName = name || null;
-        } else if (type !== "scriptz-dialog" && type !== "scriptz-parenthetical") {
-          // Any non-dialogue block resets the speaker context. (Action,
-          // Camera, Caption, SFX between two character runs shouldn't
-          // inherit the previous speaker's tint.)
+        } else if (type !== "scriptz-dialog" && !isParenCueText(child.getTextContent())) {
+          // An Action block resets the speaker context - a dialog after
+          // stage directions without a new character line shouldn't
+          // inherit the previous speaker's tint. Exception: a delivery cue
+          // in parentheses ("(whispers)", formerly a parenthetical block)
+          // sits inside the speech run and keeps the speaker.
           currentName = null;
         }
         if (!TINT_BLOCKS.has(type)) continue;

@@ -22,6 +22,7 @@
     "test:watch": "vitest"
   },
   "dependencies": {
+    "@agentz/design": "workspace:*",
     "@lexical/history": "^0.44.0",
     "@lexical/rich-text": "^0.44.0",
     "@lexical/utils": "^0.44.0",

@@ -56,137 +56,166 @@ function buildJson(blocks: ReturnType<typeof textBlock>[]): string {
   });
 }
 
+// Both tutorials are written as a tiny office sketch so the first thing a
+// new user sees looks like what they will write: short-form, two people,
+// a punchline. Only the three block types exist (Action, Character,
+// Dialog); delivery cues go into an action line in parentheses.
+
 function deWelcome(): WelcomeContent {
-  const kN = K("Mod+N");
+  const k1 = K("Mod+1");
+  const k2 = K("Mod+2");
+  const k3 = K("Mod+3");
+  const kB = K("Mod+B");
+  const kU = K("Mod+U");
   const kK = K("Mod+K");
+  const kN = K("Mod+N");
+  const kI = K("Mod+I");
+  const kJ = K("Mod+J");
+  const kStage = K("Mod+Alt+ArrowRight");
+  const kFocus = K("Mod+Shift+F");
   const kE = K("Mod+E");
   const kSnap = K("Mod+Shift+S");
   const kHist = K("Mod+Shift+H");
   const kSettings = K("Mod+,");
-  const k1 = K("Mod+1");
-  const k7 = K("Mod+7");
   return {
     title: "Willkommen bei ScriptZ",
     json: buildJson([
-      textBlock("scriptz-caption", "TUTORIAL - SO BENUTZT DU SCRIPTZ"),
       textBlock(
         "scriptz-action",
-        "Willkommen. Dieses Skript ist ein interaktives Tutorial. Du kannst alles hier drin verändern, löschen oder ausprobieren.",
+        "Büro, Montagmorgen. LENA steht vor der Kaffeemaschine. TOM kommt mit einem Laptop unter dem Arm rein.",
       ),
-      textBlock(
-        "scriptz-action",
-        `Jeder Absatz ist ein Block mit einem Typ. Der Typ steht links als Marker. Du wechselst den Typ entweder mit Tab oder mit den Hotkeys ${k1} bis ${k7}.`,
-      ),
-
-      textBlock("scriptz-character", "ERZÄHLER", { characterName: "ERZÄHLER" }),
+      textBlock("scriptz-character", "TOM", { characterName: "TOM" }),
       textBlock(
         "scriptz-dialog",
-        "Das hier ist ein Dialog-Block. Drück Enter, und der nächste Block wird automatisch zum Charakter - ScriptZ kennt das Wechselspiel zwischen Charakter und Dialog.",
+        "Das hier ist ein Tutorial. Du kannst alles ändern, löschen oder ausprobieren - es gehört jetzt dir.",
       ),
-
-      textBlock("scriptz-character", "ERZÄHLER", { characterName: "ERZÄHLER" }),
-      textBlock("scriptz-parenthetical", "(leise)"),
+      textBlock("scriptz-character", "LENA", { characterName: "LENA" }),
       textBlock(
         "scriptz-dialog",
-        "Eine Klammer wie diese erkennt ScriptZ live, wenn du sie tippst, und macht daraus automatisch einen Parenthetical-Block.",
+        "Es gibt genau drei Blocktypen: Action für das, was man sieht, Charakter für den Namen und Dialog für das, was gesagt wird.",
       ),
-
+      textBlock("scriptz-character", "TOM", { characterName: "TOM" }),
+      textBlock(
+        "scriptz-dialog",
+        "Drück am Ende eines Dialogs Enter, dann kommt der nächste Charakter. Nach dem Namen geht's mit Enter direkt in den Dialog.",
+      ),
+      textBlock("scriptz-character", "LENA", { characterName: "LENA" }),
+      textBlock("scriptz-action", "(flüstert)"),
+      textBlock(
+        "scriptz-dialog",
+        "Regieanweisungen schreibst du einfach als Action-Zeile in Klammern.",
+      ),
       textBlock(
         "scriptz-action",
-        "Charaktere existieren nur in dem Skript, in dem sie vorkommen. Tipp einen neuen Namen in einen Charakter-Block, und er erscheint danach in der Pill-Leiste oben mit einer eigenen Farbe.",
+        `TOM tippt auf den Bildschirm. Tab öffnet das Blocktyp-Menü, ${k1} macht eine Action, ${k2} einen Charakter, ${k3} einen Dialog.`,
       ),
-
-      textBlock("scriptz-camera", "Close-Up"),
+      textBlock("scriptz-character", "TOM", { characterName: "TOM" }),
       textBlock(
-        "scriptz-action",
-        "Kamera-Blocks rechtsbündig, Caption-Blocks für Bildunterschriften, SFX für Sounds.",
+        "scriptz-dialog",
+        "Jeder neue Name bekommt automatisch eine eigene Farbe. Die Laufzeit siehst du beim Schreiben mit.",
       ),
-      textBlock("scriptz-sfx", "Pling"),
-
-      textBlock("scriptz-caption", "WICHTIGE SHORTCUTS"),
+      textBlock("scriptz-character", "LENA", { characterName: "LENA" }),
+      textBlock("scriptz-dialog", "Und die Kaffeemaschine?"),
+      textBlock("scriptz-character", "TOM", { characterName: "TOM" }),
+      textBlock("scriptz-dialog", "Ist auch nur ein Action-Block."),
+      textBlock("scriptz-action", "Schnitt. Die wichtigsten Tasten:"),
+      textBlock("scriptz-action", `${k1} / ${k2} / ${k3} - Action, Charakter, Dialog`),
+      textBlock("scriptz-action", "Tab - Blocktyp wählen · Enter - nächster passender Block"),
+      textBlock("scriptz-action", `${kB} / ${kU} - fett / unterstrichen`),
+      textBlock("scriptz-action", `${kK} - suchen und Befehle`),
       textBlock("scriptz-action", `${kN} - neues Skript`),
-      textBlock("scriptz-action", `${kK} - Skript suchen`),
-      textBlock("scriptz-action", `${kE} - exportieren (PDF oder Plain Text)`),
-      textBlock("scriptz-action", `${kSnap} - manueller Snapshot`),
-      textBlock("scriptz-action", `${kHist} - Snapshot-Verlauf öffnen`),
+      textBlock("scriptz-action", `${kI} - Idee festhalten, egal wo du gerade bist`),
+      textBlock("scriptz-action", `${kJ} - Zeitleiste: wer redet wann`),
+      textBlock("scriptz-action", `${kStage} - nächste Stufe: Schreiben, Drehbereit, Gedreht, Online`),
+      textBlock("scriptz-action", `${kFocus} - Fokus-Modus`),
+      textBlock("scriptz-action", `${kE} - als PDF oder Text exportieren`),
+      textBlock("scriptz-action", `${kSnap} - Version sichern · ${kHist} - Versionen ansehen`),
       textBlock("scriptz-action", `${kSettings} - Einstellungen`),
-      textBlock("scriptz-action", "Tab - Block-Typ wechseln (öffnet ein Menü)"),
-      textBlock("scriptz-action", `${k1}..${k7} - Block-Typ direkt setzen`),
-
       textBlock(
         "scriptz-action",
-        "Alles wird lokal gespeichert. Es gibt kein Konto, keine Cloud, keine Telemetrie. Wenn du dieses Tutorial nicht mehr brauchst, verschieb es einfach in den Papierkorb (Rechtsklick im Skript-Browser).",
+        "Alles bleibt lokal auf deinem Gerät. Kein Konto, keine Cloud, keine Telemetrie. Wenn du das Tutorial nicht mehr brauchst, leg es einfach in den Papierkorb.",
       ),
-
-      textBlock("scriptz-character", "ERZÄHLER", { characterName: "ERZÄHLER" }),
+      textBlock("scriptz-character", "LENA", { characterName: "LENA" }),
       textBlock("scriptz-dialog", "Viel Spaß beim Schreiben."),
     ]),
   };
 }
 
 function enWelcome(): WelcomeContent {
-  const kN = K("Mod+N");
+  const k1 = K("Mod+1");
+  const k2 = K("Mod+2");
+  const k3 = K("Mod+3");
+  const kB = K("Mod+B");
+  const kU = K("Mod+U");
   const kK = K("Mod+K");
+  const kN = K("Mod+N");
+  const kI = K("Mod+I");
+  const kJ = K("Mod+J");
+  const kStage = K("Mod+Alt+ArrowRight");
+  const kFocus = K("Mod+Shift+F");
   const kE = K("Mod+E");
   const kSnap = K("Mod+Shift+S");
   const kHist = K("Mod+Shift+H");
   const kSettings = K("Mod+,");
-  const k1 = K("Mod+1");
-  const k7 = K("Mod+7");
   return {
     title: "Welcome to ScriptZ",
     json: buildJson([
-      textBlock("scriptz-caption", "TUTORIAL - HOW TO USE SCRIPTZ"),
       textBlock(
         "scriptz-action",
-        "Welcome. This script is an interactive tutorial. Feel free to edit, delete or experiment with anything in here.",
+        "Office, Monday morning. LENA stands at the coffee machine. TOM walks in, laptop under his arm.",
       ),
-      textBlock(
-        "scriptz-action",
-        `Each paragraph is a block with a type. The type marker sits on the left. Switch the type with Tab or with the hotkeys ${k1} through ${k7}.`,
-      ),
-
-      textBlock("scriptz-character", "NARRATOR", { characterName: "NARRATOR" }),
+      textBlock("scriptz-character", "TOM", { characterName: "TOM" }),
       textBlock(
         "scriptz-dialog",
-        "This is a dialog block. Press Enter and the next block automatically becomes a character - ScriptZ knows the character/dialog rhythm.",
+        "This is a tutorial. Change it, delete it, play with it - it's yours now.",
       ),
-
-      textBlock("scriptz-character", "NARRATOR", { characterName: "NARRATOR" }),
-      textBlock("scriptz-parenthetical", "(softly)"),
+      textBlock("scriptz-character", "LENA", { characterName: "LENA" }),
       textBlock(
         "scriptz-dialog",
-        "ScriptZ detects parentheses like this as you type and turns them into a parenthetical block automatically.",
+        "There are exactly three block types: Action for what we see, Character for the name and Dialog for what is said.",
       ),
-
+      textBlock("scriptz-character", "TOM", { characterName: "TOM" }),
+      textBlock(
+        "scriptz-dialog",
+        "Press Enter at the end of a line of dialog and the next character comes up. After the name, Enter takes you straight into the dialog.",
+      ),
+      textBlock("scriptz-character", "LENA", { characterName: "LENA" }),
+      textBlock("scriptz-action", "(whispers)"),
+      textBlock(
+        "scriptz-dialog",
+        "Delivery cues are simply an action line in parentheses.",
+      ),
       textBlock(
         "scriptz-action",
-        "Characters only exist within the script they appear in. Type a new name into a character block and it shows up in the pill bar above with its own color.",
+        `TOM taps the screen. Tab opens the block type menu, ${k1} makes an action, ${k2} a character, ${k3} a dialog.`,
       ),
-
-      textBlock("scriptz-camera", "Close-up"),
+      textBlock("scriptz-character", "TOM", { characterName: "TOM" }),
       textBlock(
-        "scriptz-action",
-        "Camera blocks are right-aligned, caption blocks are for image captions, SFX is for sounds.",
+        "scriptz-dialog",
+        "Every new name gets its own color automatically. The runtime updates as you write.",
       ),
-      textBlock("scriptz-sfx", "Ping"),
-
-      textBlock("scriptz-caption", "IMPORTANT SHORTCUTS"),
+      textBlock("scriptz-character", "LENA", { characterName: "LENA" }),
+      textBlock("scriptz-dialog", "And the coffee machine?"),
+      textBlock("scriptz-character", "TOM", { characterName: "TOM" }),
+      textBlock("scriptz-dialog", "Just another action block."),
+      textBlock("scriptz-action", "Cut. The keys that matter:"),
+      textBlock("scriptz-action", `${k1} / ${k2} / ${k3} - action, character, dialog`),
+      textBlock("scriptz-action", "Tab - pick a block type · Enter - next fitting block"),
+      textBlock("scriptz-action", `${kB} / ${kU} - bold / underline`),
+      textBlock("scriptz-action", `${kK} - search and commands`),
       textBlock("scriptz-action", `${kN} - new script`),
-      textBlock("scriptz-action", `${kK} - search scripts`),
-      textBlock("scriptz-action", `${kE} - export (PDF or plain text)`),
-      textBlock("scriptz-action", `${kSnap} - manual snapshot`),
-      textBlock("scriptz-action", `${kHist} - open snapshot history`),
+      textBlock("scriptz-action", `${kI} - capture an idea, wherever you are`),
+      textBlock("scriptz-action", `${kJ} - timeline: who speaks when`),
+      textBlock("scriptz-action", `${kStage} - next stage: Writing, Ready to shoot, Shot, Online`),
+      textBlock("scriptz-action", `${kFocus} - focus mode`),
+      textBlock("scriptz-action", `${kE} - export as PDF or text`),
+      textBlock("scriptz-action", `${kSnap} - save a version · ${kHist} - browse versions`),
       textBlock("scriptz-action", `${kSettings} - settings`),
-      textBlock("scriptz-action", "Tab - switch block type (opens a menu)"),
-      textBlock("scriptz-action", `${k1}..${k7} - set block type directly`),
-
       textBlock(
         "scriptz-action",
-        "Everything is stored locally. No account, no cloud, no telemetry. When you no longer need this tutorial, just move it to the trash (right-click in the script browser).",
+        "Everything stays local on your device. No account, no cloud, no telemetry. When you no longer need this tutorial, just move it to the trash.",
       ),
-
-      textBlock("scriptz-character", "NARRATOR", { characterName: "NARRATOR" }),
+      textBlock("scriptz-character", "LENA", { characterName: "LENA" }),
       textBlock("scriptz-dialog", "Happy writing."),
     ]),
   };

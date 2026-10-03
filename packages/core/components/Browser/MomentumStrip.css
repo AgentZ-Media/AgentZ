@@ -6,7 +6,7 @@
   align-items: center;
   gap: 14px;
   padding: 6px 10px 6px 6px;
-  background: var(--paper, var(--bg-elev-1));
+  background: var(--surface);
   border: 1px solid var(--border);
   border-radius: var(--r-3);
   font-size: 12.5px;

@@ -3,6 +3,10 @@
 
 import type { de } from "./de";
 
+import { shellEn } from "./parts/shell";
+import { scriptEn } from "./parts/script";
+import { dialogsEn } from "./parts/dialogs";
+
 export const en: Record<keyof typeof de, string> = {
   // ---------- common ----------
   "common.cancel": "Cancel",
@@ -103,10 +107,18 @@ export const en: Record<keyof typeof de, string> = {
   "block.action": "Action",
   "block.character": "Character",
   "block.dialog": "Dialog",
-  "block.parenthetical": "Paren.",
-  "block.camera": "Camera",
-  "block.caption": "Caption",
-  "block.sfx": "SFX",
+
+  // ---------- script stages (Werkbank pipeline) ----------
+  "stage.idea": "Idea",
+  "stage.writing": "Writing",
+  "stage.ready": "Ready to shoot",
+  "stage.shot": "Shot",
+  "stage.online": "Online",
+
+  // ---------- length goal (target range) ----------
+  "length.range.both": "{min}-{max}",
+  "length.range.maxOnly": "up to {max}",
+  "length.range.minOnly": "from {min}",
 
   // ---------- browser ----------
   "browser.search.placeholder": "Search scripts, characters, content ...",
@@ -247,16 +259,14 @@ export const en: Record<keyof typeof de, string> = {
 
   // ---------- validation errors (thrown from lib, surfaced as toasts) ----------
   "folder.error.emptyName": "Folder name must not be empty",
+  "folder.error.lengthInvalid": "The target time must be a whole number of seconds (0 or more).",
+  "folder.error.lengthOrder": "The minimum must be lower than the maximum.",
   "idea.error.emptyTitle": "Idea title must not be empty",
 
   // ---------- editor toolbar ----------
   "editor.toolbar.back": "Overview",
   "editor.toolbar.back.title": "Back to overview",
   "editor.toolbar.blockGroup": "Block type",
-  "editor.toolbar.more.titleOpen": "Show fewer block types",
-  "editor.toolbar.more.titleClose": "More block types (Paren./Camera/Caption/SFX)",
-  "editor.toolbar.more.ariaOpen": "Show fewer block types",
-  "editor.toolbar.more.ariaClose": "Show more block types",
   "editor.toolbar.quickOn": "Quick mode off",
   "editor.toolbar.quickOff": "Quick mode on (Enter in dialog → next character)",
   "editor.toolbar.quickAria": "Quick mode",
@@ -482,12 +492,8 @@ export const en: Record<keyof typeof de, string> = {
   "shortcut.blockAction": "Block type → Action",
   "shortcut.blockCharacter": "Block type → Character",
   "shortcut.blockDialog": "Block type → Dialog",
-  "shortcut.blockParenthetical": "Block type → Parenthetical",
-  "shortcut.blockCamera": "Block type → Camera",
-  "shortcut.blockCaption": "Block type → Caption",
-  "shortcut.blockSfx": "Block type → SFX",
   "shortcut.smartEnter": "Smart enter: next matching block",
-  "shortcut.formatting": "Bold / Italic / Underline",
+  "shortcut.formatting": "Bold / Underline",
   "shortcut.exportScript": "Export script",
   "shortcut.focusMode": "Toggle focus mode",
   "shortcut.snapshotCreate": "Create manual snapshot",
@@ -666,4 +672,9 @@ export const en: Record<keyof typeof de, string> = {
   "error.scriptz.missingContent": "Field `script.contentJson` is missing or not an object.",
   "error.scriptz.missingCharacters": "Field `script.characters` is missing or not an array.",
   "error.scriptz.invalidCharacter": "script.characters[{index}] has invalid name/color fields.",
+
+  // ---------- redesign parts ----------
+  ...shellEn,
+  ...scriptEn,
+  ...dialogsEn,
 };

@@ -248,3 +248,68 @@ describe("scriptzFile - defaultScriptzFilename", () => {
     expect(SCRIPTZ_MIME).toBe("application/x-scriptz+json");
   });
 });
+
+describe("scriptzFile - status (additive field, version stays 1)", () => {
+  function asBytes(o: unknown): Uint8Array {
+    return new TextEncoder().encode(JSON.stringify(o));
+  }
+
+  it("writes and reads back the status", () => {
+    for (const status of ["writing", "ready", "shot", "online"] as const) {
+      const bytes = serializeScriptToBytes({ ...baseScript, status });
+      const parsed = parseScriptzBytes(bytes);
+      expect(parsed.version).toBe(1);
+      expect(parsed.script.status).toBe(status);
+    }
+  });
+
+  it("defaults to writing when the caller passes no status", () => {
+    expect(serializeScript(baseScript).script.status).toBe("writing");
+  });
+
+  it("falls back to writing for old files without status", () => {
+    const old = serializeScript(baseScript) as unknown as {
+      script: Record<string, unknown>;
+    };
+    delete old.script.status;
+    expect(parseScriptzBytes(asBytes(old)).script.status).toBe("writing");
+  });
+
+  it("falls back to writing for an unknown status value", () => {
+    const file = serializeScript({ ...baseScript, status: "ready" }) as unknown as {
+      script: Record<string, unknown>;
+    };
+    file.script.status = "archived-in-the-future";
+    expect(parseScriptzBytes(asBytes(file)).script.status).toBe("writing");
+  });
+});
+
+describe("scriptzFile - legacy block types", () => {
+  const legacyContent = JSON.stringify({
+    root: {
+      type: "root",
+      children: [
+        { type: "scriptz-parenthetical", children: [{ type: "text", text: "leise" }] },
+        { type: "scriptz-camera", children: [{ type: "text", text: "Close-Up" }] },
+      ],
+    },
+  });
+
+  it("converts retired block types on import", () => {
+    const file = serializeScript(baseScript) as unknown as {
+      script: Record<string, unknown>;
+    };
+    file.script.contentJson = JSON.parse(legacyContent);
+    const parsed = parseScriptzBytes(new TextEncoder().encode(JSON.stringify(file)));
+    const children = (parsed.script.contentJson as {
+      root: { children: Array<{ type: string; children: Array<{ text: string }> }> };
+    }).root.children;
+    expect(children.map((c) => c.type)).toEqual(["scriptz-action", "scriptz-action"]);
+    expect(children[0].children[0].text).toBe("(leise)");
+  });
+
+  it("never exports retired block types", () => {
+    const out = serializeScript({ ...baseScript, content_json: legacyContent });
+    expect(JSON.stringify(out)).not.toMatch(/scriptz-(parenthetical|camera|caption|sfx)/);
+  });
+});

@@ -4,14 +4,10 @@
    The paper interior. Widths key off `--paper-content-w` from tokens.css.
    Font: iA Writer Quattro everywhere — visual continuity with the UI.
 
-   Layout follows German screenplay convention loosely:
+   Three block types (Werkbank redesign):
      ACTION       full width
-     CAPTION      INT./EXT. heading, weight 700, uppercase
      CHARACTER    centered, weight 700, uppercase (CSS-only)
-     PARENTHEL.   slightly indented, italic
-     DIALOG       indented ~25% from left
-     SFX          uppercase italic-tinted, full width
-     CAMERA       right-aligned uppercase
+     DIALOG       indented ~16% from both sides
    ========================================================================= */
 
 .editor-host {
@@ -68,9 +64,7 @@
 }
 
 /* Paragraph rhythm — subtle clusters between groups */
-.editor-root .block-scriptz-character + .block-scriptz-dialog,
-.editor-root .block-scriptz-parenthetical + .block-scriptz-dialog,
-.editor-root .block-scriptz-character + .block-scriptz-parenthetical {
+.editor-root .block-scriptz-character + .block-scriptz-dialog {
   margin-top: 0;
 }
 .editor-root .block-scriptz-action + .block-scriptz-character,
@@ -79,24 +73,10 @@
 .editor-root .block-scriptz-action + .block-scriptz-action {
   margin-top: 14px;
 }
-.editor-root .block-scriptz-caption + * {
-  margin-top: 14px;
-}
-.editor-root .block + .block-scriptz-caption {
-  margin-top: 22px;
-}
 
 /* ---- Action ---------------------------------------------------------- */
 .editor-root .block-scriptz-action {
   text-align: left;
-}
-
-/* ---- Caption (INT./EXT. scene heading) ------------------------------- */
-.editor-root .block-scriptz-caption {
-  font-weight: 700;
-  font-size: var(--fs-14);
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
 }
 
 /* ---- Character ---
@@ -110,15 +90,6 @@
   margin-top: 18px;
 }
 
-/* ---- Parenthetical --------------------------------------------------- */
-.editor-root .block-scriptz-parenthetical {
-  margin-left: 22%;
-  margin-right: 22%;
-  font-style: italic;
-  color: var(--paper-fg-muted);
-  text-align: left;
-}
-
 /* ---- Dialog ---------------------------------------------------------- */
 .editor-root .block-scriptz-dialog {
   margin-left: 16%;
@@ -126,36 +97,16 @@
   text-align: left;
 }
 
-/* ---- Camera (right-aligned cue) -------------------------------------- */
-.editor-root .block-scriptz-camera {
-  text-align: right;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-  font-weight: 700;
-  font-size: var(--fs-13);
-  color: var(--paper-fg-muted);
-}
-
-/* ---- SFX ------------------------------------------------------------- */
-.editor-root .block-scriptz-sfx {
-  text-align: left;
-  font-weight: 500;
-  letter-spacing: 0.02em;
-  font-size: var(--fs-13);
-  color: var(--paper-fg-muted);
-  text-transform: uppercase;
-}
-
 /* ---------------------------------------------------------------------- */
-/* Highlighting: when on, paint character/dialog/parenthetical text with
+/* Highlighting: when on, paint character/dialog text with
    the per-character tint set as `--char-tint` on the block by the
    highlight plugin. The bg is applied to the inner text-span (Lexical
    wraps every text node in `<span data-lexical-text="true">`) with
    `box-decoration-break: clone` so multi-line text gets per-line pills
    that hug the actual text — same look as the PDF output, not a full
    block-wide bar. */
-/* Per-line text-hugging pills (Arc-style). The dialog/character/
-   parenthetical nodes wrap their children in an inner
+/* Per-line text-hugging pills (Arc-style). The dialog/character
+   nodes wrap their children in an inner
    `<span class="tint-host">` (see BaseScriptzNode.hasTintHost) — Lexical
    appends every text run into this single inline element, so the bg +
    padding + radius + box-decoration-break apply to one host that
@@ -163,8 +114,7 @@
    Result: one continuous pill per visual line, including bolded /
    italicised words, no seams, no margin tricks. */
 .editor-root[data-highlighting="on"] .block-scriptz-character .tint-host,
-.editor-root[data-highlighting="on"] .block-scriptz-dialog .tint-host,
-.editor-root[data-highlighting="on"] .block-scriptz-parenthetical .tint-host {
+.editor-root[data-highlighting="on"] .block-scriptz-dialog .tint-host {
   background: var(--char-tint, var(--char-tint-default));
   box-decoration-break: clone;
   -webkit-box-decoration-break: clone;

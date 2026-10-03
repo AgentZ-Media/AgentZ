@@ -14,29 +14,31 @@ const [theme, setTheme] = createSignal<Theme>("light");
 const [highlightingDefault, setHighlightingDefault] = createSignal<boolean>(false);
 const [updateCheckEnabled, setUpdateCheckEnabled] = createSignal<boolean>(true);
 const [hourlyUpdateCheck, setHourlyUpdateCheck] = createSignal<boolean>(true);
-// Focus mode active by default: toolbar + cast rail are hidden when
-// opening a script, Shift+Cmd+F brings them back. Default true (this is
-// the quieter writing mode that most users prefer).
-const [focusModeDefault, setFocusModeDefault] = createSignal<boolean>(true);
+// Open scripts in focus mode. Default false for fresh installs since the
+// Werkbank redesign (head bar + inspector are the normal writing view);
+// a value stored by an existing install still wins (see load()).
+const [focusModeDefault, setFocusModeDefault] = createSignal<boolean>(false);
 // Auto-flip quick mode on whenever a script has exactly two characters.
 // Per-script manual toggle still wins — once the writer overrides it on a
 // script, that decision sticks across character-count changes.
 const [quickModeAutoEnable, setQuickModeAutoEnable] = createSignal<boolean>(false);
-// Show counter badge on the Ideas tab (number of open ideas). Users with
-// a large ideas collection may not want to see the number all the time.
+// @deprecated Ideas-tab badge setting - the tab bar is gone in the Werkbank
+// redesign. Kept until the integration phase removes its last readers.
 const [showIdeasBadge, setShowIdeasBadge] = createSignal<boolean>(true);
-// Show writing stats (weekly word goal, streak, daily activity heatmap,
-// momentum strip). Off by default — short-form sketch creators write
-// in idea spikes, not in daily streaks, so the productivity widgets
-// communicate the wrong tone for the audience this app is built for.
-// Users who want them can flip the switch in Settings.
-const [showWritingStats, setShowWritingStats] = createSignal<boolean>(false);
+// Show the adaptive writing counter (sidebar footer: words this week /
+// month / year / total, see lib/writingCounter.ts). Key kept from the old
+// "writing stats" switch; default ON since the redesign - the counter has
+// no goal and no streak, so it informs without creating pressure.
+const [showWritingStats, setShowWritingStats] = createSignal<boolean>(true);
 // Full dark immersion: script sheet also dark in dark mode instead of light.
 // Default off — most users like the "illuminated paper" look, but
 // for OLED / late-night writing the sheet is perceived as too bright.
 // Only applies when the resolved theme is actually "dark" (light
 // mode ignores the setting; in auto mode it depends on the system).
 const [darkPaper, setDarkPaper] = createSignal<boolean>(false);
+// @deprecated Weekly word goal - replaced by the adaptive writing counter
+// in the Werkbank redesign. Getter/setter stay until the integration phase
+// removes the last readers (TabBar, MomentumStrip, settings section).
 // Weekly goal in words. Default 1500 - calibrated for 7 scripts at
 // ~200 words each (short-form average) plus a bit of headroom. Read by
 // the momentum strip on the home page and by the status strip in the tab
@@ -55,6 +57,13 @@ const DIALOG_WPM_DEFAULT = 210;
 const DIALOG_WPM_MIN = 80;
 const DIALOG_WPM_MAX = 400;
 const [dialogWpm, setDialogWpm] = createSignal<number>(DIALOG_WPM_DEFAULT);
+
+// Default target runtime range in whole seconds (docs/feature-laengenziel.md).
+// Applies when a script's folder has no own range. null = bound unset;
+// both null = no range at all. Persisted as "" when unset.
+const LENGTH_SEC_MAX = 24 * 60 * 60;
+const [lengthMinDefaultSec, setLengthMinDefaultSecSignal] = createSignal<number | null>(null);
+const [lengthMaxDefaultSec, setLengthMaxDefaultSecSignal] = createSignal<number | null>(null);
 
 // Permanent ScriptZ Studio connect code ("scriptzk1_..."), pasted in the
 // settings. Empty string = not connected. While empty, the app shows no
@@ -94,6 +103,19 @@ const [resolvedTheme, setResolvedTheme] = createSignal<"dark" | "light">(
 function clampGoal(n: number): number {
   if (!Number.isFinite(n)) return WEEKLY_WORD_GOAL_DEFAULT;
   return Math.max(WEEKLY_WORD_GOAL_MIN, Math.min(WEEKLY_WORD_GOAL_MAX, Math.round(n)));
+}
+
+/** Normalizes a stored/typed range bound: non-negative whole seconds or
+ *  null. Ordering (min < max) is the UI's job - lib/lengthGoal.ts treats
+ *  an inverted pair defensively. */
+function cleanLengthSec(n: number | null): number | null {
+  if (n === null || !Number.isFinite(n) || n < 0) return null;
+  return Math.min(LENGTH_SEC_MAX, Math.round(n));
+}
+
+function parseLengthSetting(raw: string | null): number | null {
+  if (raw === null || raw.trim() === "") return null;
+  return cleanLengthSec(Number(raw));
 }
 
 function clampWpm(n: number): number {
@@ -139,7 +161,9 @@ export const settingsStore = {
     setQuickModeAutoEnable(v);
     await api.setSetting("quick_mode_auto_enable", v ? "1" : "0");
   },
+  /** @deprecated Ideas-tab badge; removed in the integration phase. */
   showIdeasBadge,
+  /** @deprecated Ideas-tab badge; removed in the integration phase. */
   setShowIdeasBadge: async (v: boolean) => {
     setShowIdeasBadge(v);
     await api.setSetting("show_ideas_badge", v ? "1" : "0");
@@ -155,7 +179,9 @@ export const settingsStore = {
     await api.setSetting("dark_paper", v ? "1" : "0");
   },
   resolvedTheme,
+  /** @deprecated Weekly goal; replaced by the adaptive writing counter. */
   weeklyWordGoal,
+  /** @deprecated Weekly goal; replaced by the adaptive writing counter. */
   setWeeklyWordGoal: async (v: number) => {
     const next = clampGoal(v);
     setWeeklyWordGoal(next);
@@ -173,6 +199,20 @@ export const settingsStore = {
   DIALOG_WPM_MIN,
   DIALOG_WPM_MAX,
   DIALOG_WPM_DEFAULT,
+  /** Default range lower bound in seconds; null = unset. */
+  lengthMinDefaultSec,
+  setLengthMinDefaultSec: async (v: number | null) => {
+    const next = cleanLengthSec(v);
+    setLengthMinDefaultSecSignal(next);
+    await api.setSetting("length_min_default_sec", next === null ? "" : String(next));
+  },
+  /** Default range upper bound in seconds; null = unset. */
+  lengthMaxDefaultSec,
+  setLengthMaxDefaultSec: async (v: number | null) => {
+    const next = cleanLengthSec(v);
+    setLengthMaxDefaultSecSignal(next);
+    await api.setSetting("length_max_default_sec", next === null ? "" : String(next));
+  },
   studioConnectCode,
   setStudioConnectCode: async (v: string) => {
     const next = v.trim();
@@ -188,7 +228,7 @@ export const settingsStore = {
   },
   loaded,
   async load() {
-    const [t, hd, uce, huc, qmae, wwg, dwgLegacy, wpm, fmd, sib, sws, dp, lang, scc] = await Promise.all([
+    const [t, hd, uce, huc, qmae, wwg, dwgLegacy, wpm, fmd, sib, sws, dp, lang, scc, lmin, lmax] = await Promise.all([
       api.getSetting("theme"),
       api.getSetting("highlighting_default"),
       api.getSetting("update_check_enabled"),
@@ -203,6 +243,8 @@ export const settingsStore = {
       api.getSetting("dark_paper"),
       api.getSetting("language"),
       api.getSetting("studio_connect_code"),
+      api.getSetting("length_min_default_sec"),
+      api.getSetting("length_max_default_sec"),
     ]);
     if (t === "dark" || t === "light" || t === "auto") setTheme(t);
     if (hd) setHighlightingDefault(hd === "1");
@@ -214,6 +256,8 @@ export const settingsStore = {
     if (sws) setShowWritingStats(sws === "1");
     if (dp) setDarkPaper(dp === "1");
     if (scc) setStudioConnectCodeSignal(scc);
+    setLengthMinDefaultSecSignal(parseLengthSetting(lmin));
+    setLengthMaxDefaultSecSignal(parseLengthSetting(lmax));
     // Language: persisted value takes precedence, otherwise default "auto".
     // Existing users thereby get their system language without an explicit
     // migration (auto-detection on the first resolve).

@@ -194,8 +194,8 @@
   height: 13px;
   padding: 0 3px;
   border-radius: 7px;
-  background: var(--brand-orange, #e0791f);
-  color: #fff;
+  background: var(--accent);
+  color: var(--accent-fg);
   font-size: 9px;
   line-height: 1;
   font-weight: 700;

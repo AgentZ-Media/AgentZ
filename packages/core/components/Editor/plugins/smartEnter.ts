@@ -18,10 +18,6 @@ import {
   $isScriptzActionNode,
   $isScriptzCharacterNode,
   $isScriptzDialogNode,
-  $isScriptzParentheticalNode,
-  $isScriptzCameraNode,
-  $isScriptzCaptionNode,
-  $isScriptzSfxNode,
 } from "../nodes";
 import type { ScriptCharacter } from "../../../lib/types";
 
@@ -34,16 +30,17 @@ function findScriptzAncestor(node: LexicalNode | null): BaseScriptzNode | null {
   return null;
 }
 
-function makeBlockLikeAfter(block: BaseScriptzNode): BaseScriptzNode {
-  if ($isScriptzActionNode(block)) return $createScriptzCharacterNode();
-  if ($isScriptzCharacterNode(block)) return $createScriptzDialogNode();
-  if ($isScriptzDialogNode(block)) return $createScriptzCharacterNode();
-  if ($isScriptzParentheticalNode(block)) return $createScriptzDialogNode();
-  if ($isScriptzCameraNode(block)) return $createScriptzCharacterNode();
-  if ($isScriptzCaptionNode(block)) return $createScriptzCharacterNode();
-  if ($isScriptzSfxNode(block)) return $createScriptzCharacterNode();
-  return $createScriptzActionNode();
-}
+// Smart-Enter state machine (three block types):
+//   Action    (text)  -> new Character below
+//   Action    (empty) -> becomes Character
+//   Character (text)  -> new Dialog below
+//   Character (empty) -> becomes Action
+//   Dialog    (text)  -> new Character below; in quick mode with exactly
+//                        two characters: pre-filled OTHER speaker + Dialog
+//   Dialog    (empty) -> becomes Character (quick mode: the other speaker)
+// So from an Action line, Enter leads to a Character and a second Enter
+// (on the still empty Character) back to Action - both are one key away.
+// Shift+Enter is left to Lexical (line break inside the block).
 
 function insertNewBlockAfter(
   block: BaseScriptzNode,
@@ -143,9 +140,8 @@ export function installSmartEnter(
                 charBlock.setCharacterName(other.name.toUpperCase());
                 charBlock.append($createTextNode(other.name.toUpperCase()));
                 const nextDialog = $createScriptzDialogNode();
-                // Empty dialog (typical after closing a parenthetical)
-                // → replace it so we don't strand a blank line above the
-                // new character.
+                // Empty dialog → replace it so we don't strand a blank
+                // line above the new character.
                 if (isEmpty) {
                   (block as BaseScriptzNode).replace(charBlock);
                 } else {
@@ -159,8 +155,7 @@ export function installSmartEnter(
             }
           }
           // Empty dialog → replace in place so we don't leave a blank
-          // dialog line above the new Character (common case after
-          // closing a parenthetical with `)`).
+          // dialog line above the new Character.
           if (isEmpty) {
             replaceBlockWith(block, $createScriptzCharacterNode());
           } else {
@@ -169,32 +164,15 @@ export function installSmartEnter(
           if (event) event.preventDefault();
           return true;
         }
-        if ($isScriptzParentheticalNode(block)) {
-          // Empty parenthetical → replace with Dialog (e.g. user typed
-          // "(" by mistake and hit Enter).
-          if (isEmpty) {
-            replaceBlockWith(block, $createScriptzDialogNode());
-          } else {
-            insertNewBlockAfter(block, $createScriptzDialogNode());
-          }
-          if (event) event.preventDefault();
-          return true;
-        }
-        if (
-          $isScriptzCameraNode(block) ||
-          $isScriptzCaptionNode(block) ||
-          $isScriptzSfxNode(block)
-        ) {
-          insertNewBlockAfter(block, makeBlockLikeAfter(block));
-          if (event) event.preventDefault();
-          return true;
-        }
-
         return false;
       },
       COMMAND_PRIORITY_HIGH,
     ),
 
+    // Backspace at offset 0 of an EMPTY block: remove it and jump to the end
+    // of the previous block. The very first block can't be removed - it is
+    // turned into Action instead (the neutral type). Non-empty blocks and
+    // other offsets fall through to Lexical's default handling.
     editor.registerCommand<KeyboardEvent>(
       KEY_BACKSPACE_COMMAND,
       (event) => {

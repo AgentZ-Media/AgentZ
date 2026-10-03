@@ -11,7 +11,7 @@
 }
 
 .activity-card {
-  background: var(--paper, var(--bg-elev-1));
+  background: var(--surface);
   border: 1px solid var(--border);
   border-radius: var(--r-3);
   padding: 14px 16px;
@@ -65,7 +65,7 @@
 }
 
 .activity-heatmap {
-  background: var(--paper, var(--bg-elev-1));
+  background: var(--surface);
   border: 1px solid var(--border);
   border-radius: var(--r-3);
   padding: 16px 18px 14px;

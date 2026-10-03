@@ -10,17 +10,15 @@ import {
 } from "lexical";
 import {
   BaseScriptzNode,
-  BLOCK_TAGS,
+  BLOCK_HOTKEYS,
   BLOCK_TYPES,
+  blockLabel,
   $createScriptzActionNode,
   $createScriptzCharacterNode,
   $createScriptzDialogNode,
-  $createScriptzParentheticalNode,
-  $createScriptzCameraNode,
-  $createScriptzCaptionNode,
-  $createScriptzSfxNode,
 } from "../nodes";
 import type { BlockType } from "../../../lib/types";
+import { K } from "../../../lib/keys";
 
 function findScriptzAncestor(node: LexicalNode | null): BaseScriptzNode | null {
   let cur: LexicalNode | null = node;
@@ -39,14 +37,6 @@ function createBlockOfType(type: BlockType): BaseScriptzNode {
       return $createScriptzCharacterNode();
     case "scriptz-dialog":
       return $createScriptzDialogNode();
-    case "scriptz-parenthetical":
-      return $createScriptzParentheticalNode();
-    case "scriptz-camera":
-      return $createScriptzCameraNode();
-    case "scriptz-caption":
-      return $createScriptzCaptionNode();
-    case "scriptz-sfx":
-      return $createScriptzSfxNode();
   }
 }
 
@@ -139,7 +129,14 @@ function BlockDropdown(props: DropdownProps) {
               props.onSelect(type);
             }}
           >
-            {BLOCK_TAGS[type]}
+            <span>{blockLabel(type)}</span>
+            <span
+              class="scriptz-bd-hint"
+              aria-hidden="true"
+              style={{ float: "right", opacity: 0.55, "margin-left": "16px" }}
+            >
+              {K(BLOCK_HOTKEYS[type])}
+            </span>
           </div>
         )}
       </For>

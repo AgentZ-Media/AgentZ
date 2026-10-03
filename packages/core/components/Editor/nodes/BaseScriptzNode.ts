@@ -14,7 +14,8 @@ export type SerializedScriptzNode = Spread<
 >;
 
 /**
- * Shared base class for the seven ScriptZ block types.
+ * Shared base class for the three ScriptZ block types (Action, Character,
+ * Dialog).
  * Each subclass declares its own BlockType through `getBlockType()`.
  */
 export abstract class BaseScriptzNode extends ElementNode {
@@ -32,7 +33,7 @@ export abstract class BaseScriptzNode extends ElementNode {
    *  tint, so per-line text-hugging pills stay intact across bold /
    *  italic runs (Lexical would otherwise emit a sibling `<strong>` per
    *  bold run and the bg would split into separate pills). Used by
-   *  Dialog, Character and Parenthetical — the only tinted blocks. */
+   *  Dialog and Character — the only tinted blocks. */
   hasTintHost(): boolean {
     return false;
   }

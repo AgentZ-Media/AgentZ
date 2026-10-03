@@ -32,6 +32,7 @@ import {
   moveScript as foldersMoveScript,
   moveScripts as foldersMoveScripts,
   renameFolder as foldersRename,
+  setFolderLengthRange as foldersSetLengthRange,
 } from "./folders";
 import {
   convertIdeaToScript as ideasConvert,
@@ -58,6 +59,7 @@ import {
   purgeScript as scriptsPurge,
   renameScript as scriptsRename,
   restoreScript as scriptsRestore,
+  setScriptStatus as scriptsSetStatus,
   updateScript as scriptsUpdate,
 } from "./scripts";
 import {
@@ -75,6 +77,7 @@ import type {
   Idea,
   Script,
   ScriptCharacter,
+  ScriptStatus,
   ScriptSummary,
   SearchHit,
   Snapshot,
@@ -112,6 +115,7 @@ const sqlBackedAdapter: StorageAdapter = {
     highlightingEnabled?: number | null;
     contentJson?: string;
     characters?: ScriptCharacter[];
+    internalRewrite?: boolean;
   }): Promise<ScriptSummary> {
     return scriptsUpdate(input);
   },
@@ -123,6 +127,7 @@ const sqlBackedAdapter: StorageAdapter = {
     limit?: number;
     offset?: number;
     folderId?: string | null;
+    status?: ScriptStatus;
   } = {}): Promise<ScriptSummary[]> {
     return scriptsList({
       includeArchived: query.includeArchived ?? null,
@@ -132,6 +137,7 @@ const sqlBackedAdapter: StorageAdapter = {
       limit: query.limit ?? null,
       offset: query.offset ?? null,
       folderId: query.folderId ?? null,
+      status: query.status ?? null,
     });
   },
   async archiveScript(id: string): Promise<void> {
@@ -152,6 +158,9 @@ const sqlBackedAdapter: StorageAdapter = {
   async renameScript(id: string, title: string): Promise<ScriptSummary> {
     return scriptsRename(id, title);
   },
+  async setScriptStatus(id: string, status: ScriptStatus): Promise<ScriptSummary> {
+    return scriptsSetStatus(id, status);
+  },
   async backfillRuntimeStats(): Promise<void> {
     return scriptsBackfillRuntime();
   },
@@ -168,6 +177,13 @@ const sqlBackedAdapter: StorageAdapter = {
   },
   async renameFolder(id: string, name: string): Promise<Folder> {
     return foldersRename(id, name);
+  },
+  async setFolderLengthRange(
+    id: string,
+    minSec: number | null,
+    maxSec: number | null,
+  ): Promise<Folder> {
+    return foldersSetLengthRange(id, minSec, maxSec);
   },
   async deleteFolder(id: string): Promise<void> {
     return foldersDelete(id);
@@ -296,6 +312,7 @@ const sqlBackedAdapter: StorageAdapter = {
       highlighting_enabled: s.highlighting_enabled,
       created_at: s.created_at,
       updated_at: s.updated_at,
+      status: s.status,
     });
     return getPlatformAdapter().saveAs(
       {
@@ -316,11 +333,16 @@ const sqlBackedAdapter: StorageAdapter = {
     // contentJson comes back as an object (no double-stringify in the
     // format); we pack it back into a string for createScript -
     // the scripts table holds it as TEXT.
+    // createScript normalizes retired block types in the imported content.
     const created = await scriptsCreate(
       parsed.script.title,
       JSON.stringify(parsed.script.contentJson),
       null,
     );
+    // Carry the production stage over (new scripts start at "writing").
+    if (parsed.script.status !== "writing") {
+      await scriptsSetStatus(created.id, parsed.script.status);
+    }
     return { scriptId: created.id, title: created.title };
   },
 

@@ -1,0 +1,117 @@
+/* =========================================================================
+   @agentz/design - legacy.css
+
+   Alias layer: maps every token name the pre-redesign components use
+   onto the semantic tokens from tokens.css. Untouched components pick up
+   the new look in light AND dark without a single selector change.
+
+   Rules:
+   - Aliases are pure `var()` references - no colour values live here.
+   - Declared on `:root, [data-theme]` (the element that carries the
+     theme attribute) so they resolve against the active theme.
+   - New code must NOT use these names. Once nothing references a name
+     any more, delete its line.
+
+   Deliberately NOT aliased: `--paper`. In the old system it meant
+   "card surface", in the new one it is the writing sheet. Old usages
+   were rewritten to `--surface` in place.
+   ========================================================================= */
+
+:root,
+[data-theme] {
+  /* ---- Type ---- */
+  --font-sans: var(--ui);
+  --font-ui: var(--ui);
+  --font-mono: var(--type);
+  --font-paper: var(--type);
+
+  /* ---- Surfaces ---- */
+  --app-bg: var(--bg);
+  --bg-elev: var(--surface-2);
+  --bg-elev-1: var(--surface);
+  --bg-elev-2: var(--surface-2);
+  --bg-elev-3: var(--fill);
+  --paper-2: var(--surface-2);
+  --modal-bg: var(--surface);
+  --backdrop: var(--scrim);
+
+  /* ---- Text ---- */
+  --fg-muted: var(--muted);
+  --fg-subtle: var(--faint);
+  --fg-disabled: var(--faint);
+  --text: var(--fg);
+  --text-2: var(--fg);
+  --text-subtle: var(--muted);
+  --text-faint: var(--faint);
+
+  /* ---- Lines ---- */
+  --border: var(--line);
+  --border-strong: var(--line-strong);
+  --border-focus: var(--focus);
+  --border-paper: var(--line);
+
+  /* ---- Interaction ---- */
+  --hover: var(--fill);
+  --hover-strong: var(--line);
+  --selected: var(--fill);
+  --pill-bg: var(--fill);
+  --pill-fg: var(--fg);
+  --highlight-mark: var(--selection);
+  --ring-brand: var(--fill);
+  --ring-brand-strong: var(--faint);
+
+  /* ---- Primary action = ink ---- */
+  --primary-bg: var(--fg);
+  --primary-fg: var(--bg);
+  --primary-border: var(--fg);
+  --primary-bg-hover: color-mix(in srgb, var(--fg) 86%, var(--bg));
+
+  /* ---- Old monochrome "brand" + "ink" scales (accent was ink) ---- */
+  --brand-50: var(--surface-2);
+  --brand-100: var(--fill);
+  --brand-200: var(--line-strong);
+  --brand-300: var(--faint);
+  --brand-400: var(--muted);
+  --brand-500: var(--fg);
+  --brand-600: var(--fg);
+  --brand-700: var(--fg);
+  --brand-800: var(--fg);
+  --brand-soft: var(--fill);
+  --brand-orange: var(--fg);
+
+  --ink-50: var(--surface-2);
+  --ink-100: var(--fill);
+  --ink-200: var(--line-strong);
+  --ink-300: var(--faint);
+  --ink-400: var(--muted);
+  --ink-500: var(--fg);
+  --ink-600: var(--fg);
+  --ink-700: var(--fg);
+  --ink-900: var(--fg);
+
+  /* ---- Status ---- */
+  --status-ok: var(--ok);
+  --status-err: var(--warn);
+  /* "Still something to do" hints: neutral emphasis, never red. */
+  --status-warn: var(--fg);
+  --danger: var(--warn);
+  --danger-soft: var(--warn-soft);
+  --danger-soft-strong: color-mix(in srgb, var(--warn) 18%, transparent);
+  --danger-border: color-mix(in srgb, var(--warn) 40%, transparent);
+
+  /* ---- Elevation ---- */
+  --shadow-popover: var(--shadow-pop);
+  --shadow-modal: var(--shadow-dlg);
+  --shadow-card-hover: var(--shadow-raise);
+
+  /* ---- Writing surface ---- */
+  --paper-bg: var(--paper);
+  --paper-fg-muted: var(--paper-muted);
+  --paper-fg-faint: color-mix(in srgb, var(--paper-muted) 70%, var(--paper));
+  --selection-paper: var(--selection);
+  --char-tint-default: var(--paper-tint);
+  --page-break-line: var(--paper-line);
+
+  /* ---- Radii ---- */
+  --r-md: var(--r-2);
+}

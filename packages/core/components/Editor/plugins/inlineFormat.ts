@@ -1,6 +1,7 @@
 import {
   $getSelection,
   $isRangeSelection,
+  COMMAND_PRIORITY_CRITICAL,
   COMMAND_PRIORITY_HIGH,
   FORMAT_TEXT_COMMAND,
   KEY_DOWN_COMMAND,
@@ -8,6 +9,7 @@ import {
   type LexicalNode,
   type TextFormatType,
 } from "lexical";
+import { mergeRegister } from "@lexical/utils";
 import {
   BaseScriptzNode,
   $isScriptzActionNode,
@@ -23,48 +25,64 @@ function findScriptzAncestor(node: LexicalNode | null): BaseScriptzNode | null {
   return null;
 }
 
+/** Inline formatting: ⌘B (bold) and ⌘U (underline) in Action and Dialog
+ *  blocks. Italic is not available in ScriptZ at all:
+ *
+ *  - ⌘I / Ctrl+I belongs to the global idea quick-capture. The App-level
+ *    listener sits on `window` in the bubble phase, i.e. it runs AFTER
+ *    Lexical's keydown handling on the editor root. Lexical's own default
+ *    (`$handleKeyDown`, editor priority) would therefore apply italic
+ *    before the capture dialog opens. We claim the key here first:
+ *    preventDefault() + return true stops Lexical, but the event is NOT
+ *    stopped, so it still bubbles to the window listener (which does not
+ *    look at `defaultPrevented`) and quick-capture opens as usual.
+ *  - A FORMAT_TEXT_COMMAND guard swallows "italic" from any other source
+ *    (context menus, programmatic dispatches, future toolbars). */
 export function installInlineFormat(editor: LexicalEditor): () => void {
-  return editor.registerCommand<KeyboardEvent>(
-    KEY_DOWN_COMMAND,
-    (event) => {
-      // App.tsx has the global ⌘I listener that opens the quick-capture
-      // and calls preventDefault(). If the event arrives here
-      // already prevented, leave Lexical RichText's
-      // italic default alone as well.
-      if (event.defaultPrevented) return false;
-      const mod = event.metaKey || event.ctrlKey;
-      if (!mod) return false;
-      const k = event.key.toLowerCase();
-      // ⌘I is globally claimed by idea quick-capture (see App.tsx).
-      // Italic via hotkey is deliberately not intercepted here — anyone who
-      // really wants italic can still trigger it via the browser default
-      // (FORMAT_TEXT_COMMAND from Lexical's RichText), should a toolbar
-      // pill ever be built for it. Currently: no italic via
-      // keyboard. ⌘B (bold) and ⌘U (underline) remain.
-      if (k !== "b" && k !== "u") return false;
+  return mergeRegister(
+    editor.registerCommand<KeyboardEvent>(
+      KEY_DOWN_COMMAND,
+      (event) => {
+        const mod = event.metaKey || event.ctrlKey;
+        if (!mod) return false;
+        const k = event.key.toLowerCase();
 
-      let allow = false;
-      editor.getEditorState().read(() => {
-        const sel = $getSelection();
-        if (!$isRangeSelection(sel)) return;
-        const block = findScriptzAncestor(sel.anchor.getNode());
-        if (!block) return;
-        if ($isScriptzActionNode(block) || $isScriptzDialogNode(block)) {
-          allow = true;
+        if (k === "i" && !event.altKey) {
+          event.preventDefault();
+          return true;
         }
-      });
 
-      if (!allow) {
-        // Block formatting in non-eligible blocks.
+        if (event.defaultPrevented) return false;
+        if (k !== "b" && k !== "u") return false;
+
+        let allow = false;
+        editor.getEditorState().read(() => {
+          const sel = $getSelection();
+          if (!$isRangeSelection(sel)) return;
+          const block = findScriptzAncestor(sel.anchor.getNode());
+          if (!block) return;
+          if ($isScriptzActionNode(block) || $isScriptzDialogNode(block)) {
+            allow = true;
+          }
+        });
+
+        if (!allow) {
+          // Block formatting in non-eligible blocks.
+          event.preventDefault();
+          return true;
+        }
+
+        const fmt: TextFormatType = k === "b" ? "bold" : "underline";
         event.preventDefault();
+        editor.dispatchCommand(FORMAT_TEXT_COMMAND, fmt);
         return true;
-      }
-
-      const fmt: TextFormatType = k === "b" ? "bold" : "underline";
-      event.preventDefault();
-      editor.dispatchCommand(FORMAT_TEXT_COMMAND, fmt);
-      return true;
-    },
-    COMMAND_PRIORITY_HIGH,
+      },
+      COMMAND_PRIORITY_HIGH,
+    ),
+    editor.registerCommand<TextFormatType>(
+      FORMAT_TEXT_COMMAND,
+      (format) => format === "italic",
+      COMMAND_PRIORITY_CRITICAL,
+    ),
   );
 }
