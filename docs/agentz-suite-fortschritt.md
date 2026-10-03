@@ -328,10 +328,30 @@ und Phasen; dieses Protokoll hält die konkreten Ergebnisse fest.
   auf `main` gemergt (`1ff07139`). Der Build-Probelauf
   [37146931858](https://github.com/AgentZ-Media/AgentZ/actions/runs/37146931858)
   hat macOS- und Windows-Builds samt Workflow-Artefakten erfolgreich
-  erstellt und ist vollständig erfolgreich abgeschlossen. Noch kein erfolgreicher Live-Release,
-  öffentlicher Zeiger-Download oder echter Update-Zyklus behauptet.
-  0.9.0 muss einmal manuell installiert und anschließend das signierte
-  Update auf 0.9.1 geprüft werden.
+  erstellt und ist vollständig erfolgreich abgeschlossen.
+- **Echter ScriptZ-Release:** `scriptz-v0.9.0` über
+  [37148102485](https://github.com/AgentZ-Media/AgentZ/actions/runs/37148102485)
+  auf beiden Plattformen erfolgreich veröffentlicht. `scriptz-latest`,
+  Manifest und beide Installer ohne Anmeldung erreichbar. Updater-Signaturen
+  einschließlich Nutzdaten und signiertem Kommentar kryptografisch geprüft;
+  der repositoryweite Latest-Release bleibt unverändert `v0.8.4`.
+- **Installation:** Tatsächliches GitHub-DMG nach `/Applications` installiert,
+  vorherige 0.8.4-App gesichert. Über-Seite zeigt 0.9.0, gelbes Icon korrekt;
+  71 Skripte vorhanden, produktbezogene Tabellen vor/nach Installation per
+  SHA identisch und Integritätsprüfung erfolgreich. Die native Updateprüfung
+  meldet auf dem eigenen App-Kanal den aktuellen Stand.
+- **Echtes Folge-Update:** ScriptZ über den In-App-Updater von 0.9.0 auf
+  0.9.1 aktualisiert und neu gestartet; Release-Build
+  [37149009116](https://github.com/AgentZ-Media/AgentZ/actions/runs/37149009116).
+  `/Applications/ScriptZ.app/Contents/Info.plist` bestätigt 0.9.1, ein neuer
+  Prozess (PID 24896) und native WebKit-Logs das gestartete Fenster.
+  Die visuelle Über-Seite nach diesem Neustart war wegen der Fensterzuordnung
+  des UI-Werkzeugs noch nicht prüfbar; daraus ist kein App-Fehler belegt.
+- **Aktueller Datenvergleich:** Timo hat seit der Erstinstallation
+  weitergearbeitet. Unmittelbar vor dem Update deshalb erneut gesichert:
+  `~/Backups/scriptz/scriptz-20261003-220104-immediately-before-091.db`.
+  Alle Produktdatentabellen sind nach dem Update gegenüber genau dieser
+  Sicherung unverändert; 71 Skripte vorhanden, Integritätsprüfung erfolgreich.
 
 ### Phase 7: Statische Suite-Website
 
@@ -340,10 +360,12 @@ und Phasen; dieses Protokoll hält die konkreten Ergebnisse fest.
   Routen: `/`, `/en/`, `/impressum/` und `/datenschutz/`. Deutsche und
   englische Startseite, übernommene und an den Suite-Kontext angepasste
   deutsche Rechtstexte; keine Laufzeit-Skripte, Cookies oder Analyse.
-- **App-Liste:** Daten in `src/apps.ts`, Texte in `src/i18n.ts`. ScriptZ
-  bleibt bis zur erfolgreichen Veröffentlichung beider Installer auf
-  `soon`, daher ohne Download-Buttons. Verfügbare Apps verwenden eigene
-  Zeiger-URLs statt des repositoryweiten Latest-Links.
+- **App-Liste:** Daten in `src/apps.ts`, Texte in `src/i18n.ts`. Nach der
+  erfolgreichen Veröffentlichung beider Installer steht ScriptZ auf
+  `available`. Die Sandbox wurde zur Abnahme vorübergehend sichtbar
+  geschaltet: beide Karten in DE/EN und öffentliche Downloads mit HTTP 200
+  geprüft. Nach der Abnahme wurde der Sandbox-Eintrag entfernt. Alle Downloads
+  verwenden eigene Zeiger-URLs statt des repositoryweiten Latest-Links.
 - **Prüfung:** Astro-Typecheck mit zwölf Dateien ohne Fehler, Warnungen
   oder Hinweise; statischer Build erfolgreich. Desktop, Mobilansicht,
   beide Sprachen und Rechtstexte im Browser geprüft: kein horizontaler
@@ -388,10 +410,76 @@ und Phasen; dieses Protokoll hält die konkreten Ergebnisse fest.
 - **Datentrennung:** Sandbox verwendet ihren eigenen Datenbankpfad.
   Der logische SQL-Dump der produktiven ScriptZ-Datenbank ist per SHA
   identisch mit der Phase-6-Sicherung.
-- **PR und offene Abnahme:** [PR #30](https://github.com/AgentZ-Media/AgentZ/pull/30)
-  enthält Generator, Sandbox und Sidebar-Korrektur (geprüfter Stand
-  `c24b6bc`). Reale Sandbox-Releases, öffentlicher Zeiger und der echte
-  Update-Zyklus sind weiterhin offen. Rückbau erst nach dieser Abnahme.
+- **PRs:** [PR #30](https://github.com/AgentZ-Media/AgentZ/pull/30)
+  mit Generator, Sandbox und Sidebar-Korrektur gemergt (`3772db7`).
+  [PR #31](https://github.com/AgentZ-Media/AgentZ/pull/31) ergänzt strengere
+  ID-Prüfung und Kollisionsschutz gegen vorhandene Cargo-Paketnamen, mit
+  zwölf Generator-Tests; gemergt als `a000561`. Er bereitet außerdem die
+  Folgeversionen ScriptZ 0.9.1 und Sandbox 0.1.1 vor.
+- **Echter Sandbox-Release:** `sandbox-v0.1.0` über
+  [37148102618](https://github.com/AgentZ-Media/AgentZ/actions/runs/37148102618)
+  auf beiden Plattformen samt eigenem Zeiger erfolgreich veröffentlicht.
+  Manifest und Installer öffentlich erreichbar, beide Updater-Signaturen
+  einschließlich Nutzdaten und signiertem Kommentar kryptografisch geprüft.
+  Tatsächliches DMG installiert; Über-Seite zeigt 0.1.0, native Updateprüfung
+  meldet den aktuellen Stand auf dem eigenen Kanal.
+- **Echtes Sandbox-Folge-Update:** `sandbox-v0.1.1` vom Stand `a000561`
+  in [37149435934](https://github.com/AgentZ-Media/AgentZ/actions/runs/37149435934)
+  auf beiden Plattformen erfolgreich veröffentlicht; Signaturen und öffentliche
+  Downloads geprüft. Die installierte 0.1.0 über die native Download-/Update-
+  Aktion auf 0.1.1 aktualisiert und neu gestartet. Neuer Prozess (PID 26893)
+  und `/Applications/Sandbox.app/Contents/Info.plist` bestätigen 0.1.1;
+  native WebKit-Logs zeigen erfolgreichen JavaScript-Start und ersten
+  sichtbaren Inhalt nach 0,062 Sekunden. Einstellungen Hell/Deutsch und
+  `app_state` unverändert, Datenbankintegrität erfolgreich geprüft.
+- **Beleggrenze und Kanäle:** Wie bei ScriptZ konnte das UI-Werkzeug nach
+  Neustart kein Fenster zuordnen; die visuelle Über-Seite 0.1.1 ist nicht
+  bestätigt. Version, gestarteter Prozess und natives Rendering sind belegt.
+  Der ScriptZ-Zeiger blieb bytegleich und der globale Latest-Release `v0.8.4`.
+- **Rückbau abgeschlossen:** Auf Timos ausdrücklichen Auftrag
+  `pnpm remove-app sandbox` erfolgreich ausgeführt, einschließlich Cargo-
+  Prüfung. App-/Modulquellen, Registry-Einträge, Website-Karte und Bilder
+  entfernt; keine Änderung an `apps/scriptz` oder `modules/scriptz`.
+  Alle drei Sandbox-Releases samt Tags und acht zugehörige GitHub-Cache-
+  Einträge gezielt gelöscht und remote nachgeprüft.
+- **Lokale Bereinigung:** Installierte Sandbox-App, temporäre Dev-App-Hülle,
+  Datenbank/App-Daten, Library-Caches, WebKit-Daten, Downloads beider Versionen
+  und Socket-Logs entfernt. Cargo bereinigte 1.023 Dateien beziehungsweise
+  1,5 GiB; keine Sandbox-Cargo-Artefakte und kein Sandbox-Prozess mehr,
+  Port 1430 frei. ScriptZ bleibt installiert und seine Daten bleiben erhalten.
+  Zwölf leere, von macOS mit `sunlnk` geschützte WebKit-Tempverzeichnisse
+  unter `/var/folders` ließen sich nicht entfernen; ihre Inhalte sind gelöscht.
+  Diese leeren Systemverzeichnisse sind die verbleibende lokale Prüfgrenze.
 - **Dokumentation:** `docs/neue-app.md` beschreibt Anlage, Fachlogik,
   Migrationen, Icons, Releases und Rückbau. Die zentrale Release-Regel
   liegt jetzt entsprechend der Repository-Konvention auf Deutsch vor.
+
+### Separat verbleibende Aufgaben
+
+- Vercel-Projekte, Domain/DNS und die Veröffentlichung der Suite-Website
+  übernimmt Timo. Die lokale Website-Prüfung bestätigt keine Bereitstellung.
+- Der physische Hauptordner `~/Desktop/Code/ScriptZ` und der zugehörige
+  Claude-Memory-Pfad werden erst koordiniert nach dieser Session umgezogen:
+  Sechs aktive T3-Worktrees besitzen absolute Git-Verweise; ein unterstützter
+  T3-Projektpfad-Umzug steht aktuell nicht zur Verfügung. Das Umbenennen des
+  GitHub-Repositories allein erledigt diesen lokalen Umzug nicht.
+
+### Abschlussprüfung des Repository-Fundaments
+
+- Nach dem Sandbox-Rückbau 451 Tests erfolgreich: 46 Tooling-, drei Design-,
+  74 Kit-, 26 Desktop- und 302 ScriptZ-Tests. Typecheck, ESLint, Farb-,
+  Token- und Astro-Prüfung sowie alle Frontend-Builds grün.
+- Website abschließend in DE/EN geprüft: ausschließlich ScriptZ sichtbar,
+  beide Installer liefern öffentlich HTTP 200, Sandbox-Bild HTTP 404.
+  Keine Layout- oder Konsolenfehler. Die Website ist weiterhin lokal geprüft,
+  nicht auf der vorgesehenen Domain veröffentlicht.
+- Beide echten In-App-Updates wurden auf macOS durchgeführt. Windows-Builds,
+  Installer-Downloads und Updater-Signaturen sind geprüft; eine interaktive
+  Windows-Installation beziehungsweise ein Update auf einem Windows-Rechner
+  wurde nicht durchgeführt. Die Über-Seiten nach dem jeweiligen macOS-
+  Update waren wegen der UI-Werkzeug-Fensterzuordnung nicht visuell prüfbar;
+  installierte Version, neuer Prozess und natives Rendering wurden separat
+  nachgewiesen.
+- Repository-Phasen 1 bis 8 damit umgesetzt und geprüft. Externe Aufgaben
+  aus Abschnitt 11 des Plans bleiben sichtbar offen und sind keine durch
+  den Code erledigten Schritte.

@@ -1,6 +1,6 @@
 # AgentZ Suite - Plan für das Fundament
 
-> Interne Doku. Stand: 2026-10-03. Status: Phase 1 bis 5 abgeschlossen; Phase 6-Code gemergt, Build-Probelauf und Live-Release-/Update-Abnahme laufen. Phase 7-Code gemergt, lokal geprüft. Phase 8 implementiert, Sandbox erzeugt und native Abnahme bestanden in PR #30; reale Release-/Update-Abnahme und Rückbau offen. Vercel und Domains übernimmt Timo.
+> Interne Doku. Stand: 2026-10-03. Status: Repository-Phasen 1 bis 8 umgesetzt und geprüft, einschließlich echter In-App-Updates und Sandbox-Rückbau. Vercel/Domain bei Timo; lokaler Ordner-/Memory-Umzug und weitere externe Checklistenpunkte bleiben separat offen. Belege und Prüfgrenzen im Fortschrittsprotokoll.
 > Gegengeprüft von GPT-6 Astra (Effort High) am 2026-10-03, Befunde
 > eingearbeitet (siehe Abschnitt 15).
 
@@ -1177,12 +1177,14 @@ Nicht per Code erledigbar, gesammelt für den Überblick:
 - [x] GitHub-Repo in `AgentZ` umbenennen, Beschreibung, Homepage, Topics
 - [x] Release-Immutability aus lassen
 - [ ] Lokalen Ordner umbenennen + Claude-Memory-Pfad umziehen
+      (sechs aktive T3-Worktrees mit absoluten Git-Pfaden; koordiniert
+      nach dieser Session, keine unvollständige Projektpfad-Migration)
 - [x] CodeRabbit-Review von PR #22 prüfen und Befunde beheben
 - [x] `CI passed` auf `main` als Pflicht-Check einrichten (inkl. Admins)
 - [ ] Domain `agentz-suite.de` registrieren (Timo)
 - [ ] Vercel-Projekt für `apps/site` anlegen, Domain verbinden (Timo)
-- [ ] Zeiger-Release `scriptz-latest` beim ersten Release prüfen
-- [ ] ScriptZ 0.9.0 einmal manuell installieren
+- [x] Zeiger-Release `scriptz-latest` beim ersten Release prüfen
+- [x] ScriptZ 0.9.0 einmal manuell installieren
 
 ## 12. Risiken
 

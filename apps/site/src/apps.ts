@@ -15,11 +15,8 @@ export const apps: readonly SuiteApp[] = [
       de: "Skripte schreiben, Ideen sammeln und beim Dreh den Überblick behalten.",
       en: "Write scripts, collect ideas and keep track of everything when filming.",
     },
-    status: "soon",
+    status: "available",
   },
-  // @new-app:sandbox:start
-  { id: "sandbox", name: "Sandbox", tagline: { de: "Dein neuer Arbeitsbereich.", en: "Your new workspace." }, status: "soon" },
-  // @new-app:sandbox:end
   /* @new-app:entries:end */
 ];
 

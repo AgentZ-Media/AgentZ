@@ -10,7 +10,8 @@ kein Tracking und keine Cookies. Fonts, Farben und Buttons stammen aus
 Ab Repo-Root: `pnpm install --frozen-lockfile`, `pnpm dev:site`.
 `pnpm build:site` erzeugt `apps/site/dist`. `pnpm --filter @agentz/site preview`
 zeigt den statischen Build. `pnpm --filter @agentz/site typecheck` prüft auch die
-Astro-Komponenten. Astro benötigt Node ab 22.12; die Suite-CI verwendet Node 22.
+Astro-Komponenten. Die Suite verwendet Node 24 in der CI und empfiehlt
+diesen Stand auch lokal.
 
 ## Apps und Downloads
 
@@ -18,7 +19,10 @@ Astro-Komponenten. Astro benötigt Node ab 22.12; die Suite-CI verwendet Node 22
 und englischen Funktionssatz sowie `soon` oder `available`. Bei `soon` erscheinen
 keine Download-Links. `available` erst nach erfolgreichem Release mit beiden
 Installern setzen. Ein erfolgreicher lokaler Build ist kein veröffentlichtes
-Release. ScriptZ bleibt deshalb zunächst `soon`.
+Release. ScriptZ steht nach erfolgreicher Veröffentlichung und Prüfung
+beider Installer auf `available`. Die temporäre Sandbox-Karte wurde nach
+der vollständigen Generator-/Update-Abnahme wieder entfernt; die Website
+zeigt in beiden Sprachen ausschließlich ScriptZ.
 
 Icons kommen aus `/img/<id>.png`, erzeugt mit `pnpm build:logo --app <id>`. Die
 Links folgen ausschließlich dem Phase-6-Schema:

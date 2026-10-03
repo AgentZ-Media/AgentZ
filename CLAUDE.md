@@ -2,14 +2,15 @@
 
 pnpm-Workspace für eigenständige lokale Desktop-Tools für Content Creator.
 Repository: `AgentZ-Media/AgentZ`, Root-Paket: `agentz`.
-ScriptZ ist das Produkt; die generierte Sandbox dient vorübergehend der
-Abnahme des gemeinsamen Fundaments. Der
+ScriptZ ist das Produkt. Eine unabhängig generierte Sandbox hat das
+Fundament einschließlich eigener Releases und Updates geprüft und wurde
+anschließend wieder entfernt. Der
 [Fundament-Plan](docs/agentz-suite-fundament.md) beschreibt den schrittweisen
 Umbau; die nachfolgende Trennung von Bestand und Ziel ist verbindlich.
 Der [Umsetzungsstand](docs/agentz-suite-fortschritt.md) dokumentiert
 abgeschlossene Schritte, Prüfungen und offene Punkte.
 
-## Aktuelle Struktur (Phase 8, Abnahme läuft)
+## Aktuelle Struktur (Fundament umgesetzt)
 
 - [`apps/scriptz/`](apps/scriptz/) - `@agentz/scriptz-app`, die dünne
   Tauri-Schale für ScriptZ. Verbindet Produktmodul und Desktop-Host;
@@ -38,7 +39,8 @@ abgeschlossene Schritte, Prüfungen und offene Punkte.
   kein Framework. Details in der [Paket-README](packages/design/README.md).
 - [`tooling/new-app/`](tooling/new-app/) - Generator und kontrollierter
   Rückbau eigenständiger Apps; Anleitung in [`docs/neue-app.md`](docs/neue-app.md).
-  Die generierte Sandbox wird nach der vollständigen Abnahme wieder entfernt.
+  Der vollständige Generator-/Release-/Rückbau-Durchlauf wurde mit einer
+  temporären Sandbox geprüft.
 - [`tooling/vitest-preset/`](tooling/vitest-preset/) -
   `@agentz/vitest-preset`, gemeinsame Solid-/jsdom-Testkonfiguration.
 - [`docs/release-notes/scriptz/`](docs/release-notes/scriptz/) -
@@ -53,9 +55,12 @@ apps/<app> -> modules/<app> -> packages/kit -> packages/design
     +------> packages/desktop ------+
 ```
 
-Die Website ist lokal umgesetzt und geprüft. Der Generator hat die Sandbox
-real angelegt; native und Release-/Update-Abnahme laufen noch. Externe
-Veröffentlichung und Abnahmestand stehen separat im Umsetzungsprotokoll.
+Die Repository-Phasen sind umgesetzt und geprüft: gemeinsame Pakete,
+unabhängiger Generator, echte Releases/Updates und Sandbox-Rückbau. Die
+Website ist lokal geprüft; Vercel/Domain übernimmt Timo. Der physische lokale
+Hauptordner und der Claude-Memory-Pfad bleiben für einen koordinierten Umzug
+nach den aktiven Worktree-Sessions offen. Belege und Prüfgrenzen stehen im
+Umsetzungsprotokoll.
 
 - `design` importiert nichts aus dem Repo.
 - `kit` importiert nur `design`: keine Tauri-Imports und kein Produktwissen.
