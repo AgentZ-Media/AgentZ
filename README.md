@@ -51,10 +51,10 @@ A calm sidebar instead of tabs: search & commands (`⌘K`), the pipeline from Id
 ### Ideas – capture now, write later
 
 <p align="center">
-  <img src="apps/landing/public/img/app/ideas.png" alt="ScriptZ ideas page with folder chips and detail panel" width="900" />
+  <img src="apps/landing/public/img/app/ideas.png" alt="ScriptZ ideas page with folder chips and an expanded idea" width="900" />
 </p>
 
-Press `⌘I` from anywhere – even in focus mode – type the idea, Enter, you're back where you were. The ideas page is built for 50+ ideas: folder chips, a filter, grouping by month and a detail panel. `⌘↵` starts a script from the selected idea, and the original note stays visible in the script's inspector.
+Press `⌘I` from anywhere – even in focus mode – type the idea, Enter, you're back where you were. The ideas page is built for 50+ ideas: folder chips, a filter and grouping by month. Every idea opens right inside the list for notes and folder, and `Tab` in the capture field adds a note while you type. `⌘↵` starts a script from the selected idea, and the original note stays visible in the script's inspector.
 
 ### Editor – format happens while you type
 

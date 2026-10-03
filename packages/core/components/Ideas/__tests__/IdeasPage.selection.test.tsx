@@ -1,6 +1,7 @@
 // Selection mode of the ideas page (components/Ideas/IdeasPage.tsx):
 // checkboxes, "select all" (skips collapsed groups), group checkboxes,
-// shift ranges and the bulk "into scripts" action with a target stage.
+// shift ranges, the bulk "into scripts" action with a target stage, and
+// how it interacts with rows that open in place.
 
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { render } from "@solidjs/testing-library";
@@ -72,6 +73,35 @@ const button = (label: string, root: ParentNode = document) =>
   [...root.querySelectorAll("button")].find((b) => b.textContent?.includes(label)) as HTMLButtonElement;
 
 describe("IdeasPage selection mode", () => {
+  it("closes the open row and toggles instead of opening while selecting", async () => {
+    render(() => <IdeasPage />);
+    await settle();
+
+    row("a").click();
+    await settle();
+    expect(row("a").classList.contains("ix")).toBe(true);
+
+    button(t("select.enter")).click();
+    await settle();
+    expect(document.querySelector(".ix")).toBeNull();
+    expect(row("a").classList.contains("irow")).toBe(true);
+
+    row("b").click();
+    await settle();
+    expect(checked()).toEqual(["b"]);
+    expect(document.querySelector(".ix")).toBeNull();
+
+    // Enter does not open the cursor row while selecting.
+    document.body.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true }));
+    await settle();
+    expect(document.querySelector(".ix")).toBeNull();
+
+    document.body.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true }));
+    await settle();
+    expect(document.querySelector(".lib-selbar")).toBeNull();
+    expect(document.querySelector(".ix")).toBeNull();
+  });
+
   it("selects all / per group / by range and converts into scripts of a stage", async () => {
     render(() => <IdeasPage />);
     await settle();

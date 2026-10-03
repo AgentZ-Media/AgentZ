@@ -155,9 +155,11 @@ packages/core/
         highlight.ts       per-block --char-tint (Character, Dialog,
                            Parenthetical)
         colorPicker.tsx    character colour popover (3 entry points)
-    Ideas/                 IdeasPage (+ parts/; selection mode like the
+    Ideas/                 IdeasPage (+ parts/; rows open in place into
+                           IdeaEditor, no side panel; selection mode like the
                            scripts page: checkboxes, ⌘A, ⇧-range, bulk move /
-                           convert into scripts of a stage / delete),
+                           convert into scripts of a stage / delete - closes
+                           the open row),
                            QuickCapture (⌘I modal),
                            ideaGroups.ts, similar.ts, folderColor.ts
     Export/                ExportDialog (⌘E, live preview via pdfPreview.ts)

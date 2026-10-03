@@ -1022,6 +1022,7 @@
     flex: none;
   }
   .v2-ideas-input-text { flex: 1; min-width: 0; font-size: 14px; }
+  .v2-ideas-input-note { font-size: 12px; font-weight: 600; color: var(--v2-ink-muted); white-space: nowrap; }
   .v2-ideas-input-hint { font-size: 11px; color: var(--v2-ink-faint); white-space: nowrap; }
 
   .v2-ideas-chips {
@@ -1065,12 +1066,6 @@
     font-size: 12px;
   }
 
-  .v2-ideas-layout {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) 232px;
-    gap: 18px;
-    align-items: start;
-  }
   .v2-igrp-h {
     display: flex;
     align-items: baseline;
@@ -1121,44 +1116,43 @@
   .v2-irow-ag { grid-area: ag; font-size: 12px; color: var(--v2-ink-faint); white-space: nowrap; font-variant-numeric: tabular-nums; }
   .v2-ideas-keys { margin: 0; font-size: 11.5px; color: var(--v2-ink-faint); }
 
-  .v2-idet {
-    position: sticky;
-    top: 72px;
-    padding: 16px;
-    border: 1px solid var(--v2-border);
+  /* The selected idea, opened in place (the app's inline editor). */
+  .v2-ix {
+    margin: 4px 0;
+    padding: 12px 14px;
+    border: 1px solid var(--v2-border-strong);
     border-radius: 8px;
-    background: var(--v2-bg);
+    background: #fff;
+    box-shadow: inset 3px 0 0 var(--v2-ink), 0 6px 16px rgba(28,24,20,0.06);
   }
-  .v2-idet-top { font-size: 11px; color: var(--v2-ink-faint); margin-bottom: 8px; }
-  .v2-idet-t { font-size: 16px; font-weight: 700; line-height: 1.3; color: var(--v2-ink); margin-bottom: 8px; }
-  .v2-idet-n { margin: 0 0 14px; font-size: 13px; line-height: 1.5; color: var(--v2-ink-muted); }
-  .v2-idet-meta { margin: 0 0 14px; display: grid; gap: 8px; font-size: 12px; }
-  .v2-idet-meta > div { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
-  .v2-idet-meta dt { color: var(--v2-ink-faint); }
-  .v2-idet-meta dd { margin: 0; color: var(--v2-ink); }
-  .v2-idet-start {
-    display: flex;
+  .v2-ix-h { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; }
+  .v2-ix-t { font-size: 14.5px; font-weight: 700; line-height: 1.35; color: var(--v2-ink); }
+  .v2-ix-age { font-size: 11px; color: var(--v2-ink-faint); white-space: nowrap; }
+  .v2-ix-n {
+    margin: 8px 0 10px;
+    padding: 9px 12px;
+    border: 1px solid var(--v2-border);
+    border-radius: 6px;
+    background: var(--v2-bg);
+    font-size: 13px;
+    line-height: 1.55;
+    color: var(--v2-ink-muted);
+  }
+  .v2-ix-f { display: flex; align-items: center; flex-wrap: wrap; gap: 8px 12px; font-size: 12px; }
+  .v2-ix-meta { color: var(--v2-ink-faint); }
+  .v2-ix-act { margin-left: auto; display: inline-flex; align-items: center; gap: 12px; }
+  .v2-ix-del { color: var(--v2-ink-faint); }
+  .v2-ix-start {
+    display: inline-flex;
     align-items: center;
-    justify-content: center;
     gap: 8px;
-    height: 36px;
+    height: 30px;
+    padding: 0 12px;
     border-radius: 6px;
     background: var(--v2-ink);
     color: #fff;
-    font-size: 13px;
+    font-size: 12.5px;
     font-weight: 600;
-  }
-  .v2-idet-foot {
-    display: flex;
-    justify-content: space-between;
-    margin-top: 10px;
-    font-size: 12px;
-    color: var(--v2-ink-faint);
-  }
-
-  @media (max-width: 1000px) {
-    .v2-ideas-layout { grid-template-columns: 1fr; }
-    .v2-idet { position: static; }
   }
 
   .v2-ideas-hint {

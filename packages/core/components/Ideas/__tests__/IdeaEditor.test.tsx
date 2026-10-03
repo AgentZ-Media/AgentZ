@@ -1,8 +1,8 @@
-// Regression tests for the idea detail autosave
-// (components/Ideas/parts/IdeaDetail.tsx + ideaDrafts.ts): overlapping
+// Regression tests for the inline idea editor autosave
+// (components/Ideas/parts/IdeaEditor.tsx + ideaDrafts.ts): overlapping
 // saves must diff against the last acknowledged write (not the lagging
-// props), flush must drain the newest draft, and switching ideas while a
-// save is in flight must never resurrect stale cached notes.
+// props), flush must drain the newest draft, and collapsing / switching
+// ideas while a save is in flight must never resurrect stale cached notes.
 
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { cleanup, render } from "@solidjs/testing-library";
@@ -13,7 +13,7 @@ import { ideasBus } from "../../../lib/ideasBus";
 import { flushAll } from "../../../lib/saveFlush";
 import type { Idea } from "../../../lib/types";
 import { ideasStore } from "../../../stores/ideas";
-import { IdeaDetail } from "../parts/IdeaDetail";
+import { IdeaEditor } from "../parts/IdeaEditor";
 import { ideaDraftCount } from "../parts/ideaDrafts";
 
 const originalAdapter = getStorageAdapter();
@@ -95,20 +95,20 @@ afterEach(async () => {
   updates.length = 0;
 });
 
-function type(el: HTMLTextAreaElement, value: string) {
+function type(el: HTMLInputElement | HTMLTextAreaElement, value: string) {
   el.focus();
   el.value = value;
   el.dispatchEvent(new InputEvent("input", { bubbles: true }));
 }
 
-/** Mirrors the ideas page: one detail panel keyed by the selected id, fed
+/** Mirrors the ideas page: one open editor keyed by the open row's id, fed
  *  from the shared ideas store. */
 function renderPanel(initial: string | null) {
   const [selected, setSelected] = createSignal<string | null>(initial);
   const { container } = render(() => (
     <For each={selected() ? [selected()!] : []}>
       {(id) => (
-        <IdeaDetail
+        <IdeaEditor
           ideaId={id}
           ideas={ideasStore.ideas() ?? []}
           folders={[]}
@@ -120,19 +120,19 @@ function renderPanel(initial: string | null) {
           onMove={() => {}}
           onOpenScript={() => {}}
           onSelectIdea={() => {}}
-          onLeave={() => {}}
+          onCollapse={() => {}}
         />
       )}
     </For>
   ));
   return {
     select: setSelected,
-    notes: () => container.querySelector("textarea.idet-n") as HTMLTextAreaElement,
-    title: () => container.querySelector("textarea.idet-t") as HTMLTextAreaElement,
+    notes: () => container.querySelector("textarea.ix-n") as HTMLTextAreaElement,
+    title: () => container.querySelector("input.ix-t") as HTMLInputElement,
   };
 }
 
-describe("IdeaDetail autosave", () => {
+describe("IdeaEditor autosave", () => {
   it("writes a revert to the original notes made while a save is in flight", async () => {
     const p = renderPanel("a");
     const notes = p.notes();
@@ -175,7 +175,7 @@ describe("IdeaDetail autosave", () => {
     expect(done).toBe(true);
   });
 
-  it("writes pending drafts on unmount (idea switch / page leave)", async () => {
+  it("writes pending drafts on unmount (collapse / idea switch / page leave)", async () => {
     const p = renderPanel("a");
     type(p.notes(), "Typed right before switching");
     p.select(null);

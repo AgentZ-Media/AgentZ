@@ -9,7 +9,8 @@ import "./FolderMenu.css";
 
 // Folder picker: a trigger (chip or ghost button) plus a `.menu` popover
 // with "Kein Ordner" and every folder (colour dot + check). Used by the
-// idea detail panel, the selection bar and the quick-capture footer.
+// open idea row, the capture field, the selection bar and the quick-capture
+// footer.
 // Keyboard: ↑/↓ move, ⏎ picks, esc closes (and marks the event handled so
 // a surrounding dialog stays open).
 
