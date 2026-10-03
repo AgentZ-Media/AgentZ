@@ -16,3 +16,14 @@ it("opens the app-specific DB lazily, shares its connection and retries a failed
   expect(load).toHaveBeenLastCalledWith("sqlite:kit-lab.db");
   expect(() => createDesktopPlatform("../scriptz")).toThrow("Invalid desktop app ID");
 });
+
+it("rejects unreleasable IDs before opening a database", () => {
+  const before = load.mock.calls.length;
+  for (const id of ["notes-", "notes--pro", "Notes", "-notes", "../notes"]) {
+    expect(() => createDesktopPlatform(id)).toThrow("Invalid desktop app ID");
+  }
+  for (const id of ["a", "notes-pro", "notes-pro-2"]) {
+    expect(() => createDesktopPlatform(id)).not.toThrow();
+  }
+  expect(load.mock.calls.length).toBe(before);
+});

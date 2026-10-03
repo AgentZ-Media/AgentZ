@@ -141,7 +141,7 @@ const placeholderDir = join(assetsDir, "placeholder");
 
 /** Exported so generator tests can exercise fallback without writing real apps. */
 export async function buildLogo({ appId, logo = LOGOS[appId], root = repoRoot, outputAssets = assetsDir, svgOnly = false, fallback = false, chrome = findChrome() }) {
-  if (!/^[a-z][a-z0-9-]*$/.test(appId)) throw new Error("Invalid app id");
+  if (!/^[a-z][a-z0-9]*(?:-[a-z0-9]+)*$/.test(appId)) throw new Error("Invalid app id");
   if (!logo) throw new Error(`No LOGOS entry for ${appId}`);
   const desktopDir = join(root, "apps", appId);
   if (appId !== "suite" && !existsSync(join(desktopDir, "src-tauri"))) {

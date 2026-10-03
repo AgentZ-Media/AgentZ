@@ -327,7 +327,8 @@ und Phasen; dieses Protokoll hält die konkreten Ergebnisse fest.
 - **Stand:** [PR #28](https://github.com/AgentZ-Media/AgentZ/pull/28)
   auf `main` gemergt (`1ff07139`). Der Build-Probelauf
   [37146931858](https://github.com/AgentZ-Media/AgentZ/actions/runs/37146931858)
-  für macOS und Windows läuft. Noch kein erfolgreicher Live-Release,
+  hat macOS- und Windows-Builds samt Workflow-Artefakten erfolgreich
+  erstellt und ist vollständig erfolgreich abgeschlossen. Noch kein erfolgreicher Live-Release,
   öffentlicher Zeiger-Download oder echter Update-Zyklus behauptet.
   0.9.0 muss einmal manuell installiert und anschließend das signierte
   Update auf 0.9.1 geprüft werden.
@@ -371,14 +372,26 @@ und Phasen; dieses Protokoll hält die konkreten Ergebnisse fest.
   Frontend-Build und Tests erfolgreich. Eine durch den Token-Check erkannte
   Legacy-Variable `--text` in der Vorlage wurde auf einen semantischen
   Token korrigiert.
-- **Abnahme läuft:** Beim parallelen Entwicklungsstart mit ScriptZ wurde
-  ein Fehler bei der Solid-Auflösung durch die gemeinsame Vite-Konfiguration
+- **Entwicklungsstart:** Beim parallelen Start mit ScriptZ wurde ein
+  Fehler bei der Solid-Auflösung durch die gemeinsame Vite-Konfiguration
   gefunden und im gemeinsamen Host korrigiert, ohne ScriptZ-Code zu ändern.
-  Die 25 Desktop-Tests sind grün; beide nativen Entwicklungsprozesse starten.
-  Temporäre App-Bundles ermöglichen die anschließende visuelle Abnahme.
-  Noch keine abgeschlossene gleichzeitige Desktop-Nutzung, kein Sandbox-
-  Release und kein echter Sandbox-Update-Zyklus behauptet. Der Rückbau folgt erst nach
-  erfolgreicher Abnahme.
+  Die 25 Desktop-Tests sind grün. Beide Apps wurden zunächst über
+  `pnpm dev:*` gestartet; temporäre `.app`-Hüllen mit denselben Debug-Binaries
+  und Vite-Servern ermöglichten ihre Erkennung durch die native UI-Prüfung.
+- **Native Abnahme:** Sandbox und ScriptZ gleichzeitig funktionsfähig.
+  Sandbox in Hell/Deutsch und Dunkel/Englisch visuell geprüft, Toast und
+  Bestätigungsdialog bedient. Ergänzten Settings-Button in der Sidebar
+  angeklickt; Updates und Über-Seite zeigen Sandbox 0.1.0. Nach Neustart
+  behält Sandbox Hell/Deutsch, während ScriptZ getrennt Dunkel/Englisch
+  verwendet. Auch Fensterzustände bleiben unabhängig: Sandbox 2200×1520
+  bei 956/296, ScriptZ 2560×1720 bei 576/156. Beide Apps sauber beendet.
+- **Datentrennung:** Sandbox verwendet ihren eigenen Datenbankpfad.
+  Der logische SQL-Dump der produktiven ScriptZ-Datenbank ist per SHA
+  identisch mit der Phase-6-Sicherung.
+- **PR und offene Abnahme:** [PR #30](https://github.com/AgentZ-Media/AgentZ/pull/30)
+  enthält Generator, Sandbox und Sidebar-Korrektur (geprüfter Stand
+  `c24b6bc`). Reale Sandbox-Releases, öffentlicher Zeiger und der echte
+  Update-Zyklus sind weiterhin offen. Rückbau erst nach dieser Abnahme.
 - **Dokumentation:** `docs/neue-app.md` beschreibt Anlage, Fachlogik,
   Migrationen, Icons, Releases und Rückbau. Die zentrale Release-Regel
   liegt jetzt entsprechend der Repository-Konvention auf Deutsch vor.

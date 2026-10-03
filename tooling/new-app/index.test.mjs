@@ -6,6 +6,7 @@ import { join, dirname } from "node:path";
 import { newApp, removeApp, nextPort, validateId } from "./index.mjs";
 import { templates } from "./templates.mjs";
 import { findTokenViolations } from "../checks/tokens.mjs";
+import { validateAppId } from "../release/core.mjs";
 
 function fixture(t) {
   const root = mkdtempSync(join(tmpdir(), "agentz-generator-"));
@@ -22,8 +23,11 @@ function fixture(t) {
 }
 
 test("rejects reserved, unsafe and ambiguous IDs", () => {
-  for (const id of ["scriptz", "site", "kit", "latest", "../other", "Camel", "", "foo/bar", "con", "crate", "a".repeat(51)]) assert.throws(() => validateId(id));
-  assert.equal(validateId("my-tool2"), "my-tool2");
+  for (const id of ["scriptz", "site", "kit", "latest", "../other", "Camel", "", "foo/bar", "notes-", "notes--pro", "con", "crate", "a".repeat(51)]) assert.throws(() => validateId(id));
+  for (const id of ["a", "my-tool2", "notes-pro-2"]) {
+    assert.equal(validateId(id), id);
+    assert.equal(validateAppId(validateId(id)), id);
+  }
 });
 
 test("creates isolated module and complete native host, then removes owned entries only", (t) => {
@@ -141,4 +145,16 @@ test("generated app sources use semantic tokens without legacy compatibility", (
   const files = templates({ id: "sandbox", name: "Sandbox", port: 1430, pubkey: "test", baseline: "" });
   const violations = Object.entries(files).flatMap(([path, content]) => findTokenViolations(path, content));
   assert.deepEqual(violations, []);
+});
+
+test("rejects existing native Cargo package names before any mutation", (t) => {
+  for (const id of ["image", "time"]) {
+    const f = fixture(t);
+    f.write("Cargo.lock", 'version = 4\n\n[[package]]\nname = "image"\nversion = "0.25.0"\nsource = "registry+https://github.com/rust-lang/crates.io-index"\n\n[[package]]\nname = "time"\nversion = "0.3.0"\n');
+    const originals = Object.fromEntries(["package.json", "packages/design/logo.ts", "apps/site/src/apps.ts", "Cargo.lock"].map((path) => [path, f.read(path)]));
+    assert.throws(() => newApp(f.root, id, "Native collision", { run: f.run }), /reservierter nativer Paketname in Cargo.lock/);
+    for (const [path, original] of Object.entries(originals)) assert.equal(f.read(path), original);
+    for (const path of [`apps/${id}`, `modules/${id}`, `docs/release-notes/${id}`]) assert.equal(existsSync(join(f.root, path)), false);
+    assert.equal(f.calls.length, 0);
+  }
 });
