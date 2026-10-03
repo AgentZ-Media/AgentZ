@@ -29,7 +29,7 @@
 import { execFileSync } from "node:child_process";
 import { copyFileSync, existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { dirname, join, resolve } from "node:path";
+import { dirname, join, relative, resolve } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { LOGO_DOTS, LOGO_DOT_R, LOGO_HEIGHT, LOGO_VIEWBOX, LOGO_WIDTH } from "../logo.ts";
 
@@ -125,17 +125,22 @@ function renderPng(chrome, svgPath, outPath, size) {
     html,
     `<!doctype html><style>html,body{margin:0;background:transparent}img{display:block;width:${size}px;height:${size}px}</style><img src="${pathToFileURL(svgPath).href}">`,
   );
-  execFileSync(chrome, [
-    "--headless=new",
-    "--disable-gpu",
-    "--hide-scrollbars",
-    "--force-device-scale-factor=1",
-    "--default-background-color=00000000",
-    `--window-size=${size},${size}`,
-    `--screenshot=${outPath}`,
-    pathToFileURL(html).href,
-  ], { stdio: "ignore" });
-  rmSync(tmp, { recursive: true, force: true });
+  try {
+    // stdout/stderr are piped, not ignored: on failure Node puts Chrome's
+    // stderr into the thrown error message.
+    execFileSync(chrome, [
+      "--headless=new",
+      "--disable-gpu",
+      "--hide-scrollbars",
+      "--force-device-scale-factor=1",
+      "--default-background-color=00000000",
+      `--window-size=${size},${size}`,
+      `--screenshot=${outPath}`,
+      pathToFileURL(html).href,
+    ], { stdio: ["ignore", "pipe", "pipe"] });
+  } finally {
+    rmSync(tmp, { recursive: true, force: true });
+  }
 }
 
 mkdirSync(assetsDir, { recursive: true });
@@ -160,7 +165,13 @@ console.log("png  -> apps/landing/public/img/{icon,icon-large}.png");
 
 // Desktop: the full Tauri set (icns, ico, Windows Store tiles, iOS, Android).
 const desktopDir = join(repoRoot, "apps/desktop");
-execFileSync("pnpm", ["tauri", "icon", iconPng], { cwd: desktopDir, stdio: "inherit" });
+// pnpm is a .cmd shim on Windows, which execFileSync can only start via a
+// shell. The relative path keeps the argument free of spaces for that shell.
+execFileSync("pnpm", ["tauri", "icon", relative(desktopDir, iconPng)], {
+  cwd: desktopDir,
+  stdio: "inherit",
+  shell: process.platform === "win32",
+});
 
 // The checked-in iconset mirrors icon.icns for `iconutil` users.
 const iconset = join(desktopDir, "src-tauri/icons/icon.iconset");
