@@ -1,0 +1,39 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024" role="img" aria-label="ScriptZ">
+  <title>ScriptZ</title>
+  <defs>
+    <linearGradient id="sheet" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#ffffff"/>
+      <stop offset="1" stop-color="#eceef1"/>
+    </linearGradient>
+    <clipPath id="tile">
+      <rect x="100" y="100" width="824" height="824" rx="185.4"/>
+    </clipPath>
+  </defs>
+  <rect x="100" y="100" width="824" height="824" rx="185.4" fill="url(#sheet)"/>
+  <path clip-path="url(#tile)" fill="none" stroke="#e6e8ec" stroke-width="1.5" d="M143.37 100V924M100 143.37H924M186.74 100V924M100 186.74H924M230.11 100V924M100 230.11H924M273.47 100V924M100 273.47H924M316.84 100V924M100 316.84H924M360.21 100V924M100 360.21H924M403.58 100V924M100 403.58H924M446.95 100V924M100 446.95H924M490.32 100V924M100 490.32H924M533.68 100V924M100 533.68H924M577.05 100V924M100 577.05H924M620.42 100V924M100 620.42H924M663.79 100V924M100 663.79H924M707.16 100V924M100 707.16H924M750.53 100V924M100 750.53H924M793.89 100V924M100 793.89H924M837.26 100V924M100 837.26H924M880.63 100V924M100 880.63H924"/>
+  <rect x="102" y="102" width="820" height="820" rx="183.4" fill="none" stroke="#d3d6dc" stroke-width="4"/>
+  <circle cx="380.16" cy="347.2" r="20.44" fill="#14161b"/>
+  <circle cx="446.08" cy="347.2" r="20.44" fill="#14161b"/>
+  <circle cx="512" cy="347.2" r="20.44" fill="#14161b"/>
+  <circle cx="577.92" cy="347.2" r="20.44" fill="#14161b"/>
+  <circle cx="643.84" cy="347.2" r="20.44" fill="#14161b"/>
+  <circle cx="380.16" cy="413.12" r="20.44" fill="#5d6170"/>
+  <circle cx="446.08" cy="413.12" r="20.44" fill="#5d6170"/>
+  <circle cx="512" cy="413.12" r="20.44" fill="#5d6170"/>
+  <circle cx="577.92" cy="413.12" r="20.44" fill="#14161b"/>
+  <circle cx="643.84" cy="413.12" r="20.44" fill="#14161b"/>
+  <circle cx="512" cy="479.04" r="20.44" fill="#14161b"/>
+  <circle cx="577.92" cy="479.04" r="20.44" fill="#14161b"/>
+  <circle cx="446.08" cy="544.96" r="20.44" fill="#14161b"/>
+  <circle cx="512" cy="544.96" r="20.44" fill="#14161b"/>
+  <circle cx="380.16" cy="610.88" r="20.44" fill="#14161b"/>
+  <circle cx="446.08" cy="610.88" r="20.44" fill="#14161b"/>
+  <circle cx="512" cy="610.88" r="20.44" fill="#5d6170"/>
+  <circle cx="577.92" cy="610.88" r="20.44" fill="#5d6170"/>
+  <circle cx="643.84" cy="610.88" r="20.44" fill="#5d6170"/>
+  <circle cx="380.16" cy="676.8" r="20.44" fill="#14161b"/>
+  <circle cx="446.08" cy="676.8" r="20.44" fill="#14161b"/>
+  <circle cx="512" cy="676.8" r="20.44" fill="#14161b"/>
+  <circle cx="577.92" cy="676.8" r="20.44" fill="#14161b"/>
+  <circle cx="643.84" cy="676.8" r="20.44" fill="#14161b"/>
+</svg>

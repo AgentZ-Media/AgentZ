@@ -1,0 +1,27 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 50 60" width="200" height="240" role="img" aria-label="ScriptZ">
+  <title>ScriptZ</title>
+  <circle cx="5" cy="5" r="3.1" fill="#f1f2f4"/>
+  <circle cx="15" cy="5" r="3.1" fill="#f1f2f4"/>
+  <circle cx="25" cy="5" r="3.1" fill="#f1f2f4"/>
+  <circle cx="35" cy="5" r="3.1" fill="#f1f2f4"/>
+  <circle cx="45" cy="5" r="3.1" fill="#f1f2f4"/>
+  <circle cx="5" cy="15" r="3.1" fill="#ffe14d"/>
+  <circle cx="15" cy="15" r="3.1" fill="#ffe14d"/>
+  <circle cx="25" cy="15" r="3.1" fill="#ffe14d"/>
+  <circle cx="35" cy="15" r="3.1" fill="#f1f2f4"/>
+  <circle cx="45" cy="15" r="3.1" fill="#f1f2f4"/>
+  <circle cx="25" cy="25" r="3.1" fill="#f1f2f4"/>
+  <circle cx="35" cy="25" r="3.1" fill="#f1f2f4"/>
+  <circle cx="15" cy="35" r="3.1" fill="#f1f2f4"/>
+  <circle cx="25" cy="35" r="3.1" fill="#f1f2f4"/>
+  <circle cx="5" cy="45" r="3.1" fill="#f1f2f4"/>
+  <circle cx="15" cy="45" r="3.1" fill="#f1f2f4"/>
+  <circle cx="25" cy="45" r="3.1" fill="#ffe14d"/>
+  <circle cx="35" cy="45" r="3.1" fill="#ffe14d"/>
+  <circle cx="45" cy="45" r="3.1" fill="#ffe14d"/>
+  <circle cx="5" cy="55" r="3.1" fill="#f1f2f4"/>
+  <circle cx="15" cy="55" r="3.1" fill="#f1f2f4"/>
+  <circle cx="25" cy="55" r="3.1" fill="#f1f2f4"/>
+  <circle cx="35" cy="55" r="3.1" fill="#f1f2f4"/>
+  <circle cx="45" cy="55" r="3.1" fill="#f1f2f4"/>
+</svg>

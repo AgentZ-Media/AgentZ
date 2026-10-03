@@ -74,6 +74,9 @@ packages/design/           @agentz/design - suite design system (see its README)
   fonts.css                Schibsted Grotesk (UI, offline via fontsource).
   icons.ts                 ICONS (24er stroke icons), STAGE_GLYPHS (14er).
   logo.ts                  Dot-matrix Z (LOGO_DOTS ...).
+  assets/                  Generated logo files + app icon (SVG, 1024 PNG).
+  scripts/build-logo.mjs   Exports assets/ + landing icons + the full
+                           Tauri icon set from logo.ts (build:logo).
 
 packages/core/
   styles/

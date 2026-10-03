@@ -51,6 +51,33 @@ import { LOGO_DOTS, LOGO_VIEWBOX, LOGO_DOT_R } from "@agentz/design/logo";
 `ICONS[name]` is the inner markup for a `viewBox="0 0 24 24"` stroke icon;
 `STAGE_GLYPHS[stage]` is the inner markup for a `viewBox="0 0 14 14"` glyph.
 
+## Logo and app icon
+
+`logo.ts` is the single source of truth for the dot-matrix Z. In-app it is
+drawn by `AppMark` (`packages/core/components/Common/AppMark.tsx`, styles
+`.app-mark` in `components.css`). Standalone files live in `assets/`:
+
+| File | Use |
+|---|---|
+| `scriptz-app-icon.svg` / `.png` (1024 px) | The app icon ("App-Icon hell" in the concept): white sheet with paper grid, ink + graphite dots, macOS icon grid (824 px tile, 100 px inset, 22.5 % corner radius). README, favicons, press. |
+| `scriptz-mark.svg` | Bare Z for light backgrounds (ink + graphite). |
+| `scriptz-mark-inverse.svg` | Bare Z for dark backgrounds (chalk + highlighter). |
+
+All of them - plus every shipped raster copy - are generated, never edited
+by hand:
+
+```bash
+pnpm --filter @agentz/design build:logo   # needs Node >= 22.18 + Google Chrome
+```
+
+The script writes `assets/`, the landing icons (`apps/landing/public/img/
+icon.png`, `icon-large.png`) and the complete Tauri icon set
+(`apps/desktop/src-tauri/icons/`, via `tauri icon`: icns, ico, Windows
+Store tiles, iOS, Android). Web and Studio reference the SVG/PNG from
+`assets/` directly in their `index.html`. To change the icon, change
+`logo.ts` or the palette at the top of `scripts/build-logo.mjs` (keep it in
+sync with `.app-mark.is-light` / `.is-dark`) and rerun the script.
+
 ## The one rule
 
 **No hex (or rgb) colour values outside this package.** Apps reference

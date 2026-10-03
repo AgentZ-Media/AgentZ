@@ -13,10 +13,12 @@
     "./components.css": "./components.css",
     "./fonts.css": "./fonts.css",
     "./icons": "./icons.ts",
-    "./logo": "./logo.ts"
+    "./logo": "./logo.ts",
+    "./assets/*": "./assets/*"
   },
   "scripts": {
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "build:logo": "node scripts/build-logo.mjs"
   },
   "dependencies": {
     "@fontsource-variable/schibsted-grotesk": "^5.3.0"
