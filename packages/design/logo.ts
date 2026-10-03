@@ -57,15 +57,72 @@ export const LOGO_DOTS: readonly LogoDot[] = [
   { cx: 45, cy: 55, tone: "main" },
 ];
 
-/** Product marks rendered by the shared application chrome. */
+export interface LogoDefinition {
+  viewBox: string;
+  width: number;
+  height: number;
+  dotRadius: number;
+  dots: readonly LogoDot[];
+  /** Accent used by the shared mark and inverse export. */
+  accent: string;
+}
+
+// Five-column glyphs keep generated products in the existing dot-matrix family.
+const GLYPHS: Record<string, readonly string[]> = {
+  A: ["01110", "10001", "10001", "11111", "10001", "10001", "10001"],
+  B: ["11110", "10001", "10001", "11110", "10001", "10001", "11110"],
+  C: ["01111", "10000", "10000", "10000", "10000", "10000", "01111"],
+  D: ["11110", "10001", "10001", "10001", "10001", "10001", "11110"],
+  E: ["11111", "10000", "10000", "11110", "10000", "10000", "11111"],
+  F: ["11111", "10000", "10000", "11110", "10000", "10000", "10000"],
+  G: ["01111", "10000", "10000", "10111", "10001", "10001", "01111"],
+  H: ["10001", "10001", "10001", "11111", "10001", "10001", "10001"],
+  I: ["11111", "00100", "00100", "00100", "00100", "00100", "11111"],
+  J: ["00111", "00010", "00010", "00010", "10010", "10010", "01100"],
+  K: ["10001", "10010", "10100", "11000", "10100", "10010", "10001"],
+  L: ["10000", "10000", "10000", "10000", "10000", "10000", "11111"],
+  M: ["10001", "11011", "10101", "10101", "10001", "10001", "10001"],
+  N: ["10001", "11001", "10101", "10011", "10001", "10001", "10001"],
+  O: ["01110", "10001", "10001", "10001", "10001", "10001", "01110"],
+  P: ["11110", "10001", "10001", "11110", "10000", "10000", "10000"],
+  Q: ["01110", "10001", "10001", "10001", "10101", "10010", "01101"],
+  R: ["11110", "10001", "10001", "11110", "10100", "10010", "10001"],
+  S: ["01111", "10000", "10000", "01110", "00001", "00001", "11110"],
+  T: ["11111", "00100", "00100", "00100", "00100", "00100", "00100"],
+  U: ["10001", "10001", "10001", "10001", "10001", "10001", "01110"],
+  V: ["10001", "10001", "10001", "10001", "10001", "01010", "00100"],
+  W: ["10001", "10001", "10001", "10101", "10101", "11011", "10001"],
+  X: ["10001", "10001", "01010", "00100", "01010", "10001", "10001"],
+  Y: ["10001", "10001", "01010", "00100", "00100", "00100", "00100"],
+  Z: ["11111", "00001", "00010", "00100", "01000", "10000", "11111"],
+};
+
+/** Create an app's initial mark; unsupported initials use the suite Z. */
+export function createLogo(glyph: string, accent = "#ffe14d"): LogoDefinition {
+  if (!/^#[0-9a-f]{6}$/i.test(accent)) throw new Error("Logo accent must be a six-digit hex colour");
+  const rows = GLYPHS[glyph.toUpperCase()] ?? GLYPHS.Z!;
+  return {
+    viewBox: "0 0 50 70", width: 50, height: 70, dotRadius: LOGO_DOT_R, accent,
+    dots: rows.flatMap((row, y) => [...row].flatMap((dot, x): LogoDot[] =>
+      dot === "1" ? [{ cx: x * 10 + 5, cy: y * 10 + 5, tone: "main" }] : [],
+    )),
+  };
+}
+
+const suiteMark: LogoDefinition = {
+  viewBox: LOGO_VIEWBOX,
+  width: LOGO_WIDTH,
+  height: LOGO_HEIGHT,
+  dotRadius: LOGO_DOT_R,
+  dots: LOGO_DOTS,
+  accent: "#ffe14d",
+};
+
+/** Product marks rendered by shared chrome; ScriptZ keeps its original geometry. */
 export const LOGOS = {
-  scriptz: {
-    viewBox: LOGO_VIEWBOX,
-    width: LOGO_WIDTH,
-    height: LOGO_HEIGHT,
-    dotRadius: LOGO_DOT_R,
-    dots: LOGO_DOTS,
-  },
-} as const;
+  suite: suiteMark,
+  scriptz: suiteMark,
+  // new-app:logos
+} as const satisfies Record<string, LogoDefinition>;
 
 export type LogoId = keyof typeof LOGOS;

@@ -29,11 +29,11 @@ export function AppMark(props: AppMarkProps) {
   return (
     <span
       class={`app-mark${variantClass()}${props.class ? ` ${props.class}` : ""}`}
-      style={{ width: `${size()}px`, height: `${size()}px` }}
+      style={{ width: `${size()}px`, height: `${size()}px`, "--logo-accent": logo().accent }}
       role="img"
       aria-label={props.title ?? props.appName}
     >
-      <svg viewBox={logo().viewBox} width={glyphW()} height={glyphH()}>
+      <svg viewBox={logo().viewBox} width={glyphW()} height={glyphH()} aria-hidden="true">
         <For each={logo().dots}>
           {(d) => (
             // Tone colours come from `.app-mark .z1/.z2` in components.css;

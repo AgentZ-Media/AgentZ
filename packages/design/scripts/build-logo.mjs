@@ -1,122 +1,80 @@
 #!/usr/bin/env node
-/**
- * @agentz/design - logo + app icon export.
- *
- * Single source of truth is `../logo.ts` (dot geometry). This script turns
- * it into standalone files and fans the raster versions out to every place
- * in the monorepo that ships the icon:
- *
- *   packages/design/assets/
- *     scriptz-mark.svg           bare Z, ink + graphite (light backgrounds)
- *     scriptz-mark-inverse.svg   bare Z, chalk + highlighter (dark backgrounds)
- *     scriptz-app-icon.svg       app icon ("App-Icon hell" in concept.html)
- *     scriptz-app-icon.png       1024 px raster of the app icon
- *   apps/scriptz/src-tauri/icons/**          full Tauri set via `tauri icon`
- *   apps/scriptz/src-tauri/icons/icon.iconset/*
- *
- * The app icon follows the macOS icon grid: 1024 canvas, 824 tile at 100 px
- * inset, corner radius 22.5 % of the tile - the same geometry as the
- * pre-redesign icon, so it sits right next to other apps in the Dock.
- *
- * Usage (from the repo root, needs Google Chrome for the SVG -> PNG step):
- *   node packages/design/scripts/build-logo.mjs
- *   node packages/design/scripts/build-logo.mjs --svg-only
- *   CHROME=/path/to/chrome node packages/design/scripts/build-logo.mjs
+/** Build a registered app's assets, desktop icons and website thumbnail.
+ * node packages/design/scripts/build-logo.mjs --app scriptz [--svg-only | --fallback]
+ * Without Chrome, the bundled suite placeholder keeps desktop builds possible.
  */
 
-import { execFileSync } from "node:child_process";
-import { existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { execFileSync, spawn } from "node:child_process";
+import { copyFileSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join, relative, resolve } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
-import { LOGO_DOTS, LOGO_DOT_R, LOGO_HEIGHT, LOGO_VIEWBOX, LOGO_WIDTH } from "../logo.ts";
+import { LOGOS } from "../logo.ts";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const designDir = resolve(here, "..");
 const repoRoot = resolve(designDir, "../..");
 const assetsDir = join(designDir, "assets");
 
-// Palette of the light app icon (concept.html `.lg-light`) and the inverse
-// mark (`.lg-dark`). Mirrors `.app-mark.is-light` / `.is-dark` in
-// components.css - change both together.
+// Bare mark palette. App tiles use the same accent and ink as AppMark.
 const INK = "#14161b";
 const GRAPHITE = "#5d6170";
 const CHALK = "#f1f2f4";
-const HIGHLIGHTER = "#ffe14d";
 
 // macOS icon grid.
 const CANVAS = 1024;
 const TILE = 824;
 const INSET = (CANVAS - TILE) / 2;
-const RADIUS = TILE * 0.225;
-// Glyph width relative to the tile (concept: `.lg-tile svg { width: 40% }`).
-const GLYPH_SHARE = 0.4;
-// Paper grid: 19 cells across the tile, symmetric around the centre.
-const GRID_CELLS = 19;
+const RADIUS = TILE * 0.28;
+// Matches the shared in-app AppMark glyph proportions.
+const GLYPH_SHARE = 0.46;
 
 const fmt = (n) => Number(n.toFixed(2)).toString();
 
-function dots({ main, sub, scale = 1, dx = 0, dy = 0 }) {
-  return LOGO_DOTS.map(
+function dots(logo, { main, sub, subOpacity = 1, scale = 1, dx = 0, dy = 0 }) {
+  return logo.dots.map(
     (d) =>
-      `<circle cx="${fmt(dx + d.cx * scale)}" cy="${fmt(dy + d.cy * scale)}" r="${fmt(LOGO_DOT_R * scale)}" fill="${d.tone === "main" ? main : sub}"/>`,
+      `<circle cx="${fmt(dx + d.cx * scale)}" cy="${fmt(dy + d.cy * scale)}" r="${fmt(logo.dotRadius * scale)}" fill="${d.tone === "main" ? main : sub}"${d.tone === "sub" && subOpacity !== 1 ? ` opacity="${subOpacity}"` : ""}/>`,
   ).join("\n  ");
 }
 
-function markSvg(main, sub, title) {
-  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="${LOGO_VIEWBOX}" width="${LOGO_WIDTH * 4}" height="${LOGO_HEIGHT * 4}" role="img" aria-label="${title}">
+export function markSvg(logo, main, sub, title) {
+  title = escapeXml(title);
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="${logo.viewBox}" width="${logo.width * 4}" height="${logo.height * 4}" role="img" aria-label="${title}">
   <title>${title}</title>
-  ${dots({ main, sub })}
+  ${dots(logo, { main, sub })}
 </svg>
 `;
 }
 
-function appIconSvg() {
+export function appIconSvg(logo, title) {
+  title = escapeXml(title);
   const glyphW = TILE * GLYPH_SHARE;
-  const scale = glyphW / LOGO_WIDTH;
+  const scale = glyphW / logo.width;
   const dx = CANVAS / 2 - glyphW / 2;
-  const dy = CANVAS / 2 - (LOGO_HEIGHT * scale) / 2;
-  const pitch = TILE / GRID_CELLS;
-  const lines = [];
-  for (let i = 1; i < GRID_CELLS; i++) {
-    const p = fmt(INSET + i * pitch);
-    lines.push(`M${p} ${INSET}V${INSET + TILE}M${INSET} ${p}H${INSET + TILE}`);
-  }
-  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${CANVAS} ${CANVAS}" width="${CANVAS}" height="${CANVAS}" role="img" aria-label="ScriptZ">
-  <title>ScriptZ</title>
-  <defs>
-    <linearGradient id="sheet" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0" stop-color="#ffffff"/>
-      <stop offset="1" stop-color="#eceef1"/>
-    </linearGradient>
-    <clipPath id="tile">
-      <rect x="${INSET}" y="${INSET}" width="${TILE}" height="${TILE}" rx="${fmt(RADIUS)}"/>
-    </clipPath>
-  </defs>
-  <rect x="${INSET}" y="${INSET}" width="${TILE}" height="${TILE}" rx="${fmt(RADIUS)}" fill="url(#sheet)"/>
-  <path clip-path="url(#tile)" fill="none" stroke="#e6e8ec" stroke-width="1.5" d="${lines.join("")}"/>
-  <rect x="${INSET + 2}" y="${INSET + 2}" width="${TILE - 4}" height="${TILE - 4}" rx="${fmt(RADIUS - 2)}" fill="none" stroke="#d3d6dc" stroke-width="4"/>
-  ${dots({ main: INK, sub: GRAPHITE, scale, dx, dy })}
+  const dy = CANVAS / 2 - (logo.height * scale) / 2;
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${CANVAS} ${CANVAS}" width="${CANVAS}" height="${CANVAS}" role="img" aria-label="${title}">
+  <title>${title}</title>
+  <rect x="${INSET}" y="${INSET}" width="${TILE}" height="${TILE}" rx="${fmt(RADIUS)}" fill="${logo.accent}"/>
+  ${dots(logo, { main: INK, sub: INK, subOpacity: 0.5, scale, dx, dy })}
 </svg>
 `;
 }
 
-function findChrome() {
+export function findChrome() {
+  if (process.env.CHROME) return existsSync(process.env.CHROME) ? process.env.CHROME : undefined;
   const candidates = [
-    process.env.CHROME,
     "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome",
     "/Applications/Chromium.app/Contents/MacOS/Chromium",
     "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe",
     "/usr/bin/google-chrome",
     "/usr/bin/chromium",
   ].filter(Boolean);
-  const hit = candidates.find((c) => existsSync(c));
-  if (!hit) throw new Error("Google Chrome not found - set CHROME=/path/to/chrome or use --svg-only.");
-  return hit;
+  return candidates.find((c) => existsSync(c));
 }
 
 /** Renders an SVG file to a square, transparent PNG of `size` px. */
-function renderPng(chrome, svgPath, outPath, size) {
+async function renderPng(chrome, svgPath, outPath, size) {
   const tmp = mkdtempSync(join(tmpdir(), "agentz-logo-"));
   const html = join(tmp, "render.html");
   writeFileSync(
@@ -124,53 +82,132 @@ function renderPng(chrome, svgPath, outPath, size) {
     `<!doctype html><style>html,body{margin:0;background:transparent}img{display:block;width:${size}px;height:${size}px}</style><img src="${pathToFileURL(svgPath).href}">`,
   );
   try {
-    // stdout/stderr are piped, not ignored: on failure Node puts Chrome's
-    // stderr into the thrown error message.
-    execFileSync(chrome, [
-      "--headless=new",
-      "--disable-gpu",
-      "--hide-scrollbars",
-      "--force-device-scale-factor=1",
-      "--default-background-color=00000000",
-      `--window-size=${size},${size}`,
-      `--screenshot=${outPath}`,
-      pathToFileURL(html).href,
-    ], { stdio: ["ignore", "pipe", "pipe"] });
+    // A dedicated profile avoids touching a running user browser. Some Chrome
+    // versions keep background services alive after a screenshot, so completion
+    // is the fully written PNG, not the browser's eventual process exit.
+    rmSync(outPath, { force: true });
+    await new Promise((resolveRender, rejectRender) => {
+      const child = spawn(chrome, [
+        "--headless=new",
+        `--user-data-dir=${join(tmp, "profile")}`,
+        "--disable-gpu", "--no-first-run", "--no-default-browser-check",
+        "--disable-background-networking", "--disable-extensions", "--hide-scrollbars",
+        "--force-device-scale-factor=1", "--default-background-color=00000000",
+        `--window-size=${size},${size}`, `--screenshot=${outPath}`, pathToFileURL(html).href,
+      ], { stdio: ["ignore", "ignore", "pipe"] });
+      let stderr = "";
+      let captured = false;
+      let failure;
+      let forceKill;
+      const complete = () => {
+        try {
+          const png = readFileSync(outPath);
+          return png.subarray(0, 8).toString("hex") === "89504e470d0a1a0a"
+            && png.length >= 32 && png.readUInt32BE(16) === size && png.readUInt32BE(20) === size
+            && png.subarray(-8).toString("hex") === "49454e44ae426082";
+        } catch { return false; }
+      };
+      const poll = setInterval(() => {
+        if (!captured && complete()) {
+          captured = true;
+          child.kill("SIGTERM");
+          forceKill = setTimeout(() => child.kill("SIGKILL"), 2000);
+        }
+      }, 100);
+      const timeout = setTimeout(() => {
+        failure = new Error(`Chrome screenshot timed out: ${stderr}`);
+        child.kill("SIGKILL");
+      }, 30000);
+      const cleanup = () => { clearInterval(poll); clearTimeout(timeout); clearTimeout(forceKill); };
+      child.stderr.on("data", (data) => { stderr = (stderr + data).slice(-8000); });
+      child.on("error", (error) => { failure = error; });
+      child.on("close", () => {
+        cleanup();
+        if (!failure && (captured || complete())) resolveRender();
+        else rejectRender(failure ?? new Error(`Chrome did not produce a complete ${size}px PNG: ${stderr}`));
+      });
+    });
   } finally {
     rmSync(tmp, { recursive: true, force: true });
   }
 }
 
-mkdirSync(assetsDir, { recursive: true });
-const iconSvg = join(assetsDir, "scriptz-app-icon.svg");
-writeFileSync(join(assetsDir, "scriptz-mark.svg"), markSvg(INK, GRAPHITE, "ScriptZ"));
-writeFileSync(join(assetsDir, "scriptz-mark-inverse.svg"), markSvg(CHALK, HIGHLIGHTER, "ScriptZ"));
-writeFileSync(iconSvg, appIconSvg());
-console.log("svg  -> packages/design/assets/");
+function escapeXml(value) {
+  return value.replace(/[&<>"']/g, (char) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&apos;" })[char]);
+}
 
-if (process.argv.includes("--svg-only")) process.exit(0);
+export const PLACEHOLDER_FILES = ["32x32.png", "128x128.png", "128x128@2x.png", "icon.png", "icon.icns", "icon.ico"];
+const placeholderDir = join(assetsDir, "placeholder");
 
-const chrome = findChrome();
-const iconPng = join(assetsDir, "scriptz-app-icon.png");
-renderPng(chrome, iconSvg, iconPng, CANVAS);
-console.log("png  -> packages/design/assets/scriptz-app-icon.png");
+/** Exported so generator tests can exercise fallback without writing real apps. */
+export async function buildLogo({ appId, logo = LOGOS[appId], root = repoRoot, outputAssets = assetsDir, svgOnly = false, fallback = false, chrome = findChrome() }) {
+  if (!/^[a-z][a-z0-9-]*$/.test(appId)) throw new Error("Invalid app id");
+  if (!logo) throw new Error(`No LOGOS entry for ${appId}`);
+  const desktopDir = join(root, "apps", appId);
+  if (appId !== "suite" && !existsSync(join(desktopDir, "src-tauri"))) {
+    throw new Error(`App directory missing: apps/${appId}/src-tauri`);
+  }
+  mkdirSync(outputAssets, { recursive: true });
+  const title = appId === "suite" ? "AgentZ" : appId === "scriptz" ? "ScriptZ" : appId;
+  const iconSvg = join(outputAssets, `${appId}-app-icon.svg`);
+  writeFileSync(join(outputAssets, `${appId}-mark.svg`), markSvg(logo, INK, GRAPHITE, title));
+  writeFileSync(join(outputAssets, `${appId}-mark-inverse.svg`), markSvg(logo, CHALK, logo.accent, title));
+  writeFileSync(iconSvg, appIconSvg(logo, title));
+  if (svgOnly) return { placeholder: false, svgOnly: true };
 
-// Desktop: the full Tauri set (icns, ico, Windows Store tiles, iOS, Android).
-const desktopDir = join(repoRoot, "apps/scriptz");
-// pnpm is a .cmd shim on Windows, which execFileSync can only start via a
-// shell. The relative path keeps the argument free of spaces for that shell.
-execFileSync("pnpm", ["tauri", "icon", relative(desktopDir, iconPng)], {
-  cwd: desktopDir,
-  stdio: "inherit",
-  shell: process.platform === "win32",
-});
+  const iconPng = join(outputAssets, `${appId}-app-icon.png`);
+  const iconsDir = join(desktopDir, "src-tauri/icons");
+  const siteImage = join(root, "apps/site/public/img", `${appId}.png`);
+  mkdirSync(dirname(siteImage), { recursive: true });
+  if (fallback || !chrome) {
+    // Never borrow another product's branding silently. This checked-in set is
+    // explicitly the suite placeholder; generated SVGs retain the real glyph.
+    if (appId !== "suite") {
+      mkdirSync(iconsDir, { recursive: true });
+      for (const file of PLACEHOLDER_FILES) copyFileSync(join(placeholderDir, file), join(iconsDir, file));
+      writeFileSync(join(iconsDir, "PLACEHOLDER.md"), `# Temporary suite icon\n\nChrome was unavailable or --fallback was selected. These are bundled AgentZ suite icons, not the ${appId} glyph. Regenerate with \`node packages/design/scripts/build-logo.mjs --app ${appId}\` once Chrome is installed.\n`);
+    }
+    copyFileSync(join(placeholderDir, "icon.png"), iconPng);
+    copyFileSync(iconPng, siteImage);
+    console.warn(`Using bundled AgentZ placeholder for ${appId}; install Chrome and rerun --app ${appId} for its own glyph.`);
+    return { placeholder: true, svgOnly: false };
+  }
 
-// The checked-in iconset mirrors icon.icns for `iconutil` users.
-const iconset = join(desktopDir, "src-tauri/icons/icon.iconset");
-mkdirSync(iconset, { recursive: true });
-for (const base of [16, 32, 128, 256, 512]) {
-  for (const [suffix, px] of [["", base], ["@2x", base * 2]]) {
-    renderPng(chrome, iconSvg, join(iconset, `icon_${base}x${base}${suffix}.png`), px);
+  await renderPng(chrome, iconSvg, iconPng, CANVAS);
+  copyFileSync(iconPng, siteImage);
+  if (appId !== "suite") {
+    // Explicit output avoids relying on a package-specific tauri npm script.
+    execFileSync("pnpm", ["exec", "tauri", "icon", relative(desktopDir, iconPng), "--output", "src-tauri/icons"], {
+      cwd: desktopDir,
+      stdio: "inherit",
+      shell: process.platform === "win32",
+    });
+    rmSync(join(iconsDir, "PLACEHOLDER.md"), { force: true });
+    const iconset = join(iconsDir, "icon.iconset");
+    mkdirSync(iconset, { recursive: true });
+    for (const base of [16, 32, 128, 256, 512]) {
+      for (const [suffix, px] of [["", base], ["@2x", base * 2]]) {
+        await renderPng(chrome, iconSvg, join(iconset, `icon_${base}x${base}${suffix}.png`), px);
+      }
+    }
+  }
+  console.log(`Generated ${appId} design assets and ${appId === "suite" ? "website image" : "desktop/website icons"}.`);
+  return { placeholder: false, svgOnly: false };
+}
+
+if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
+  try {
+    const args = process.argv.slice(2);
+    let appId = "scriptz";
+    for (let i = 0; i < args.length; i++) {
+      if (args[i] === "--app") {
+        appId = args[++i];
+        if (!appId || appId.startsWith("--")) throw new Error("--app requires an app id");
+      } else if (!["--svg-only", "--fallback"].includes(args[i])) throw new Error(`Unknown option: ${args[i]}`);
+    }
+    await buildLogo({ appId, svgOnly: args.includes("--svg-only"), fallback: args.includes("--fallback") });
+  } catch (error) {
+    console.error(error.message);
+    process.exitCode = 1;
   }
 }
-console.log("png  -> apps/scriptz/src-tauri/icons/icon.iconset/");

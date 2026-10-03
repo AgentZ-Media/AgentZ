@@ -280,5 +280,24 @@ und Phasen; dieses Protokoll hält die konkreten Ergebnisse fest.
 - **Datensicherheit:** Fensterschluss und Beenden prüfen denselben Flush;
   Update-Installation erst nach Download, Eingabesperre und erfolgreichem
   Flush. Fehlschläge verhindern den Ausstieg beziehungsweise die Installation.
-- **Stand:** Umsetzung und Prüfung laufen. Noch keine abgeschlossene
-  Desktop-, Windows- oder signierte Update-Abnahme behauptet.
+- **Prüfungen:** 24 Desktop-, 74 Kit-, 302 Modul- und 17 Tooling-Tests
+  sowie zwei Rust-Tests erfolgreich. Pflicht-CI in
+  [PR #26](https://github.com/AgentZ-Media/AgentZ/pull/26) grün; Merge folgt.
+- **Produktions-Build:** macOS-App und DMG mit isolierter QA-ID
+  `de.agent-z.scriptz.phase5-desktop-smoke` gebaut. Ein beim Wiederöffnen
+  gefundener nativer Deadlock wurde durch einen Worker und deduplizierte
+  Öffnungsanfragen behoben. Fehlende Styles im Produktions-Bundle wurden
+  auf Rollups entfernten Paketeinstieg zurückgeführt; korrigierte
+  `sideEffects`-Deklaration und ein Regressionstest am echten
+  Produktions-CSS sichern die Einbindung ab.
+- **Native Abnahme:** Heller Editor und dunkle Einstellungen visuell
+  geprüft; native Menüs wechseln zwischen Deutsch und Englisch.
+  Fensterschluss/Wiederöffnen und ⌘Q erhalten die letzte Eingabe.
+  Ein zweiter Prozess beendet sich mit Code 0; nur eine Instanz bleibt
+  aktiv. PDF-Export enthält eine A4-Seite, den erwarteten Text und eine
+  eingebettete Schrift. 28 Ideen und vier Papierkorb-Einträge stimmen.
+- **Daten:** QA-Datenbank mit 72 Skripten; der logische SQL-Dump der
+  produktiven Datenbank ist per SHA identisch mit der Sicherung.
+  Kein Release, keine Windows- oder signierte Update-Abnahme in Phase 5.
+- **Separat:** Gelbe PNG-/ICNS-/ICO-Icons auf Timos Wunsch neu generiert;
+  deren eigener PR folgt nach Phase 5 und ist hier noch nicht gemergt.

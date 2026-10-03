@@ -733,7 +733,7 @@ textarea.field {
   place-items: center;
   flex: none;
   border-radius: 28%;
-  background: var(--accent);
+  background: var(--logo-accent, var(--accent));
   color: var(--accent-fg);
   --z2o: 0.5;
   box-shadow: inset 0 -1.5px 0 rgba(0, 0, 0, 0.14);
@@ -748,7 +748,7 @@ textarea.field {
 .app-mark.is-dark {
   background: #1b1e24;
   color: #f1f2f4;
-  --z2: var(--accent);
+  --z2: var(--logo-accent, var(--accent));
   --z2o: 1;
   box-shadow: none;
 }
