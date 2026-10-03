@@ -1,4 +1,4 @@
-import { onCleanup, onMount, createEffect, createSignal } from "solid-js";
+import { Show, onCleanup, onMount, createEffect, createSignal } from "solid-js";
 import {
   createEditor,
   $getRoot,
@@ -125,6 +125,11 @@ export function Editor(props: EditorProps) {
 
     editor.setRootElement(rootRef);
 
+    // Read-only (client portal, version preview): render the script but
+    // disable editing. Set before the content is loaded so Lexical never
+    // moves the DOM selection (and with it focus) into this instance.
+    if (readOnly) editor.setEditable(false);
+
     // Expose the editor instance to the parent (script screen).
     props.onEditorReady?.(editor);
 
@@ -173,9 +178,6 @@ export function Editor(props: EditorProps) {
     if (!loaded) {
       seedEmptyState(editor);
     }
-
-    // Read-only (client portal): render the script but disable editing.
-    if (readOnly) editor.setEditable(false);
 
     // Word-style: when a script becomes the active editor, the writer
     // should be able to start typing immediately — no manual click into
@@ -382,30 +384,32 @@ export function Editor(props: EditorProps) {
       {/* Hotkey hint: only visible when the editor root carries
           data-empty="1". Lives outside the contenteditable so the
           Lexical selection doesn't get stuck on a ::before
-          pseudo-caret target. */}
-      <div class="editor-empty-hint" aria-hidden="true">
-        {(() => {
-          // Slots {tab}, {first}, {last} get replaced by <kbd> chips so
-          // the platform-correct hotkey label (⌘ vs Ctrl) is rendered.
-          const re = /\{(tab|first|last)\}/g;
-          const raw = t("editor.empty.hint");
-          const out: (string | { slot: string })[] = [];
-          let last = 0;
-          let m: RegExpExecArray | null;
-          while ((m = re.exec(raw)) !== null) {
-            if (m.index > last) out.push(raw.slice(last, m.index));
-            out.push({ slot: m[1] });
-            last = m.index + m[0].length;
-          }
-          if (last < raw.length) out.push(raw.slice(last));
-          return out.map((p) => {
-            if (typeof p === "string") return p;
-            if (p.slot === "tab") return <span class="kbd kbd-inline">{t("shortcut.key.tab")}</span>;
-            if (p.slot === "first") return <span class="kbd kbd-inline">{K("Mod+1")}</span>;
-            return <span class="kbd kbd-inline">{K("Mod+4")}</span>;
-          });
-        })()}
-      </div>
+          pseudo-caret target. Pointless when nothing can be typed. */}
+      <Show when={!props.readOnly}>
+        <div class="editor-empty-hint" aria-hidden="true">
+          {(() => {
+            // Slots {tab}, {first}, {last} get replaced by <kbd> chips so
+            // the platform-correct hotkey label (⌘ vs Ctrl) is rendered.
+            const re = /\{(tab|first|last)\}/g;
+            const raw = t("editor.empty.hint");
+            const out: (string | { slot: string })[] = [];
+            let last = 0;
+            let m: RegExpExecArray | null;
+            while ((m = re.exec(raw)) !== null) {
+              if (m.index > last) out.push(raw.slice(last, m.index));
+              out.push({ slot: m[1] });
+              last = m.index + m[0].length;
+            }
+            if (last < raw.length) out.push(raw.slice(last));
+            return out.map((p) => {
+              if (typeof p === "string") return p;
+              if (p.slot === "tab") return <span class="kbd kbd-inline">{t("shortcut.key.tab")}</span>;
+              if (p.slot === "first") return <span class="kbd kbd-inline">{K("Mod+1")}</span>;
+              return <span class="kbd kbd-inline">{K("Mod+4")}</span>;
+            });
+          })()}
+        </div>
+      </Show>
     </div>
   );
 }

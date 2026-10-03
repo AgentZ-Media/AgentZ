@@ -125,7 +125,8 @@ packages/core/
     Editor/
       Editor.tsx           Lexical mount: createEditor, registerRichText,
                            registerHistory, plugins below. readOnly prop
-                           (used by Studio).
+                           (used by Studio and the version preview in
+                           SnapshotsDialog - same engine, no copy).
       persistence.ts       Debounced save (250 ms) through a serialized
                            queue (lib/serialSave.ts), auto snapshot (5 min),
                            flush on teardown.
@@ -273,7 +274,7 @@ Blocktyp und läuft unverändert durch. Deshalb:
 - **On-the-fly**: Jeder Pfad, der Content parst, läuft über
   `lib/legacyBlocks.ts` (Editor-Load, `lex.ts`, PDF, Plaintext,
   `.scriptz`-Import, Snapshot-Restore in `snapshots.ts` und im Web-Adapter,
-  SnapshotsDialog). Alte Typen werden zu `scriptz-action`, Text und
+  SnapshotsDialog-Vorschau über den Editor-Load). Alte Typen werden zu `scriptz-action`, Text und
   Formatierung bleiben.
 - **Boot-Migration**: `migrateLegacyBlocksOnce()` schreibt einmalig alle
   Skripte (inkl. Papierkorb) über `api` um, mit `internalRewrite: true`
