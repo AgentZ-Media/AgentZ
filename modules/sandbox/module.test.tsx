@@ -18,4 +18,15 @@ describe("Sandbox", () => {
     fireEvent.click(screen.getByRole("button", { name: "Show notice" }));
     expect(toastsSignal().at(-1)?.text).toBe("All set!");
   });
+  it("opens settings from the visible sidebar in both languages", async () => {
+    const openSettings = vi.fn();
+    const runtime = await appModule.setup({ shell: { closeSettings: vi.fn(), openSettings } } as unknown as ModuleContext);
+    const Sidebar = runtime.sidebar;
+    applyResolvedLanguage("de");
+    render(() => <Sidebar />);
+    fireEvent.click(screen.getByRole("button", { name: "Einstellungen" }));
+    applyResolvedLanguage("en");
+    fireEvent.click(screen.getByRole("button", { name: "Settings" }));
+    expect(openSettings).toHaveBeenCalledTimes(2);
+  });
 });

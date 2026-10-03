@@ -19,7 +19,10 @@ export const appModule: AppModule = {
   },
   async setup(context) {
     return {
-      sidebar: () => <button class="sandbox-nav" onClick={() => context.shell.closeSettings()}>{t("home.nav")}</button>,
+      sidebar: () => <>
+        <button class="sandbox-nav" onClick={() => context.shell.closeSettings()}>{t("home.nav")}</button>
+        <button class="sandbox-nav" onClick={() => context.shell.openSettings()}>{t("settings.title")}</button>
+      </>,
       routes: [{ id: "home", matches: () => true, component: () => <section class="sandbox-home">
         <h1>{t("home.title")}</h1>
         <p>{t("home.description")}</p>

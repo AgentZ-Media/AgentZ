@@ -30,7 +30,10 @@ export const appModule: AppModule = {
   },
   async setup(context) {
     return {
-      sidebar: () => <button class="${id}-nav" onClick={() => context.shell.closeSettings()}>{t("home.nav")}</button>,
+      sidebar: () => <>
+        <button class="${id}-nav" onClick={() => context.shell.closeSettings()}>{t("home.nav")}</button>
+        <button class="${id}-nav" onClick={() => context.shell.openSettings()}>{t("settings.title")}</button>
+      </>,
       routes: [{ id: "home", matches: () => true, component: () => <section class="${id}-home">
         <h1>{t("home.title")}</h1>
         <p>{t("home.description")}</p>
@@ -64,6 +67,17 @@ describe(${q(name)}, () => {
     expect(screen.getByRole("heading").textContent).toBe(${q(catalogs.en["home.title"])});
     fireEvent.click(screen.getByRole("button", { name: "Show notice" }));
     expect(toastsSignal().at(-1)?.text).toBe("All set!");
+  });
+  it("opens settings from the visible sidebar in both languages", async () => {
+    const openSettings = vi.fn();
+    const runtime = await appModule.setup({ shell: { closeSettings: vi.fn(), openSettings } } as unknown as ModuleContext);
+    const Sidebar = runtime.sidebar;
+    applyResolvedLanguage("de");
+    render(() => <Sidebar />);
+    fireEvent.click(screen.getByRole("button", { name: "Einstellungen" }));
+    applyResolvedLanguage("en");
+    fireEvent.click(screen.getByRole("button", { name: "Settings" }));
+    expect(openSettings).toHaveBeenCalledTimes(2);
   });
 });
 `;
