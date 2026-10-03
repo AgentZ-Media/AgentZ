@@ -122,6 +122,9 @@ const suiteMark: LogoDefinition = {
 export const LOGOS = {
   suite: suiteMark,
   scriptz: suiteMark,
+  // @new-app:sandbox:start
+  "sandbox": createLogo("S"),
+  // @new-app:sandbox:end
   // new-app:logos
 } as const satisfies Record<string, LogoDefinition>;
 

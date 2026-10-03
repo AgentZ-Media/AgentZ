@@ -2,13 +2,14 @@
 
 pnpm-Workspace für eigenständige lokale Desktop-Tools für Content Creator.
 Repository: `AgentZ-Media/AgentZ`, Root-Paket: `agentz`.
-ScriptZ ist derzeit die einzige App. Der
+ScriptZ ist das Produkt; die generierte Sandbox dient vorübergehend der
+Abnahme des gemeinsamen Fundaments. Der
 [Fundament-Plan](docs/agentz-suite-fundament.md) beschreibt den schrittweisen
 Umbau; die nachfolgende Trennung von Bestand und Ziel ist verbindlich.
 Der [Umsetzungsstand](docs/agentz-suite-fortschritt.md) dokumentiert
 abgeschlossene Schritte, Prüfungen und offene Punkte.
 
-## Aktuelle Struktur (Phase 7)
+## Aktuelle Struktur (Phase 8, Abnahme läuft)
 
 - [`apps/scriptz/`](apps/scriptz/) - `@agentz/scriptz-app`, die dünne
   Tauri-Schale für ScriptZ. Verbindet Produktmodul und Desktop-Host;
@@ -35,6 +36,9 @@ abgeschlossene Schritte, Prüfungen und offene Punkte.
   Designsystem der Suite: semantische Tokens hell/dunkel, Legacy-Aliasse,
   CSS-Primitive, UI-Schrift, Icons und Logo. Reines CSS und Daten-Module,
   kein Framework. Details in der [Paket-README](packages/design/README.md).
+- [`tooling/new-app/`](tooling/new-app/) - Generator und kontrollierter
+  Rückbau eigenständiger Apps; Anleitung in [`docs/neue-app.md`](docs/neue-app.md).
+  Die generierte Sandbox wird nach der vollständigen Abnahme wieder entfernt.
 - [`tooling/vitest-preset/`](tooling/vitest-preset/) -
   `@agentz/vitest-preset`, gemeinsame Solid-/jsdom-Testkonfiguration.
 - [`docs/release-notes/scriptz/`](docs/release-notes/scriptz/) -
@@ -49,9 +53,9 @@ apps/<app> -> modules/<app> -> packages/kit -> packages/design
     +------> packages/desktop ------+
 ```
 
-Die Website ist lokal umgesetzt und geprüft. Der Generator folgt in Phase 8;
-Release-/Update-Abnahme und externe Veröffentlichung stehen separat im
-Umsetzungsprotokoll.
+Die Website ist lokal umgesetzt und geprüft. Der Generator hat die Sandbox
+real angelegt; native und Release-/Update-Abnahme laufen noch. Externe
+Veröffentlichung und Abnahmestand stehen separat im Umsetzungsprotokoll.
 
 - `design` importiert nichts aus dem Repo.
 - `kit` importiert nur `design`: keine Tauri-Imports und kein Produktwissen.
@@ -138,6 +142,8 @@ pnpm release:bump scriptz 0.9.0 # vier Versionsdateien konsistent setzen
 pnpm dev:site                  # lokale Suite-Website
 pnpm build:site                # statische Website bauen
 pnpm check:astro               # Paket-, Farb- und Tokenregeln in Astro
+pnpm new-app mein-tool "Mein Tool" # unabhängige App und Modul erzeugen
+pnpm remove-app mein-tool       # generierte App kontrolliert zurückbauen
 pnpm lint                      # Paketgrenzen und Korrektheit
 pnpm typecheck                 # TypeScript über alle Workspaces
 pnpm test                      # Tooling-Regeln und Pakettests

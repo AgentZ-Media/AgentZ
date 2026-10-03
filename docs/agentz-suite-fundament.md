@@ -1,6 +1,6 @@
 # AgentZ Suite - Plan für das Fundament
 
-> Interne Doku. Stand: 2026-10-03. Status: Phase 1 bis 5 abgeschlossen; Phase 6-Code gemergt, Build-Probelauf und Live-Release-/Update-Abnahme laufen. Phase 7 lokal umgesetzt und geprüft; Phase 8 folgt. Vercel und Domains übernimmt Timo.
+> Interne Doku. Stand: 2026-10-03. Status: Phase 1 bis 5 abgeschlossen; Phase 6-Code gemergt, Build-Probelauf und Live-Release-/Update-Abnahme laufen. Phase 7-Code gemergt, lokal geprüft. Phase 8 implementiert, Sandbox erzeugt; native und Release-Abnahme offen. Vercel und Domains übernimmt Timo.
 > Gegengeprüft von GPT-6 Astra (Effort High) am 2026-10-03, Befunde
 > eingearbeitet (siehe Abschnitt 15).
 

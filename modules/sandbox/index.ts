@@ -1,0 +1,1 @@
+export { appModule } from "./module";

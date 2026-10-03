@@ -21,7 +21,7 @@ und Prüfungen fest.
 
 ## Bestand und Ziel auseinanderhalten
 
-**Stand Phase 7:** `apps/scriptz` verdrahtet das Produktmodul
+**Stand Phase 8 (Abnahme läuft):** `apps/scriptz` verdrahtet das Produktmodul
 `modules/scriptz` und den gemeinsamen Desktop-Host. `packages/kit` enthält die gemeinsame
 `SuiteShell`, neutrale UI, i18n, Basis-Settings, Navigation, Plattform-
 Interfaces, KvStore, Toasts und Speicherhelfer. Das ScriptZ-Modul
@@ -33,7 +33,8 @@ Icons und Logo; `tooling/vitest-preset` die Testkonfiguration.
 Lebenszyklus; `crates/agentz-desktop` registriert Standard-Plugins,
 native Menüs, Single-Instance und den Quit-Handshake. `apps/site` ist die
 statische Astro-Website mit Design-Paket, DE/EN-Katalog und App-Liste.
-Der App-Generator folgt in Phase 8.
+`tooling/new-app` erzeugt unabhängige App-/Modul-Paare; die Sandbox ist
+das vorübergehende Abnahmeprodukt.
 
 Abhängigkeitsrichtung (durch ESLint geprüft):
 
@@ -297,12 +298,30 @@ Tauri-`devUrl` immer gemeinsam pflegen:
 | App | Vite | HMR | Tauri devUrl | Stand |
 |---|---|---|---|---|
 | ScriptZ | 1420 | 1421 | `http://localhost:1420` | aktiv |
-| Nächste App | 1430 | 1431 | `http://localhost:1430` | reserviertes Schema |
+| Sandbox | 1430 | 1431 | `http://localhost:1430` | temporäre Generator-Abnahme |
+| Nächste App | 1440 | 1441 | `http://localhost:1440` | nächstes freies Paar |
 
 Weitere Apps erhalten das nächste freie Paar in Zehnerschritten. Bei
 Remote-Entwicklung (`TAURI_DEV_HOST`) nutzt ScriptZ den separaten
 HMR-Port 1421; lokal verwendet HMR standardmäßig den Vite-Server.
 Die reservierten Portpaare bleiben pro App eindeutig.
+
+## Neue Apps und kontrollierter Rückbau
+
+`pnpm new-app <id> "<Name>"` erzeugt App, Produktmodul, Icons, DE/EN-Kataloge,
+Release-Notes-Verzeichnis sowie Logo-/Website-Einträge. ID, vorhandene Pfade
+und reservierte Namen werden vorab geprüft; Port, HMR-Port und `devUrl`
+werden zusammen vergeben. Neue Apps verwenden semantische Tokens und eine
+beim Generieren eingefrorene erste SQL-Migration aus `KIT_BASELINE_SQL`.
+Die später veröffentlichte Migration niemals nachträglich ändern.
+
+Der Generator führt Installation, Icon-Build und Cargo-Prüfung aus und
+aktualisiert beide Lockfiles. Bei Fehler stellt er die vorherigen Quellen,
+Registry-Einträge und Lockfiles wieder her. `pnpm remove-app <id>` benötigt
+den Eigentumsnachweis und passende Registry-Markierungen. Es entfernt auch
+spätere Änderungen innerhalb der generierten App-/Modul-Verzeichnisse;
+gewünschte Arbeit vorher committen. Nutzerdaten, installierte Apps, Git-Tags
+und GitHub-Releases werden nicht gelöscht. Details: [`docs/neue-app.md`](../../docs/neue-app.md).
 
 ## Regel der Zwei
 

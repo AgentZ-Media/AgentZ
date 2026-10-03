@@ -4,11 +4,13 @@ Local desktop tools for content creators, built in one open-source repository.
 The suite is growing out of ScriptZ: shared design, reusable application
 infrastructure, and independent apps with their own data and releases.
 
-**ScriptZ is the only app currently included.** The shared kit provides
+**ScriptZ is the product app.** A generated Sandbox temporarily exercises
+the shared foundation and is removed after acceptance. The shared kit provides
 the application shell, neutral UI, settings, navigation, and infrastructure.
 The shared desktop host supplies native integration and safe shutdown.
 The release pipeline supports independent app channels. A static bilingual
-suite website is included; its deployment and the app generator remain pending. Progress and architecture decisions
+suite website and an app generator are included. Website deployment and
+the generator’s full native/release acceptance remain pending. Progress and architecture decisions
 are tracked in the [foundation plan](docs/agentz-suite-fundament.md) (German).
 
 ## Apps
@@ -49,6 +51,7 @@ packages/design/          @agentz/design
                           Shared CSS tokens, primitives, fonts, icons, assets
 tooling/vitest-preset/     Shared Solid/jsdom test configuration
 tooling/release/           Version bump, release validation and channel publishing
+tooling/new-app/           Independent app/module generator and controlled removal
 Cargo.toml / Cargo.lock   Rust workspace and shared dependency lockfile
 tsconfig.base.json        Shared TypeScript compiler options
 docs/release-notes/
@@ -146,6 +149,20 @@ Repository conventions live in [CLAUDE.md](CLAUDE.md), ScriptZ details in
 [apps/scriptz/CLAUDE.md](apps/scriptz/CLAUDE.md), package rules in
 [the suite architecture guide](.claude/rules/suite-architecture.md), and design usage in
 [packages/design/README.md](packages/design/README.md).
+
+## Creating another app
+
+Run `pnpm new-app mein-tool "Mein Tool"` to generate a thin Tauri app, its
+product module, isolated database and bundle ID, DE/EN strings, icons, release
+notes directory, and a website entry marked `soon`. The generator allocates
+matching development ports and updates both lockfiles. Existing paths are
+never overwritten; a failed run restores the tracked inputs it changed.
+
+`pnpm remove-app mein-tool` removes a generated app and its registry entries.
+It also removes later edits inside those app/module directories, so commit
+work you want to keep first. It preserves installed apps, local user data,
+Git tags, and GitHub releases. See the [new app guide](docs/neue-app.md) for
+product development, migrations, releases, and acceptance checks.
 
 ## Releases
 

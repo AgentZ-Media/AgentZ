@@ -17,6 +17,9 @@ export const apps: readonly SuiteApp[] = [
     },
     status: "soon",
   },
+  // @new-app:sandbox:start
+  { id: "sandbox", name: "Sandbox", tagline: { de: "Dein neuer Arbeitsbereich.", en: "Your new workspace." }, status: "soon" },
+  // @new-app:sandbox:end
   /* @new-app:entries:end */
 ];
 
