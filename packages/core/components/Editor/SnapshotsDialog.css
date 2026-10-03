@@ -6,9 +6,10 @@
 }
 .snap-grid {
   display: grid;
-  grid-template-columns: 280px 1fr;
+  grid-template-columns: 240px minmax(0, 1fr);
   gap: var(--sp-4);
-  height: 50vh;
+  /* Modal is capped at 80vh; leave room for head, toolbar and footer. */
+  height: calc(80vh - 205px);
   min-height: 320px;
 }
 .snap-list {
@@ -70,21 +71,28 @@
   background: var(--accent-soft);
   color: var(--fg);
 }
+/* The preview hosts a real paper canvas + sheet (PaperLayout.css) with the
+   read-only editor inside, so it looks exactly like the script screen. */
 .snap-preview {
-  padding: var(--sp-4) var(--sp-5);
-  overflow: auto;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  overflow: hidden;
   border: 1px solid var(--line);
   border-radius: var(--r-pop);
-  background: var(--paper);
-  color: var(--paper-fg);
+  background: var(--bg);
 }
-.snap-preview-text {
-  margin: 0;
-  white-space: pre-wrap;
-  font-family: var(--type);
-  font-size: var(--fs-13);
-  line-height: var(--lh-relaxed);
-  color: var(--paper-fg);
+.paper-canvas.snap-canvas {
+  /* Read-only: no "click anywhere to type" I-beam on the desk. */
+  cursor: default;
+}
+.paper-canvas.snap-canvas .paper-sheet {
+  cursor: auto;
+}
+/* Keep the full A4 width - narrow dialogs zoom the whole sheet instead
+   (SnapshotPaper), so lines break exactly as in the editor. */
+.paper-sheet.snap-sheet {
+  max-width: none;
 }
 .snap-empty {
   padding: 24px;

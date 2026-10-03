@@ -224,7 +224,7 @@ export const de = {
   "snapshots.delete": "Löschen",
   "snapshots.empty": "Noch keine Versionen.",
   "snapshots.noneSelected": "Keine Version ausgewählt.",
-  "snapshots.previewEmpty": "(leer)",
+  "snapshots.previewBroken": "Diese Version lässt sich nicht anzeigen - ihr Inhalt ist beschädigt.",
   "snapshots.badge.manual": "Manuell",
   "snapshots.badge.auto": "Auto",
   "snapshots.toast.created": "Version gesichert",

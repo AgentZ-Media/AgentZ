@@ -218,7 +218,7 @@ export const en: Record<keyof typeof de, string> = {
   "snapshots.delete": "Delete",
   "snapshots.empty": "No versions yet.",
   "snapshots.noneSelected": "No version selected.",
-  "snapshots.previewEmpty": "(empty)",
+  "snapshots.previewBroken": "This version can't be displayed - its content is damaged.",
   "snapshots.badge.manual": "Manual",
   "snapshots.badge.auto": "Auto",
   "snapshots.toast.created": "Version created",

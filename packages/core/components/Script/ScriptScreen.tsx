@@ -659,6 +659,8 @@ export function ScriptScreen(props: ScriptScreenProps) {
               onRestore={() => void onRestored()}
               scriptId={s().id}
               scriptTitle={s().title}
+              characters={liveChars()}
+              highlighting={highlightingOn()}
             />
           )}
         </Show>
