@@ -8,7 +8,7 @@ import {
   pruneUnusedCharacterNames as cuPruneUnused,
 } from "./characterUsage";
 import { extractTeleprompterText } from "./lex";
-import { getPlatformAdapter } from "./platform";
+import { createSqlKvStore, getPlatformAdapter } from "@agentz/kit/platform";
 import {
   defaultScriptzFilename,
   parseScriptzBytes,
@@ -20,14 +20,9 @@ import {
   getStorageAdapter,
   setStorageAdapter,
   type ExportResult,
-  type StorageAdapter,
+  type ScriptzApiStorage,
 } from "./storage";
-import {
-  getAppState as dbGetAppState,
-  getSetting as dbGetSetting,
-  setAppState as dbSetAppState,
-  setSetting as dbSetSetting,
-} from "./db";
+import { getDb } from "./db";
 import {
   countLiveScripts as foldersCountLive,
   createFolder as foldersCreate,
@@ -88,11 +83,12 @@ import type {
   SnapshotMeta,
 } from "./types";
 
-// SQL-based default implementation of the StorageAdapter. The lib/*
-// modules access the host database via DbConnection (see ./platform.ts).
+// SQL-based product storage composed with Kit key-value storage. The lib/*
+// modules access the host database via DbConnection (see @agentz/kit/platform).
 // Registered explicitly by the host; the `api` proxy reads the active
 // adapter on every call, so hosts can replace storage without changing callers.
-const sqlBackedAdapter: StorageAdapter = {
+const sqlBackedAdapter: ScriptzApiStorage = {
+  ...createSqlKvStore(getDb),
   // Scripts - fully TS-side since Migration Phase 7d.
   async createScript(input: {
     title?: string;
@@ -214,22 +210,6 @@ const sqlBackedAdapter: StorageAdapter = {
   // Search - TS-side via plugin-sql since Migration Phase 6.
   async globalSearch(query: string, limit = 50): Promise<SearchHit[]> {
     return searchGlobal(query, limit);
-  },
-
-  // Settings - TS-side via plugin-sql since Migration Phase 2.
-  async getSetting(key: string): Promise<string | null> {
-    return dbGetSetting(key);
-  },
-  async setSetting(key: string, value: string): Promise<void> {
-    return dbSetSetting(key, value);
-  },
-
-  // App-State - TS-side via plugin-sql since Migration Phase 2.
-  async getAppState(key: string): Promise<string | null> {
-    return dbGetAppState(key);
-  },
-  async setAppState(key: string, value: string): Promise<void> {
-    return dbSetAppState(key, value);
   },
 
   // Character-colour records (app-wide) - TS-side via plugin-sql since
@@ -395,7 +375,7 @@ export function registerSqlStorageAdapter(): void {
 // the currently registered adapter. Functions are bound to the adapter
 // so any `this` references in a custom impl
 // keep working.
-export const api: StorageAdapter = new Proxy({} as StorageAdapter, {
+export const api: ScriptzApiStorage = new Proxy({} as ScriptzApiStorage, {
   get(_target, prop: string | symbol) {
     const a = getStorageAdapter() as unknown as Record<string | symbol, unknown>;
     const value = a[prop];

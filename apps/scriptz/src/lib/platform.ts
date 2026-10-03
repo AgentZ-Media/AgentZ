@@ -29,7 +29,7 @@ import {
   type PlatformAdapter,
   type SaveAsOptions,
   type SaveAsResult,
-} from "@agentz/scriptz/lib/platform";
+} from "@agentz/kit/platform";
 
 // Map Tauri's OS string to our three-bucket Platform. iOS / Android
 // would arrive on Tauri Mobile; for the desktop bundle we collapse

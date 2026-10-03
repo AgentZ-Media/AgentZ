@@ -1,7 +1,8 @@
+import { uiStore } from "../../../stores/ui";
 import { For, Show, createSignal, onCleanup } from "solid-js";
 import { Portal } from "solid-js/web";
-import { Icon } from "../../Common/Icon";
-import { dismissOnDialog } from "../../Common/dismissOnDialog";
+import { Icon } from "@agentz/kit/ui";
+import { dismissOnDialog } from "@agentz/kit/ui";
 import "./FolderMenu.css";
 
 // Small option menu behind a ghost button ("Neueste zuerst ▾"). Same
@@ -44,6 +45,7 @@ export function SortMenu<T extends string>(props: SortMenuProps<T>) {
   // A dialog opening on top closes the menu instead of leaving it open
   // (and focusable) behind the scrim.
   dismissOnDialog({
+    dialogOpen: uiStore.anyDialogOpen,
     open,
     inside: (node) => !!(trigger?.contains(node) || menu?.contains(node)),
     dismiss: () => close(false),
@@ -76,7 +78,7 @@ export function SortMenu<T extends string>(props: SortMenuProps<T>) {
         <Portal>
           <div
             ref={menu}
-            class="menu fm-menu"
+            class="menu fm-menu" data-dialog-dismiss-layer
             role="listbox"
             tabindex="-1"
             aria-label={props.ariaLabel}

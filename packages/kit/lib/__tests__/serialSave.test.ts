@@ -144,15 +144,39 @@ describe("createSerialSaver", () => {
     const p = h.saver.flush();
     await tick();
     await h.release();
-    await p;
+    expect(await p).toEqual({ ok: false });
     expect(h.saver.baseline()).toBe("A");
     expect(h.saver.idle()).toBe(false);
     const retry = h.saver.flush();
     await tick();
     await h.release();
-    await retry;
+    expect(await retry).toEqual({ ok: true });
     expect(h.stored()).toBe("B");
     expect(h.saver.idle()).toBe(true);
+  });
+
+  it("keeps the queue usable when reading, comparing or reporting an error throws", async () => {
+    let broken = "read";
+    const saver = createSerialSaver({
+      initial: "A",
+      read: () => {
+        if (broken === "read") throw new Error("read");
+        return "B";
+      },
+      isClean: (draft, baseline) => {
+        if (broken === "compare") throw new Error("compare");
+        return draft === baseline;
+      },
+      write: async (draft) => draft,
+      onError: () => { throw new Error("reporter"); },
+    });
+    saver.markDirty();
+    expect(await saver.flush()).toEqual({ ok: false });
+    broken = "compare";
+    expect(await saver.flush()).toEqual({ ok: false });
+    broken = "";
+    expect(await saver.flush()).toEqual({ ok: true });
+    expect(saver.baseline()).toBe("B");
   });
 
   it("debounces schedule() and escalates the reason of a coalesced run", async () => {

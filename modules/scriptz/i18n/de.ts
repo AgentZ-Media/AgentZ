@@ -14,30 +14,6 @@ import { scriptDe } from "./parts/script";
 import { dialogsDe } from "./parts/dialogs";
 
 export const de = {
-  // ---------- common ----------
-  "common.cancel": "Abbrechen",
-  "common.save": "Speichern",
-  "common.delete": "Löschen",
-  "common.close": "Schließen",
-  "common.untitled": "Unbenannt",
-  "common.confirm": "Bestätigen",
-  "common.loading": "Lade…",
-  "common.name": "Name",
-  "common.current": "Aktuell: {value}",
-  "common.errorPrefix": "Fehler: {message}",
-
-  // ---------- language picker ----------
-  "lang.label": "Sprache",
-  "lang.help": "Sprache der Oberfläche - jederzeit in den Einstellungen änderbar.",
-  "lang.de": "Deutsch",
-  "lang.en": "English",
-  "lang.auto": "Auto",
-
-  // ---------- theme labels ----------
-  "theme.light": "Hell",
-  "theme.dark": "Dunkel",
-  "theme.auto": "Auto",
-
   // ---------- units (with plurals) ----------
   "units.scripts_one": "{count} Skript",
   "units.scripts_other": "{count} Skripte",
@@ -48,39 +24,6 @@ export const de = {
   "units.word_other": "Wörter",
   "units.ideas_one": "{count} Idee",
   "units.ideas_other": "{count} Ideen",
-
-  // ---------- relative time / weekdays / months ----------
-  "time.justNow": "Gerade eben",
-  "time.secondsAgo": "vor {n}s",
-  "time.minutesAgo": "vor {n} Min.",
-  "time.hoursAgo": "vor {n} Std.",
-  "time.yesterday": "Gestern",
-  "weekday.0": "Sonntag",
-  "weekday.1": "Montag",
-  "weekday.2": "Dienstag",
-  "weekday.3": "Mittwoch",
-  "weekday.4": "Donnerstag",
-  "weekday.5": "Freitag",
-  "weekday.6": "Samstag",
-  "weekday.short.0": "So",
-  "weekday.short.1": "Mo",
-  "weekday.short.2": "Di",
-  "weekday.short.3": "Mi",
-  "weekday.short.4": "Do",
-  "weekday.short.5": "Fr",
-  "weekday.short.6": "Sa",
-  "month.short.0": "Jan",
-  "month.short.1": "Feb",
-  "month.short.2": "Mrz",
-  "month.short.3": "Apr",
-  "month.short.4": "Mai",
-  "month.short.5": "Jun",
-  "month.short.6": "Jul",
-  "month.short.7": "Aug",
-  "month.short.8": "Sep",
-  "month.short.9": "Okt",
-  "month.short.10": "Nov",
-  "month.short.11": "Dez",
 
   // ---------- block types ----------
   "block.action": "Action",
@@ -263,39 +206,14 @@ export const de = {
   "select.pdf.failed": "PDF-Export fehlgeschlagen: {message}",
 
   // ---------- settings ----------
-  "settings.title": "Einstellungen",
   "settings.characters.colorAria": "Farbe von {name} ändern",
   "settings.characters.reset": "Zurücksetzen",
-  "settings.updates.sub": "Bezogen über GitHub Releases. Keine Telemetrie.",
-  "settings.updates.enabled.label": "Auf Updates prüfen",
-  "settings.updates.enabled.aria": "Auf Updates prüfen",
-  "settings.updates.hourly.label": "Stündlich automatisch prüfen",
-  "settings.updates.hourly.aria": "Stündlich prüfen",
-  "settings.updates.status": "Update-Status",
-  "settings.updates.upToDate": "Du hast die neueste Version",
-  "settings.updates.available": "Update verfügbar: v{version}",
-  "settings.updates.downloading": "Lade Update… {progress}%",
-  "settings.updates.ready": "Update bereit zum Neustart.",
-  "settings.updates.checkError": "Fehler beim Prüfen",
-  "settings.updates.action.download": "Herunterladen",
-  "settings.updates.action.onGithub": "Auf GitHub",
-  "settings.updates.action.restart": "Neu starten",
-  "settings.updates.action.retry": "Erneut versuchen",
-  "settings.updates.action.checking": "Prüfe…",
-  "settings.updates.action.check": "Jetzt prüfen",
   "settings.about.sub": "Schnell. Lokal. Ohne Konto.",
   "settings.about.license": "Lizenz: MIT",
-  "settings.about.developer": "Entwickelt von",
   "settings.about.developer.linkText": "AgentZ",
-  "settings.about.repository": "Repository",
   "settings.about.repository.linkText": "github.com/AgentZ-Media/AgentZ",
-  "settings.about.onboarding.help": "Die Kurz-Tour zur App nochmal anzeigen.",
-  "settings.about.onboarding.button": "Nochmal anzeigen",
   "settings.toast.colorFailed": "Farbe speichern fehlgeschlagen: {message}",
   "settings.toast.resetFailed": "Reset fehlgeschlagen: {message}",
-
-  // ---------- shortcuts groups ----------
-  "shortcut.key.tab": "Tab",
 
   // ---------- ideas ----------
   "ideas.card.linked.title": "Verbundenes Skript öffnen",
@@ -310,10 +228,6 @@ export const de = {
   // ---------- status strip ----------
   "save.error.toast": "Skript konnte nicht gespeichert werden: {message}",
 
-  // ---------- modal ----------
-  "modal.close.aria": "Schließen",
-  "modal.close.title": "Schließen",
-
   // ---------- character / color picker ----------
   "charDropdown.colorAria": "Farbe von {name} ändern",
   "colorPicker.aria": "Farbe für {name}",
@@ -324,13 +238,8 @@ export const de = {
 
   // ---------- boot / errors ----------
   "boot.loadingScript": "Lade Skript…",
-  "boot.error": "Fehler: {message}",
   "boot.error.title": "ScriptZ konnte nicht starten",
   "boot.error.lede": "Die Datenbank-Datei konnte nicht geöffnet werden. Deine Skripte sind vermutlich nicht verloren - die Datei liegt unverändert im App-Datenverzeichnis. Bitte den Fehler unten kopieren und an uns weiterleiten.",
-  "boot.error.retry": "Erneut versuchen",
-  "boot.error.detailsShow": "Details anzeigen",
-  "boot.error.detailsHide": "Details verbergen",
-  "boot.error.help": "Tipp: App komplett schließen und neu starten. Sollte das nicht helfen, melde uns den Fehler.",
 
   // ---------- thrown errors (user-facing) ----------
   "error.ideaAlreadyConverted": "Idee wurde bereits konvertiert.",

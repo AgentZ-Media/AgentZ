@@ -1,9 +1,10 @@
 import { Show } from "solid-js";
 import { settingsStore } from "../../../stores/settings";
-import { getPlatformAdapter } from "../../../lib/platform";
-import type { UpdatesStore } from "../../../lib/updates";
+import { getPlatformAdapter } from "@agentz/kit/platform";
+import type { UpdatesStore } from "@agentz/kit/platform";
 import { t } from "../../../i18n";
-import { Row, SectionHead, Switch } from "./parts";
+import { Row, SectionHead, Switch } from "@agentz/kit/ui";
+
 
 const REPO_URL = "https://github.com/AgentZ-Media/AgentZ";
 

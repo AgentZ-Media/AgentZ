@@ -3,9 +3,9 @@
 // end of the history.
 
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
-import { getStorageAdapter, setStorageAdapter, type StorageAdapter } from "../../lib/storage";
+import { getStorageAdapter, setStorageAdapter, type ScriptzApiStorage } from "../../lib/storage";
 import "../../lib/api";
-import { registerFlusher } from "../../lib/saveFlush";
+import { registerFlusher } from "@agentz/kit/lib";
 import { navStore, startNavRuntime } from "../nav";
 
 const originalAdapter = getStorageAdapter();
@@ -14,7 +14,7 @@ let stopNav: () => void;
 beforeAll(() => {
   stopNav = startNavRuntime();
   setStorageAdapter(
-    new Proxy({} as StorageAdapter, {
+    new Proxy({} as ScriptzApiStorage, {
       get() {
         return vi.fn().mockResolvedValue(null);
       },

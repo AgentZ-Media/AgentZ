@@ -5,7 +5,7 @@
 
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { render } from "@solidjs/testing-library";
-import { getStorageAdapter, setStorageAdapter, type StorageAdapter } from "../../../lib/storage";
+import { getStorageAdapter, setStorageAdapter, type ScriptzApiStorage } from "../../../lib/storage";
 import "../../../lib/api";
 import type { Folder, Idea } from "../../../lib/types";
 import { ideasStore, startIdeasStore } from "../../../stores/ideas";
@@ -48,14 +48,14 @@ const FOLDERS: Folder[] = [folder("f1", "One"), folder("f2", "Two")];
 
 beforeAll(async () => {
   Element.prototype.scrollIntoView = function scrollIntoView() {};
-  const fake: Partial<StorageAdapter> = {
+  const fake: Partial<ScriptzApiStorage> = {
     listIdeas: async () => IDEAS.map((i) => ({ ...i })),
     listFolders: async () => FOLDERS,
     listScripts: async () => [],
     globalSearch: async () => [],
   };
   setStorageAdapter(
-    new Proxy(fake as StorageAdapter, {
+    new Proxy(fake as ScriptzApiStorage, {
       get(target, prop: string) {
         return (target as unknown as Record<string, unknown>)[prop] ?? (async () => null);
       },

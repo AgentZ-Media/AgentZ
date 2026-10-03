@@ -1,7 +1,7 @@
 import { Show, createEffect, createSignal, onCleanup, onMount } from "solid-js";
 import { Portal } from "solid-js/web";
 import { StageGlyph } from "../Common/StageGlyph";
-import { isModKey, K } from "../../lib/keys";
+import { isModKey, K } from "@agentz/kit/platform";
 import { t } from "../../i18n";
 import {
   isPrimaryStageToastHost,

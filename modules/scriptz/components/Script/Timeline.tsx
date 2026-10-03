@@ -1,9 +1,10 @@
 import { For, Show, createEffect, createMemo, createSignal, on, onCleanup, type JSX } from "solid-js";
-import { Icon } from "../Common/Icon";
+import { Icon } from "@agentz/kit/ui";
 import { formatClock, formatRange, lengthStatus, type LengthRange } from "../../lib/lengthGoal";
 import type { TimelineSegment } from "../../lib/timing";
-import { K } from "../../lib/keys";
-import { getCurrentLocale, t } from "../../i18n";
+import { K } from "@agentz/kit/platform";
+import { getCurrentLocale } from "@agentz/kit/i18n";
+import { t } from "../../i18n";
 import {
   HOOK_SEC,
   axisTicks,

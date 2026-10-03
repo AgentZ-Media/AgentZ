@@ -1,5 +1,5 @@
 import { Show } from "solid-js";
-import { Icon } from "../Common/Icon";
+import { Icon } from "@agentz/kit/ui";
 import { t } from "../../i18n";
 import "./SelectionBar.css";
 

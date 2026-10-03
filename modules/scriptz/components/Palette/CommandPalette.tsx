@@ -10,13 +10,13 @@ import {
 } from "solid-js";
 import { Portal } from "solid-js/web";
 import { api } from "../../lib/api";
-import { K } from "../../lib/keys";
+import { K } from "@agentz/kit/platform";
 import { SCRIPT_STATUSES, type SearchHit } from "../../lib/types";
 import { navStore } from "../../stores/nav";
 import { uiStore } from "../../stores/ui";
 import { ideasStore } from "../../stores/ideas";
 import { t } from "../../i18n";
-import { Icon, type IconName } from "../Common/Icon";
+import { Icon, type IconName } from "@agentz/kit/ui";
 import { StageGlyph } from "../Common/StageGlyph";
 import { library } from "../Shell/libraryData";
 import { createScript, importScriptzFile } from "../Library/actions";

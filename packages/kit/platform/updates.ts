@@ -1,13 +1,5 @@
-// Auto-update service slot for @agentz/scriptz.
-//
-// The actual updater lives in the host app (Tauri's plugin-updater).
-// UI in core (SettingsDialog) queries this
-// slot - if a store is registered, the "Updates" section renders;
-// otherwise it stays hidden.
-//
-// The Solid accessor shapes mirror what apps/scriptz/src/stores/updates.ts
-// exposes, so the desktop store can be registered directly without a
-// wrapper.
+// Optional auto-update service registered explicitly by the host.
+// Shared UI hides updater controls when the host leaves this slot empty.
 
 import type { Accessor } from "solid-js";
 

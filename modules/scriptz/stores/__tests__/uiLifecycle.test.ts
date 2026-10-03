@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import type { StorageAdapter } from "../../lib/storage";
+import type { ScriptzApiStorage } from "../../lib/storage";
 
 function deferred<T>() {
   let resolve!: (value: T) => void;
@@ -9,9 +9,9 @@ function deferred<T>() {
 
 beforeEach(() => vi.resetModules());
 
-async function install(getAppState: StorageAdapter["getAppState"]) {
+async function install(getAppState: ScriptzApiStorage["getAppState"]) {
   const { setStorageAdapter } = await import("../../lib/storage");
-  setStorageAdapter({ getAppState } as StorageAdapter);
+  setStorageAdapter({ getAppState } as ScriptzApiStorage);
 }
 
 describe("UI reads across shell lifetimes", () => {

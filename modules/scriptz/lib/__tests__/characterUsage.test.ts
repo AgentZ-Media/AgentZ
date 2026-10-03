@@ -25,8 +25,8 @@ import {
   runCharacterPrune,
   startCharacterAutoPrune,
 } from "../characterAutoPrune";
-import { getPlatformAdapter, setPlatformAdapter, type DbConnection, type PlatformAdapter } from "../platform";
-import { getStorageAdapter, setStorageAdapter, type StorageAdapter } from "../storage";
+import { getPlatformAdapter, setPlatformAdapter, type DbConnection, type PlatformAdapter } from "@agentz/kit/platform";
+import { getStorageAdapter, setStorageAdapter, type ScriptzApiStorage } from "../storage";
 import "../api";
 
 const meta = (...names: string[]) => serializeCharsMeta(names.map((name) => ({ name, color: "#e0791f" })));
@@ -221,7 +221,7 @@ describe("automatic cleanup", () => {
   beforeEach(() => {
     vi.useFakeTimers();
     prune = vi.fn().mockResolvedValue(["B"]);
-    setStorageAdapter({ pruneUnusedCharacterNames: prune } as unknown as StorageAdapter);
+    setStorageAdapter({ pruneUnusedCharacterNames: prune } as unknown as ScriptzApiStorage);
   });
 
   afterEach(() => {

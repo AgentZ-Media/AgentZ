@@ -190,6 +190,36 @@ und Phasen; dieses Protokoll hält die konkreten Ergebnisse fest.
   Einstellungen, Verlauf und Inhalt bleiben erhalten; PDF mit einer
   A4-Seite, korrektem Text und eingebetteter iA-Writer-Schrift.
   Keine doppelten Welcome-Inhalte; produktive DB unverändert.
-- **Review:** Separate PR zur Durchsicht, kein Merge und kein Release.
+- **Merge:** PR #23 nach grüner Pflicht-CI gemergt (`b147cf4`). Kein Release.
   Windows-Bundle und signierter Update-Zyklus weiterhin nicht geprüft.
-  Nächster Umsetzungsschritt: Phase 4.1, Grundlagen ins Kit extrahieren.
+
+
+### Phase 4.1 bis 4.3: Kit-Grundlagen, neutrale UI und KvStore
+
+- **Basis:** Im selben Worktree auf dem gemergten `main` fortgesetzt.
+  Neue konsistente Sicherung: `~/Backups/scriptz/scriptz-20261003-192711-phase4-kit.db`;
+  SQLite-Integritätsprüfung erfolgreich.
+- **Kit:** Eigenes Workspace-Paket mit expliziten Subpath-Exports und
+  `sideEffects: ["*.css"]`. Plattform-Interfaces, Tastatur-Helfer, Update-
+  Slot, Toasts und serialisierte Saves aus dem Produktmodul herausgelöst.
+  Flush-Koordination meldet fehlgeschlagene oder abgelaufene Sicherungen
+  als `{ ok, failed }`.
+- **Sprache:** Engine und neutrale DE-/EN-Texte im Kit; ScriptZ behält
+  seine Produktkataloge und komponiert sie typsicher mit dem Kit-Katalog.
+- **UI:** Neutrale Dialoge, Toast-Host, Icons, parametrisierbares AppMark,
+  Boot-Fehler und Einstellungsbausteine einschließlich CSS ins Kit
+  verschoben. Semantische Tokens ersetzen dort die Legacy-Aliasse.
+  `check:tokens` prüft Kit, Fixtures und künftige Pakete auf Legacy-Tokens
+  und Imports der Kompatibilitätsschicht.
+- **Daten:** KvStore besitzt `settings` und `app_state`, Produkt-Storage
+  die fachlichen Tabellen. Datenbankname, Migrationen, Schlüssel und
+  persistierte Formate bleiben unverändert.
+- **Noch im Modul:** AppShell, Settings-Store/-Dialog, Navigation,
+  Produkt-Routen und Editor. Deren Trennung folgt in Phase 4.4 bis 4.7.
+
+- **Prüfung:** Typecheck, ESLint, 17 Tooling-Tests, 46 Kit-Tests und
+  278 Modultests sowie Farb-/Tokenprüfung und Frontend-Build erfolgreich.
+  Native macOS-App und DMG mit temporärer QA-ID gebaut; vorhandene Daten,
+  Editor, neues Dokument, Autosave, Einstellungen, Dark Mode und Sprachwechsel
+  mit DB-Kopie geprüft. Testtext und Settings dauerhaft gespeichert;
+  produktive Datenbank gegenüber der Sicherung unverändert.

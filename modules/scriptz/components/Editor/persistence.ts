@@ -1,8 +1,8 @@
 import type { LexicalEditor } from "lexical";
 import { api } from "../../lib/api";
 import { scriptsBus } from "../../lib/scriptsBus";
-import { registerFlusher } from "../../lib/saveFlush";
-import { createSerialSaver } from "../../lib/serialSave";
+import { registerFlusher } from "@agentz/kit/lib";
+import { createSerialSaver, type SaveResult } from "@agentz/kit/lib";
 import { saveStatusStore } from "../../stores/saveStatus";
 import type { ScriptCharacter } from "../../lib/types";
 
@@ -53,7 +53,7 @@ export interface PersistenceHandle {
   scheduleSave: () => void;
   /** Persists buffered edits now and resolves once every queued or
    *  in-flight save has finished. */
-  flush: () => Promise<void>;
+  flush: () => Promise<SaveResult>;
   /** Tears down the save timer and auto-snapshot interval and fires a
    *  final teardown-flagged save if anything is buffered. The global
    *  flusher stays registered until that save settled, so a window close
@@ -85,7 +85,12 @@ export function createPersistence(opts: PersistenceOptions): PersistenceHandle {
 
   let dirtySinceSnapshot = false;
 
+  let teardownSnapshot: { content: string } | { error: unknown } | undefined;
   const readContent = (): string => {
+    if (teardownSnapshot) {
+      if ("error" in teardownSnapshot) throw teardownSnapshot.error;
+      return teardownSnapshot.content;
+    }
     let contentJson = "";
     editor.getEditorState().read(() => {
       contentJson = JSON.stringify(editor.getEditorState().toJSON());
@@ -154,8 +159,13 @@ export function createPersistence(opts: PersistenceOptions): PersistenceHandle {
   // Window-close / navigation / export: persist immediately instead of
   // dropping the buffered 250 ms of typing, and wait for saves already in
   // flight.
-  const flush = () => saver.flush("flush");
-  const unregisterFlusher = registerFlusher(flush);
+  let disposed = false;
+  const flush = async () => {
+    const result = await saver.flush(disposed ? "teardown" : "flush");
+    if (disposed && result.ok) unregisterFlusher();
+    return result;
+  };
+  const unregisterFlusher = registerFlusher(flush, `editor:${scriptId}`);
 
   const snapshotTimer = setInterval(() => {
     if (!dirtySinceSnapshot) return;
@@ -179,8 +189,15 @@ export function createPersistence(opts: PersistenceOptions): PersistenceHandle {
     // last 250 ms of typing isn't lost when switching scripts or
     // unmounting on hot-reload. The queue continues independently of the
     // editor instance; the flusher is unregistered once it drained.
+    // Lexical may clear its document after teardown; retries must keep the
+    // final live draft rather than read an already disposed editor.
+    if (!teardownSnapshot) {
+      try { teardownSnapshot = { content: readContent() }; }
+      catch (error) { teardownSnapshot = { error }; }
+    }
     clearInterval(snapshotTimer);
-    void saver.flush("teardown").finally(unregisterFlusher);
+    disposed = true;
+    void flush();
   };
 
   return { scheduleSave, flush, teardown };

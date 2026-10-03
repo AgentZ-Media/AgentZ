@@ -1,7 +1,7 @@
 import { Show, createEffect, createSignal, onCleanup, type Accessor } from "solid-js";
 import type { LexicalEditor } from "lexical";
 import { BLOCK_HOTKEYS, blockLabel } from "../Editor/nodes";
-import { K } from "../../lib/keys";
+import { K } from "@agentz/kit/platform";
 import type { CaretBlock } from "./liveEditor";
 
 export interface GutterLabelProps {

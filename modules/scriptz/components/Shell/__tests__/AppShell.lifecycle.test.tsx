@@ -1,6 +1,6 @@
 import { cleanup, render, waitFor } from "@solidjs/testing-library";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import type { StorageAdapter } from "../../../lib/storage";
+import type { ScriptzApiStorage } from "../../../lib/storage";
 
 // Keep the actual boot, migration, stores, resource fetchers and buses. Only
 // leaf UI is replaced so editor/PDF/dialog setup cannot obscure lifecycle I/O.
@@ -16,10 +16,6 @@ vi.mock("../../Settings/SettingsDialog", () => ({ SettingsDialog: () => null }))
 vi.mock("../../Onboarding/Onboarding", () => ({
   Onboarding: () => null,
   ONBOARDING_KEY: "onboarding_completed_v1",
-}));
-vi.mock("../../Common/ToastHost", () => ({ ToastHost: () => null }));
-vi.mock("../../Common/BootErrorScreen", () => ({
-  BootErrorScreen: (props: { error: Error }) => <div role="alert">{props.error.message}</div>,
 }));
 vi.mock("../Sidebar", () => ({ Sidebar: () => null }));
 
@@ -64,7 +60,7 @@ async function loadShell(storage: TestStorage) {
       if (key in target) return Reflect.get(target, key);
       throw new Error(`Unexpected storage operation: ${String(key)}`);
     },
-  }) as unknown as StorageAdapter);
+  }) as unknown as ScriptzApiStorage);
   const { AppShell } = await import("../AppShell");
   const { uiStore } = await import("../../../stores/ui");
   const { ideasBus } = await import("../../../lib/ideasBus");

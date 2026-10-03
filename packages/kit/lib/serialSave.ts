@@ -18,6 +18,10 @@
 //   - `flush()` resolves only after the whole queue drained, so callers
 //     (navigation, window close, export) see every edit persisted.
 
+export interface SaveResult {
+  ok: boolean;
+}
+
 export type SaveReason = "debounce" | "flush" | "teardown";
 
 const REASON_RANK: Record<SaveReason, number> = { debounce: 0, flush: 1, teardown: 2 };
@@ -47,8 +51,9 @@ export interface SerialSaver<B> {
   /** Marks the draft dirty without arming a timer (blur/Enter commits). */
   markDirty(): void;
   /** Cancels the debounce, queues a save if anything is dirty and resolves
-   *  once every queued write (including earlier in-flight ones) settled. */
-  flush(reason?: SaveReason): Promise<void>;
+   *  once every queued write (including earlier in-flight ones) settled.
+   *  A failed read or write returns { ok: false } and remains dirty for retry. */
+  flush(reason?: SaveReason): Promise<SaveResult>;
   /** Baseline of the last acknowledged write. */
   baseline(): B;
   /** Replaces the baseline after an out-of-band change (external rename,
@@ -72,22 +77,19 @@ export function createSerialSaver<D, B = D>(opts: SerialSaverOptions<D, B>): Ser
   // further requests coalesce into it (only the reason may escalate).
   let pending: { reason: SaveReason } | null = null;
 
+  let lastResult: SaveResult = { ok: true };
   const run = async (reason: SaveReason): Promise<void> => {
     dirty = false;
-    let draft: D;
     try {
-      draft = opts.read();
+      const draft = opts.read();
+      if (!opts.isClean?.(draft, base)) base = await opts.write(draft, base, reason);
+      lastResult = { ok: true };
     } catch (err) {
       dirty = true;
-      opts.onError?.(err);
-      return;
-    }
-    if (opts.isClean?.(draft, base)) return;
-    try {
-      base = await opts.write(draft, base, reason);
-    } catch (err) {
-      dirty = true;
-      opts.onError?.(err);
+      lastResult = { ok: false };
+      // A reporting callback must never break the queue or turn a scheduled
+      // background write into an unhandled rejection.
+      try { opts.onError?.(err); } catch { /* Preserve the original failure. */ }
     }
   };
 
@@ -128,10 +130,11 @@ export function createSerialSaver<D, B = D>(opts: SerialSaverOptions<D, B>): Ser
     markDirty() {
       dirty = true;
     },
-    flush(reason: SaveReason = "flush") {
+    async flush(reason: SaveReason = "flush") {
       clearTimer();
-      if (dirty) return enqueue(reason);
-      return tail;
+      const pendingWrite = dirty ? enqueue(reason) : tail;
+      await pendingWrite;
+      return { ...lastResult };
     },
     baseline: () => base,
     resetBaseline(next: B) {

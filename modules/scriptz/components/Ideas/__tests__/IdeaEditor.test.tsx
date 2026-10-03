@@ -7,10 +7,10 @@
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { cleanup, render } from "@solidjs/testing-library";
 import { For, createSignal } from "solid-js";
-import { getStorageAdapter, setStorageAdapter, type StorageAdapter } from "../../../lib/storage";
+import { getStorageAdapter, setStorageAdapter, type ScriptzApiStorage } from "../../../lib/storage";
 import "../../../lib/api";
 import { ideasBus } from "../../../lib/ideasBus";
-import { flushAll } from "../../../lib/saveFlush";
+import { flushAll } from "@agentz/kit/lib";
 import type { Idea } from "../../../lib/types";
 import { ideasStore, startIdeasStore } from "../../../stores/ideas";
 import { IdeaEditor } from "../parts/IdeaEditor";
@@ -29,7 +29,7 @@ let holdList = false;
 const listGates: Array<() => void> = [];
 
 beforeAll(() => {
-  const fake: Partial<StorageAdapter> = {
+  const fake: Partial<ScriptzApiStorage> = {
     updateIdea: (input) =>
       new Promise<Idea>((resolve) => {
         updates.push(input);
@@ -52,7 +52,7 @@ beforeAll(() => {
     globalSearch: async () => [],
   };
   setStorageAdapter(
-    new Proxy(fake as StorageAdapter, {
+    new Proxy(fake as ScriptzApiStorage, {
       get(target, prop: string) {
         return (target as unknown as Record<string, unknown>)[prop] ?? (async () => undefined);
       },

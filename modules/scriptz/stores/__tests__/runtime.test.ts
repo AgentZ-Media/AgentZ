@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { getStorageAdapter, setStorageAdapter, type StorageAdapter } from "../../lib/storage";
+import { getStorageAdapter, setStorageAdapter, type ScriptzApiStorage } from "../../lib/storage";
 import type { DailyStatsSummary, Idea, ScriptSummary } from "../../lib/types";
 import { ideasStore, startIdeasStore } from "../ideas";
 import { dailyStatsStore, startDailyStatsStore } from "../dailyStats";
@@ -7,17 +7,16 @@ import { ideasBus } from "../../lib/ideasBus";
 import { dailyStatsBus } from "../../lib/dailyStatsBus";
 import { scriptsBus } from "../../lib/scriptsBus";
 import { library, startLibraryData } from "../../components/Shell/libraryData";
-import { startRelativeTimeClock } from "../../lib/format";
 import { navStore, startNavRuntime } from "../nav";
-import { flushAll, registerFlusher } from "../../lib/saveFlush";
+import { flushAll, registerFlusher } from "@agentz/kit/lib";
 import { settingsStore, startSettingsRuntime } from "../settings";
 
 const originalAdapter = getStorageAdapter();
 const cleanups: Array<() => void> = [];
 const tick = () => new Promise<void>((resolve) => setTimeout(resolve, 0));
 
-function install(adapter: Partial<StorageAdapter>) {
-  setStorageAdapter(adapter as StorageAdapter);
+function install(adapter: Partial<ScriptzApiStorage>) {
+  setStorageAdapter(adapter as ScriptzApiStorage);
 }
 
 function deferred<T>() {
@@ -145,22 +144,5 @@ describe("explicit singleton runtimes", () => {
     expect(writes.map((value) => JSON.parse(value).route.scriptId)).toEqual(["saved-before-stop"]);
   });
 
-  it("owns the visibility clock, including repeated start and disposal", () => {
-    vi.useFakeTimers();
-    let visibility: DocumentVisibilityState = "visible";
-    vi.spyOn(document, "visibilityState", "get").mockImplementation(() => visibility);
-    const stop = startRelativeTimeClock();
-    cleanups.push(stop);
-    expect(startRelativeTimeClock()).toBe(stop);
-    expect(vi.getTimerCount()).toBe(1);
-    visibility = "hidden";
-    document.dispatchEvent(new Event("visibilitychange"));
-    expect(vi.getTimerCount()).toBe(0);
-    visibility = "visible";
-    document.dispatchEvent(new Event("visibilitychange"));
-    expect(vi.getTimerCount()).toBe(1);
-    stop();
-    document.dispatchEvent(new Event("visibilitychange"));
-    expect(vi.getTimerCount()).toBe(0);
-  });
+
 });

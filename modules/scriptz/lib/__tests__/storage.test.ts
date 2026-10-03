@@ -1,4 +1,4 @@
-// Sanity tests for the StorageAdapter slot.
+// Sanity tests for the ScriptzApiStorage slot.
 //
 // Validates that the `api` proxy from ./api.ts really goes through
 // `getStorageAdapter()` - otherwise a future
@@ -9,20 +9,20 @@ import { afterEach, describe, it, expect, vi } from "vitest";
 import {
   setStorageAdapter,
   getStorageAdapter,
-  type StorageAdapter,
+  type ScriptzApiStorage,
 } from "../storage";
 import { api, registerSqlStorageAdapter } from "../api";
 
-// Stub factory: returns a StorageAdapter where all 30+ methods are
+// Stub factory: returns a ScriptzApiStorage where all 30+ methods are
 // produced via `vi.fn()`. Tests override individual methods with
 // real values; the rest is enough as "won't be called".
-function stubAdapter(overrides: Partial<StorageAdapter> = {}): StorageAdapter {
+function stubAdapter(overrides: Partial<ScriptzApiStorage> = {}): ScriptzApiStorage {
   // Eager-eval default fields per required interface key.
   // We use a proxy: anything that isn't overridden becomes a
   // `vi.fn()` that returns an empty result.
-  return new Proxy({} as StorageAdapter, {
+  return new Proxy({} as ScriptzApiStorage, {
     get(_, prop: string) {
-      if (prop in overrides) return overrides[prop as keyof StorageAdapter];
+      if (prop in overrides) return overrides[prop as keyof ScriptzApiStorage];
       return vi.fn().mockResolvedValue(undefined);
     },
   });
@@ -36,7 +36,7 @@ afterEach(() => {
   setStorageAdapter(originalAdapter);
 });
 
-describe("StorageAdapter slot", () => {
+describe("ScriptzApiStorage slot", () => {
   it("api proxies through getStorageAdapter() (not a static bind)", async () => {
     const getScript = vi
       .fn()

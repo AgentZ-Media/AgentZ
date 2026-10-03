@@ -1,11 +1,11 @@
 import { For, Show, createMemo, createSignal } from "solid-js";
 import type { ScriptCharacter, ScriptSummary } from "../../lib/types";
-import { relativeTime } from "../../lib/format";
+import { relativeTime } from "@agentz/kit/lib";
 import { formatClock, formatRange, lengthStatus } from "../../lib/lengthGoal";
 import { isValidHexColor } from "../../lib/colors";
-import { K } from "../../lib/keys";
+import { K } from "@agentz/kit/platform";
 import { StageGlyph } from "../Common/StageGlyph";
-import { Icon } from "../Common/Icon";
+import { Icon } from "@agentz/kit/ui";
 import { library, lengthRangeFor, runtimeSecFor } from "../Shell/libraryData";
 import { SCRIPT_DRAG_MIME } from "./dnd";
 import { t } from "../../i18n";

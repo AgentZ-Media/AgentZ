@@ -11,7 +11,7 @@
 //                next successful save clears it
 
 import { createSignal } from "solid-js";
-import { pushToast } from "./toasts";
+import { pushToast } from "@agentz/kit/stores";
 import { t } from "../i18n";
 
 export type SaveStatus = "idle" | "saving" | "error";

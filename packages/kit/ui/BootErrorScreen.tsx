@@ -1,20 +1,11 @@
-// Blocking recovery screen shown when the app's boot sequence
-// (settings load, welcome seed, tabs load) throws an unrecoverable
-// error — most commonly: the SQLite database file can't be opened
-// (permissions, corruption, schema mismatch from a downgraded build).
-//
-// Without this screen, the previous code would fall through to the
-// normal UI and surface a stack of "not found"/SQL errors. The user
-// would conclude "all my scripts are gone" when the truth is "the
-// database wasn't opened". This screen tells the truth, shows the
-// raw error so they can copy it into a bug report, and offers a
-// retry-by-reload that re-runs the boot promise from scratch.
-
 import { createSignal, Show } from "solid-js";
-import { t } from "../../i18n";
+import { t } from "../i18n";
 
 export interface BootErrorScreenProps {
   error: Error;
+  appName: string;
+  title?: string;
+  description?: string;
   onRetry(): void;
 }
 
@@ -25,8 +16,8 @@ export function BootErrorScreen(props: BootErrorScreenProps) {
     <div class="boot-error-screen">
       <div class="boot-error-inner">
         <div class="boot-error-icon" aria-hidden="true">⚠</div>
-        <h1 class="boot-error-h1">{t("boot.error.title")}</h1>
-        <p class="boot-error-lede">{t("boot.error.lede")}</p>
+        <h1 class="boot-error-h1">{props.title ?? t("boot.failed.title", { appName: props.appName })}</h1>
+        <p class="boot-error-lede">{props.description ?? t("boot.failed.lede")}</p>
 
         <div class="boot-error-message" role="alert">
           {message()}

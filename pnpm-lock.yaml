@@ -104,6 +104,9 @@ importers:
       '@agentz/design':
         specifier: workspace:*
         version: link:../../packages/design
+      '@agentz/kit':
+        specifier: workspace:*
+        version: link:../../packages/kit
       '@agentz/scriptz':
         specifier: workspace:*
         version: link:../../modules/scriptz
@@ -192,6 +195,9 @@ importers:
       '@agentz/design':
         specifier: workspace:*
         version: link:../../packages/design
+      '@agentz/kit':
+        specifier: workspace:*
+        version: link:../../packages/kit
       '@lexical/history':
         specifier: 'catalog:'
         version: 0.44.0
@@ -245,6 +251,31 @@ importers:
       typescript:
         specifier: 'catalog:'
         version: 5.6.3
+
+  packages/kit:
+    dependencies:
+      '@agentz/design':
+        specifier: workspace:*
+        version: link:../design
+      solid-js:
+        specifier: 'catalog:'
+        version: 1.9.12
+    devDependencies:
+      '@agentz/vitest-preset':
+        specifier: workspace:*
+        version: link:../../tooling/vitest-preset
+      '@solidjs/testing-library':
+        specifier: 'catalog:'
+        version: 0.8.10(@solidjs/router@0.15.4(solid-js@1.9.12))(solid-js@1.9.12)
+      typescript:
+        specifier: 'catalog:'
+        version: 5.6.3
+      vite:
+        specifier: 'catalog:'
+        version: 6.4.2(@types/node@22.19.19)(yaml@2.8.4)
+      vitest:
+        specifier: 'catalog:'
+        version: 2.1.9(@types/node@22.19.19)(jsdom@25.0.1)
 
   tooling/vitest-preset:
     dependencies:

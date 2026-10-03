@@ -21,15 +21,17 @@ und Prüfungen fest.
 
 ## Bestand und Ziel auseinanderhalten
 
-**Stand Phase 4.0, vor der Kit-Extraktion:** `apps/scriptz` verdrahtet das Produktmodul
-`modules/scriptz` und Tauri. `packages/design` enthält Tokens, CSS,
-Schriften, Icons und Logo. `tooling/vitest-preset` bündelt die
-Testkonfiguration. Die Produktlogik, UI und viele künftig gemeinsame
-Bausteine liegen noch vollständig im ScriptZ-Modul.
+**Stand Phase 4.1 bis 4.3:** `apps/scriptz` verdrahtet das Produktmodul
+`modules/scriptz` und Tauri. `packages/kit` enthält neutrale UI, i18n,
+Plattform-Interfaces, KvStore, Toasts und Speicherhelfer. Das ScriptZ-Modul
+behält vorerst AppShell, Einstellungen und Navigation. `packages/design`
+enthält Tokens, CSS, Schriften, Icons und Logo. `tooling/vitest-preset`
+bündelt die Testkonfiguration.
 
-**Erst später:** `packages/kit` entsteht ab Phase 4.1, `packages/desktop`
-und `crates/agentz-desktop` in Phase 5. Website und App-Generator folgen
-in Phase 7 beziehungsweise 8. Kein Import darf deren Existenz voraussetzen.
+**Erst später:** Gemeinsame Shell und Modul-Vertrag folgen innerhalb von
+Phase 4; `packages/desktop` und `crates/agentz-desktop` in Phase 5. Website
+und App-Generator folgen in Phase 7 beziehungsweise 8. Kein Import darf
+deren Existenz voraussetzen.
 
 Zielrichtung (die Grenzen werden bereits jetzt per ESLint geprüft):
 
@@ -62,10 +64,13 @@ von OS-Trafficlights brauchen eine ebenso gezielte Ausnahme.
 Test-Fixtures sowie berechnete Charakter-/PDF-Farbdaten in TypeScript
 werden nicht als UI-Tokens behandelt. Neue UI-Farben sind semantische
 Design-Tokens.
+`pnpm check:tokens` untersagt Legacy-Token-Namen und `legacy.css`-Imports
+im Kit einschließlich Fixtures sowie in neuen Apps/Modulen/Paketen. Nur
+der bestehende ScriptZ-Code und das Designpaket behalten die Übergangsschicht.
 
 ## Import und Lebenszyklus
 
-Neue Module und das künftige Kit starten beim Import **keine I/O**:
+Module und Kit starten beim Import **keine I/O**:
 keine DB-Resources, keine `api.*`-Aufrufe, keine Timer oder automatisch
 laufenden Effekte mit Seiteneffekten. Datenzugriff beginnt in einer
 expliziten Initialisierung nach Registrierung des Plattformadapters.
@@ -86,11 +91,10 @@ keine nachträglichen Resources. Die Desktop-Schale beendet ebenfalls
 Updater-Polling und Fenster-Listener. Solid-generierte JSX-Event-Delegation
 ist Framework-Verhalten, keine anwendungseigene Import-I/O.
 
-Die App-/Modulpakete behalten bis zur tatsächlichen Extraktion ab
-Phase 4.1 das Standardverhalten für Laufzeit-Seiteneffekte (kein
-einschränkendes `sideEffects`-Feld). Erst an den neuen Paketgrenzen werden
-Exports und Bundler-Metadaten gezielt festgelegt; der Import-Lebenszyklus
-allein ist keine Freigabe für pauschales `sideEffects: false`.
+Das Kit deklariert `sideEffects: ["*.css"]` und explizite Subpath-Exporte.
+Die App-/Modulpakete behalten vorerst das Standardverhalten für Laufzeit-
+Seiteneffekte; der Import-Lebenszyklus allein ist keine Freigabe für
+pauschales `sideEffects: false`.
 
 ## Paket-Konventionen und gemeinsame Konfiguration
 
@@ -123,7 +127,7 @@ Das Preset stellt das Solid-Plugin, jsdom sowie die Auflösungsbedingungen
 (z. B. Sprache und Adapter) bleibt beim Produkt und wird dort ergänzt.
 
 Vom Repo-Root: `pnpm lint`, `pnpm typecheck`, `pnpm test`,
-`pnpm check:colors`, `pnpm build:frontends`.
+`pnpm check:colors`, `pnpm check:tokens`, `pnpm build:frontends`.
 Der Frontend-Build erstellt keine nativen Installer. Die PR-CI prüft diese
 Schritte und `cargo check --workspace --locked`. `pnpm test` prüft zuerst
 die Tooling-Regeln mit dem Node-Test-Runner, danach die Pakettests.
@@ -155,9 +159,9 @@ UI-Dateien freistellen.
 
 ## Wer verantwortet was?
 
-- **Kit (ab Phase 4):** produktneutrale Solid-UI, Shell, i18n-Engine,
-  Basiseinstellungen, Navigation, Toasts, Plattform-Interfaces und
-  Lebenszyklus-Helfer. Kein Wissen über Skripte oder Charaktere.
+- **Kit:** produktneutrale Solid-UI, i18n-Engine, Toasts, Plattform-
+  Interfaces, KvStore und Speicherhelfer. Shell, Basiseinstellungen und
+  Nav-Fabrik folgen in Phase 4.4/4.5. Kein Wissen über Skripte oder Charaktere.
 - **Modul:** Produktdaten, Storage-Interface und dessen SQL-Implementierung,
   Screens, fachliche Stores, eigene i18n-Texte und Einstellungen. Der
   ScriptZ-Editor samt Lexical-Nodes und PDF-Export bleibt hier.
@@ -171,6 +175,32 @@ SQL-Implementierung darf im selben Modul liegen; native APIs bleiben
 hinter dem Plattformadapter. Bundle-Identifier `de.agent-z.scriptz`,
 `scriptz.db`, Migrationen und persistierte Schlüssel sind beim
 strukturellen Umbau unverändert zu erhalten.
+
+## Bereits extrahierte Kit-APIs
+
+- `@agentz/kit/platform`: `PlatformAdapter`, `DbConnection`, `KvStore`,
+  Tastatur-Helfer und Update-Slot. Adapter werden explizit registriert.
+  Der SQL-KvStore nutzt die injizierte Verbindung; Datenbankname und
+  Migrationen bleiben Host-Verantwortung. Das Kit greift nur auf
+  `settings` und `app_state` zu. `createSqlKvStore(getDb)` erzeugt ihn,
+  `setKvStore()` registriert ihn; `getKvStore()` und `kvStore` liefern
+  den Zugriff. ScriptZ registriert beide Speicherteile gemeinsam über
+  `setStorageAdapter()` und die vorläufige `ScriptzApiStorage`-Fassade.
+- `@agentz/kit/i18n`: gemeinsame Sprachauflösung und typsichere Katalog-
+  Komposition mit `createI18n()` beziehungsweise `createModuleI18n()`.
+  Produktneutrale Texte gehören ins Kit, Produkttexte ins Modul.
+- `@agentz/kit/lib`: `serialSave`, `FlushCoordinator`, `registerFlusher`
+  und `flushAll(timeout)`. Ein Flush liefert `{ ok, failed }`; Fehler,
+  negative Save-Ergebnisse und Timeouts sind keine erfolgreiche Sicherung.
+  Registrierungen beim Abbau entfernen, ausstehende Saves vorher sichern.
+- `@agentz/kit/stores`: Toast-Zustand.
+- `@agentz/kit/ui`: neutrale Dialoge, Icons, parametrisierbare App-Markierung,
+  Boot-Fehler, Toast-Host und Settings-Bausteine.
+- `@agentz/kit/styles.css`: zugehörige Styles mit semantischen Tokens,
+  ohne Abhängigkeit von ScriptZ-CSS oder `legacy.css`.
+
+`ExportPdfDeps`, Lexical, Produkt-Routen und Produkt-Storage bleiben im
+ScriptZ-Modul. Keine dauerhaften Reexports alter Modulpfade anlegen.
 
 ## Geplanter Modul-Vertrag (Phase 4.5, noch keine API)
 

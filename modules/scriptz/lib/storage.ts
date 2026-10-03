@@ -1,11 +1,13 @@
 // High-level storage adapter for @agentz/scriptz.
 //
-// DbConnection abstracts raw SQL access; StorageAdapter provides typed
+// DbConnection abstracts raw SQL access; ScriptzStorage provides typed
 // CRUD methods. The SQL-backed default in ./api.ts uses DbConnection,
 // while alternative hosts can supply a different persistence backend.
 //
 // The `api` export is a proxy onto `getStorageAdapter()`, so replacing
 // the adapter takes effect immediately for existing callers.
+
+import { setKvStore, type KvStore } from "@agentz/kit/platform";
 
 import type {
   CharacterColorRecord,
@@ -97,7 +99,7 @@ export interface ExportResult {
   path: string | null;
 }
 
-export interface StorageAdapter {
+export interface ScriptzStorage {
   // ===== Scripts =====
   createScript(input: CreateScriptInput): Promise<ScriptSummary>;
   getScript(id: string): Promise<Script>;
@@ -141,12 +143,6 @@ export interface StorageAdapter {
 
   // ===== Search =====
   globalSearch(query: string, limit?: number): Promise<SearchHit[]>;
-
-  // ===== Settings + App-State =====
-  getSetting(key: string): Promise<string | null>;
-  setSetting(key: string, value: string): Promise<void>;
-  getAppState(key: string): Promise<string | null>;
-  setAppState(key: string, value: string): Promise<void>;
 
   // ===== Character-Colors =====
   listCharacterColors(): Promise<CharacterColorRecord[]>;
@@ -194,6 +190,9 @@ export interface StorageAdapter {
   loadDailyStats(): Promise<DailyStatsSummary>;
 }
 
+/** Transitional facade while module callers migrate to the injected KvStore. */
+export type ScriptzApiStorage = ScriptzStorage & KvStore;
+
 /** Shared validation for `setFolderLengthRange` (all adapters). Returns the
  *  normalized pair or throws a user-facing (translated) error. Rules:
  *  null = unset; otherwise a non-negative whole number of seconds; when
@@ -217,19 +216,21 @@ export function validateLengthRange(
   return { minSec: min, maxSec: max };
 }
 
-let adapter: StorageAdapter | null = null;
+let adapter: ScriptzApiStorage | null = null;
 
 /** Register the high-level storage adapter. Called once at app
- * startup. The SQL-backed `api` default registers itself; a host can
- * replace it with another persistence backend. */
-export function setStorageAdapter(a: StorageAdapter): void {
+ * startup. The SQL-backed default is registered explicitly; a host can
+ * replace it with another persistence backend. Until shell composition
+ * injects separate stores, this also registers the shared key-value methods. */
+export function setStorageAdapter(a: ScriptzApiStorage): void {
   adapter = a;
+  setKvStore(a);
 }
 
-export function getStorageAdapter(): StorageAdapter {
+export function getStorageAdapter(): ScriptzApiStorage {
   if (!adapter) {
     throw new Error(
-      "Storage adapter not set. Make sure @agentz/scriptz/lib/api was imported (or a custom adapter registered) before this call.",
+      "Storage adapter not set. Call registerSqlStorageAdapter() or setStorageAdapter() before this call.",
     );
   }
   return adapter;

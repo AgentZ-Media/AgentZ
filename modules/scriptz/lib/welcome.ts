@@ -1,6 +1,6 @@
 import { api } from "./api";
 import { scriptsBus } from "./scriptsBus";
-import { language } from "../i18n";
+import { language } from "@agentz/kit/i18n";
 import { getWelcomeContent } from "../i18n/welcomeContent";
 
 const SEED_KEY = "welcome_seeded_v3";

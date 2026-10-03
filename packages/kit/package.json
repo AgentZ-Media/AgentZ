@@ -1,0 +1,33 @@
+{
+  "name": "@agentz/kit",
+  "private": true,
+  "version": "0.0.0",
+  "description": "Shared application shell and product-neutral Solid components.",
+  "type": "module",
+  "sideEffects": [
+    "*.css"
+  ],
+  "exports": {
+    "./i18n": "./i18n/index.ts",
+    "./platform": "./platform/index.ts",
+    "./stores": "./stores/index.ts",
+    "./lib": "./lib/index.ts",
+    "./ui": "./ui/index.ts",
+    "./styles.css": "./styles.css"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@agentz/design": "workspace:*",
+    "solid-js": "catalog:"
+  },
+  "devDependencies": {
+    "@agentz/vitest-preset": "workspace:*",
+    "@solidjs/testing-library": "catalog:",
+    "typescript": "catalog:",
+    "vitest": "catalog:",
+    "vite": "catalog:"
+  }
+}

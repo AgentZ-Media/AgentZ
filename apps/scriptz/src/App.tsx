@@ -1,6 +1,6 @@
 import { createEffect, onCleanup, onMount } from "solid-js";
 import { AppShell } from "@agentz/scriptz/components/Shell/AppShell";
-import { flushAll } from "@agentz/scriptz/lib/saveFlush";
+import { flushAll } from "@agentz/kit/lib";
 import { settingsStore } from "@agentz/scriptz/stores/settings";
 import { UpdateIndicator } from "./components/Common/UpdateIndicator";
 import { updatesStore } from "~/stores/updates";

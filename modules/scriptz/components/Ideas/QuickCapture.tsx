@@ -2,15 +2,15 @@ import { Show, createEffect, createResource, createSignal } from "solid-js";
 import { api } from "../../lib/api";
 import { foldersBus } from "../../lib/foldersBus";
 import { INBOX_FOLDER_ID } from "../../lib/folders";
-import { K, isModKey } from "../../lib/keys";
+import { K, isModKey } from "@agentz/kit/platform";
 import { ideasStore } from "../../stores/ideas";
 import { navStore } from "../../stores/nav";
 import { uiStore } from "../../stores/ui";
-import { pushToast } from "../../stores/toasts";
+import { pushToast } from "@agentz/kit/stores";
 import { t } from "../../i18n";
 import type { Folder } from "../../lib/types";
 import { StageGlyph } from "../Common/StageGlyph";
-import { DialogFrame } from "../Settings/DialogFrame";
+import { DialogFrame } from "@agentz/kit/ui";
 import { FolderMenu } from "./parts/FolderMenu";
 import "./QuickCapture.css";
 

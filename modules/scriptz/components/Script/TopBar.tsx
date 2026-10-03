@@ -1,10 +1,10 @@
 import { Show, createEffect, createSignal, on, onCleanup, untrack, type JSX } from "solid-js";
-import { Icon, type IconName } from "../Common/Icon";
+import { Icon, type IconName } from "@agentz/kit/ui";
 import { navStore } from "../../stores/nav";
 import { saveStatusStore } from "../../stores/saveStatus";
 import { INBOX_FOLDER_ID } from "../../lib/folders";
 import type { Folder, ScriptStatus } from "../../lib/types";
-import { K } from "../../lib/keys";
+import { K } from "@agentz/kit/platform";
 import { t } from "../../i18n";
 import { StageChip } from "./StageChip";
 import { TitleInput } from "./TitleInput";

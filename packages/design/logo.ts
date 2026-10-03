@@ -56,3 +56,16 @@ export const LOGO_DOTS: readonly LogoDot[] = [
   { cx: 35, cy: 55, tone: "main" },
   { cx: 45, cy: 55, tone: "main" },
 ];
+
+/** Product marks rendered by the shared application chrome. */
+export const LOGOS = {
+  scriptz: {
+    viewBox: LOGO_VIEWBOX,
+    width: LOGO_WIDTH,
+    height: LOGO_HEIGHT,
+    dotRadius: LOGO_DOT_R,
+    dots: LOGO_DOTS,
+  },
+} as const;
+
+export type LogoId = keyof typeof LOGOS;

@@ -4,25 +4,15 @@
 
 export const shellDe = {
   // ---------- sidebar ----------
-  "shell.sidebar.aria": "Navigation",
-  "shell.sidebar.toggle": "Seitenleiste ein/aus ({hotkey})",
-  "shell.sidebar.toggleAria": "Seitenleiste ein- oder ausblenden",
-  "shell.search": "Suchen & Befehle",
   "shell.newScript.title": "Neues Skript ({hotkey})",
   "shell.nav.all": "Alle Skripte",
   "shell.nav.ideas": "Ideen",
   "shell.section.pipeline": "Pipeline",
   "shell.section.folders": "Ordner",
   "shell.section.recent": "Zuletzt",
-  "shell.settings.title": "Einstellungen ({hotkey})",
   "shell.folder.rangeMenu": "Zielbereich …",
 
   // ---------- page bar ----------
-  "shell.history.back": "Zurück ({hotkey})",
-  "shell.history.backAria": "Zurück",
-  "shell.history.forward": "Vor ({hotkey})",
-  "shell.history.forwardAria": "Vor",
-  "shell.more": "Mehr",
   "shell.sort.title": "Sortieren",
   "shell.group.byStage": "Gruppiert nach Stufe",
   "shell.group.byFolder": "Gruppiert nach Ordner",
@@ -81,16 +71,9 @@ export const shellDe = {
   "shell.toast.archivedMany_other": "{count} Skripte in den Papierkorb verschoben",
 
   // ---------- command palette ----------
-  "shell.palette.aria": "Suchen und Befehle",
   "shell.palette.placeholder": "Skripte, Ideen oder Befehle suchen …",
-  "shell.palette.empty": "Nichts gefunden für „{query}“.",
-  "shell.palette.group.recent": "Zuletzt",
   "shell.palette.group.scripts": "Skripte",
   "shell.palette.group.ideas": "Ideen",
-  "shell.palette.group.commands": "Befehle",
-  "shell.palette.hint.navigate": "bewegen",
-  "shell.palette.hint.open": "ausführen",
-  "shell.palette.hint.close": "schließen",
   "shell.cmd.newIdea": "Neue Idee",
   "shell.cmd.openIdeas": "Ideen öffnen",
   "shell.cmd.export": "Exportieren",
@@ -98,8 +81,6 @@ export const shellDe = {
   "shell.cmd.inspector": "Inspector ein/aus",
   "shell.cmd.focus": "Fokus-Modus ein/aus",
   "shell.cmd.stage": "Stufe → {stage}",
-  "shell.cmd.sidebar": "Seitenleiste ein/aus",
-  "shell.cmd.onboarding": "Onboarding erneut anzeigen",
 
   // ---------- update indicator (desktop sidebar) ----------
   "shell.update.available": "{version} verfügbar",
@@ -117,25 +98,15 @@ export const shellDe = {
 
 export const shellEn: Record<keyof typeof shellDe, string> = {
   // ---------- sidebar ----------
-  "shell.sidebar.aria": "Navigation",
-  "shell.sidebar.toggle": "Toggle sidebar ({hotkey})",
-  "shell.sidebar.toggleAria": "Show or hide the sidebar",
-  "shell.search": "Search & commands",
   "shell.newScript.title": "New script ({hotkey})",
   "shell.nav.all": "All scripts",
   "shell.nav.ideas": "Ideas",
   "shell.section.pipeline": "Pipeline",
   "shell.section.folders": "Folders",
   "shell.section.recent": "Recent",
-  "shell.settings.title": "Settings ({hotkey})",
   "shell.folder.rangeMenu": "Target range …",
 
   // ---------- page bar ----------
-  "shell.history.back": "Back ({hotkey})",
-  "shell.history.backAria": "Back",
-  "shell.history.forward": "Forward ({hotkey})",
-  "shell.history.forwardAria": "Forward",
-  "shell.more": "More",
   "shell.sort.title": "Sort",
   "shell.group.byStage": "Grouped by stage",
   "shell.group.byFolder": "Grouped by folder",
@@ -194,16 +165,9 @@ export const shellEn: Record<keyof typeof shellDe, string> = {
   "shell.toast.archivedMany_other": "{count} scripts moved to the trash",
 
   // ---------- command palette ----------
-  "shell.palette.aria": "Search and commands",
   "shell.palette.placeholder": "Search scripts, ideas or commands …",
-  "shell.palette.empty": "Nothing found for \"{query}\".",
-  "shell.palette.group.recent": "Recent",
   "shell.palette.group.scripts": "Scripts",
   "shell.palette.group.ideas": "Ideas",
-  "shell.palette.group.commands": "Commands",
-  "shell.palette.hint.navigate": "move",
-  "shell.palette.hint.open": "run",
-  "shell.palette.hint.close": "close",
   "shell.cmd.newIdea": "New idea",
   "shell.cmd.openIdeas": "Open ideas",
   "shell.cmd.export": "Export",
@@ -211,8 +175,6 @@ export const shellEn: Record<keyof typeof shellDe, string> = {
   "shell.cmd.inspector": "Toggle inspector",
   "shell.cmd.focus": "Toggle focus mode",
   "shell.cmd.stage": "Stage → {stage}",
-  "shell.cmd.sidebar": "Toggle sidebar",
-  "shell.cmd.onboarding": "Show onboarding again",
 
   // ---------- update indicator (desktop sidebar) ----------
   "shell.update.available": "{version} available",

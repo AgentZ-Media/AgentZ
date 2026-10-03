@@ -3,7 +3,7 @@
 // segment durations matches the runtime shown everywhere else.
 
 import { beforeAll, describe, expect, it } from "vitest";
-import { applyResolvedLanguage } from "../../i18n";
+import { applyResolvedLanguage } from "@agentz/kit/i18n";
 import {
   computeTimeline,
   timingBlocksFromContentJson,

@@ -1,5 +1,5 @@
 import { For } from "solid-js";
-import { toastsSignal } from "../../stores/toasts";
+import { toastsSignal } from "../stores";
 
 export function ToastHost() {
   return (

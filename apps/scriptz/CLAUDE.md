@@ -1,9 +1,10 @@
 # ScriptZ - App-Kontext
 
 App-Paket: `@agentz/scriptz-app`. Produktmodul: `@agentz/scriptz`.
-Suite-Regeln: [`CLAUDE.md`](../../CLAUDE.md). Geteiltes Kit und
-Desktop-Host sind für spätere Phasen geplant, noch nicht vorhanden.
-Phase 4.0 bereinigt den Import-Lebenszyklus vor der Kit-Extraktion;
+Suite-Regeln: [`CLAUDE.md`](../../CLAUDE.md). Der Kit-Kern ist seit
+Phase 4.1 bis 4.3 extrahiert: neutrale UI, i18n, Plattform-Interfaces,
+KvStore und Speicherhelfer. Die gemeinsame Shell folgt innerhalb von
+Phase 4; der Desktop-Host ist erst für Phase 5 geplant.
 Prüfungen und offene Punkte stehen im
 [Umsetzungsstand](../../docs/agentz-suite-fortschritt.md).
 
@@ -17,9 +18,9 @@ first-class; Linux not (yet) shipped.
 This codebase was deliberately stripped down in 2026-05 and redesigned
 as the "Werkbank" in 2026-10 (sidebar shell, four block types, stages,
 length range; plan in [`docs/redesign/umsetzung.md`](../../docs/redesign/umsetzung.md)).
-After the Phase 2 path migration, almost all UI and logic lives in
-`modules/scriptz/` and the
-design system in `packages/design/`; this app is a thin Tauri shell
+Product UI and logic live in `modules/scriptz/`, neutral components
+and infrastructure in `packages/kit/`, and the design system in
+`packages/design/`; this app is a thin Tauri shell
 (`App.tsx` renders the shared `AppShell` and adds close-flush +
 auto-updater). Der tatsächliche Code ist die Referenz für das
 aktuelle Verhalten.
@@ -73,14 +74,16 @@ und der Legacy-Migration starten `startIdeasStore()`,
 Cleanup synchron, beendet alle gestarteten Laufzeiten beim Unmount und
 verhindert den nachträglichen Resource-Start durch einen verspäteten Boot.
 `App` räumt Fenster-Listener und Updater-Polling auf; HMR entsorgt den
-Render-Root. Das ist die Vorbereitung für Phase 4.1, noch kein Kit- oder
-Desktop-Host-Paket.
+Render-Root. Plattform- und Update-Interfaces sowie Flush-Koordination
+kommen inzwischen aus dem Kit; die konkreten Tauri-Adapter bleiben hier.
 
 ## Conventions (wichtig)
 
-- **TypeScript owns persistence.** All SQL lives in
-  `modules/scriptz/lib/` (`scripts.ts`, `folders.ts`, ...); the plugin-sql
-  connection comes from `PlatformAdapter.getDb()` in `src/lib/platform.ts`.
+- **TypeScript owns persistence.** Product SQL lives in
+  `modules/scriptz/lib/` (`scripts.ts`, `folders.ts`, ...); the Kit KvStore
+  owns SQL access to `settings` and `app_state`. The plugin-sql connection
+  comes from `PlatformAdapter.getDb()` in `src/lib/platform.ts`, implementing
+  the interface from `@agentz/kit/platform`.
   There are no Tauri commands for data access - the Rust side opens no
   DB connections. Schema changes are additive SQL migrations in
   `src-tauri/migrations/` (latest: `007_werkbank.sql`), registered in

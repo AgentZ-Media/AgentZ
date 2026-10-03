@@ -1,11 +1,7 @@
 import { JSX, Show, createEffect, onCleanup } from "solid-js";
 import { Portal } from "solid-js/web";
 
-// Shared modal frame for the Werkbank dialogs (quick capture, export,
-// settings, activity, onboarding): scrim + `.dlg` surface from the design
-// package, Escape to close, Tab focus trap, initial focus and focus
-// restore. Lives next to the settings dialog because package E owns it;
-// candidates for components/Common once the redesign has settled.
+// Product-neutral dialog frame with nested-overlay, keyboard and focus handling.
 
 const FOCUSABLE =
   'a[href], button:not([disabled]), textarea:not([disabled]), input:not([disabled]), select:not([disabled]), [tabindex]:not([tabindex="-1"])';
@@ -43,7 +39,7 @@ export function DialogFrame(props: DialogFrameProps) {
     if (e.key === "Escape") {
       // Nested popovers (menus, colour picker, confirm) handle their own
       // Escape; some listen after us, so check for them explicitly.
-      if (document.querySelector(".fm-menu, .scriptz-color-popover, .modal-backdrop")) return;
+      if (document.querySelector("[data-dialog-dismiss-layer], .modal-backdrop")) return;
       e.preventDefault();
       e.stopPropagation();
       props.onClose();

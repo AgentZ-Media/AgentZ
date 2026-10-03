@@ -1,11 +1,11 @@
 import { For, Show, createMemo, createSignal, onCleanup, type JSX } from "solid-js";
 import { navStore } from "../../stores/nav";
 import { uiStore } from "../../stores/ui";
-import { K } from "../../lib/keys";
+import { K } from "@agentz/kit/platform";
 import { SCRIPT_STATUSES, type Folder, type ScriptStatus } from "../../lib/types";
 import { t } from "../../i18n";
-import { AppMark } from "../Common/AppMark";
-import { Icon } from "../Common/Icon";
+import { AppMark } from "@agentz/kit/ui";
+import { Icon } from "@agentz/kit/ui";
 import { StageGlyph } from "../Common/StageGlyph";
 import { ContextMenu, type ContextMenuItem } from "../Library/ContextMenu";
 import { SCRIPT_DRAG_MIME } from "../Library/dnd";
@@ -99,7 +99,7 @@ export function Sidebar(props: SidebarProps) {
       </div>
 
       <div class="side-app">
-        <AppMark size={28} />
+        <AppMark logo="scriptz" appName="ScriptZ" size={28} />
         <span class="side-app-name">ScriptZ</span>
       </div>
 

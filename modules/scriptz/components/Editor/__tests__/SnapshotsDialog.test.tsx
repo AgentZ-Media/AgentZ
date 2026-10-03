@@ -4,7 +4,7 @@
 
 import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 import { cleanup, render } from "@solidjs/testing-library";
-import { getStorageAdapter, setStorageAdapter, type StorageAdapter } from "../../../lib/storage";
+import { getStorageAdapter, setStorageAdapter, type ScriptzApiStorage } from "../../../lib/storage";
 import "../../../lib/api";
 import type { Snapshot, SnapshotMeta } from "../../../lib/types";
 import { SnapshotsDialog } from "../SnapshotsDialog";
@@ -49,7 +49,7 @@ const contents: Record<string, string> = { "snap-ok": DOC, "snap-broken": "{not 
 
 beforeAll(() => {
   setStorageAdapter(
-    new Proxy({} as StorageAdapter, {
+    new Proxy({} as ScriptzApiStorage, {
       get(_, prop: string) {
         if (prop === "listSnapshots") return vi.fn(async () => metas);
         if (prop === "getSnapshot")

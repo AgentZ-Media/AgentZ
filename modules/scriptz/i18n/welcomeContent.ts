@@ -9,8 +9,8 @@
 // Windows / Linux users see "Ctrl+N" instead of "Cmd+N" - otherwise
 // the tutorial would give wrong instructions there.
 
-import { K } from "../lib/keys";
-import type { Language } from "./index";
+import { K } from "@agentz/kit/platform";
+import type { Language } from "@agentz/kit/i18n";
 
 interface WelcomeContent {
   title: string;

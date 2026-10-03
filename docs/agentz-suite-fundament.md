@@ -1,6 +1,6 @@
 # AgentZ Suite - Plan für das Fundament
 
-> Interne Doku. Stand: 2026-10-03. Status: Phase 1 bis 3 gemergt; Phase 4.0 umgesetzt und lokal geprüft, Review offen; externe Altressourcen offen.
+> Interne Doku. Stand: 2026-10-03. Status: Phase 1 bis 4.0 gemergt; Phase 4.1 bis 4.3 in Umsetzung; externe Altressourcen bei Timo.
 > Gegengeprüft von GPT-6 Astra (Effort High) am 2026-10-03, Befunde
 > eingearbeitet (siehe Abschnitt 15).
 

@@ -1,5 +1,6 @@
 import { For, Show, createMemo, onMount } from "solid-js";
-import { t, tPlural, getCurrentLocale, language } from "../../i18n";
+import { getCurrentLocale, language } from "@agentz/kit/i18n";
+import { t, tPlural } from "../../i18n";
 import "./Heatmap.css";
 
 export interface HeatmapProps {

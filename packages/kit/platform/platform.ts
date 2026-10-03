@@ -1,22 +1,11 @@
-// Platform abstraction layer.
-//
-// Everything in @agentz/scriptz is platform-neutral TypeScript. Anything that
-// needs native capabilities - SQLite, file dialogs, file system writes,
-// reveal-in-folder, app version, open-external-URL - goes through this
-// adapter interface. The desktop app registers a Tauri-backed adapter at
-// startup; a future web app would register an IndexedDB + Blob-download
-// adapter.
-//
-// IMPORTANT: do not add @tauri-apps/* imports here. This file must stay
-// platform-neutral so the web build can include it without pulling Tauri.
-
-import type { ScriptCharacter } from "./types";
+// Host capability interfaces shared by product modules.
+// Native integrations register an adapter explicitly before application boot.
 
 // ===== Host platform =====
 //
 // The three OS families we care about. iOS / Android map to "linux"
 // for now (their webview behaviour is closer to linux than to macos
-// from the editor's perspective). Stays sync for the app's lifetime.
+// for shared UI behavior). Stays sync for the app's lifetime.
 
 export type Platform = "macos" | "windows" | "linux";
 
@@ -32,20 +21,6 @@ export interface DbConnection {
     query: string,
     bindValues?: unknown[],
   ): Promise<{ lastInsertId?: number; rowsAffected: number }>;
-}
-
-// ===== Export pipeline =====
-//
-// The PDF / plaintext generators now live entirely in core
-// (see ./exportPdf.ts and lex.ts::extractTeleprompterText) and
-// produce pure bytes / strings. The PlatformAdapter is only
-// responsible for writing the bytes - desktop via plugin-fs, web via
-// blob download. See `saveAs` further down.
-
-export interface ExportPdfDeps {
-  title: string;
-  contentJson: string;
-  characters: ScriptCharacter[];
 }
 
 // ===== Save / Open Filter =====
@@ -64,7 +39,7 @@ export interface SaveDialogOptions {
 // ===== File persistence =====
 //
 // Narrow abstraction for "write a file" / "read a file". Used by
-// all export paths (PDF, plaintext, .scriptz). Desktop opens
+// file export paths. Desktop opens
 // a native save/open dialog and writes/reads via plugin-fs; web
 // triggers a blob download or shows `<input type="file">`.
 
@@ -100,7 +75,7 @@ export interface PlatformAdapter {
 
   /** True when the host can pick a directory and write multiple files into
    *  it (desktop). Web sets false and falls back to per-file blob
-   *  downloads. Lets the multi-PDF export pick the right strategy. */
+   *  downloads. Lets callers select the appropriate export strategy. */
   supportsDirectoryWrite: boolean;
 
   /** Return a live database connection. May be lazy. */
@@ -126,7 +101,7 @@ export interface PlatformAdapter {
 
   /** Reads a file selected by the user. Desktop opens an open dialog
    *  + plugin-fs::readFile; web shows `<input type="file">`. `accept` is
-   *  the MIME / extension list for the filter (e.g. ".scriptz,application/x-scriptz+json").
+   *  the MIME / extension list for the filter (e.g. ".json,application/json").
    *  Returns null when the user cancels. */
   openFile(accept: string): Promise<OpenFileResult | null>;
 

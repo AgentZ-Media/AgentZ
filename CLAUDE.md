@@ -8,7 +8,7 @@ Umbau; die nachfolgende Trennung von Bestand und Ziel ist verbindlich.
 Der [Umsetzungsstand](docs/agentz-suite-fortschritt.md) dokumentiert
 abgeschlossene Schritte, Prüfungen und offene Punkte.
 
-## Aktuelle Struktur (Phase 4.0, vor der Kit-Extraktion)
+## Aktuelle Struktur (Phase 4.1 bis 4.3)
 
 - [`apps/scriptz/`](apps/scriptz/) - `@agentz/scriptz-app`, die dünne
   Tauri-Schale für ScriptZ. Registriert Plattform- und Speicheranbindung,
@@ -16,9 +16,13 @@ abgeschlossene Schritte, Prüfungen und offene Punkte.
   Rust verdrahtet Plugins und SQL-Migrationen. App-Regeln stehen in
   [`apps/scriptz/CLAUDE.md`](apps/scriptz/CLAUDE.md).
 - [`modules/scriptz/`](modules/scriptz/) - `@agentz/scriptz`, derzeit
-  **alle ScriptZ-Logik und UI**: Editor, Lexical-Nodes, Plugins, App-Schale,
-  Stores, Business-Logik und Export-Generatoren. Enthält noch gemeinsame
-  Kandidaten für das spätere Kit. Darf **nie** `@tauri-apps/*` importieren.
+  **ScriptZ-Logik und Produkt-UI**: Editor, Lexical-Nodes, Plugins,
+  App-Schale, fachliche Stores und Export-Generatoren. Shell, Einstellungen
+  und Navigation werden in den nächsten Schritten getrennt. Darf **nie**
+  `@tauri-apps/*` importieren.
+- [`packages/kit/`](packages/kit/) - `@agentz/kit`, produktneutrale
+  Solid-Bausteine, i18n-Engine, Plattform-Interfaces, KvStore, Toasts
+  und Speicherkoordination. Kein Tauri und kein Produktwissen.
 - [`packages/design/`](packages/design/) - `@agentz/design`, das
   Designsystem der Suite: semantische Tokens hell/dunkel, Legacy-Aliasse,
   CSS-Primitive, UI-Schrift, Icons und Logo. Reines CSS und Daten-Module,
@@ -32,14 +36,15 @@ abgeschlossene Schritte, Prüfungen und offene Punkte.
 Aktuelle Abhängigkeitsrichtung:
 
 ```text
-apps/scriptz -> modules/scriptz -> packages/design
+apps/scriptz -> modules/scriptz -> packages/kit -> packages/design
 ```
 
 ## Zielstruktur (noch nicht umgesetzt)
 
-`@agentz/kit` entsteht in Phase 4, `@agentz/desktop` und die Rust-Crate
-`crates/agentz-desktop` in Phase 5. Website und Generator folgen später.
-Keine dieser Komponenten darf heute als vorhanden vorausgesetzt werden.
+Der Kit-Kern ist vorhanden; gemeinsame Shell und Modul-Vertrag folgen
+innerhalb von Phase 4. `@agentz/desktop` und die Rust-Crate
+`crates/agentz-desktop` entstehen in Phase 5. Website und Generator
+folgen später und dürfen heute nicht als vorhanden vorausgesetzt werden.
 
 ```text
 apps/<app> -> modules/<app> -> packages/kit -> packages/design
@@ -67,9 +72,10 @@ ScriptZ behält sein Verhalten. Produktlogik und UI leben vorerst in
 `modules/scriptz/`, OS-Integration in `apps/scriptz/`. Allgemeine Bausteine
 werden erst in ihren vorgesehenen Phasen extrahiert.
 
-Das Modul greift über `PlatformAdapter` (`lib/platform.ts`) auf
-Plattformdienste zu. `StorageAdapter` (`lib/storage.ts`) beschreibt den
-Datenzugriff; `lib/api.ts` stellt `registerSqlStorageAdapter()` für die
+Das Modul greift über `PlatformAdapter` aus `@agentz/kit/platform` auf
+Plattformdienste zu. Das Kit verantwortet `KvStore` für `settings` und
+`app_state`; das Produkt-Storage in `modules/scriptz/lib/storage.ts`
+beschreibt die fachlichen Datenzugriffe; `lib/api.ts` stellt `registerSqlStorageAdapter()` für die
 explizite Registrierung des SQL-Defaults bereit. Der App-Einstieg
 registriert Plattform, Storage und Updater vor dem Rendern. Die
 SQLite-Verbindung liefert `PlatformAdapter.getDb()`. Neue Datenzugriffe müssen Interface und
@@ -97,8 +103,9 @@ relative Uhr; Ideen, Tagesstatistik und Bibliotheks-Resources folgen
 erst nach den Boot-Schritten und der Legacy-Migration. Beim Unmount
 werden diese Laufzeiten beendet. Solid-generierte JSX-Event-Delegation
 ist von dieser Regel gegen anwendungseigene Import-I/O zu unterscheiden.
-Kit und Desktop-Host sind damit noch nicht extrahiert. Paket-Konventionen
-und die Regel der Zwei stehen in der Suite-Regel.
+Der Kit-Kern ist extrahiert; die Shell bleibt vorerst im Modul und der
+Desktop-Host in der App. Paket-Konventionen und die Regel der Zwei stehen
+in der Suite-Regel.
 
 ## Path-scoped Rules
 
@@ -126,6 +133,7 @@ pnpm lint                      # Paketgrenzen und Korrektheit
 pnpm typecheck                 # TypeScript über alle Workspaces
 pnpm test                      # Tooling-Regeln und Pakettests
 pnpm check:colors              # Farben außerhalb des Designsystems
+pnpm check:tokens              # keine Legacy-Tokens im Kit/neuen Paketen
 pnpm build:frontends           # Vite-Builds ohne native Bundles
 cargo check --workspace --locked # Rust-Workspace ohne Lockfile-Änderung
 ```

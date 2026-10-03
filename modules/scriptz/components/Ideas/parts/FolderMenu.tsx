@@ -1,7 +1,8 @@
+import { uiStore } from "../../../stores/ui";
 import { For, Show, createSignal, onCleanup } from "solid-js";
 import { Portal } from "solid-js/web";
-import { Icon } from "../../Common/Icon";
-import { dismissOnDialog } from "../../Common/dismissOnDialog";
+import { Icon } from "@agentz/kit/ui";
+import { dismissOnDialog } from "@agentz/kit/ui";
 import { t } from "../../../i18n";
 import type { Folder } from "../../../lib/types";
 import { folderColor } from "../folderColor";
@@ -98,6 +99,7 @@ export function FolderMenu(props: FolderMenuProps) {
   // A dialog opening on top closes the menu instead of leaving it open
   // (and focusable) behind the scrim.
   dismissOnDialog({
+    dialogOpen: uiStore.anyDialogOpen,
     open,
     inside: (node) => !!(trigger?.contains(node) || menu?.contains(node)),
     dismiss: () => close(false),
@@ -156,7 +158,7 @@ export function FolderMenu(props: FolderMenuProps) {
         <Portal>
           <div
             ref={menu}
-            class="menu fm-menu"
+            class="menu fm-menu" data-dialog-dismiss-layer
             role="listbox"
             tabindex="-1"
             aria-label={props.ariaLabel ?? t("ideasPage.folder.label")}

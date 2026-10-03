@@ -1,7 +1,8 @@
 import { For } from "solid-js";
-import { K } from "../../../lib/keys";
+import { K } from "@agentz/kit/platform";
 import { t } from "../../../i18n";
-import { SectionHead } from "./parts";
+import { SectionHead } from "@agentz/kit/ui";
+
 
 interface ShortcutGroup {
   title: string;

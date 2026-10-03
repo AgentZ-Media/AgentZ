@@ -1,7 +1,8 @@
+import { uiStore } from "../../stores/ui";
 import { createSignal, onCleanup, onMount, For, Show, type JSX } from "solid-js";
 import { Portal } from "solid-js/web";
-import { Icon, type IconName } from "../Common/Icon";
-import { dismissOnDialog } from "../Common/dismissOnDialog";
+import { Icon, type IconName } from "@agentz/kit/ui";
+import { dismissOnDialog } from "@agentz/kit/ui";
 
 /**
  * Floating menu in the design-system look (`.menu` / `.menu-it`). Used for
@@ -64,6 +65,7 @@ export function ContextMenu(props: ContextMenuProps) {
   // A dialog opening on top (⌘I, ⌘K, ...) closes the menu, so its capture
   // key handler never eats Escape / arrows meant for the dialog.
   dismissOnDialog({
+    dialogOpen: uiStore.anyDialogOpen,
     open: () => true,
     inside: (node) => !!(node instanceof Element ? node : node.parentElement)?.closest(".ctx-pop"),
     dismiss: () => props.onClose(),

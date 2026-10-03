@@ -1,0 +1,94 @@
+/* ============================================================
+   Modal & overlay (legacy markup; new dialogs use .scrim + .dlg)
+   ============================================================ */
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: var(--scrim);
+  z-index: 100;
+  display: grid;
+  place-items: start center;
+  padding-top: 14vh;
+  animation: fade-in var(--t-fast);
+}
+
+.modal {
+  background: var(--surface);
+  color: var(--fg);
+  border: 0;
+  border-radius: var(--r-dlg);
+  box-shadow: var(--shadow-dlg);
+  display: flex;
+  flex-direction: column;
+  min-width: min(420px, 92vw);
+  max-width: 600px;
+  width: min(600px, 92vw);
+  max-height: 80vh;
+  overflow: hidden;
+  animation: scale-in var(--t-med);
+}
+.modal-body {
+  flex: 1 1 auto;
+  overflow: auto;
+}
+.modal h2 {
+  margin: 0;
+  font-family: var(--ui);
+  font-size: var(--fs-16);
+  font-weight: 700;
+  letter-spacing: -0.005em;
+}
+.modal-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 18px 22px;
+  border-bottom: 1px solid var(--line-soft);
+  flex-shrink: 0;
+}
+.modal-close {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  background: transparent;
+  border: 0;
+  border-radius: var(--r-2);
+  color: var(--faint);
+  cursor: pointer;
+  font-size: 14px;
+  line-height: 1;
+  transition: background var(--t-fast), color var(--t-fast);
+}
+.modal-close:hover {
+  background: var(--fill);
+  color: var(--fg);
+}
+.modal-body { padding: var(--sp-5) var(--sp-6); }
+/* Settings overrides modal-body padding; let it through */
+.modal-body:has(.settings-grid) { padding: 0; }
+.modal-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  padding: var(--sp-3) var(--sp-5);
+  border-top: 1px solid var(--line-soft);
+  background: var(--surface-2);
+}
+
+@keyframes fade-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+@keyframes scale-in {
+  from { opacity: 0; transform: translateY(-6px) scale(0.97); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+/* Toasts slide in from the bottom - feels more natural than a
+   scale-in for content that appears at the bottom edge. */
+@keyframes toast-slide-up {
+  from { opacity: 0; transform: translateY(14px) scale(0.97); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+

@@ -1,6 +1,6 @@
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { cleanup, fireEvent, render, waitFor } from "@solidjs/testing-library";
-import { getStorageAdapter, setStorageAdapter, type StorageAdapter } from "../../../lib/storage";
+import { getStorageAdapter, setStorageAdapter, type ScriptzApiStorage } from "../../../lib/storage";
 import "../../../lib/api";
 import type { ScriptSummary } from "../../../lib/types";
 import { scriptsBus } from "../../../lib/scriptsBus";
@@ -23,12 +23,12 @@ function script(id: string, title: string): ScriptSummary {
 }
 
 beforeAll(() => {
-  const fake: Partial<StorageAdapter> = {
+  const fake: Partial<ScriptzApiStorage> = {
     listScripts: async () => scripts.map((s) => ({ ...s })),
     listFolders: async () => [], listIdeas: async () => [], globalSearch: async () => [],
     getAppState: async () => null,
   };
-  setStorageAdapter(new Proxy(fake as StorageAdapter, {
+  setStorageAdapter(new Proxy(fake as ScriptzApiStorage, {
     get: (target, prop) => Reflect.get(target, prop) ?? (async () => null),
   }));
   stopLibrary = startLibraryData();

@@ -1,5 +1,5 @@
 import { Match, Switch, type JSX } from "solid-js";
-import { Icon } from "../Common/Icon";
+import { Icon } from "@agentz/kit/ui";
 import { t } from "../../i18n";
 import type { CheckState } from "./selection";
 import "./SelectionBar.css";

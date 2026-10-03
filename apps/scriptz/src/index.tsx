@@ -12,6 +12,7 @@ import "@agentz/design/fonts.css";
 import "@agentz/design/tokens.css";
 import "@agentz/design/legacy.css";
 import "@agentz/design/components.css";
+import "@agentz/kit/styles.css";
 import "@agentz/scriptz/styles/global.css";
 import App from "./App";
 

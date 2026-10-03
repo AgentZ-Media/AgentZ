@@ -6,9 +6,9 @@
 import { afterAll, afterEach, beforeAll, describe, expect, it } from "vitest";
 import { cleanup, render } from "@solidjs/testing-library";
 import { Show, createSignal } from "solid-js";
-import { getStorageAdapter, setStorageAdapter, type StorageAdapter } from "../../../lib/storage";
+import { getStorageAdapter, setStorageAdapter, type ScriptzApiStorage } from "../../../lib/storage";
 import "../../../lib/api";
-import { flushAll } from "../../../lib/saveFlush";
+import { flushAll } from "@agentz/kit/lib";
 import { settingsStore, startSettingsRuntime } from "../../../stores/settings";
 import { SettingsWriting } from "../sections/SettingsWriting";
 
@@ -22,7 +22,7 @@ const stored = new Map<string, string>();
 
 beforeAll(() => {
   stopSettings = startSettingsRuntime();
-  const fake: Partial<StorageAdapter> = {
+  const fake: Partial<ScriptzApiStorage> = {
     setSetting: (key, value) =>
       new Promise<void>((resolve) => {
         writes.push([key, value]);
@@ -36,7 +36,7 @@ beforeAll(() => {
       }),
   };
   setStorageAdapter(
-    new Proxy(fake as StorageAdapter, {
+    new Proxy(fake as ScriptzApiStorage, {
       get(target, prop: string) {
         return (target as unknown as Record<string, unknown>)[prop] ?? (async () => null);
       },
