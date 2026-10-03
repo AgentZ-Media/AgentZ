@@ -122,7 +122,8 @@ packages/core/
       Editor.tsx           Lexical mount: createEditor, registerRichText,
                            registerHistory, plugins below. readOnly prop
                            (used by Studio).
-      persistence.ts       Debounced save (250 ms), auto snapshot (5 min),
+      persistence.ts       Debounced save (250 ms) through a serialized
+                           queue (lib/serialSave.ts), auto snapshot (5 min),
                            flush on teardown.
       activeBlockReporter, canvasFocus, characterReconcile, predict.ts,
       ColorPickerPopover, SnapshotsDialog, PaperLayout.css.
@@ -204,7 +205,9 @@ packages/core/
     exportPdf.ts, exportSelection.ts (multi PDF), scriptzFile.ts (.scriptz
     v1, status additive), handoff.ts (Studio), ideas.ts, dailyWords.ts,
     characterColors.ts, welcome.ts, keys.ts, format.ts, colors.ts,
-    saveFlush.ts, scriptViewCache.ts, updates.ts (updater slot),
+    saveFlush.ts (flushAll: awaits buffered + in-flight writes),
+    serialSave.ts (serialized "latest draft wins" saver for every
+    autosave/commit field), scriptViewCache.ts, updates.ts (updater slot),
     *Bus.ts (scripts/folders/ideas/dailyStats pub-sub).
   i18n/                    de.ts / en.ts + parts/{shell,script,dialogs}.ts
                            (see i18n.md)

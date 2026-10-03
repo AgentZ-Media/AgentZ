@@ -1,4 +1,4 @@
-import { For, Show, createMemo, createSignal, type JSX } from "solid-js";
+import { For, Show, createMemo, createSignal, onCleanup, type JSX } from "solid-js";
 import { navStore } from "../../stores/nav";
 import { uiStore } from "../../stores/ui";
 import { settingsStore } from "../../stores/settings";
@@ -342,6 +342,7 @@ function InlineInput(props: {
   onCancel: () => void;
 }) {
   let done = false;
+  let inputRef: HTMLInputElement | undefined;
   const finish = (value: string | null) => {
     if (done) return;
     done = true;
@@ -349,16 +350,23 @@ function InlineInput(props: {
     if (value === null || !v) props.onCancel();
     else props.onCommit(v);
   };
+  // Removed while still editing (⌘\ hides the sidebar, the folder list
+  // refreshes): a removed focused input doesn't reliably fire blur, so
+  // commit like a blur would.
+  onCleanup(() => {
+    if (!done && inputRef) finish(inputRef.value);
+  });
   return (
     <div class="nav sub side-edit">
       <span class="dot" style={props.color ? { background: props.color } : undefined} />
       <input
-        ref={(el) =>
+        ref={(el) => {
+          inputRef = el;
           requestAnimationFrame(() => {
             el.focus();
             el.select();
-          })
-        }
+          });
+        }}
         type="text"
         value={props.initial}
         placeholder={props.placeholder}

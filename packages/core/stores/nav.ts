@@ -12,9 +12,12 @@ import type { ScriptStatus } from "../lib/types";
  *   state of the command palette.
  *
  * Every route change first drains pending saves (editor auto-save etc.)
- * via `flushAll`, then applies the route in the next microtask. This keeps
- * the "editor is torn down while an async persist is still running" race
- * out, exactly like the old tab store did.
+ * via `flushAll`, then applies the route. This keeps the "editor is torn
+ * down while an async persist is still running" race out, exactly like
+ * the old tab store did. Route changes are serialized in one queue and
+ * every step reads the history state when it APPLIES (not when it was
+ * requested), so rapid ⌘[ / ⌘] presses during a slow flush can never
+ * step past either end of the history.
  */
 
 export type Route =
@@ -52,8 +55,26 @@ function sameRoute(a: Route, b: Route): boolean {
   return JSON.stringify(a) === JSON.stringify(b);
 }
 
-function deferRouteChange(apply: () => void): void {
-  void flushAll(2000).finally(() => apply());
+let navQueue: Promise<void> = Promise.resolve();
+
+function deferRouteChange(apply: () => void): Promise<void> {
+  navQueue = navQueue
+    .then(() => flushAll(2000))
+    .catch(() => {})
+    .then(() => apply())
+    .catch((err) => console.warn("[scriptz] route change failed", err));
+  return navQueue;
+}
+
+/** Steps through the history by `delta` if that's still possible at the
+ *  moment the step applies. */
+function stepHistory(delta: -1 | 1) {
+  const i = historyIndex() + delta;
+  const hist = history();
+  if (i < 0 || i >= hist.length) return;
+  setHistoryIndex(i);
+  setRoute(hist[i]);
+  persist();
 }
 
 function touchRecent(scriptId: string, title?: string) {
@@ -96,38 +117,28 @@ export const navStore = {
   isTrash: () => route().kind === "trash",
 
   /** Navigate to any route (pushes onto the history). */
-  go(next: Route) {
-    deferRouteChange(() => pushRoute(next));
+  go(next: Route): Promise<void> {
+    return deferRouteChange(() => pushRoute(next));
   },
   /** Open a script. `title` keeps the "Zuletzt" list readable before the
    *  script itself has loaded. */
-  openScript(scriptId: string, title?: string) {
+  openScript(scriptId: string, title?: string): Promise<void> {
     if (title !== undefined) touchRecent(scriptId, title);
-    deferRouteChange(() => pushRoute({ kind: "script", scriptId }));
+    return deferRouteChange(() => pushRoute({ kind: "script", scriptId }));
   },
-  openScripts(filter: { status?: ScriptStatus | null; folderId?: string | null } = {}) {
-    navStore.go({ kind: "scripts", ...filter });
+  openScripts(filter: { status?: ScriptStatus | null; folderId?: string | null } = {}): Promise<void> {
+    return navStore.go({ kind: "scripts", ...filter });
   },
-  openIdeas(folderId?: string | null) {
-    navStore.go({ kind: "ideas", folderId: folderId ?? null });
+  openIdeas(folderId?: string | null): Promise<void> {
+    return navStore.go({ kind: "ideas", folderId: folderId ?? null });
   },
-  back() {
-    if (!navStore.canBack()) return;
-    deferRouteChange(() => {
-      const i = historyIndex() - 1;
-      setHistoryIndex(i);
-      setRoute(history()[i]);
-      persist();
-    });
+  back(): Promise<void> {
+    if (!navStore.canBack()) return navQueue;
+    return deferRouteChange(() => stepHistory(-1));
   },
-  forward() {
-    if (!navStore.canForward()) return;
-    deferRouteChange(() => {
-      const i = historyIndex() + 1;
-      setHistoryIndex(i);
-      setRoute(history()[i]);
-      persist();
-    });
+  forward(): Promise<void> {
+    if (!navStore.canForward()) return navQueue;
+    return deferRouteChange(() => stepHistory(1));
   },
 
   /** Keep the "Zuletzt" title in sync after a rename. */
@@ -153,9 +164,17 @@ export const navStore = {
       const safe = filtered.length > 0 ? filtered : [HOME];
       setHistory(safe);
       if (!keep(current)) {
-        deferRouteChange(() => {
-          setHistoryIndex(safe.length - 1);
-          setRoute(safe[safe.length - 1]);
+        // Keep the index valid for the new history right away; the route
+        // itself switches after the flush. The deferred step re-reads the
+        // state, since other navigation may have applied in between.
+        setHistoryIndex(Math.min(historyIndex(), safe.length - 1));
+        void deferRouteChange(() => {
+          const r = route();
+          if (r.kind === "script" && !liveScriptIds.has(r.scriptId)) {
+            const hist = history();
+            setHistoryIndex(hist.length - 1);
+            setRoute(hist[hist.length - 1]);
+          }
           persist();
         });
         return;
@@ -204,12 +223,18 @@ let persistTimer: ReturnType<typeof setTimeout> | null = null;
 let persistInflight: Promise<void> | null = null;
 
 function writeNow(): Promise<void> {
-  const payload = JSON.stringify({ route: route(), recent: recent() });
-  const p = api.setAppState(STATE_KEY, payload).catch(() => {});
-  persistInflight = p.finally(() => {
-    if (persistInflight === p) persistInflight = null;
+  // Chained behind the previous write so two snapshots of the nav state
+  // can never land out of order.
+  const prev = persistInflight ?? Promise.resolve();
+  const p: Promise<void> = prev.then(() => {
+    const payload = JSON.stringify({ route: route(), recent: recent() });
+    return api.setAppState(STATE_KEY, payload).catch(() => {});
   });
-  return persistInflight;
+  const tracked: Promise<void> = p.finally(() => {
+    if (persistInflight === tracked) persistInflight = null;
+  });
+  persistInflight = tracked;
+  return tracked;
 }
 
 function persist() {

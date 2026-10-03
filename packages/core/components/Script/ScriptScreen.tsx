@@ -16,6 +16,7 @@ import { api } from "../../lib/api";
 import { scriptsBus } from "../../lib/scriptsBus";
 import { foldersBus } from "../../lib/foldersBus";
 import { isModKey } from "../../lib/keys";
+import { flushAll } from "../../lib/saveFlush";
 import { computeTimeline, type TimelineSegment } from "../../lib/timing";
 import { folderHasLengthRange, resolveLengthRange } from "../../lib/lengthGoal";
 import { captureCursor, scriptViewCache, type CursorAddress } from "../../lib/scriptViewCache";
@@ -238,15 +239,17 @@ export function ScriptScreen(props: ScriptScreenProps) {
       setFocusTitleFor(isUntitled(s.title) ? s.id : null);
     }
   });
-  const rename = async (next: string) => {
-    const s = current();
-    if (!s) return;
+  /** Renames `id` (passed by the title input, which may commit after the
+   *  screen already switched to another script). Rejects after the toast
+   *  so the input keeps its draft pending. */
+  const rename = async (next: string, id: string): Promise<void> => {
     try {
-      const updated = await api.renameScript(s.id, next);
-      navStore.setScriptTitle(s.id, updated.title);
+      const updated = await api.renameScript(id, next);
+      navStore.setScriptTitle(id, updated.title);
       scriptsBus.bump();
     } catch (err) {
       pushToast(t("editor.toast.renameFailed", { message: errMessage(err) }), "error");
+      throw err;
     }
   };
 
@@ -414,6 +417,8 @@ export function ScriptScreen(props: ScriptScreenProps) {
 
   const createManualSnapshot = async () => {
     try {
+      // The snapshot copies the stored content: write buffered typing first.
+      await flushAll();
       await api.createSnapshot(props.scriptId, "manual");
       pushToast(t("editor.toast.snapshotSaved"), "ok");
       bumpVersions();
@@ -523,7 +528,7 @@ export function ScriptScreen(props: ScriptScreenProps) {
                   status={s().status}
                   focusTitleFor={focusTitleFor()}
                   onTitleAutoFocused={() => setFocusTitleFor(null)}
-                  onRename={(v) => void rename(v)}
+                  onRename={rename}
                   quickAvailable={quickAvailable()}
                   quickOn={quickMode()}
                   onToggleQuick={toggleQuick}
@@ -541,7 +546,7 @@ export function ScriptScreen(props: ScriptScreenProps) {
                     title={s().title}
                     focusFor={focusTitleFor()}
                     onAutoFocused={() => setFocusTitleFor(null)}
-                    onCommit={(v) => void rename(v)}
+                    onCommit={rename}
                   />
                 </div>
               </Show>

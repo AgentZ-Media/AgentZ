@@ -505,43 +505,7 @@ class IndexedDbStorage implements StorageAdapter {
           row.updated_at = now;
         }
         if (input.contentJson !== undefined) {
-          // Never persist retired block types (cheap no-op for normal content).
-          const contentJson = normalizeLegacyContent(input.contentJson).json;
-          const newWordCount = countWords(contentJson);
-          const runtime = runtimeStatsFromContent(contentJson);
-          const colors = await this.loadColorMap();
-          const existing = parseChars(row.characters_meta);
-          const { chars, newDefaults } = reconcileChars(
-            existing,
-            contentJson,
-            colors,
-          );
-          for (const [n, c] of newDefaults) {
-            const rec = await db.character_colors.get(n);
-            await db.character_colors.put({
-              name: n,
-              default_color: c,
-              override_color: rec?.override_color ?? null,
-              updated_at: now,
-            });
-          }
-          // Sentinel -1 from migration 003: the first save only normalizes
-          // the count, without booking the existing total as "written today".
-          // Internal rewrites (legacy-block migration) only normalize the
-          // count and keep updated_at - converting is not writing.
-          const isFirstMeasurement = row.last_word_count < 0;
-          const candidateDelta =
-            isFirstMeasurement || internal
-              ? 0
-              : newWordCount - row.last_word_count;
-
-          row.content_json = contentJson;
-          row.characters_meta = serializeChars(chars);
-          row.last_word_count = newWordCount;
-          row.dialog_word_count = runtime.dialogWords;
-          row.direction_block_count = runtime.directionBlocks;
-          if (!internal) row.updated_at = now;
-          delta = candidateDelta;
+          delta = await this.applyContent(row, input.contentJson, now, internal ? "internal" : "edit");
         }
         if (input.characters !== undefined && input.contentJson === undefined) {
           row.characters_meta = serializeChars(input.characters);
@@ -568,6 +532,50 @@ class IndexedDbStorage implements StorageAdapter {
     // transaction (see createScript).
     void this.upsertSearchDoc(input.id).catch(() => {});
     return result;
+  }
+
+  /** Writes `rawContentJson` into `row` and reconciles every derived
+   *  field (word count, runtime stats, characters_meta, new default
+   *  colours). Returns the word delta to book in daily_word_log:
+   *   - "edit": new minus previous count (0 on the -1 sentinel from
+   *     migration 003 - the first save only normalizes the count),
+   *   - "internal" (legacy-block migration): 0, updated_at untouched,
+   *   - "restore" (snapshot restore): 0 - restored words are not written
+   *     today; the count becomes the baseline for the next edit.
+   *  Must run inside a transaction covering scripts + character_colors. */
+  private async applyContent(
+    row: ScriptRow,
+    rawContentJson: string,
+    now: number,
+    mode: "edit" | "internal" | "restore",
+  ): Promise<number> {
+    // Never persist retired block types (cheap no-op for normal content).
+    const contentJson = normalizeLegacyContent(rawContentJson).json;
+    const newWordCount = countWords(contentJson);
+    const runtime = runtimeStatsFromContent(contentJson);
+    const colors = await this.loadColorMap();
+    const existing = parseChars(row.characters_meta);
+    const { chars, newDefaults } = reconcileChars(existing, contentJson, colors);
+    for (const [n, c] of newDefaults) {
+      const rec = await db.character_colors.get(n);
+      await db.character_colors.put({
+        name: n,
+        default_color: c,
+        override_color: rec?.override_color ?? null,
+        updated_at: now,
+      });
+    }
+    const isFirstMeasurement = row.last_word_count < 0;
+    const delta =
+      mode !== "edit" || isFirstMeasurement ? 0 : newWordCount - row.last_word_count;
+
+    row.content_json = contentJson;
+    row.characters_meta = serializeChars(chars);
+    row.last_word_count = newWordCount;
+    row.dialog_word_count = runtime.dialogWords;
+    row.direction_block_count = runtime.directionBlocks;
+    if (mode !== "internal") row.updated_at = now;
+    return delta;
   }
 
   async listScripts(query: {
@@ -857,7 +865,7 @@ class IndexedDbStorage implements StorageAdapter {
 
   async restoreSnapshot(snapshotId: string): Promise<void> {
     ensurePersisted();
-    return db.transaction("rw", db.scripts, db.snapshots, async () => {
+    const scriptId = await db.transaction("rw", db.scripts, db.snapshots, db.character_colors, async () => {
       const snap = await db.snapshots.get(snapshotId);
       if (!snap) throw new Error(`not found: snapshot ${snapshotId}`);
       const script = await db.scripts.get(snap.script_id);
@@ -871,12 +879,17 @@ class IndexedDbStorage implements StorageAdapter {
         trigger: "auto", created_at: now,
       });
       await this.trimSnapshots(script.id);
-      // Pre-redesign snapshots may contain retired block types.
-      await db.scripts.update(script.id, {
-        content_json: normalizeLegacyContent(snap.content_json).json,
-        updated_at: now,
-      });
+      // Content + every derived field (word counts, runtime stats,
+      // characters_meta). The editor skips saving unchanged content, so it
+      // would no longer repair stale metadata after the remount. Restored
+      // words are not booked in daily_word_log. Pre-redesign snapshots
+      // may contain retired block types - applyContent normalizes them.
+      await this.applyContent(script, snap.content_json, now, "restore");
+      await db.scripts.put(script);
+      return script.id;
     });
+    // Search index outside the transaction, like updateScript.
+    void this.upsertSearchDoc(scriptId).catch(() => {});
   }
 
   async deleteSnapshot(id: string): Promise<void> {

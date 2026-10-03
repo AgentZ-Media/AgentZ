@@ -406,17 +406,13 @@ export async function updateScript(input: UpdateScriptInput): Promise<ScriptSumm
       if (metaRows.length === 0) {
         throw new Error(`not found: script ${input.id}`);
       }
-      const existing = parseCharsMeta(metaRows[0]?.characters_meta ?? "[]");
       const lastWordCount = metaRows[0]?.last_word_count ?? 0;
-      const { chars, newDefaults } = reconcileCharsFromContent(
-        existing,
+      const charsJson = await reconcileCharsMeta(
+        metaRows[0]?.characters_meta ?? "[]",
         contentJson,
         records,
+        now,
       );
-      for (const [n, c] of newDefaults) {
-        await upsertDefaultColor(n, c, now);
-      }
-      const charsJson = serializeCharsMeta(chars);
 
       // last_word_count === -1 is the sentinel from migration 003 for
       // existing scripts: the first save after the update only normalizes
@@ -501,6 +497,58 @@ export async function updateScript(input: UpdateScriptInput): Promise<ScriptSumm
   }
   await refreshFtsForScript(input.id);
   return rowToSummary(input.id);
+}
+
+/** Writes content restored from a snapshot and reconciles every derived
+ *  column with it: word count, dialog word count, direction block count,
+ *  characters_meta and the FTS row. Unlike `updateScript`, restored words
+ *  are NOT booked as written today - `last_word_count` (incl. the -1
+ *  sentinel) is reset to the restored count, so the next real edit books
+ *  only its own delta. `updated_at` moves to `now` (a restore is a
+ *  user-visible change). */
+export async function writeRestoredContent(
+  id: string,
+  rawContentJson: string,
+  now: number = Date.now(),
+): Promise<void> {
+  const db = await getDb();
+  // Snapshots taken before the block-type reduction may still contain
+  // retired block types - restore them as action blocks.
+  const contentJson = normalizeLegacyContent(rawContentJson).json;
+  const wordCount = countWordsInContent(contentJson);
+  const runtime = runtimeStatsFromContent(contentJson);
+  const records = await loadColorRecords();
+  const metaRows = await db.select<{ characters_meta: string }[]>(
+    "SELECT characters_meta FROM scripts WHERE id = $1",
+    [id],
+  );
+  if (metaRows.length === 0) {
+    throw new Error(`not found: script ${id}`);
+  }
+  const charsJson = await reconcileCharsMeta(
+    metaRows[0]?.characters_meta ?? "[]",
+    contentJson,
+    records,
+    now,
+  );
+  // Unconditional on purpose: a concurrent CAS save in updateScript sees
+  // the changed last_word_count and retries against the restored baseline.
+  await db.execute(
+    `UPDATE scripts
+       SET content_json = $1, characters_meta = $2, updated_at = $3, last_word_count = $4,
+           dialog_word_count = $5, direction_block_count = $6
+       WHERE id = $7`,
+    [
+      contentJson,
+      charsJson,
+      now,
+      wordCount,
+      runtime.dialogWords,
+      runtime.directionBlocks,
+      id,
+    ],
+  );
+  await refreshFtsForScript(id);
 }
 
 export async function archiveScript(id: string): Promise<void> {
@@ -602,6 +650,26 @@ function emptyLexicalState(): string {
       version: 1,
     },
   });
+}
+
+/** Reconciles a stored `characters_meta` blob against `contentJson`,
+ *  back-fills unseen names into the app-wide default registry and returns
+ *  the serialized result. Shared by content saves and snapshot restore. */
+async function reconcileCharsMeta(
+  existingMeta: string,
+  contentJson: string,
+  records: Map<string, ColorRecord>,
+  now: number,
+): Promise<string> {
+  const { chars, newDefaults } = reconcileCharsFromContent(
+    parseCharsMeta(existingMeta),
+    contentJson,
+    records,
+  );
+  for (const [n, c] of newDefaults) {
+    await upsertDefaultColor(n, c, now);
+  }
+  return serializeCharsMeta(chars);
 }
 
 /** Reconcile the per-script character list with the names actually

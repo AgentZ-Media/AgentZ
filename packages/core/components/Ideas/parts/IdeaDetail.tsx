@@ -3,6 +3,7 @@ import { api } from "../../../lib/api";
 import { ideasStore } from "../../../stores/ideas";
 import { pushToast } from "../../../stores/toasts";
 import { registerFlusher } from "../../../lib/saveFlush";
+import { createSerialSaver } from "../../../lib/serialSave";
 import { getCurrentLocale, t } from "../../../i18n";
 import { K } from "../../../lib/keys";
 import type { Folder, Idea, ScriptStatus, ScriptSummary } from "../../../lib/types";
@@ -36,6 +37,11 @@ export interface IdeaDetailProps {
 
 const SAVE_DELAY_MS = 600;
 
+interface IdeaDraft {
+  title: string;
+  notes: string;
+}
+
 function stageLabel(status: ScriptStatus): string {
   return t(`stage.${status}` as "stage.writing" | "stage.ready" | "stage.shot" | "stage.online");
 }
@@ -53,49 +59,37 @@ export function IdeaDetail(props: IdeaDetailProps) {
   let titleRef: HTMLTextAreaElement | undefined;
   let notesRef: HTMLTextAreaElement | undefined;
 
-  let timer: ReturnType<typeof setTimeout> | null = null;
-  let inflight: Promise<void> | null = null;
-
-  async function persist(): Promise<void> {
-    const cur = idea();
-    if (!cur || cur.used_at) return;
-    const nextTitle = title().trim();
-    const patch: { id: string; title?: string; notes?: string } = { id: cur.id };
-    if (nextTitle && nextTitle !== cur.title) patch.title = nextTitle;
-    if (notes() !== cur.notes) patch.notes = notes();
-    if (patch.title === undefined && patch.notes === undefined) return;
-    try {
+  // Title + notes autosave. Writes are serialized; each queued save reads
+  // the newest drafts when it runs and diffs them against what the last
+  // ACKNOWLEDGED write stored - never against the asynchronously refreshed
+  // props, which lag behind an in-flight save.
+  const saver = createSerialSaver<IdeaDraft>({
+    initial: { title: initial?.title ?? "", notes: initial?.notes ?? "" },
+    read: () => ({ title: title().trim(), notes: notes() }),
+    isClean: (d, b) => (!d.title || d.title === b.title) && d.notes === b.notes,
+    delayMs: SAVE_DELAY_MS,
+    async write(d, b) {
+      const cur = idea();
+      if (!cur || cur.used_at) return b;
+      const patch: { id: string; title?: string; notes?: string } = { id: cur.id };
+      if (d.title && d.title !== b.title) patch.title = d.title;
+      if (d.notes !== b.notes) patch.notes = d.notes;
       await ideasStore.updateIdea(patch);
-    } catch (err) {
-      pushToast(t("common.errorPrefix", { message: (err as Error).message ?? String(err) }), "error");
-    }
-  }
+      return { title: patch.title ?? b.title, notes: patch.notes ?? b.notes };
+    },
+    onError: (err) =>
+      pushToast(t("common.errorPrefix", { message: (err as Error)?.message ?? String(err) }), "error"),
+  });
 
-  function schedule() {
-    if (timer) clearTimeout(timer);
-    timer = setTimeout(() => {
-      timer = null;
-      inflight = persist().finally(() => {
-        inflight = null;
-      });
-    }, SAVE_DELAY_MS);
-  }
-
-  async function flush(): Promise<void> {
-    if (timer) {
-      clearTimeout(timer);
-      timer = null;
-      inflight = persist().finally(() => {
-        inflight = null;
-      });
-    }
-    if (inflight) await inflight;
-  }
+  const schedule = () => saver.schedule();
+  /** Drains the latest drafts and every write still in flight. */
+  const flush = () => saver.flush();
 
   const unregister = registerFlusher(flush);
   onCleanup(() => {
-    unregister();
-    void flush();
+    // Idea switch / page leave: write what's left, and keep the window-
+    // close flusher registered until that write settled.
+    void saver.flush().finally(unregister);
   });
 
   function autoGrow(el: HTMLTextAreaElement | undefined) {
@@ -196,7 +190,8 @@ export function IdeaDetail(props: IdeaDetailProps) {
               schedule();
             }}
             onBlur={() => {
-              if (!title().trim()) setTitle(cur().title);
+              // An emptied title is never saved - show the stored one again.
+              if (!title().trim()) setTitle(saver.baseline().title);
               void flush();
             }}
             onKeyDown={(e) => fieldKeys(e, "title")}

@@ -1,4 +1,6 @@
-import { createEffect, createSignal } from "solid-js";
+import { createEffect, createSignal, on, onCleanup } from "solid-js";
+import { registerFlusher } from "../../../lib/saveFlush";
+import { createSerialSaver } from "../../../lib/serialSave";
 import { settingsStore } from "../../../stores/settings";
 import { K } from "../../../lib/keys";
 import { t } from "../../../i18n";
@@ -6,15 +8,44 @@ import { RangeFields, Row, SectionHead, Switch } from "./parts";
 
 function WpmField() {
   const [text, setText] = createSignal(String(settingsStore.dialogWpm()));
-  createEffect(() => setText(String(settingsStore.dialogWpm())));
-  const commit = () => {
-    const n = Number(text().trim());
-    if (!text().trim() || !Number.isFinite(n)) {
-      setText(String(settingsStore.dialogWpm()));
-      return;
-    }
-    // The store clamps to its range; reflect the clamped value.
-    void settingsStore.setDialogWpm(n).then(() => setText(String(settingsStore.dialogWpm())));
+  let focused = false;
+  // Follow the store (load, arrow keys, other windows) but never clobber
+  // what the user is typing.
+  createEffect(
+    on(settingsStore.dialogWpm, (v) => {
+      if (!focused) setText(String(v));
+    }),
+  );
+  // Serialized so two quick commits can't land out of order; the field is
+  // only rewritten to the stored (clamped) value if it still holds the text
+  // that commit used.
+  const saver = createSerialSaver<string, number>({
+    initial: settingsStore.dialogWpm(),
+    read: () => text(),
+    async write(raw, base) {
+      const n = Number(raw.trim());
+      if (!raw.trim() || !Number.isFinite(n)) {
+        if (text() === raw) setText(String(base));
+        return base;
+      }
+      // The store clamps to its range; reflect the clamped value.
+      await settingsStore.setDialogWpm(n);
+      const stored = settingsStore.dialogWpm();
+      if (text() === raw) setText(String(stored));
+      return stored;
+    },
+    onError: (err) => console.warn("[scriptz] saving the WPM setting failed", err),
+  });
+  const commit = () => saver.flush();
+  const unregister = registerFlusher(commit);
+  onCleanup(() => {
+    void commit().finally(unregister);
+  });
+  const step = (delta: number) => {
+    const next = settingsStore.dialogWpm() + delta;
+    void settingsStore.setDialogWpm(next);
+    setText(String(settingsStore.dialogWpm()));
+    saver.resetBaseline(settingsStore.dialogWpm());
   };
   return (
     <label class="num-f">
@@ -22,16 +53,22 @@ function WpmField() {
         inputMode="numeric"
         value={text()}
         aria-label={t("prefs.wpm.label")}
-        onInput={(e) => setText(e.currentTarget.value)}
-        onBlur={commit}
+        onFocus={() => (focused = true)}
+        onInput={(e) => {
+          setText(e.currentTarget.value);
+          saver.markDirty();
+        }}
+        onBlur={() => {
+          focused = false;
+          void commit();
+        }}
         onKeyDown={(e) => {
           if (e.key === "Enter") {
             e.preventDefault();
-            commit();
+            void commit();
           } else if (e.key === "ArrowUp" || e.key === "ArrowDown") {
             e.preventDefault();
-            const step = e.key === "ArrowUp" ? 10 : -10;
-            void settingsStore.setDialogWpm(settingsStore.dialogWpm() + step);
+            step(e.key === "ArrowUp" ? 10 : -10);
           }
         }}
       />

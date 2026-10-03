@@ -11,15 +11,15 @@
 //   - createSnapshot: a crash between INSERT and the trim DELETE
 //     could leave a 51st row briefly; the next create_snapshot trims
 //     it. No data loss either way.
-//   - restoreSnapshot: backup INSERT + content UPDATE + FTS refresh
-//     are sequential. A crash mid-flow leaves the script either at
-//     its old content (if before UPDATE) or at the new content with
-//     a fresh backup snapshot present (if after). Worst case the FTS
-//     index lags one save behind, which the next save corrects.
+//   - restoreSnapshot: backup INSERT + content UPDATE (incl. derived
+//     metadata) + FTS refresh are sequential. A crash mid-flow leaves
+//     the script either at its old content (if before UPDATE) or at the
+//     new content with a fresh backup snapshot present (if after). Worst
+//     case the FTS index lags one save behind, which the next save
+//     corrects.
 
 import { getDb } from "./db";
-import { refreshFtsForScript } from "./fts";
-import { normalizeLegacyContent } from "./legacyBlocks";
+import { writeRestoredContent } from "./scripts";
 import type { Snapshot, SnapshotMeta } from "./types";
 
 const MAX_SNAPSHOTS_PER_SCRIPT = 50;
@@ -95,10 +95,6 @@ export async function restoreSnapshot(snapshotId: string): Promise<void> {
     throw new Error(`not found: snapshot ${snapshotId}`);
   }
   const scriptId = rows[0].script_id;
-  // Snapshots taken before the block-type reduction may still contain
-  // retired block types - restore them as action blocks.
-  const restoredContent = normalizeLegacyContent(rows[0].content_json).json;
-
   const now = Date.now();
 
   // Take an auto-snapshot of the current content before overwriting.
@@ -126,11 +122,11 @@ export async function restoreSnapshot(snapshotId: string): Promise<void> {
     [scriptId, MAX_SNAPSHOTS_PER_SCRIPT],
   );
 
-  await db.execute(
-    "UPDATE scripts SET content_json = $1, updated_at = $2 WHERE id = $3",
-    [restoredContent, now, scriptId],
-  );
-  await refreshFtsForScript(scriptId);
+  // Content + every derived column (word counts, runtime stats,
+  // characters_meta, FTS). The editor skips saving unchanged content, so
+  // it would no longer repair stale metadata after the remount. Restored
+  // words are not booked as written today.
+  await writeRestoredContent(scriptId, rows[0].content_json, now);
 }
 
 export async function deleteSnapshot(id: string): Promise<void> {

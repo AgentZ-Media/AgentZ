@@ -1,7 +1,9 @@
-import { For, Match, Show, Switch, createEffect, createMemo, createSignal, untrack } from "solid-js";
+import { For, Match, Show, Switch, createEffect, createMemo, createSignal, on, untrack } from "solid-js";
 import { api } from "../../lib/api";
 import { extractBlocks, extractTeleprompterText } from "../../lib/lex";
 import { getPlatformAdapter } from "../../lib/platform";
+import { flushAll } from "../../lib/saveFlush";
+import { scriptsBus } from "../../lib/scriptsBus";
 import { defaultScriptzFilename } from "../../lib/scriptzFile";
 import { settingsStore } from "../../stores/settings";
 import { pushToast } from "../../stores/toasts";
@@ -35,6 +37,38 @@ export function ExportDialog() {
     if (!id) return;
     untrack(() => reset(id));
   });
+  // Live preview: follow saves (autosave, rename, colours) while open.
+  createEffect(
+    on(
+      scriptsBus.version,
+      () => {
+        const id = uiStore.exportScriptId();
+        if (id && script()?.id === id) void load(id, false);
+      },
+      { defer: true },
+    ),
+  );
+
+  let loadSeq = 0;
+  /** Drains buffered/in-flight saves (⌘E right after typing lands before
+   *  the 250 ms autosave debounce), then reads the stored script. */
+  async function load(id: string, applyScriptOptions: boolean): Promise<void> {
+    const seq = ++loadSeq;
+    try {
+      await flushAll();
+      const s = await api.getScript(id);
+      if (seq !== loadSeq || uiStore.exportScriptId() !== id) return;
+      setScript(s);
+      if (applyScriptOptions) {
+        if (s.highlighting_enabled === 1) setHighlighting(true);
+        else if (s.highlighting_enabled === 0) setHighlighting(false);
+      }
+    } catch (err) {
+      if (seq !== loadSeq || uiStore.exportScriptId() !== id) return;
+      pushToast(t("export.toast.failed", { message: String(err) }), "error");
+      if (applyScriptOptions) uiStore.closeExport();
+    }
+  }
 
   function reset(id: string) {
     setScript(null);
@@ -42,18 +76,7 @@ export function ExportDialog() {
     setTitlePage(false);
     setExporting(false);
     setHighlighting(settingsStore.highlightingDefault());
-    void api
-      .getScript(id)
-      .then((s) => {
-        if (uiStore.exportScriptId() !== id) return;
-        setScript(s);
-        if (s.highlighting_enabled === 1) setHighlighting(true);
-        else if (s.highlighting_enabled === 0) setHighlighting(false);
-      })
-      .catch((err) => {
-        pushToast(t("export.toast.failed", { message: String(err) }), "error");
-        uiStore.closeExport();
-      });
+    void load(id, true);
   }
 
   const title = () => script()?.title || t("common.untitled");
@@ -94,6 +117,8 @@ export function ExportDialog() {
     if (!id || exporting() || !script()) return;
     setExporting(true);
     try {
+      // The exporters read the stored content - persist pending typing.
+      await flushAll();
       const fmt = format();
       const result =
         fmt === "pdf"

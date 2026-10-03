@@ -18,7 +18,8 @@ export interface TopBarProps {
    *  title input grabs focus and selects its text. */
   focusTitleFor: string | null;
   onTitleAutoFocused(): void;
-  onRename(next: string): void;
+  /** Renames `scriptId`; rejects on failure (see TitleInput.onCommit). */
+  onRename(next: string, scriptId: string): Promise<void> | void;
 
   quickAvailable: boolean;
   quickOn: boolean;

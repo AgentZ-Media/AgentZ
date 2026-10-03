@@ -214,6 +214,6 @@ Komponenten aus §6, Tastatur laut §7.
 - Einige Code-Kommentare beschreiben noch die alte Welt (Tabs, Browser,
   Status-Strip, Streak): `lib/legacyBlocksMigration.ts` („Not wired
   into the apps yet"), `stores/saveStatus.ts`, `lib/scriptViewCache.ts`,
-  `lib/scriptsBus.ts`, `lib/saveFlush.ts`, `lib/dailyWords.ts`.
+  `lib/scriptsBus.ts`, `lib/dailyWords.ts`.
 - `legacy.css` ist eine Übergangsschicht; Aliase löschen, sobald keine
   Komponente sie mehr nutzt.

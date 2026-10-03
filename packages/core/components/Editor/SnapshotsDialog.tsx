@@ -68,6 +68,8 @@ export function SnapshotsDialog(props: SnapshotsDialogProps) {
 
   const onCreateManual = async () => {
     try {
+      // The snapshot copies the stored content: write buffered typing first.
+      await flushAll();
       await api.createSnapshot(props.scriptId, "manual");
       pushToast(t("snapshots.toast.created"), "ok");
       setReloadKey(reloadKey() + 1);
