@@ -6,6 +6,8 @@ packages:
 
 # Keep shared runtime versions aligned without upgrading application dependencies.
 catalog:
+  "astro": "7.3.5"
+  "@astrojs/check": "0.9.10"
   "@lexical/history": "0.44.0"
   "@lexical/rich-text": "0.44.0"
   "@lexical/utils": "0.44.0"

@@ -1,0 +1,30 @@
+---
+import Base from "../layouts/Base.astro";
+import { apps, appLinks } from "../apps";
+import { catalogs, type Language } from "../i18n";
+interface Props { lang: Language }
+const { lang } = Astro.props;
+const t = catalogs[lang];
+---
+<Base lang={lang} home>
+  <section class="intro">
+    <h1>{t.headline}</h1>
+    <p>{t.intro}</p>
+  </section>
+  <section class="apps-section" aria-labelledby="apps-heading">
+    <div class="section-heading"><h2 id="apps-heading">{t.appsHeading}</h2><p>{t.appsIntro}</p></div>
+    <div class="app-list">
+      {apps.map(app => {
+        const links = appLinks(app.id);
+        return <article class="app-card" aria-labelledby={`app-${app.id}`}>
+          <img class="app-icon" src={links.icon} alt="" width="112" height="112" loading="lazy" />
+          <div class="app-info">
+            <div class="app-title"><h3 id={`app-${app.id}`}>{app.name}</h3><span class="app-status">{app.status === "available" ? t.available : t.soon}</span></div>
+            <p class="app-tagline">{app.tagline[lang]}</p>
+            {app.status === "available" ? <div class="app-downloads"><div class="download-buttons"><a class="btn primary" href={links.macos}>{t.macos}</a><a class="btn" href={links.windows}>{t.windows}</a></div><p class="platform-note">{t.platforms}. {t.downloads}.</p></div> : <p class="platform-note">{t.platforms}</p>}
+          </div>
+        </article>;
+      })}
+    </div>
+  </section>
+</Base>

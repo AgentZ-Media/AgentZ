@@ -14,13 +14,17 @@
     "check:colors": "node tooling/checks/colors.mjs",
     "build:frontends": "pnpm --filter './apps/*' --if-present build",
     "check:tokens": "node tooling/checks/tokens.mjs",
-    "release:bump": "node tooling/release/bump.mjs"
+    "release:bump": "node tooling/release/bump.mjs",
+    "dev:site": "pnpm --filter @agentz/site dev",
+    "build:site": "pnpm --filter @agentz/site build",
+    "check:astro": "node tooling/checks/astro.mjs"
   },
   "license": "MIT",
   "packageManager": "pnpm@10.34.6",
   "devDependencies": {
     "eslint": "9.39.5",
     "typescript-eslint": "8.71.0",
-    "typescript": "catalog:"
+    "typescript": "catalog:",
+    "@astrojs/compiler-rs": "0.5.0"
   }
 }

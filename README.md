@@ -7,8 +7,8 @@ infrastructure, and independent apps with their own data and releases.
 **ScriptZ is the only app currently included.** The shared kit provides
 the application shell, neutral UI, settings, navigation, and infrastructure.
 The shared desktop host supplies native integration and safe shutdown.
-The release pipeline supports independent app channels. The website and app
-generator remain planned work. Progress and architecture decisions
+The release pipeline supports independent app channels. A static bilingual
+suite website is included; its deployment and the app generator remain pending. Progress and architecture decisions
 are tracked in the [foundation plan](docs/agentz-suite-fundament.md) (German).
 
 ## Apps
@@ -36,6 +36,8 @@ For first-time installation, see the
 apps/scriptz/              @agentz/scriptz-app
   src/                    Thin frontend entry point connecting module and host
   src-tauri/              App identity, SQLite migrations, icons and capabilities
+apps/site/                @agentz/site
+                          Static Astro website, app catalog and legal pages
 modules/scriptz/          @agentz/scriptz
                           ScriptZ AppModule, editor, product UI and data
 packages/kit/             @agentz/kit
@@ -87,6 +89,9 @@ Run from the repository root:
 pnpm install --frozen-lockfile
 pnpm dev:scriptz          # start ScriptZ with the native Tauri shell
 pnpm build:scriptz        # build the ScriptZ native app and installer
+pnpm dev:site             # serve the suite website locally
+pnpm build:site           # build the static website
+pnpm check:astro          # check package, color and token rules in Astro
 pnpm lint                # check package boundaries and correctness
 pnpm typecheck           # check all TypeScript workspaces
 pnpm test                # run tooling rule tests and workspace tests
@@ -130,6 +135,12 @@ A standalone Kit fixture is available with
 `pnpm --filter @agentz/kit test:fixture` at `http://127.0.0.1:4174`.
 It exercises the shared shell with a small test module and uses no ScriptZ
 module or legacy stylesheet.
+
+The website provides German and English homepages plus German legal pages,
+without runtime JavaScript, tracking, or cookies. Its app catalog in
+`apps/site/src/apps.ts` hides downloads for `soon` entries; switch an app to
+`available` only after both installers are published and verified. A local
+build does not publish the site. Domain and Vercel setup are managed separately.
 
 Repository conventions live in [CLAUDE.md](CLAUDE.md), ScriptZ details in
 [apps/scriptz/CLAUDE.md](apps/scriptz/CLAUDE.md), package rules in
