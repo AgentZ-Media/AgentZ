@@ -12,11 +12,12 @@ import "../../../lib/api";
 import { ideasBus } from "../../../lib/ideasBus";
 import { flushAll } from "../../../lib/saveFlush";
 import type { Idea } from "../../../lib/types";
-import { ideasStore } from "../../../stores/ideas";
+import { ideasStore, startIdeasStore } from "../../../stores/ideas";
 import { IdeaEditor } from "../parts/IdeaEditor";
 import { ideaDraftCount } from "../parts/ideaDrafts";
 
 const originalAdapter = getStorageAdapter();
+let stopIdeas: () => void;
 
 // In-memory storage: updateIdea waits for a gate (slow disk), applies the
 // patch and bumps the ideas bus like the real adapters; listIdeas can be
@@ -57,9 +58,11 @@ beforeAll(() => {
       },
     }),
   );
+  stopIdeas = startIdeasStore();
 });
 
 afterAll(() => {
+  stopIdeas();
   setStorageAdapter(originalAdapter);
 });
 

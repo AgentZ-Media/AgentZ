@@ -6,9 +6,8 @@
 // here, refetched on `scriptsBus` / `foldersBus` bumps, and shared - instead
 // of each surface issuing its own `listScripts` roundtrip.
 //
-// The resources stay idle until the shell calls `markLibraryReady()` after
-// boot, so nothing queries storage before the adapters, the settings and
-// the legacy-block migration are done.
+// The shell starts and disposes this cache explicitly after boot. No
+// resources exist before adapters, settings and legacy migration are ready.
 
 import { createMemo, createResource, createRoot, createSignal } from "solid-js";
 import { api } from "../../lib/api";
@@ -30,16 +29,18 @@ const [scriptsOk, setScriptsOk] = createSignal(false);
 // this so they don't flicker while a refetch is in flight.
 const [loadedOnce, setLoadedOnce] = createSignal(false);
 
-const data = createRoot(() => {
+function createLibraryData(isActive: () => boolean) {
   const [scripts] = createResource<ScriptSummary[], { v: number }>(
     () => (ready() ? { v: scriptsBus.version() } : false),
     async (_src, info): Promise<ScriptSummary[]> => {
       try {
         const list = await api.listScripts({});
+        if (!isActive()) return [];
         setScriptsOk(true);
         setLoadedOnce(true);
         return list;
       } catch (err) {
+        if (!isActive()) return [];
         console.warn("[scriptz] library scripts load failed", err);
         setScriptsOk(false);
         return info.value ?? [];
@@ -52,8 +53,10 @@ const data = createRoot(() => {
     () => (ready() ? { f: foldersBus.version(), s: scriptsBus.version() } : false),
     async (_src, info): Promise<Folder[]> => {
       try {
-        return await api.listFolders();
+        const list = await api.listFolders();
+        return isActive() ? list : [];
       } catch (err) {
+        if (!isActive()) return [];
         console.warn("[scriptz] library folders load failed", err);
         return info.value ?? [];
       }
@@ -110,31 +113,52 @@ const data = createRoot(() => {
   });
 
   return { scripts, folders, byId, folderMap, openIdeas, statusCounts, folderCounts, ideaLineByScript };
-});
+}
+
+const [data, setData] = createSignal<ReturnType<typeof createLibraryData>>();
+let stopRuntime: (() => void) | undefined;
 
 export const library = {
   /** Every live (non-archived) script, newest edit first. */
-  scripts: (): ScriptSummary[] => data.scripts() ?? [],
+  scripts: (): ScriptSummary[] => data()?.scripts() ?? [],
   /** Fresh and trustworthy right now: loaded, not refetching, last fetch
    *  succeeded. Gate for destructive syncs (nav reconcile). */
   scriptsReady: (): boolean =>
-    ready() && scriptsOk() && data.scripts.state === "ready",
+    ready() && scriptsOk() && data()?.scripts.state === "ready",
   /** The list has been loaded at least once (for empty states). */
   loaded: loadedOnce,
   script: (id: string | null | undefined): ScriptSummary | undefined =>
-    id ? data.byId().get(id) : undefined,
-  folders: (): Folder[] => data.folders() ?? [],
+    id ? data()?.byId().get(id) : undefined,
+  folders: (): Folder[] => data()?.folders() ?? [],
   folder: (id: string | null | undefined): Folder | undefined =>
-    id && id !== INBOX_FOLDER_ID ? data.folderMap().get(id) : undefined,
-  openIdeas: data.openIdeas,
-  statusCounts: data.statusCounts,
-  folderCounts: data.folderCounts,
-  ideaLine: (scriptId: string): string | undefined => data.ideaLineByScript().get(scriptId),
+    id && id !== INBOX_FOLDER_ID ? data()?.folderMap().get(id) : undefined,
+  openIdeas: () => data()?.openIdeas() ?? [],
+  statusCounts: () => data()?.statusCounts() ?? { writing: 0, ready: 0, shot: 0, online: 0 },
+  folderCounts: () => data()?.folderCounts() ?? new Map<string, number>(),
+  ideaLine: (scriptId: string): string | undefined => data()?.ideaLineByScript().get(scriptId),
 };
 
-/** Called by the shell once boot is complete. */
-export function markLibraryReady(): void {
+/** Start only after boot; the returned disposer owns all shared resources. */
+export function startLibraryData(): () => void {
+  if (stopRuntime) return stopRuntime;
+  let active = true;
   setReady(true);
+  const disposeRoot = createRoot((dispose) => {
+    setData(createLibraryData(() => active));
+    return dispose;
+  });
+  const stop = () => {
+    if (!active) return;
+    active = false;
+    disposeRoot();
+    setReady(false);
+    setScriptsOk(false);
+    setLoadedOnce(false);
+    setData(undefined);
+    stopRuntime = undefined;
+  };
+  stopRuntime = stop;
+  return stop;
 }
 
 /** Stable folder dot colour, shared with the ideas page and the settings

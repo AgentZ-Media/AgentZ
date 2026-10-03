@@ -3,6 +3,9 @@
 App-Paket: `@agentz/scriptz-app`. Produktmodul: `@agentz/scriptz`.
 Suite-Regeln: [`CLAUDE.md`](../../CLAUDE.md). Geteiltes Kit und
 Desktop-Host sind für spätere Phasen geplant, noch nicht vorhanden.
+Phase 4.0 bereinigt den Import-Lebenszyklus vor der Kit-Extraktion;
+Prüfungen und offene Punkte stehen im
+[Umsetzungsstand](../../docs/agentz-suite-fortschritt.md).
 
 Fast, local script editor for short-form video creators (TikTok, Reels,
 YouTube Shorts). Tauri 2 shell + Solid + TypeScript + Lexical editor
@@ -54,6 +57,24 @@ vite.config.ts
 ```
 
 Detail-Layout der Subverzeichnisse: siehe `scriptz-architecture.md`.
+
+## Expliziter App-Lebenszyklus (Phase 4.0)
+
+`src/index.tsx` registriert vor `render()` die Dienste in der Reihenfolge
+`registerDesktopPlatform()` -> `registerSqlStorageAdapter()` ->
+`registerDesktopUpdates()`. Der Import ihrer Dateien startet keine
+anwendungseigene I/O; die SQL-Fassade registriert ihren Default nicht mehr
+beim Import. Solid-generierte JSX-Event-Delegation bleibt Framework-Verhalten.
+
+`AppShell` startet `startSettingsRuntime()`, `startNavRuntime()` und
+`startRelativeTimeClock()` explizit. Erst nach dem Laden der Boot-Daten
+und der Legacy-Migration starten `startIdeasStore()`,
+`startDailyStatsStore()` und `startLibraryData()`. Die Shell registriert
+Cleanup synchron, beendet alle gestarteten Laufzeiten beim Unmount und
+verhindert den nachträglichen Resource-Start durch einen verspäteten Boot.
+`App` räumt Fenster-Listener und Updater-Polling auf; HMR entsorgt den
+Render-Root. Das ist die Vorbereitung für Phase 4.1, noch kein Kit- oder
+Desktop-Host-Paket.
 
 ## Conventions (wichtig)
 

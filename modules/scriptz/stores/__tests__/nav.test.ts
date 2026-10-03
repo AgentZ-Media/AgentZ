@@ -6,11 +6,13 @@ import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { getStorageAdapter, setStorageAdapter, type StorageAdapter } from "../../lib/storage";
 import "../../lib/api";
 import { registerFlusher } from "../../lib/saveFlush";
-import { navStore } from "../nav";
+import { navStore, startNavRuntime } from "../nav";
 
 const originalAdapter = getStorageAdapter();
+let stopNav: () => void;
 
 beforeAll(() => {
+  stopNav = startNavRuntime();
   setStorageAdapter(
     new Proxy({} as StorageAdapter, {
       get() {
@@ -21,6 +23,7 @@ beforeAll(() => {
 });
 
 afterAll(() => {
+  stopNav();
   setStorageAdapter(originalAdapter);
 });
 

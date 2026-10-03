@@ -6,11 +6,12 @@ import type { ScriptSummary } from "../../../lib/types";
 import { scriptsBus } from "../../../lib/scriptsBus";
 import { navStore } from "../../../stores/nav";
 import { t } from "../../../i18n";
-import { markLibraryReady } from "../../Shell/libraryData";
+import { startLibraryData } from "../../Shell/libraryData";
 import { ScriptsPage } from "../ScriptsPage";
 
 const originalAdapter = getStorageAdapter();
 let scripts: ScriptSummary[] = [];
+let stopLibrary: () => void;
 
 function script(id: string, title: string): ScriptSummary {
   return {
@@ -30,7 +31,7 @@ beforeAll(() => {
   setStorageAdapter(new Proxy(fake as StorageAdapter, {
     get: (target, prop) => Reflect.get(target, prop) ?? (async () => null),
   }));
-  markLibraryReady();
+  stopLibrary = startLibraryData();
 });
 beforeEach(async () => {
   scripts = [script("a", "Alpha"), script("b", "Beta")];
@@ -38,7 +39,10 @@ beforeEach(async () => {
   await navStore.go({ kind: "scripts", status: "writing" });
 });
 afterEach(cleanup);
-afterAll(() => setStorageAdapter(originalAdapter));
+afterAll(() => {
+  stopLibrary();
+  setStorageAdapter(originalAdapter);
+});
 
 async function selectAll() {
   const view = render(() => <ScriptsPage />);

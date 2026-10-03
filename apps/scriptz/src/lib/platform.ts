@@ -1,7 +1,7 @@
 // Tauri-backed implementation of @agentz/scriptz's PlatformAdapter.
 //
-// Imported once at app startup from index.tsx, this registers a
-// concrete adapter so the core code - which only knows the abstract
+// Explicitly registered at app startup from index.tsx, this provides a
+// concrete adapter so the module - which only knows the abstract
 // DbConnection / SaveDialogOptions / saveAs etc. - has a real
 // implementation to call.
 //
@@ -133,22 +133,23 @@ async function desktopWriteFileTo(path: string, bytes: Uint8Array): Promise<void
   await writeFile(path, bytes);
 }
 
-const tauriAdapter: PlatformAdapter = {
-  platform: detectPlatform(),
-  supportsDirectoryWrite: true,
-  getDb: loadDesktopDb,
-  getVersion: () => getVersion(),
-  openUrl: (url) => openUrl(url),
-  revealInFolder: (path) => revealItemInDir(path),
-  saveDialog: async (opts) => {
-    const result = await save(opts);
-    return result ?? null;
-  },
-  saveAs: desktopSaveAs,
-  openFile: desktopOpenFile,
-  pickDirectory: desktopPickDirectory,
-  writeFileTo: desktopWriteFileTo,
-};
-
-setPlatformAdapter(tauriAdapter);
-applyPlatformToDocument();
+export function registerDesktopPlatform(): void {
+  const tauriAdapter: PlatformAdapter = {
+    platform: detectPlatform(),
+    supportsDirectoryWrite: true,
+    getDb: loadDesktopDb,
+    getVersion: () => getVersion(),
+    openUrl: (url) => openUrl(url),
+    revealInFolder: (path) => revealItemInDir(path),
+    saveDialog: async (opts) => {
+      const result = await save(opts);
+      return result ?? null;
+    },
+    saveAs: desktopSaveAs,
+    openFile: desktopOpenFile,
+    pickDirectory: desktopPickDirectory,
+    writeFileTo: desktopWriteFileTo,
+  };
+  setPlatformAdapter(tauriAdapter);
+  applyPlatformToDocument();
+}

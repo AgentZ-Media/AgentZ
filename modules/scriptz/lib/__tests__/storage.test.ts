@@ -11,7 +11,7 @@ import {
   getStorageAdapter,
   type StorageAdapter,
 } from "../storage";
-import { api } from "../api";
+import { api, registerSqlStorageAdapter } from "../api";
 
 // Stub factory: returns a StorageAdapter where all 30+ methods are
 // produced via `vi.fn()`. Tests override individual methods with
@@ -63,9 +63,8 @@ describe("StorageAdapter slot", () => {
     expect(first).toHaveBeenCalledTimes(1); // first not called again
   });
 
-  it("Default adapter is registered after importing ./api", () => {
-    // If api.ts doesn't call setStorageAdapter() on import, then
-    // getStorageAdapter() throws - this test would then fail.
+  it("SQL adapter can be registered explicitly", () => {
+    registerSqlStorageAdapter();
     expect(() => getStorageAdapter()).not.toThrow();
     // And the default has all the methods the interface requires.
     const a = getStorageAdapter();

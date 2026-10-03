@@ -55,18 +55,22 @@ export const libraryPrefs = {
     setCollapsedSignal(next);
     persist();
   },
-  async load(): Promise<void> {
+  async load(isActive: () => boolean = () => true): Promise<void> {
     if (loaded) return;
-    loaded = true;
     try {
       const raw = await api.getAppState(PREFS_KEY);
-      if (!raw) return;
+      if (!isActive()) return;
+      if (!raw) {
+        loaded = true;
+        return;
+      }
       const parsed = JSON.parse(raw) as { grouping?: unknown; sort?: unknown; collapsed?: unknown };
       if (isGrouping(parsed.grouping)) setGroupingSignal(parsed.grouping);
       if (isSort(parsed.sort)) setSortSignal(parsed.sort);
       if (Array.isArray(parsed.collapsed)) {
         setCollapsedSignal(new Set(parsed.collapsed.filter((k): k is string => typeof k === "string")));
       }
+      loaded = true;
     } catch {
       /* defaults */
     }

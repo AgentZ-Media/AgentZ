@@ -5,8 +5,10 @@ Repository: `AgentZ-Media/AgentZ`, Root-Paket: `agentz`.
 ScriptZ ist derzeit die einzige App. Der
 [Fundament-Plan](docs/agentz-suite-fundament.md) beschreibt den schrittweisen
 Umbau; die nachfolgende Trennung von Bestand und Ziel ist verbindlich.
+Der [Umsetzungsstand](docs/agentz-suite-fortschritt.md) dokumentiert
+abgeschlossene Schritte, Prüfungen und offene Punkte.
 
-## Aktuelle Struktur (Phase 3)
+## Aktuelle Struktur (Phase 4.0, vor der Kit-Extraktion)
 
 - [`apps/scriptz/`](apps/scriptz/) - `@agentz/scriptz-app`, die dünne
   Tauri-Schale für ScriptZ. Registriert Plattform- und Speicheranbindung,
@@ -67,8 +69,10 @@ werden erst in ihren vorgesehenen Phasen extrahiert.
 
 Das Modul greift über `PlatformAdapter` (`lib/platform.ts`) auf
 Plattformdienste zu. `StorageAdapter` (`lib/storage.ts`) beschreibt den
-Datenzugriff; `lib/api.ts` registriert den SQL-Default. Die SQLite-Verbindung
-liefert `PlatformAdapter.getDb()`. Neue Datenzugriffe müssen Interface und
+Datenzugriff; `lib/api.ts` stellt `registerSqlStorageAdapter()` für die
+explizite Registrierung des SQL-Defaults bereit. Der App-Einstieg
+registriert Plattform, Storage und Updater vor dem Rendern. Die
+SQLite-Verbindung liefert `PlatformAdapter.getDb()`. Neue Datenzugriffe müssen Interface und
 Implementierung aktualisieren. Schemaänderungen laufen über additive
 SQL-Migrationen in `apps/scriptz/src-tauri/`. Änderungen am Datenmodell
 auch im `.scriptz`-Import/Export abbilden. Capability-Flags wie
@@ -86,11 +90,15 @@ Inhaltsfarben als Daten (Charakter-Palette in
 OS-Chrome-Nachbauten (macOS-Trafficlights). `pnpm check:colors`
 prüft diese Grenze mit einer gezielten Ausnahmeliste.
 
-Neue Module dürfen beim Import keine I/O, Resources mit Datenzugriff
-oder Timer starten. Bestehende Import-Initialisierung in ScriptZ
-(insbesondere Ideen und Tagesstatistik) wird in Phase 4.0 bereinigt;
-die neue Tooling-Phase verändert diesen Lebenszyklus noch nicht.
-Paket-Konventionen und die Regel der Zwei stehen in der Suite-Regel.
+Module dürfen beim Import keine I/O, Resources mit Datenzugriff
+oder Timer starten. Seit Phase 4.0 beginnt ScriptZ seinen eigenen
+Lebenszyklus explizit: `AppShell` startet Einstellungen, Navigation und
+relative Uhr; Ideen, Tagesstatistik und Bibliotheks-Resources folgen
+erst nach den Boot-Schritten und der Legacy-Migration. Beim Unmount
+werden diese Laufzeiten beendet. Solid-generierte JSX-Event-Delegation
+ist von dieser Regel gegen anwendungseigene Import-I/O zu unterscheiden.
+Kit und Desktop-Host sind damit noch nicht extrahiert. Paket-Konventionen
+und die Regel der Zwei stehen in der Suite-Regel.
 
 ## Path-scoped Rules
 

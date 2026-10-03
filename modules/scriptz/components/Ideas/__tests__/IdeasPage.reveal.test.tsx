@@ -8,12 +8,13 @@ import { render } from "@solidjs/testing-library";
 import { getStorageAdapter, setStorageAdapter, type StorageAdapter } from "../../../lib/storage";
 import "../../../lib/api";
 import type { Folder, Idea } from "../../../lib/types";
-import { ideasStore } from "../../../stores/ideas";
+import { ideasStore, startIdeasStore } from "../../../stores/ideas";
 import { navStore } from "../../../stores/nav";
 import { uiStore } from "../../../stores/ui";
 import { IdeasPage } from "../IdeasPage";
 
 const originalAdapter = getStorageAdapter();
+let stopIdeas: () => void;
 
 const now = new Date();
 const lastMonth = (i: number) => new Date(now.getFullYear(), now.getMonth() - 1, 10, 12, i).getTime();
@@ -61,10 +62,12 @@ beforeAll(async () => {
     }),
   );
   ideasStore.refresh();
+  stopIdeas = startIdeasStore();
   await navStore.openIdeas(null);
 });
 
 afterAll(() => {
+  stopIdeas();
   setStorageAdapter(originalAdapter);
 });
 

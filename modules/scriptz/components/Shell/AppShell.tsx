@@ -14,11 +14,13 @@ import {
 } from "solid-js";
 import { api } from "../../lib/api";
 import { startCharacterAutoPrune } from "../../lib/characterAutoPrune";
-import { dailyStatsBus } from "../../lib/dailyStatsBus";
+import { startRelativeTimeClock } from "../../lib/format";
+import { startIdeasStore } from "../../stores/ideas";
+import { startDailyStatsStore } from "../../stores/dailyStats";
 import { ensureWelcomeContent } from "../../lib/welcome";
 import { migrateLegacyBlocksOnce } from "../../lib/legacyBlocksMigration";
-import { settingsStore } from "../../stores/settings";
-import { navStore } from "../../stores/nav";
+import { settingsStore, startSettingsRuntime } from "../../stores/settings";
+import { navStore, startNavRuntime } from "../../stores/nav";
 import { uiStore } from "../../stores/ui";
 import { t } from "../../i18n";
 import { AppMark } from "../Common/AppMark";
@@ -36,7 +38,7 @@ import { ExportDialog } from "../Export/ExportDialog";
 import { SettingsDialog } from "../Settings/SettingsDialog";
 import { Onboarding, ONBOARDING_KEY } from "../Onboarding/Onboarding";
 import { Sidebar } from "./Sidebar";
-import { library, markLibraryReady } from "./libraryData";
+import { library, startLibraryData } from "./libraryData";
 import { handleGlobalShortcut } from "./shortcuts";
 import "../Common/Common.css";
 import "./Shell.css";
@@ -55,6 +57,14 @@ export function AppShell(props: AppShellProps) {
   const [bootReady, setBootReady] = createSignal(false);
   const [bootError, setBootError] = createSignal<Error | null>(null);
 
+  let disposed = false;
+  const cleanup = [startSettingsRuntime(), startNavRuntime(), startRelativeTimeClock()];
+  // Register cleanup synchronously: async boot may finish after unmount.
+  onCleanup(() => {
+    disposed = true;
+    for (const stop of cleanup.reverse()) stop();
+  });
+
   onMount(async () => {
     try {
       // Independent boot steps run in parallel (each accesses storage);
@@ -64,22 +74,25 @@ export function AppShell(props: AppShellProps) {
         settingsStore.load(),
         ensureWelcomeContent(),
         navStore.load(),
-        uiStore.load(),
-        libraryPrefs.load(),
+        uiStore.load(() => !disposed),
+        libraryPrefs.load(() => !disposed),
         // Fills the runtime columns of pre-runtime scripts once so the
         // list shows lengths right away. Never blocks the boot.
         api.backfillRuntimeStats().catch((err) => {
           console.warn("[scriptz] runtime backfill skipped", err);
         }),
       ]);
+      if (disposed) return;
       // Retired block types -> action, once, before any editor opens a
       // script (an editor save racing the rewrite could lose an edit).
       await migrateLegacyBlocksOnce().catch((err) => {
         console.warn("[scriptz] legacy block migration skipped", err);
       });
-      markLibraryReady();
+      if (disposed) return;
+      cleanup.push(startIdeasStore(), startDailyStatsStore(), startLibraryData());
       setBootReady(true);
     } catch (err) {
+      if (disposed) return;
       console.error("[scriptz] boot failed", err);
       setBootError(err instanceof Error ? err : new Error(String(err)));
       return;
@@ -88,15 +101,10 @@ export function AppShell(props: AppShellProps) {
     // boot screen.
     try {
       const done = await api.getAppState(ONBOARDING_KEY);
-      if (!done) uiStore.openOnboarding();
+      if (!disposed && !done) uiStore.openOnboarding();
     } catch {
       /* non-blocking */
     }
-  });
-
-  // Writing counter + week line: first stats load after boot.
-  createEffect(() => {
-    if (bootReady()) dailyStatsBus.bump();
   });
 
   // Optional character-registry cleanup (settings > characters). Wired
@@ -142,11 +150,10 @@ export function AppShell(props: AppShellProps) {
           uiStore.clearFocus();
           return;
         }
-        void uiStore.applyFocusForScript(id).then(() => {
-          // A slow app_state read must not apply a stale script's choice.
-          const now = navStore.activeScriptId();
-          if (now && now !== id) void uiStore.applyFocusForScript(now);
-        });
+        // Ignore a late preference from an old route or disposed shell.
+        void uiStore.applyFocusForScript(id, () =>
+          !disposed && navStore.activeScriptId() === id,
+        );
       },
     ),
   );
