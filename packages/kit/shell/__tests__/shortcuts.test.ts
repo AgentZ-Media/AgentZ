@@ -72,8 +72,8 @@ describe("shortcut registry", () => {
     input.remove();
   });
 
-  it("reads definitions dynamically and owns only the two common shell actions", () => {
-    const shell = { openPalette: vi.fn(), openSettings: vi.fn() };
+  it("reads definitions dynamically and owns the common shell actions", () => {
+    const shell = { openPalette: vi.fn(), openSettings: vi.fn(), toggleSidebar: vi.fn() };
     let definitions: ShortcutDef[] = [];
     const registry = createShortcutRegistry(() => definitions);
     registry.handle(key("k"));
@@ -82,8 +82,11 @@ describe("shortcut registry", () => {
     registry.handle(key(","));
     registry.handle(key("k", { altKey: true }));
     registry.handle(key(",", { shiftKey: true }));
+    registry.handle(key("\\"));
+    registry.handle(key("\\", { shiftKey: true }));
     expect(shell.openPalette).toHaveBeenCalledOnce();
     expect(shell.openSettings).toHaveBeenCalledOnce();
-    expect(definitions.map((item) => item.id)).toEqual(["shell.palette", "shell.settings"]);
+    expect(shell.toggleSidebar).toHaveBeenCalledOnce();
+    expect(definitions.map((item) => item.id)).toEqual(["shell.palette", "shell.settings", "shell.sidebar"]);
   });
 });

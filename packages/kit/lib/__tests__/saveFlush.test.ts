@@ -12,9 +12,9 @@ describe("FlushCoordinator", () => {
     coordinator.register(fn, "two");
     unregister();
     unregister();
-    expect(await coordinator.flush()).toEqual({ ok: true, failed: [] });
+    expect(await coordinator.flush()).toEqual({ ok: true, failed: [], contentFailed: [] });
     expect(fn).toHaveBeenCalledOnce();
-    expect(await new FlushCoordinator().flush()).toEqual({ ok: true, failed: [] });
+    expect(await new FlushCoordinator().flush()).toEqual({ ok: true, failed: [], contentFailed: [] });
   });
 
   it("reports synchronous throws, rejected writes and explicit failure results by name", async () => {
@@ -23,7 +23,18 @@ describe("FlushCoordinator", () => {
     coordinator.register(() => Promise.reject(new Error("write failed")), "async");
     coordinator.register(() => ({ ok: false }), "result");
     coordinator.register(() => ({ ok: true }), "saved");
-    expect(await coordinator.flush()).toEqual({ ok: false, failed: ["sync", "async", "result"] });
+    expect(await coordinator.flush()).toEqual({ ok: false, failed: ["sync", "async", "result"], contentFailed: ["sync", "async", "result"] });
+  });
+
+  it("separates failed UI state from failed content and passes the timeout on", async () => {
+    const coordinator = new FlushCoordinator();
+    const timeouts: number[] = [];
+    coordinator.register(() => ({ ok: false }), "layout", "state");
+    coordinator.register((timeoutMs) => { timeouts.push(timeoutMs); return { ok: true }; }, "editor");
+    expect(await coordinator.flush(750)).toEqual({ ok: false, failed: ["layout"], contentFailed: [] });
+    expect(timeouts).toEqual([750]);
+    coordinator.register(() => ({ ok: false }), "title");
+    expect(await coordinator.flush()).toEqual({ ok: false, failed: ["layout", "title"], contentFailed: ["title"] });
   });
 
   it("reports timed-out registrations while allowing late rejection to settle safely", async () => {
@@ -35,10 +46,10 @@ describe("FlushCoordinator", () => {
     const pending = coordinator.flush(50);
     await vi.advanceTimersByTimeAsync(50);
     const result = await pending;
-    expect(result).toEqual({ ok: false, failed: ["slow"] });
+    expect(result).toEqual({ ok: false, failed: ["slow"], contentFailed: ["slow"] });
     reject(new Error("late failure"));
     await Promise.resolve();
-    expect(result).toEqual({ ok: false, failed: ["slow"] });
+    expect(result).toEqual({ ok: false, failed: ["slow"], contentFailed: ["slow"] });
     expect(vi.getTimerCount()).toBe(0);
   });
 
@@ -48,9 +59,9 @@ describe("FlushCoordinator", () => {
     const saver = createSerialSaver({ initial: "stored", read: () => "latest", write });
     saver.markDirty();
     coordinator.register(() => saver.flush(), "draft");
-    expect(await coordinator.flush()).toEqual({ ok: false, failed: ["draft"] });
+    expect(await coordinator.flush()).toEqual({ ok: false, failed: ["draft"], contentFailed: ["draft"] });
     expect(saver.baseline()).toBe("stored");
-    expect(await coordinator.flush()).toEqual({ ok: true, failed: [] });
+    expect(await coordinator.flush()).toEqual({ ok: true, failed: [], contentFailed: [] });
     expect(saver.baseline()).toBe("latest");
     expect(write).toHaveBeenCalledTimes(2);
   });
@@ -76,8 +87,8 @@ describe("FlushCoordinator", () => {
     saver.markDirty();
     const second = coordinator.flush();
     finishFirst();
-    expect(await first).toEqual({ ok: true, failed: [] });
-    expect(await second).toEqual({ ok: true, failed: [] });
+    expect(await first).toEqual({ ok: true, failed: [], contentFailed: [] });
+    expect(await second).toEqual({ ok: true, failed: [], contentFailed: [] });
     expect(stored).toEqual(["first", "second"]);
   });
 });

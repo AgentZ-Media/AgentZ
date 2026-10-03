@@ -36,7 +36,7 @@ export function createStatePersistence(kv: KvStore, key: string, delayMs = 0) {
     if (disposed && result.ok) unregister();
     return result;
   };
-  const unregister = registerFlusher(flush, key);
+  const unregister = registerFlusher(flush, key, "state");
   return {
     schedule(value: string) {
       if (disposed) return;

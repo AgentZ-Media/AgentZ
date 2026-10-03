@@ -30,9 +30,6 @@ catalogs:
     '@tauri-apps/cli':
       specifier: 2.11.0
       version: 2.11.0
-    '@tauri-apps/plugin-clipboard-manager':
-      specifier: 2.3.2
-      version: 2.3.2
     '@tauri-apps/plugin-dialog':
       specifier: 2.7.1
       version: 2.7.1
@@ -54,9 +51,6 @@ catalogs:
     '@tauri-apps/plugin-updater':
       specifier: 2.10.1
       version: 2.10.1
-    '@tauri-apps/plugin-window-state':
-      specifier: 2.4.1
-      version: 2.4.1
     '@types/node':
       specifier: 22.19.19
       version: 22.19.19
@@ -216,9 +210,6 @@ importers:
       '@tauri-apps/api':
         specifier: 'catalog:'
         version: 2.11.0
-      '@tauri-apps/plugin-clipboard-manager':
-        specifier: 'catalog:'
-        version: 2.3.2
       '@tauri-apps/plugin-dialog':
         specifier: 'catalog:'
         version: 2.7.1
@@ -240,9 +231,6 @@ importers:
       '@tauri-apps/plugin-updater':
         specifier: 'catalog:'
         version: 2.10.1
-      '@tauri-apps/plugin-window-state':
-        specifier: 'catalog:'
-        version: 2.4.1
       solid-js:
         specifier: 'catalog:'
         version: 1.9.12
@@ -1753,9 +1741,6 @@ packages:
     engines: {node: '>= 10'}
     hasBin: true
 
-  '@tauri-apps/plugin-clipboard-manager@2.3.2':
-    resolution: {integrity: sha512-CUlb5Hqi2oZbcZf4VUyUH53XWPPdtpw43EUpCza5HWZJwxEoDowFzNUDt1tRUXA8Uq+XPn17Ysfptip33sG4eQ==}
-
   '@tauri-apps/plugin-dialog@2.7.1':
     resolution: {integrity: sha512-OK1UBXYt+ojcmxMktzzuyonYIFta8CmAASpX+CA+DTGK24KlHjhYI6x2iOJ/TjZF4N7/ACK1oFmEOjIY9IhzOQ==}
 
@@ -1776,9 +1761,6 @@ packages:
 
   '@tauri-apps/plugin-updater@2.10.1':
     resolution: {integrity: sha512-NFYMg+tWOZPJdzE/PpFj2qfqwAWwNS3kXrb1tm1gnBJ9mYzZ4WDRrwy8udzWoAnfGCHLuePNLY1WVCNHnh3eRA==}
-
-  '@tauri-apps/plugin-window-state@2.4.1':
-    resolution: {integrity: sha512-OuvdrzyY8Q5Dbzpj+GcrnV1iCeoZbcFdzMjanZMMcAEUNy/6PH5pxZPXpaZLOR7whlzXiuzx0L9EKZbH7zpdRw==}
 
   '@testing-library/dom@10.4.1':
     resolution: {integrity: sha512-o4PXJQidqJl82ckFaXUeoAW+XysPLauYI43Abki5hABd853iMhitooc6znOnczgbTYmEP6U6/y1ZyKAIsvMKGg==}
@@ -4842,10 +4824,6 @@ snapshots:
       '@tauri-apps/cli-win32-ia32-msvc': 2.11.0
       '@tauri-apps/cli-win32-x64-msvc': 2.11.0
 
-  '@tauri-apps/plugin-clipboard-manager@2.3.2':
-    dependencies:
-      '@tauri-apps/api': 2.11.0
-
   '@tauri-apps/plugin-dialog@2.7.1':
     dependencies:
       '@tauri-apps/api': 2.11.0
@@ -4871,10 +4849,6 @@ snapshots:
       '@tauri-apps/api': 2.11.0
 
   '@tauri-apps/plugin-updater@2.10.1':
-    dependencies:
-      '@tauri-apps/api': 2.11.0
-
-  '@tauri-apps/plugin-window-state@2.4.1':
     dependencies:
       '@tauri-apps/api': 2.11.0
 

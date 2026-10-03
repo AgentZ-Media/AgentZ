@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
+import type { FlushResult } from "@agentz/kit/lib";
 import { startDesktopLifecycle, type LifecyclePorts } from "../lib/lifecycle";
 import { createEditingLock } from "../lib/editingLock";
 
@@ -15,6 +16,7 @@ function setup(flush: LifecyclePorts["flush"]) {
     ready: vi.fn(async () => {}), finishExit: vi.fn(async () => {}),
     destroy: vi.fn(async () => {}), flush, lockEditing: lock.acquire,
     editingLocked: lock.locked, openSettings: vi.fn(), failed: vi.fn(),
+    confirmUnsaved: vi.fn(async () => false),
   };
   return { ports, lock, cleanup, close: () => { const preventDefault = vi.fn(); close({ preventDefault }); return preventDefault; }, exit: (id: number) => exit(id), menu: (action: string) => menu(action) };
 }
@@ -22,21 +24,22 @@ const tick = () => new Promise((resolve) => setTimeout(resolve, 0));
 
 describe("native lifecycle", () => {
   it("prevents every duplicate close while one flush is running", async () => {
-    let saved!: (value: { ok: boolean; failed: string[] }) => void;
-    const flush = vi.fn(() => new Promise<{ ok: boolean; failed: string[] }>((resolve) => { saved = resolve; }));
+    let saved!: (value: FlushResult) => void;
+    const flush = vi.fn(() => new Promise<FlushResult>((resolve) => { saved = resolve; }));
     const state = setup(flush);
     const stop = await startDesktopLifecycle(state.ports);
     expect(state.close()).toHaveBeenCalledOnce();
     expect(state.close()).toHaveBeenCalledOnce();
     expect(flush).toHaveBeenCalledOnce();
     expect(state.ports.destroy).not.toHaveBeenCalled();
-    saved({ ok: true, failed: [] }); await tick();
+    saved({ ok: true, failed: [], contentFailed: [] }); await tick();
     expect(state.ports.destroy).toHaveBeenCalledOnce();
-    expect(state.lock.locked()).toBe(false);
+    // The window is gone; nothing may be typed into it any more.
+    expect(state.lock.locked()).toBe(true);
     stop(); expect(state.cleanup).toHaveBeenCalledTimes(3);
   });
   it("keeps failed saves editable, refuses quit, and allows a later retry", async () => {
-    const flush = vi.fn().mockResolvedValueOnce({ ok: false, failed: ["editor"] }).mockResolvedValue({ ok: true, failed: [] });
+    const flush = vi.fn().mockResolvedValueOnce({ ok: false, failed: ["editor"], contentFailed: ["editor"] }).mockResolvedValue({ ok: true, failed: [], contentFailed: [] });
     const state = setup(flush);
     const stop = await startDesktopLifecycle(state.ports);
     state.exit(5); await tick();
@@ -47,18 +50,50 @@ describe("native lifecycle", () => {
     expect(state.ports.finishExit).toHaveBeenCalledWith(6, true);
     stop();
   });
+  it("offers to leave without saving only after a repeated failure", async () => {
+    const failed = { ok: false, failed: ["editor"], contentFailed: ["editor"] };
+    const state = setup(vi.fn(async () => failed));
+    vi.mocked(state.ports.confirmUnsaved).mockResolvedValueOnce(false).mockResolvedValueOnce(true);
+    const stop = await startDesktopLifecycle(state.ports);
+    state.close(); await tick();
+    expect(state.ports.failed).toHaveBeenCalledOnce();
+    expect(state.ports.confirmUnsaved).not.toHaveBeenCalled();
+    state.close(); await tick();
+    expect(state.ports.confirmUnsaved).toHaveBeenCalledWith("close");
+    expect(state.ports.destroy).not.toHaveBeenCalled();
+    expect(state.lock.locked()).toBe(false);
+    state.exit(9); await tick();
+    expect(state.ports.confirmUnsaved).toHaveBeenLastCalledWith("exit");
+    expect(state.ports.finishExit).toHaveBeenCalledWith(9, true);
+    stop();
+  });
+  it("lets a quit that arrives during the unsaved-changes dialog join the decision", async () => {
+    const failed = { ok: false, failed: ["editor"], contentFailed: ["editor"] };
+    const state = setup(vi.fn(async () => failed));
+    let answer!: (value: boolean) => void;
+    vi.mocked(state.ports.confirmUnsaved).mockImplementation(() => new Promise((resolve) => { answer = resolve; }));
+    const stop = await startDesktopLifecycle(state.ports);
+    state.close(); await tick();
+    state.close(); await tick();
+    expect(state.ports.confirmUnsaved).toHaveBeenCalledWith("close");
+    state.exit(11);
+    answer(true); await tick();
+    expect(state.ports.finishExit).toHaveBeenCalledWith(11, true);
+    expect(state.ports.destroy).not.toHaveBeenCalled();
+    stop();
+  });
   it("merges quit during close into the same saved native exit", async () => {
-    let saved!: (value: { ok: boolean; failed: string[] }) => void;
+    let saved!: (value: FlushResult) => void;
     const state = setup(() => new Promise((resolve) => { saved = resolve; }));
     const stop = await startDesktopLifecycle(state.ports);
     state.close(); state.exit(7);
-    saved({ ok: true, failed: [] }); await tick();
+    saved({ ok: true, failed: [], contentFailed: [] }); await tick();
     expect(state.ports.finishExit).toHaveBeenCalledWith(7, true);
     expect(state.ports.destroy).not.toHaveBeenCalled();
     stop();
   });
   it("refuses close/quit during update installation and uses the same Settings controls", async () => {
-    const flush = vi.fn(async () => ({ ok: true, failed: [] }));
+    const flush = vi.fn(async () => ({ ok: true, failed: [], contentFailed: [] }));
     const state = setup(flush);
     const stop = await startDesktopLifecycle(state.ports);
     state.menu("about"); expect(state.ports.openSettings).toHaveBeenCalledWith("about");
@@ -70,7 +105,7 @@ describe("native lifecycle", () => {
     unlock(); stop();
   });
   it("removes a late listener after the host is disposed during registration", async () => {
-    const state = setup(async () => ({ ok: true, failed: [] }));
+    const state = setup(async () => ({ ok: true, failed: [], contentFailed: [] }));
     const controller = new AbortController();
     let finish!: (cleanup: () => void) => void;
     state.ports.listenClose = () => new Promise((resolve) => { finish = resolve; });
@@ -80,7 +115,7 @@ describe("native lifecycle", () => {
     expect(state.ports.ready).not.toHaveBeenCalled();
   });
   it("cleans up earlier listeners if registration fails", async () => {
-    const state = setup(async () => ({ ok: true, failed: [] }));
+    const state = setup(async () => ({ ok: true, failed: [], contentFailed: [] }));
     state.ports.listenMenu = async () => { throw new Error("native unavailable"); };
     await expect(startDesktopLifecycle(state.ports)).rejects.toThrow("native unavailable");
     expect(state.cleanup).toHaveBeenCalledTimes(2);

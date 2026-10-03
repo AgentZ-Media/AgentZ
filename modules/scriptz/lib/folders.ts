@@ -1,16 +1,13 @@
 // Folders + script-to-folder moves.
 //
-// TS port of src-tauri/src/commands/folders.rs (Migration Phase 4).
-// Schema is unchanged: `folders(id, name, created_at, updated_at)` plus the
-// `scripts.folder_id` FK. Deleting a folder relies on `ON DELETE SET NULL`
-// to surface its scripts in "All" rather than cascading the delete.
+// Table `folders(id, name, created_at, updated_at, length_min_sec,
+// length_max_sec)` plus the `scripts.folder_id` FK. Deleting a folder relies
+// on `ON DELETE SET NULL` to surface its scripts in "All" rather than
+// cascading the delete.
 //
-// Caveat (same as Phase 3): tauri-plugin-sql exposes no transaction API in
-// JS, so `moveScripts` issues N independent UPDATEs instead of wrapping
-// them in a transaction. A crash mid-loop leaves a partial move; the user
-// can re-issue the action with no data damage. The original Rust used a
-// transaction here only for atomicity, not for correctness - every UPDATE
-// is independent.
+// tauri-plugin-sql exposes no transaction API in JS, so `moveScripts` issues
+// N independent UPDATEs. A crash mid-loop leaves a partial move; the user
+// can re-issue the action with no data damage - every UPDATE is independent.
 
 import { getDb } from "./db";
 import { validateLengthRange } from "./storage";

@@ -4,6 +4,7 @@ import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { relaunch } from "@tauri-apps/plugin-process";
+import { ask } from "@tauri-apps/plugin-dialog";
 import { SuiteShell, type AppModule } from "@agentz/kit/shell";
 import { createSqlKvStore, setKvStore, setPlatformAdapter, applyPlatformToDocument, setUpdatesStore } from "@agentz/kit/platform";
 import { flushAll } from "@agentz/kit/lib";
@@ -81,6 +82,11 @@ export function bootDesktopApp(options: DesktopAppOptions): DesktopApp {
           if (error) console.warn("[desktop] close flush failed", error);
           pushToast(t("persistence.saveFailed"), "error");
         },
+        confirmUnsaved: (kind) => ask(t("persistence.unsavedBody"), {
+          title: t("persistence.unsavedTitle"), kind: "warning",
+          okLabel: t(kind === "exit" ? "persistence.unsavedQuit" : "persistence.unsavedClose"),
+          cancelLabel: t("common.cancel"),
+        }),
       }, controller.signal);
       if (disposed) { stop(); return; }
       stopLifecycle = stop;

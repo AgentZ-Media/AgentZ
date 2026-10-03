@@ -65,10 +65,11 @@ describe("component persistence contracts", () => {
     const view = render(() => <ScriptScreen scriptId={id()} />);
     const quick = await view.findByRole("button", { name: t("script.toggle.quick.aria") });
     await waitFor(() => expect(quick.getAttribute("aria-pressed")).toBe("false"));
+    // Buffered through the flush coordinator, so the write lands asynchronously.
     fireEvent.click(quick);
-    expect(setAppState).toHaveBeenCalledWith("script.alpha.quick_mode", "1");
+    await waitFor(() => expect(setAppState).toHaveBeenCalledWith("script.alpha.quick_mode", "1"));
     fireEvent.click(quick);
-    expect(state.get("script.alpha.quick_mode")).toBe("0");
+    await waitFor(() => expect(state.get("script.alpha.quick_mode")).toBe("0"));
     setId("beta");
     await waitFor(() => expect(quick.getAttribute("aria-pressed")).toBe("true"));
     expect(getAppState.mock.calls).toEqual([["script.alpha.quick_mode"], ["script.beta.quick_mode"]]);

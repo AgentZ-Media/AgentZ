@@ -57,7 +57,7 @@ pub fn run() {
     ];
 
     agentz_desktop::builder(agentz_desktop::Config {
-        db_url: "sqlite:scriptz.db",
+        id: "scriptz",
         migrations,
     })
     .run(tauri::generate_context!())

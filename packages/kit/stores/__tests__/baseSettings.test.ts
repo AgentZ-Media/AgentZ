@@ -67,7 +67,7 @@ describe("base settings lifetime", () => {
     const next = store(); stops.push(startBaseSettingsRuntime(next));
     await settings.setLanguage("de");
     failing = false;
-    expect(await flushAll()).toEqual({ ok: true, failed: [] });
+    expect(await flushAll()).toEqual({ ok: true, failed: [], contentFailed: [] });
     expect(old.setSetting).toHaveBeenLastCalledWith("theme", "dark");
     expect(next.setSetting).toHaveBeenCalledOnce();
     expect(next.setSetting).toHaveBeenCalledWith("language", "de");
@@ -89,7 +89,7 @@ describe("base settings lifetime", () => {
     const current = createSettingsWriter(kv, "new-runtime");
     stops.push(() => current.dispose());
     await current.write("theme", "light");
-    expect(await flushAll()).toEqual({ ok: true, failed: [] });
+    expect(await flushAll()).toEqual({ ok: true, failed: [], contentFailed: [] });
     expect(values.theme).toBe("light");
     expect(kv.setSetting).toHaveBeenCalledTimes(2);
   });
@@ -102,6 +102,6 @@ describe("base settings lifetime", () => {
     writer.dispose();
     expect((await flushAll(1)).failed).toContain("pending-preference");
     gate.resolve(); await pending;
-    expect(await flushAll()).toEqual({ ok: true, failed: [] });
+    expect(await flushAll()).toEqual({ ok: true, failed: [], contentFailed: [] });
   });
 });

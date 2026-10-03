@@ -42,7 +42,7 @@ export function createShortcutRegistry(
 }
 
 export function createShellShortcuts(
-  shell: Pick<ShellControls, "openPalette" | "openSettings">,
+  shell: Pick<ShellControls, "openPalette" | "openSettings" | "toggleSidebar">,
 ): ShortcutDef[] {
   const group = { id: "app", label: () => t("prefs.shortcuts.group.app") };
   return [
@@ -57,6 +57,12 @@ export function createShellShortcuts(
       keys: ["Mod+,"], contexts: ["shell"],
       matches: (event) => isModKey(event) && !event.shiftKey && !event.altKey && event.key === ",",
       run: () => shell.openSettings(),
+    },
+    {
+      id: "shell.sidebar", label: () => t("prefs.shortcuts.sidebar"), group,
+      keys: ["Mod+\\"], contexts: ["shell"],
+      matches: (event) => isModKey(event) && !event.shiftKey && event.key === "\\",
+      run: () => shell.toggleSidebar(),
     },
   ];
 }

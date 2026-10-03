@@ -1,7 +1,6 @@
 # Feature: Längenziel als Zielbereich (mit Zeitleiste)
 
-> Interne Doku. Stand: 2026-10-03. Status: **umgesetzt** im Redesign „Werkbank" (Branch `redesign-werkbank`).
-> Entstanden im Redesign-Konzept „Werkbank". Visuelle Referenz:
+> Interne Doku. Status: **umgesetzt**. Visuelle Referenz:
 > [`docs/redesign/concept.html`](redesign/concept.html) (Screens
 > Übersicht, Editor, Zeitleiste offen, Fokus, Einstellungen, Dunkel,
 > Bausteine).
@@ -156,27 +155,6 @@ Die drei Zustände als Komponente: `0:38 · 7 s unter dem Bereich`
 Gleiche Logik, Rotstift-Ton `#FF7A66`, Zielbereich als
 `rgba(255,255,255,0.07)`, Hook-Zone als Gelb mit geringerer Deckkraft,
 Spuren auf `--fill`.
-
-## Historische technische Skizze
-
-Die folgende Skizze dokumentiert die ursprüngliche Umsetzung. Die
-Web-App samt IndexedDB-Adapter wurde in Phase 1 des Suite-Umbaus entfernt;
-heute nutzt ScriptZ nur den SQLite-Adapter. Pfade sind auf den aktuellen
-Stand gebracht.
-
-- **Schema (additiv):** `folders.length_min_sec INTEGER NULL` und
-  `folders.length_max_sec INTEGER NULL`. Standard-Bereich als zwei
-  Settings, z. B. `length_min_default_sec` / `length_max_default_sec`
-  (NULL/leer = aus). Validierung: Minimum < Maximum, wenn beide gesetzt.
-- **Beide Storage-Adapter** (SQLite + IndexedDB) erweitern,
-  `StorageAdapter`-Interface in `modules/scriptz/lib/storage.ts` zuerst.
-- **`.scriptz`-Datei:** enthält keine Ordner, also keine Änderung nötig.
-- **Zeitleiste:** braucht pro Block Start/Dauer. Kann live aus dem
-  Lexical-State berechnet werden (gleiche Funktion wie `runtime.ts`,
-  nur pro Block statt als Summe), keine Persistenz nötig.
-- **Token:** neues `--range-fill` im Designsystem (hell
-  `rgba(20,22,27,0.07)`, dunkel `rgba(255,255,255,0.07)`).
-- **i18n:** alle Texte in `de.ts` / `en.ts`.
 
 ## Abgrenzung
 

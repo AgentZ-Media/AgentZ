@@ -148,7 +148,10 @@ export async function buildLogo({ appId, logo = LOGOS[appId], root = repoRoot, o
     throw new Error(`App directory missing: apps/${appId}/src-tauri`);
   }
   mkdirSync(outputAssets, { recursive: true });
-  const title = appId === "suite" ? "AgentZ" : appId === "scriptz" ? "ScriptZ" : appId;
+  // Product name from the app's Tauri config, so SVG titles match the app.
+  const tauriConf = join(desktopDir, "src-tauri/tauri.conf.json");
+  const productName = existsSync(tauriConf) ? JSON.parse(readFileSync(tauriConf, "utf8")).productName : undefined;
+  const title = appId === "suite" ? "AgentZ" : productName || appId;
   const iconSvg = join(outputAssets, `${appId}-app-icon.svg`);
   writeFileSync(join(outputAssets, `${appId}-mark.svg`), markSvg(logo, INK, GRAPHITE, title));
   writeFileSync(join(outputAssets, `${appId}-mark-inverse.svg`), markSvg(logo, CHALK, logo.accent, title));

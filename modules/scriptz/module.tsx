@@ -1,5 +1,4 @@
 import { ErrorBoundary, Show, Suspense, createEffect, on, untrack } from "solid-js";
-import { startRelativeTimeClock } from "@agentz/kit/lib";
 import type { AppModule, ModuleContext, ModuleRuntime } from "@agentz/kit/shell";
 import { api } from "./lib/api";
 import { startCharacterAutoPrune } from "./lib/characterAutoPrune";
@@ -25,7 +24,6 @@ import { library, startLibraryData } from "./components/Shell/libraryData";
 import { getScriptzShortcuts } from "./components/Shell/shortcuts";
 import { scriptzAbout, scriptzModuleSettings } from "./components/Settings/moduleSettings";
 import { createScriptzCommands } from "./components/Palette/commands";
-import "./components/Common/Common.css";
 import "./components/Shell/Shell.css";
 
 /** Plain product description. Stores, timers and storage start only in setup. */
@@ -47,7 +45,6 @@ async function setupScriptz(ctx: ModuleContext): Promise<ModuleRuntime> {
   ctx.onDispose(startSettingsRuntime(ctx.kv));
   ctx.onDispose(startNavRuntime(ctx.kv));
   ctx.onDispose(startUiRuntime(ctx.kv));
-  ctx.onDispose(startRelativeTimeClock());
   ctx.onDispose(startLibraryPrefs(ctx.kv));
   await Promise.all([
     settingsStore.load(), ensureWelcomeContent({ kv: ctx.kv, signal: ctx.signal }), navStore.load(),
@@ -91,6 +88,9 @@ async function setupScriptz(ctx: ModuleContext): Promise<ModuleRuntime> {
     ],
     sidebar: Sidebar,
     sidebarFooter: SidebarFooter,
+    // List headers (PageBar) show the reopen button; the script view uses
+    // Mod+\ and the palette, so the shell adds no button of its own.
+    revealsSidebar: true,
     overlays: [QuickCapture, ExportDialog, StageUndoToast],
     settings: scriptzModuleSettings,
     commands: createScriptzCommands(ctx.shell),

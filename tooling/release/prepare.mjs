@@ -13,7 +13,7 @@ const output = { app_id: meta.app, version: meta.version, tag: meta.tag, dry_run
 if (!dry) {
   const repository = process.env.GITHUB_REPOSITORY;
   const gh = args => execFileSync('gh', [...args, '--repo', repository], { encoding: 'utf8' }).trim();
-  const prerelease = meta.app === 'sandbox' || parseVersion(meta.version).pre.length > 0;
+  const prerelease = parseVersion(meta.version).pre.length > 0;
   const body = join(process.env.RUNNER_TEMP, 'release-body.md');
   writeFileSync(body, renderBody(readFileSync(meta.notesFile, 'utf8'), readFileSync(join(root, 'docs/release-notes/_install_footer.md'), 'utf8'), meta.product));
   // A rerun reuses the release and all successful uploads. Never change or recreate tags.

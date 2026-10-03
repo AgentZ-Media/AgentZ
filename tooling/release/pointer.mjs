@@ -2,7 +2,7 @@ import { mkdtempSync, readFileSync, writeFileSync, copyFileSync, rmSync } from '
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { execFileSync } from 'node:child_process';
-import { parseTag, validateRelease, validateManifest, pointerDecision } from './core.mjs';
+import { parseTag, validateRelease, validateManifest, pointerDecision, compareVersions } from './core.mjs';
 
 const { app, version } = parseTag(process.env.RELEASE_TAG);
 const repository = process.env.GITHUB_REPOSITORY;
@@ -55,8 +55,11 @@ try {
   const reservedVersion = currentRelease?.body?.match(/<!-- agentz-pointer-version: ([^ ]+) -->/)?.[1];
   if (currentRelease && !current && !reservedVersion) throw new Error('Pointer has no manifest or recovery version marker; refusing an unverified rollback');
   const decision = pointerDecision(candidate, current, reservedVersion);
-  if (decision === 'skip') {
-    console.log(`Pointer already has newer version ${current?.version ?? reservedVersion}; leaving it untouched.`);
+  if (decision === 'prerelease') {
+    console.log(`${version} is a pre-release; the stable pointer ${pointer} stays unchanged.`);
+  } else if (decision === 'skip') {
+    const newer = current && reservedVersion && compareVersions(current.version, reservedVersion) < 0 ? reservedVersion : current?.version ?? reservedVersion;
+    console.log(`Pointer already has newer version ${newer}; leaving it untouched.`);
   } else {
     const body = join(dir, 'pointer-body.md');
     writeFileSync(body, `Always the current version of ${meta.product}: **${version}**.\n\n<!-- agentz-pointer-version: ${version} -->\n\n[Release notes](https://github.com/${repository}/releases/tag/${meta.tag})\n`);

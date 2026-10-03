@@ -47,8 +47,7 @@ let stopBase: (() => void) | undefined;
 beforeEach(async () => {
   vi.resetModules();
   db = memory();
-  // Import the facade before installing the fake; this also works before
-  // the old automatic SQL-adapter registration is removed in Phase 4.0.
+  // Import the facade before installing the fake.
   await import("../api");
   const { setTestStorage } = await import("../../test/storage");
   setTestStorage(db.adapter);

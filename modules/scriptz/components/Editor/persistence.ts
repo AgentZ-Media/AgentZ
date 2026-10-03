@@ -121,9 +121,9 @@ export function createPersistence(opts: PersistenceOptions): PersistenceHandle {
         !isContentEffectivelyEmpty(baseline)
       ) {
         console.warn(
-          "[scriptz] persist() abgebrochen: Teardown-Flush mit leerem " +
-            "Editor-State, letzter gespeicherter Stand war nicht leer - " +
-            "vermutlich Unmount-Race. Keine Überschreibung.",
+          "[scriptz] persist() skipped: teardown flush with an empty editor " +
+            "state while the last saved content was not empty - likely an " +
+            "unmount race. Not overwriting.",
         );
         return baseline;
       }

@@ -114,6 +114,9 @@ export interface ModuleRuntime {
   sidebar: Component;
   /** Product footer, after the optional host/update footer slot. */
   sidebarFooter?: Component;
+  /** True when the module renders its own control to reopen a hidden
+   *  sidebar (e.g. in page headers). Otherwise the shell shows one. */
+  revealsSidebar?: boolean;
   overlays?: Component[];
   settings?: ModuleSettings;
   commands?: CommandProvider;

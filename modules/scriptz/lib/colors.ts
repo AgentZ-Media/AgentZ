@@ -9,7 +9,7 @@ export function tint(hex: string, alpha: number): string {
   return `rgba(${r}, ${g}, ${b}, ${alpha})`;
 }
 
-/** Same palette as the Rust DEFAULT_PALETTE in commands/scripts.rs. The
+/** Same palette as `DEFAULT_PALETTE` in ./characterColors.ts. The
  * popover renders these as quick-pick swatches; the writer can also paste
  * a freeform "#rrggbb" into the hex field. */
 export const CHARACTER_PALETTE: string[] = [

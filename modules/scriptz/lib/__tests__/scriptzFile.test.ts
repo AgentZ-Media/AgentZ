@@ -70,7 +70,7 @@ const baseScript = {
 };
 
 describe("scriptzFile - serializeScript", () => {
-  it("setzt format + version + ISO-Datumsfelder", () => {
+  it("sets format, version and ISO date fields", () => {
     const out = serializeScript(baseScript);
     expect(out.format).toBe("scriptz");
     expect(out.version).toBe(SCRIPTZ_VERSION_CURRENT);
@@ -79,27 +79,27 @@ describe("scriptzFile - serializeScript", () => {
     expect(out.script.updatedAt).toBe("2026-05-11T14:30:00.000Z");
   });
 
-  it("parst content_json zu Objekt, nicht doppeltes JSON-String", () => {
+  it("parses content_json into an object, not a double-encoded JSON string", () => {
     const out = serializeScript(baseScript);
     expect(out.script.contentJson).toBeTypeOf("object");
     // root property must be passed through
     expect((out.script.contentJson as { root: unknown }).root).toBeDefined();
   });
 
-  it("ueberlebt malformes content_json mit klarer Fehlermeldung", () => {
+  it("survives malformed content_json with a clear error message", () => {
     expect(() =>
       serializeScript({ ...baseScript, content_json: "{not-json" }),
     ).toThrow(/content_json ist kein gueltiges JSON|content_json ist kein gültiges JSON/);
   });
 
-  it("erhaelt characters inkl. optional share", () => {
+  it("keeps characters including the optional share", () => {
     const out = serializeScript(baseScript);
     expect(out.script.characters).toEqual([
       { name: "MAX", color: "#7aa2f7", share: 1.0 },
     ]);
   });
 
-  it("laesst share weg, wenn nicht gesetzt", () => {
+  it("omits share when it is not set", () => {
     const out = serializeScript({
       ...baseScript,
       characters: [{ name: "MAX", color: "#7aa2f7" }],
@@ -109,7 +109,7 @@ describe("scriptzFile - serializeScript", () => {
 });
 
 describe("scriptzFile - roundtrip", () => {
-  it("serialize -> parseBytes ergibt aequivalentes Objekt", () => {
+  it("serialize -> parseBytes yields an equivalent object", () => {
     const bytes = serializeScriptToBytes(baseScript);
     const parsed = parseScriptzBytes(bytes);
     expect(parsed.format).toBe("scriptz");
@@ -150,17 +150,17 @@ describe("scriptzFile - roundtrip", () => {
   });
 });
 
-describe("scriptzFile - parseScriptzBytes Validierung", () => {
+describe("scriptzFile - parseScriptzBytes validation", () => {
   function asBytes(o: unknown): Uint8Array {
     return new TextEncoder().encode(JSON.stringify(o));
   }
 
-  it("wirft bei kaputtem JSON", () => {
+  it("throws on broken JSON", () => {
     const bytes = new TextEncoder().encode("{not-json");
     expect(() => parseScriptzBytes(bytes)).toThrow(ScriptzParseError);
   });
 
-  it("wirft wenn format-Marker fehlt/falsch", () => {
+  it("throws when the format marker is missing or wrong", () => {
     expect(() => parseScriptzBytes(asBytes({ version: 1, script: {} }))).toThrow(
       /Format-Marker/,
     );
@@ -169,7 +169,7 @@ describe("scriptzFile - parseScriptzBytes Validierung", () => {
     ).toThrow(/Format-Marker/);
   });
 
-  it("wirft bei unbekannter Version", () => {
+  it("throws on an unknown version", () => {
     expect(() =>
       parseScriptzBytes(
         asBytes({ format: "scriptz", version: 2, script: {} }),
@@ -177,13 +177,13 @@ describe("scriptzFile - parseScriptzBytes Validierung", () => {
     ).toThrow(/Version/);
   });
 
-  it("wirft wenn script fehlt", () => {
+  it("throws when script is missing", () => {
     expect(() =>
       parseScriptzBytes(asBytes({ format: "scriptz", version: 1 })),
     ).toThrow(/script/);
   });
 
-  it("wirft bei ungueltigen Charakter-Eintraegen", () => {
+  it("throws on invalid character entries", () => {
     expect(() =>
       parseScriptzBytes(
         asBytes({
@@ -199,7 +199,7 @@ describe("scriptzFile - parseScriptzBytes Validierung", () => {
     ).toThrow(/characters/);
   });
 
-  it("toleriert fehlende Datumsfelder", () => {
+  it("tolerates missing date fields", () => {
     const parsed = parseScriptzBytes(
       asBytes({
         format: "scriptz",
@@ -217,7 +217,7 @@ describe("scriptzFile - parseScriptzBytes Validierung", () => {
 });
 
 describe("scriptzFile - defaultScriptzFilename", () => {
-  it("ersetzt FS-unfreundliche Zeichen", () => {
+  it("replaces file-system-unfriendly characters", () => {
     // Consecutive forbidden characters collapse to a single underscore
     // (regex + flag), that is intentional - otherwise we'd get
     // filenames like "Foo_____bar.scriptz".
@@ -226,12 +226,12 @@ describe("scriptzFile - defaultScriptzFilename", () => {
     );
   });
 
-  it("Default fuer leeren/whitespace-only Titel", () => {
+  it("falls back to a default for empty or whitespace-only titles", () => {
     expect(defaultScriptzFilename("")).toBe(`Unbenannt.${SCRIPTZ_EXTENSION}`);
     expect(defaultScriptzFilename("   ")).toBe(`Unbenannt.${SCRIPTZ_EXTENSION}`);
   });
 
-  it("exportiert sinnvolle Konstanten", () => {
+  it("exports sensible constants", () => {
     expect(SCRIPTZ_EXTENSION).toBe("scriptz");
     expect(SCRIPTZ_MIME).toBe("application/x-scriptz+json");
   });

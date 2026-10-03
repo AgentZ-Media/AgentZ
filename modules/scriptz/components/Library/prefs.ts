@@ -34,6 +34,8 @@ export function startLibraryPrefs(kv = getKvStore()): () => void {
   runtime = current;
   return current.stop;
 }
+/** Loading may start the runtime (setup always does so first). Setters never
+ *  start one: after teardown they must not persist through a stray runtime. */
 function ensureRuntime() {
   if (!runtime) startLibraryPrefs();
   return runtime!;
@@ -60,18 +62,15 @@ export const libraryPrefs = {
   sort,
   collapsed,
   setGrouping(v: Grouping) {
-    ensureRuntime();
     setGroupingSignal(v);
     persist();
   },
   setSort(v: SortKey) {
-    ensureRuntime();
     setSortSignal(v);
     persist();
   },
   isCollapsed: (key: string) => collapsed().has(key),
   toggleCollapsed(key: string) {
-    ensureRuntime();
     const next = new Set(collapsed());
     if (next.has(key)) next.delete(key);
     else next.add(key);

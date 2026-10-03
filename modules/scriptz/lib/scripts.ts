@@ -1,13 +1,9 @@
-// Script CRUD - full module since Migration Phase 7a-d.
-//
-// TS port of src-tauri/src/commands/scripts.rs. Replaces the Rust
-// implementation entirely as of Phase 7d; scripts.rs is gone.
+// Script CRUD.
 //
 // Reconciliation: every content save walks the JSON for character
 // names and picks colours by the override > sticky > default > palette
 // priority, back-filling the app-wide default registry for unseen
-// names. Identical algorithm to what Rust used to run, so existing
-// scripts keep their colour assignments across the migration.
+// names. Existing scripts keep their colour assignments.
 //
 // FK behaviour: tauri-plugin-sql opens connections via sqlx-sqlite,
 // which sets `PRAGMA foreign_keys = ON` by default. DELETEs on

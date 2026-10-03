@@ -1,6 +1,6 @@
 import { For, type JSX } from "solid-js";
 import { baseSettingsStore, type Theme } from "../../stores";
-import { type LanguagePref } from "@agentz/kit/i18n";
+import { type LanguagePref } from "../../i18n";
 import { t } from "../../i18n";
 import { Row, SectionHead, Switch } from "../../ui";
 

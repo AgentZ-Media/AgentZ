@@ -1,24 +1,19 @@
 // App-wide character-colour records.
 //
-// TS port of src-tauri/src/commands/character_colors.rs (Migration Phase 3).
-// Schema is unchanged: `character_colors(name, default_color, override_color,
-// updated_at)`. Updates here also propagate the new colour into every
-// script's `scripts.characters_meta` so the colour swap is visible without a
+// Table `character_colors(name, default_color, override_color, updated_at)`.
+// Updates also propagate the new colour into every script's
+// `scripts.characters_meta` so the colour swap is visible without a
 // reconcile pass.
 //
-// One known gap vs. the Rust version: Rust wrapped the multi-row update in a
-// single transaction. tauri-plugin-sql does not expose explicit transactions
-// in JS, so updates here happen as separate auto-committed statements. A
+// tauri-plugin-sql does not expose explicit transactions in JS, so the
+// multi-row update runs as separate auto-committed statements. A
 // concurrent script save can interleave with a colour swap; the worst case
 // is one or two scripts saving with the previous colour, which the next
 // reconcile fixes anyway. Setters are user-triggered (color picker), so the
 // race window is small in practice.
 //
-// `parseCharsMeta`, `serializeCharsMeta`, `DEFAULT_PALETTE`, and
-// `upsertDefaultColor` mirror helpers that still live in
-// commands/scripts.rs. They are duplicated there on purpose while
-// update_script remains in Rust; Phase 7 retires the rest of the
-// duplicates and this module becomes the single source of truth.
+// `parseCharsMeta`, `serializeCharsMeta`, `DEFAULT_PALETTE` and
+// `upsertDefaultColor` are the single source of truth for character colours.
 
 import { isValidHexColor, normalizeHexColor } from "./colors";
 import { getDb } from "./db";
@@ -96,7 +91,7 @@ export async function loadColorRecords(): Promise<Map<string, ColorRecord>> {
 
 /** Upsert a `default_color` for `name`. Existing default is preserved
  *  (the very first auto-assigned colour wins forever); override is left
- *  alone. Mirrors the SQL Rust uses in commands/scripts.rs.
+ *  alone.
  *
  *  Validates the color shape - same rationale as `setCharacterColor`:
  *  the persistence layer should never store a value that the renderer

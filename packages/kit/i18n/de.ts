@@ -14,6 +14,10 @@ export const kitDe = {
   "shell.update.title.error": "Update fehlgeschlagen - erneut versuchen",
 
   "persistence.saveFailed": "Änderungen konnten nicht vollständig gespeichert werden. Bitte versuche es erneut.",
+  "persistence.unsavedTitle": "Änderungen nicht gespeichert",
+  "persistence.unsavedBody": "Deine letzten Änderungen konnten wiederholt nicht gespeichert werden. Wenn du trotzdem fortfährst, gehen sie verloren.",
+  "persistence.unsavedClose": "Trotzdem schließen",
+  "persistence.unsavedQuit": "Trotzdem beenden",
   "common.cancel": "Abbrechen",
   "common.save": "Speichern",
   "common.delete": "Löschen",

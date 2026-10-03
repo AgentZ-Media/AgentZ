@@ -76,9 +76,15 @@ export function startUiRuntime(kv = getKvStore()): () => void {
   runtime = current;
   return current.stop;
 }
+/** Reads may start the runtime (setup always does so first). */
 function ensureRuntime(): UiRuntime {
   if (!runtime) startUiRuntime();
   return runtime!;
+}
+/** Writes never start a runtime: after teardown they stay in memory instead
+ *  of persisting defaults through a runtime that is never stopped. */
+function activeRuntime(): UiRuntime | undefined {
+  return runtime?.active ? runtime : undefined;
 }
 
 export const uiStore = {
@@ -87,19 +93,15 @@ export const uiStore = {
   inspectorOpen,
   timelineOpen,
   toggleSidebar() {
-    ensureRuntime();
     shellUi.toggleSidebar();
   },
   toggleInspector() {
-    ensureRuntime();
     layout.update({ inspector: !inspectorOpen() });
   },
   toggleTimeline() {
-    ensureRuntime();
     layout.update({ timeline: !timelineOpen() });
   },
   setTimelineOpen(v: boolean) {
-    ensureRuntime();
     layout.update({ timeline: v });
   },
 
@@ -130,11 +132,11 @@ export const uiStore = {
   },
   /** ⌘⇧F. Remembers the choice for this script. */
   toggleFocus(scriptId: string | null) {
-    const current = ensureRuntime();
+    const current = activeRuntime();
     const next = !focusMode();
     setFocusMode(next);
-    if (scriptId) {
-      focusOverride.set(scriptId, next);
+    if (scriptId) focusOverride.set(scriptId, next);
+    if (scriptId && current) {
       const key = FOCUS_KEY(scriptId);
       let write = current.focusWrites.get(key);
       if (!write) { write = createStatePersistence(current.kv, key); current.focusWrites.set(key, write); }

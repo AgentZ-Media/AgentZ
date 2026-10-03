@@ -10,124 +10,66 @@ paths:
   - ".github/workflows/release.yml"
 ---
 
-# Desktop-Releases der AgentZ Suite
+# Releases
 
-Jede Desktop-App hat eigene Tags `<app-id>-v<semver>` und einen eigenen
-Update-Kanal. Historische `v0.x.y`-Tags bleiben unverändert. Kein App-Release
-wird zum repositoryweiten GitHub-„Latest“. Der bestehende Updater-Schlüssel
-wird gemeinsam verwendet; niemals ausgeben oder committen. Den privaten
-Schlüssel unabhängig vom Repository sichern.
+Jede App hat Tags `<app-id>-v<semver>` und einen eigenen Update-Kanal, den
+Zeiger-Release `<app-id>-latest`. Kein App-Release wird GitHubs „Latest"
+(dort steht historisch noch `v0.8.4`). Alle Apps teilen den Updater-Schlüssel
+(GitHub-Secrets `TAURI_SIGNING_PRIVATE_KEY`, optional `..._PASSWORD`); nie
+ausgeben oder committen, außerhalb des Repos gesichert halten.
 
 ## Checkliste
 
-1. App-Datenbank über die SQLite-Backup-API sichern; vor Speichermigrationen
-   wichtige Dokumente exportieren. Wiederherstellung und Migration lokal prüfen.
-2. `pnpm release:bump <app> <version>` aktualisiert App-`package.json`,
-   `src-tauri/tauri.conf.json`, `[package].version` in `Cargo.toml` und das
-   Root-`Cargo.lock`. Das Skript führt ein gezieltes Offline-Cargo-Update aus
-   und stellt bei Fehler alle vier Originaldateien wieder her. Abhängigkeiten
-   müssen bereits im Cargo-Cache liegen; bei Bedarf zuerst nachladen und dann
-   erneut starten. Diff prüfen.
-3. `docs/release-notes/<app>/v<version>.md` auf Englisch vervollständigen.
-   Sichtbare Änderungen, Fehlerbehebungen und Update-Hinweise beschreiben.
-   Den Install-Footer nicht kopieren: Der Workflow hängt ihn an und ersetzt
-   `{{PRODUCT_NAME}}` durch den Produktnamen aus den Tauri-Metadaten.
-4. Pflichtprüfungen und Desktop-Abnahme ausführen, Versions-/Notes-PR prüfen
-   und mergen.
-5. Den gemergten Commit taggen, zum Beispiel
-   `git tag -a scriptz-v0.9.0 -m 'ScriptZ v0.9.0'`, dann den Tag pushen.
-6. Beide Plattform-Builds, Updater-Signaturen, versionierte Release-Artefakte
-   und die drei ohne Anmeldung erreichbaren Zeiger-URLs prüfen. Ein echtes
-   Update durchführen.
+1. Bei Speicher- oder Migrationsänderungen vorher die DB sichern (siehe
+   `apps/<app>/CLAUDE.md`).
+2. `pnpm release:bump <app> <version>`: setzt App-`package.json`,
+   `tauri.conf.json`, `Cargo.toml` und Root-`Cargo.lock` (Offline-Cargo-Update,
+   bei Fehler alles zurück) und legt `docs/release-notes/<app>/v<version>.md`
+   als Vorlage an. Für den allerersten Release (Version unverändert `0.1.0`)
+   nur die Notes-Datei anlegen.
+3. Notes auf Englisch ausfüllen, Platzhalterzeile ersetzen (der Workflow
+   bricht sonst ab). Den Install-Footer nicht kopieren, der Workflow hängt
+   `_install_footer.md` mit dem Produktnamen an.
+4. Prüfungen, PR, Merge. Dann den gemergten Commit taggen:
+   `git tag -a scriptz-v0.9.2 -m 'ScriptZ v0.9.2' && git push origin scriptz-v0.9.2`.
+5. Danach prüfen: beide Plattformen im versionierten Release, Signaturen,
+   die drei Zeiger-URLs ohne Login, ein echtes Update einer installierten
+   Vorversion.
 
-`pnpm install --frozen-lockfile` schützt nur das JavaScript-Lockfile.
-Release-Cargo-Builds verwenden `--locked`. Alle Apps teilen Root-`target/`;
-explizite Targets erzeugen `target/<target>/release/bundle/`. Nicht unter
-App-`src-tauri/target` suchen. Tauri-JS- und Rust-Versionen gemeinsam ändern.
+## Workflow
 
-## Workflow und Wiederaufnahme
+- `prepare` validiert ID, SemVer, die vier Versionsangaben und die Notes,
+  legt den Release mit `--latest=false` an und reicht die numerische
+  `releaseId` an `tauri-action` weiter. SemVer-Pre-Releases
+  (`1.0.0-rc.1`) werden als GitHub-Pre-Release veröffentlicht und bewegen
+  den Zeiger **nicht**; Nutzer und Website bleiben auf der stabilen Version.
+- macOS baut vor Windows, weil `tauri-action` `latest.json` zusammenführt.
+  Jeder Plattform-Job überspringt bereits vollständige Plattformen, damit
+  ein Rerun keine signierten Dateien ersetzt. Cargo läuft mit `--locked`,
+  Bundles liegen unter `target/<triple>/release/bundle/`.
+- `publish-pointer` (Concurrency-Gruppe `pointer-<app>`) kopiert
+  `<app>-macos-arm64.dmg`, `<app>-windows-x64-setup.exe` und zuletzt
+  `latest.json` in `<app>-latest` (veröffentlichter Pre-Release, nie
+  „Latest"). Er geht nur auf neuere Versionen, repariert bei identischem
+  Manifest abgebrochene Uploads und reserviert die Version per Marker im
+  Release-Text. Den Marker nie entfernen.
+- Laufen mehrere Releases derselben App kurz nacheinander, kann GitHub einen
+  wartenden Zeiger-Job abbrechen. Dann den Job der **neuesten** Version erneut
+  starten.
+- Fehler beheben und Jobs erneut ausführen. Nie Tags löschen oder neu setzen,
+  nie veröffentlichte Versions-Assets ersetzen, nie Release-Immutability
+  aktivieren (der Zeiger muss veränderbar bleiben).
 
-`prepare` prüft App-ID, striktes SemVer, alle vier Versionsangaben und
-nicht leere Release-Notes. Es veröffentlicht einen Release mit
-`--latest=false` und übergibt dessen numerische REST-`releaseId` an
-`tauri-action@v0`. Sandbox- und SemVer-Pre-Release-Tags erzeugen veröffentlichte
-Pre-Releases. Vorhandene Releases werden bei Wiederholung weiterverwendet.
+`gh workflow run release.yml --ref main -f app=<app>` ist immer ein
+Probelauf: baut beide Installer ohne Signatur und veröffentlicht nichts.
 
-macOS (`macos-26`, `aarch64-apple-darwin`) baut zuerst, danach Windows
-(`windows-latest`, `x86_64-pc-windows-msvc`, NSIS). Diese Reihenfolge ist
-nötig, weil tauri-action `latest.json` zusammenführt. Jeder Plattform-Job
-prüft seinen bisherigen Manifest-Eintrag und seine Assets **unmittelbar vor
-dem Build**, auch bei „rerun failed jobs“. Vollständige Plattformen werden
-übersprungen: Neue Builds und ersetzte signierte Binärdateien würden bereits
-verwendete Signaturen ungültig machen.
+## Installation
 
-Der serialisierte Job `pointer-<app-id>` veröffentlicht `<app-id>-latest`,
-immer als veröffentlichten Pre-Release, niemals als „Latest“. Er prüft beide
-Plattform-Signaturen und versionsgebundene Download-URLs. Anschließend kopiert
-er Installer unter stabilen Namen:
+Updater-Endpoint: `https://github.com/AgentZ-Media/AgentZ/releases/download/<app>-latest/latest.json`.
+Die Apps sind nicht notarisiert bzw. codesigniert: macOS braucht beim ersten
+Start `xattr -cr "/Applications/<Produkt>.app"`, Windows zeigt SmartScreen.
+Der Install-Footer erklärt beides. ScriptZ 0.8.4 und älter nutzen noch den
+alten Kanal und brauchen einmal den aktuellen Installer aus `scriptz-latest`.
 
-- `<app-id>-macos-arm64.dmg`
-- `<app-id>-windows-x64-setup.exe`
-- `latest.json` mit unveränderten URLs zum versionierten Release
-
-Der Zeiger steigt nur auf neuere SemVer-Versionen. Ein identisches Manifest
-der gleichen Version darf zur Upload-Reparatur erneut veröffentlicht werden;
-ein abweichendes Manifest derselben Version wird abgewiesen. Vor dem
-Asset-Austausch wird ein Versionsmarker im Zeiger-Release-Text reserviert.
-So bleibt ein Rücksprung auch dann gesperrt, wenn ein fehlgeschlagener
-`--clobber`-Upload die bisherige `latest.json` vorübergehend gelöscht hat.
-Diesen Marker niemals entfernen.
-
-Installer werden zuerst hochgeladen, das Manifest zuletzt. Der GitHub-
-Asset-Austausch ist nicht atomar; nach fehlgeschlagenem Upload kann ein Asset
-fehlen. Fehlgeschlagene Jobs erneut ausführen. Bis zur Wiederherstellung kann
-der Versionsmarker dem Manifest voraus sein; die neueste Version erneut
-starten, keine ältere. Keine Tags löschen/neu erstellen, veröffentlichte
-Versions-Assets ersetzen oder GitHub-Release-Immutability aktivieren: Die
-Zeiger müssen veränderbar bleiben. Ein abweichendes Manifest derselben
-Version untersuchen, statt die Prüfung zu umgehen.
-
-Bei Berechtigungsfehlern `contents: write`, Repository-Actions-Einstellungen
-und Organisationsregeln prüfen. Die Ursache korrigieren und erneut starten;
-keinen veröffentlichten Tag nur für einen neuen Versuch löschen. Während der
-Builds kann ein versionierter Release zeitweise nur eine Plattform enthalten;
-der Zeiger bleibt unverändert.
-
-## Build-Probelauf ohne Veröffentlichung
-
-`gh workflow run release.yml --ref main -f app=scriptz` ausführen
-(oder Actions → Release → Run workflow). **Jeder `workflow_dispatch` ist
-ein Probelauf ohne Veröffentlichung.** Er prüft Versionen und baut macOS-
-und Windows-Installer mit deaktivierten Updater-Artefakten. Er nutzt keine
-Signing-Secrets, erstellt keine Tags/Releases, veröffentlicht keine Manifeste
-und ändert keine Versionsdateien. Bundles bleiben sieben Tage als
-Workflow-Artefakte erhalten. Dies prüft die Paketierung, nicht Signierung
-oder den echten Update-Zyklus.
-
-## Installation und Updates
-
-Updater-Endpoint:
-`https://github.com/AgentZ-Media/AgentZ/releases/download/<app-id>-latest/latest.json`.
-Der Desktop-Host prüft und lädt Updates, sichert ausstehende Änderungen vor
-der Installation und startet über Tauri-Plugins neu. Die Laufzeitversion
-kommt aus Tauri-`getVersion()`, nicht aus einer zweiten Frontend-Konstante.
-Der öffentliche Prüfschlüssel steht in der Tauri-Konfiguration jeder App;
-`TAURI_SIGNING_PRIVATE_KEY` und optional
-`TAURI_SIGNING_PRIVATE_KEY_PASSWORD` bleiben ausschließlich GitHub-Secrets
-beziehungsweise lokal geschütztes Signiermaterial.
-
-Bei der ersten unsignierten macOS-Installation gilt der dokumentierte
-Gatekeeper-Schritt `xattr -cr "/Applications/<Produkt>.app"`. Windows kann
-SmartScreen anzeigen; der Install-Footer erklärt „Weitere Informationen“ →
-„Trotzdem ausführen“. Die Updater-Artefakte sind signiert, die Apps jedoch
-nicht Apple-notarisiert oder mit Windows-Codesign signiert.
-
-ScriptZ 0.8.4 nutzt weiterhin den alten repositoryweiten Kanal. Einmal 0.9.0
-manuell aus `scriptz-latest` installieren, danach den echten Update-Zyklus
-0.9.0 → 0.9.1 prüfen. ScriptZ-Bundle-Identifier, Datenbankname und öffentlichen
-Updater-Schlüssel nicht ändern.
-
-Auf einem neuen Windows-Rechner: Node 24, pnpm passend zum Root-
-`packageManager`, Rust Stable MSVC, Visual Studio Build Tools mit Desktop-C++,
-Windows SDK und WebView2. Installation im normalen Benutzerterminal ausführen.
-Das NSIS-Paket enthält den WebView2-Download-Bootstrapper als Fallback.
+Neuer Windows-Rechner: Node 24, pnpm laut `packageManager`, Rust Stable MSVC,
+Visual Studio Build Tools (Desktop-C++, Windows SDK), WebView2.
