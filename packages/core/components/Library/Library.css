@@ -88,8 +88,11 @@
 .lib-scroll.has-selbar {
   padding-bottom: 72px;
 }
+/* Content column: capped and centered in the main area, so very wide
+   windows don't leave all the empty space on the right. */
 .lib {
   max-width: 1180px;
+  margin: 0 auto;
   padding: 26px 32px 40px;
 }
 .lib-head {

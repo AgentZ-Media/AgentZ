@@ -26,7 +26,9 @@ function findScriptzAncestor(node: LexicalNode | null): BaseScriptzNode | null {
 }
 
 /** Inline formatting: ⌘B (bold) and ⌘U (underline) in Action and Dialog
- *  blocks. Italic is not available in ScriptZ at all:
+ *  blocks (Character and Parenthetical stay unformatted - the
+ *  parenthetical is already set in italics by CSS). Italic is not
+ *  available in ScriptZ at all:
  *
  *  - ⌘I / Ctrl+I belongs to the global idea quick-capture. The shell's
  *    listener sits on `window` in the bubble phase, i.e. it runs AFTER

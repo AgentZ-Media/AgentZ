@@ -61,8 +61,8 @@ export function SnapshotsDialog(props: SnapshotsDialogProps) {
   const previewText = createMemo(() => {
     const snap = selectedSnap.latest;
     if (!snap) return "";
-    // Old snapshots may hold retired block types - preview them as they
-    // would be restored (parentheticals wrapped in "( … )").
+    // Old snapshots may hold retired block types (camera, caption, sfx) -
+    // preview them as they would be restored (as action).
     return extractPreview(normalizeLegacyContent(snap.content_json).json);
   });
 

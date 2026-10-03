@@ -16,6 +16,7 @@ import {
   $createScriptzActionNode,
   $createScriptzCharacterNode,
   $createScriptzDialogNode,
+  $createScriptzParentheticalNode,
 } from "../nodes";
 import type { BlockType } from "../../../lib/types";
 import { K } from "../../../lib/keys";
@@ -39,6 +40,8 @@ function createBlockOfType(type: BlockType): BaseScriptzNode {
       return $createScriptzCharacterNode();
     case "scriptz-dialog":
       return $createScriptzDialogNode();
+    case "scriptz-parenthetical":
+      return $createScriptzParentheticalNode();
   }
 }
 

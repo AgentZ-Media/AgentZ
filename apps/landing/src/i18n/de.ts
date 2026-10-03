@@ -165,15 +165,17 @@ export const de = {
   // ===================== Tab: WARUM =====================
   "warum.caption": "INT. SCRIPTZ - SKRIPTEDITOR FÜR TIKTOK, REELS UND YOUTUBE SHORTS",
   "warum.action1":
-    "Eine leere Seite. Cursor blinkt. Du tippst und das Format passiert von allein. Drei Blocktypen, mehr nicht: Action, Charakter, Dialog. Charakter-Name? Automatisch zentriert und in Versalien. Tab? Block-Picker. Enter? Nächste Zeile - meistens schon im richtigen Block.",
+    "Eine leere Seite. Cursor blinkt. Du tippst und das Format passiert von allein. Vier Blocktypen, mehr nicht: Action, Charakter, Dialog, Parenthetical. Eine Klammer im Dialog? Wird zur Regieanweisung. Charakter-Name? Automatisch zentriert und in Versalien. Tab? Block-Picker. Enter? Nächste Zeile - meistens schon im richtigen Block.",
   "warum.action2":
     "ScriptZ ist für Content Creator gebaut, nicht für Drehbuchautoren. Du willst kein 90-Minuten-Spielfilm-Layout. Du willst ein TikTok-Skript um halb drei fertig haben, bevor das gute Licht weg ist.",
+  "warum.timo1.paren": "(direkt)",
   "warum.timo1.dialog":
-    "(direkt) Du tippst, der Editor formatiert. Charaktere werden automatisch erkannt, kriegen eine Farbe und ihren Anteil an der Sprechzeit. Du musst nichts anlegen. Du musst nichts klicken. Du musst nur schreiben.",
+    "Du tippst, der Editor formatiert. Charaktere werden automatisch erkannt, kriegen eine Farbe und ihren Anteil an der Sprechzeit. Du musst nichts anlegen. Du musst nichts klicken. Du musst nur schreiben.",
   "warum.axel1.dialog": "Das klingt nach jedem Tool seit 2015.",
   "warum.timo2.dialog":
     "Probier's. Mach ein Skript, schreib zwei Sprecher. Dann drück Enter. Du wirst sehen, dass der Cursor schon im richtigen Block landet, mit dem richtigen Sprecher davor. Das ist der Quickmodus. Genau das spart dir pro Wechsel zwei Tastendrücke - und bei einem 60-Sekunden-Reel mit 12 Wechseln spart das eine Minute.",
-  "warum.axel2.dialog": "(neugierig) Und KI? Macht sie mir vor, was ich sagen soll?",
+  "warum.axel2.paren": "(neugierig)",
+  "warum.axel2.dialog": "Und KI? Macht sie mir vor, was ich sagen soll?",
   "warum.timo3.dialog":
     "Nein. Bewusst nicht. Kreativität ist dein Job. Wenn du wolltest, dass ein Modell für dich schreibt, hättest du ChatGPT auf.",
   "warum.axel3.dialog": "Und woher weiß ich, ob mein Reel zu lang wird?",
@@ -224,8 +226,9 @@ export const de = {
   "noai.caption": "INT. KEIN-KI-MANIFEST - SKRIPTEDITOR OHNE KI",
   "noai.action1":
     "ScriptZ hat keine KI eingebaut. Kein Chatfenster, kein „schreib mir ein Skript\", kein automatisches Umformulieren, keine Vorschläge, keine Auto-Vervollständigung jenseits der Charakter-Namen aus deinem eigenen Skript. Bewusst nicht.",
+  "noai.axel1.paren": "(skeptisch)",
   "noai.axel1.dialog":
-    "(skeptisch) Alle anderen Tools haben KI. Du verkaufst „keine KI\" als Feature?",
+    "Alle anderen Tools haben KI. Du verkaufst „keine KI\" als Feature?",
   "noai.timo1.dialog":
     "Ja. Weil deine Stimme dein Produkt ist. Wenn ein Modell dir die Hälfte des Skripts schreibt, ist die Hälfte der Stimme das Modell.",
   "noai.axel2.dialog": "Manchmal hängt man halt fest.",
@@ -240,7 +243,7 @@ export const de = {
   "noai.card3.body": "Dein Skript ist nicht kaputt. Es braucht keine Verbesserung von außen.",
   "noai.card4.title": "Stattdessen: schneller Editor",
   "noai.card4.body":
-    "Quickmodus, Charakter-Auto-Erkennung, drei Block-Hotkeys, Zeitleiste. Tools, die deine Idee aus deinem Kopf auf die Seite tragen - ohne sie umzuschreiben.",
+    "Quickmodus, Charakter-Auto-Erkennung, vier Block-Hotkeys, Zeitleiste. Tools, die deine Idee aus deinem Kopf auf die Seite tragen - ohne sie umzuschreiben.",
 
   // ===================== Tab: VERGLEICH =====================
   "cmp.caption": "EXT. VERGLEICH - SCRIPTZ VS. FINAL DRAFT, NOTION, CHATGPT",

@@ -38,11 +38,18 @@ export interface LiveEditorModel {
 function kindOf(type: string): TimingBlock["kind"] {
   if (type === "scriptz-character") return "character";
   if (type === "scriptz-dialog") return "dialog";
+  if (type === "scriptz-parenthetical") return "paren";
   return "action";
 }
 
 function asBlockType(type: string): BlockType {
-  if (type === "scriptz-character" || type === "scriptz-dialog") return type;
+  if (
+    type === "scriptz-character" ||
+    type === "scriptz-dialog" ||
+    type === "scriptz-parenthetical"
+  ) {
+    return type;
+  }
   return "scriptz-action";
 }
 

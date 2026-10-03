@@ -27,7 +27,8 @@ export interface CastEntry {
 }
 
 export interface LiveStats {
-  /** Words across all blocks (action, character names, dialog). */
+  /** Words across all blocks (action, character names, dialog,
+   *  parentheticals). */
   words: number;
   /** Words in dialog blocks only. */
   dialogWords: number;
@@ -44,7 +45,8 @@ export interface LiveStats {
 /** Aggregates everything the inspector and focus pill show. Speaker
  *  attribution matches lib/lex.ts::dialogWordsByCharacter: a dialog line
  *  belongs to the most recent character block above it, also across
- *  action blocks. */
+ *  action and parenthetical blocks. Parentheticals count towards `words`
+ *  only - like lib/runtime.ts they add neither dialog words nor a beat. */
 export function liveStats(blocks: TimingBlock[], wpm: number): LiveStats {
   let words = 0;
   let dialogWords = 0;
@@ -67,6 +69,7 @@ export function liveStats(blocks: TimingBlock[], wpm: number): LiveStats {
       actionBlocks += 1;
       continue;
     }
+    if (b.kind === "paren") continue;
     if (w === 0) continue;
     dialogWords += w;
     if (current) byName.set(current, (byName.get(current) ?? 0) + w);

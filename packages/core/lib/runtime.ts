@@ -1,7 +1,8 @@
 // Runtime estimate - one source for the editor rail and the browser overview.
 //
 // Previously there were two places that calculated differently:
-// the rail summed only dialog words and added 2s per action block; the overview divided the TOTAL word count (incl. character names,
+// the rail summed only dialog words and added 2s per action block; the
+// overview divided the TOTAL word count (incl. character names,
 // parentheticals, captions, SFX) by the same WPM and therefore
 // systematically overestimated the runtime. This file defines the formula
 // once, scripts.ts persists the two input values on save, and
@@ -19,8 +20,9 @@ export interface RuntimeStats {
   /** Words in dialog blocks. Only these are computed against dialog WPM. */
   dialogWords: number;
   /** Action blocks. Each block contributes a short beat. Retired camera /
-   *  caption / sfx / parenthetical blocks count as action since the
-   *  block-type reduction (lex.ts normalizes them before extraction). */
+   *  caption / sfx blocks count as action (lex.ts normalizes them before
+   *  extraction). Character and parenthetical blocks contribute nothing:
+   *  a delivery cue like "(leise)" is not spoken and takes no extra beat. */
   directionBlocks: number;
 }
 

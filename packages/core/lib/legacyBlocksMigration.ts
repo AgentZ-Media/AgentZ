@@ -1,6 +1,6 @@
 // One-time boot migration: rewrite stored scripts that still contain the
-// retired block types (parenthetical, camera, caption, sfx) as action
-// blocks (see ./legacyBlocks.ts).
+// retired block types (camera, caption, sfx) as action blocks (see
+// ./legacyBlocks.ts). Parenthetical is a live block type and stays as is.
 //
 // Runs through the `api` facade, so it works for every storage adapter
 // (SQLite on desktop, Dexie on web). Content is only rewritten when the
@@ -81,8 +81,8 @@ async function run(): Promise<void> {
     }
   }
 
-  // Runtime stats changed (former camera/caption/sfx/parenthetical blocks
-  // now count as action beats) - let open lists refresh.
+  // Runtime stats changed (former camera/caption/sfx blocks now count as
+  // action beats) - let open lists refresh.
   if (converted > 0) scriptsBus.bump();
 
   if (failures === 0) {

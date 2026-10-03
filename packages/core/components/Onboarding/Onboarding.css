@@ -199,6 +199,11 @@
 .onb-sheet .b.dia {
   margin: 0 12%;
 }
+.onb-sheet .b.par {
+  margin: 0 18%;
+  font-style: italic;
+  color: var(--paper-muted);
+}
 .onb-sheet .m {
   padding: 1px 4px;
   border-radius: 3px;
@@ -227,13 +232,14 @@
 /* Step 2 demo: rows appear one after another. */
 .dl {
   display: grid;
-  grid-template-columns: 74px minmax(0, 1fr) 18px;
+  grid-template-columns: 96px minmax(0, 1fr) 18px;
   align-items: center;
   gap: 8px;
   padding: 7px 0;
   border-bottom: 1px dashed var(--paper-line);
 }
-.dl .b.dia {
+.dl .b.dia,
+.dl .b.par {
   margin: 0;
 }
 .dl .tag {

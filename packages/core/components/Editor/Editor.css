@@ -4,10 +4,11 @@
    The paper interior. Widths key off `--paper-content-w` (core tokens).
    Font: iA Writer Quattro (`--type`) for everything that is script text.
 
-   Three block types (Werkbank redesign):
-     ACTION       full width
-     CHARACTER    centered, weight 700, uppercase (CSS-only)
-     DIALOG       indented ~16% from both sides
+   Four block types:
+     ACTION         full width
+     CHARACTER      centered, weight 700, uppercase (CSS-only)
+     DIALOG         indented ~16% from both sides
+     PARENTHETICAL  indented ~22% from both sides, italic, muted
 
    Popovers (character autocomplete, block picker, colour picker) follow
    the concept's `.ac` / `.menu` look. Design tokens only; character
@@ -67,7 +68,9 @@
 }
 
 /* Paragraph rhythm - subtle clusters between groups */
-.editor-root .block-scriptz-character + .block-scriptz-dialog {
+.editor-root .block-scriptz-character + .block-scriptz-dialog,
+.editor-root .block-scriptz-parenthetical + .block-scriptz-dialog,
+.editor-root .block-scriptz-character + .block-scriptz-parenthetical {
   margin-top: 0;
 }
 .editor-root .block-scriptz-action + .block-scriptz-character,
@@ -100,16 +103,28 @@
   text-align: left;
 }
 
+/* ---- Parenthetical ---------------------------------------------------
+   Delivery cue under the character name ("(leise)"). Typed live with "("
+   inside a dialog line (plugins/parentheticalLive.ts). */
+.editor-root .block-scriptz-parenthetical {
+  margin-left: 22%;
+  margin-right: 22%;
+  font-style: italic;
+  color: var(--paper-muted);
+  text-align: left;
+}
+
 /* ---------------------------------------------------------------------- */
-/* Highlighting (concept `.m`): per-line pills that hug the text. Dialog
-   and character nodes wrap their children in one inline
+/* Highlighting (concept `.m`): per-line pills that hug the text. Dialog,
+   character and parenthetical nodes wrap their children in one inline
    `<span class="tint-host">` (BaseScriptzNode.hasTintHost), so background,
    padding, radius and box-decoration-break apply to a single host that
    holds plain text and inline bold/underline runs alike - one continuous
    pill per visual line. `--char-tint` is the character colour mixed onto
    the paper at 28 % (plugins/highlight.ts, same formula as the PDF). */
 .editor-root[data-highlighting="on"] .block-scriptz-character .tint-host,
-.editor-root[data-highlighting="on"] .block-scriptz-dialog .tint-host {
+.editor-root[data-highlighting="on"] .block-scriptz-dialog .tint-host,
+.editor-root[data-highlighting="on"] .block-scriptz-parenthetical .tint-host {
   background: var(--char-tint, var(--paper-tint));
   box-decoration-break: clone;
   -webkit-box-decoration-break: clone;

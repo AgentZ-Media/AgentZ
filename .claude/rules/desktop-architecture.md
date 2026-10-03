@@ -43,8 +43,9 @@ apps/desktop/
       007_werkbank.sql     Additive: scripts.status (TEXT NOT NULL
                            DEFAULT 'writing') + status_changed_at +
                            idx_scripts_status, folders.length_min_sec /
-                           length_max_sec. The 3-block-type reduction is
-                           deliberately NOT SQL (see "Legacy-Blöcke").
+                           length_max_sec. The retirement of Kamera/
+                           Caption/SFX is deliberately NOT SQL (see
+                           "Legacy-Blöcke").
     capabilities/default.json, tauri.conf.json, Cargo.toml
   src/
     index.tsx              Registers PlatformAdapter + updates store
@@ -127,19 +128,25 @@ packages/core/
                            flush on teardown.
       activeBlockReporter, canvasFocus, characterReconcile, predict.ts,
       ColorPickerPopover, SnapshotsDialog, PaperLayout.css.
-      nodes/               3 ElementNode subclasses
+      nodes/               4 ElementNode subclasses
         BaseScriptzNode    shared base, getBlockType()
-        Scriptz{Action,Character,Dialog}Node
-        index.ts           BLOCK_HOTKEYS (⌘1-3), blockLabel()
+        Scriptz{Action,Character,Dialog,Parenthetical}Node
+        index.ts           BLOCK_HOTKEYS (⌘1-4), blockLabel()
       plugins/
-        smartEnter.ts      Enter/Backspace state machine (3 types)
-        blockHotkeys.ts    ⌘1/⌘2/⌘3 -> Action/Character/Dialog
+        smartEnter.ts      Enter/Backspace state machine (4 types;
+                           Parenthetical -> Dialog)
+        blockHotkeys.ts    ⌘1/⌘2/⌘3/⌘4 -> Action/Character/Dialog/
+                           Parenthetical
+        parentheticalLive.ts  "(" in a Dialog opens a Parenthetical
+                           (splits the line at the caret), ")" closes it
+                           and jumps into the next Dialog
         blockDropdown.tsx  Tab opens the block-type picker
         characterDropdown.tsx  caret-anchored autocomplete, ranked by
                            predict.ts
         inlineFormat.ts    ⌘B / ⌘U (no italic: ⌘I = idea capture)
         allcaps.ts         characterName attribute sync (UPPER is CSS)
-        highlight.ts       per-block --char-tint
+        highlight.ts       per-block --char-tint (Character, Dialog,
+                           Parenthetical)
         colorPicker.tsx    character colour popover (3 entry points)
     Ideas/                 IdeasPage (+ parts/), QuickCapture (⌘I modal),
                            ideaGroups.ts, similar.ts, folderColor.ts
@@ -192,7 +199,8 @@ packages/core/
     lex.ts                 Lexical JSON -> blocks / teleprompter text /
                            character names / dialog words per character.
     runtime.ts             Runtime estimate (dialog words / WPM + 2 s per
-                           action block, min 5 s).
+                           action block, min 5 s; Character and
+                           Parenthetical count 0 s).
     timing.ts              computeTimeline(): per-block segments, sum ==
                            runtime.ts (same formula).
     lengthGoal.ts          LengthRange, resolveLengthRange (folder ->
@@ -216,8 +224,9 @@ packages/core/
 Gestrichen im Redesign (2026-10, bewusst, nicht wieder einführen):
 Tabs/`TabBar`/`stores/tabs.ts`, `Browser/` inkl. `MomentumStrip`,
 `EditorToolbar`, `EditorRail`, `SprintPill`, `ScriptView`, `CommandBar`,
-`IdeasDrawer`, das Plugin `parentheticalLive`, die Blocktypen
-Parenthetical/Kamera/Caption/SFX, Wochenziel und Streak-Anzeige.
+`IdeasDrawer`, die Blocktypen Kamera/Caption/SFX, Wochenziel und
+Streak-Anzeige. Parenthetical (samt `parentheticalLive`) war zwischenzeitlich
+gestrichen und ist seit 2026-10-03 bewusst wieder da.
 
 ## Stufen und Zielbereich
 
@@ -252,16 +261,17 @@ global character table.
   "create character" UI - it happens implicitly when you type a new name
   into a Charakter block.
 
-## Legacy-Blöcke (Parenthetical/Kamera/Caption/SFX)
+## Legacy-Blöcke (Kamera/Caption/SFX)
 
 Die Node-Klassen existieren nicht mehr; Lexical würde alten Content
-ablehnen. Deshalb:
+ablehnen. Parenthetical gehört **nicht** dazu - es ist ein regulärer
+Blocktyp und läuft unverändert durch. Deshalb:
 
 - **On-the-fly**: Jeder Pfad, der Content parst, läuft über
   `lib/legacyBlocks.ts` (Editor-Load, `lex.ts`, PDF, Plaintext,
   `.scriptz`-Import, Snapshot-Restore in `snapshots.ts` und im Web-Adapter,
-  SnapshotsDialog). Alte Typen werden zu `scriptz-action`,
-  Parenthetical-Text wird in `( … )` gesetzt, falls nötig.
+  SnapshotsDialog). Alte Typen werden zu `scriptz-action`, Text und
+  Formatierung bleiben.
 - **Boot-Migration**: `migrateLegacyBlocksOnce()` schreibt einmalig alle
   Skripte (inkl. Papierkorb) über `api` um, mit `internalRewrite: true`
   (keine Wörter ins Tageslog, `updated_at` bleibt). Flag

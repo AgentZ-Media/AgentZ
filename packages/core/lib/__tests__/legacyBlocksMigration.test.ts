@@ -61,7 +61,8 @@ describe("migrateLegacyBlocksOnce", () => {
     const scripts = {
       a: content("scriptz-sfx", "Pling"),
       b: content("scriptz-action", "Normal"),
-      c: content("scriptz-parenthetical", "leise"),
+      c: content("scriptz-caption", "Büro"),
+      d: content("scriptz-parenthetical", "(leise)"),
     };
     const m = memoryAdapter(scripts);
     setStorageAdapter(m.adapter);
@@ -73,8 +74,10 @@ describe("migrateLegacyBlocksOnce", () => {
       expect(call[0]).toMatchObject({ internalRewrite: true });
     }
     expect(scripts.a).toContain("scriptz-action");
-    expect(scripts.c).toContain("(leise)");
+    expect(scripts.c).toContain("scriptz-action");
     expect(scripts.b).toBe(content("scriptz-action", "Normal"));
+    // Parenthetical is a live block type again - never rewritten.
+    expect(scripts.d).toBe(content("scriptz-parenthetical", "(leise)"));
     expect(m.appState.get(LEGACY_BLOCKS_MIGRATION_FLAG)).toBeTruthy();
   });
 

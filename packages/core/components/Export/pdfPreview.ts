@@ -22,6 +22,7 @@ const CHAR_W_MM = 2.3;
 /** 11 pt in mm - the PDF's font size. */
 export const FONT_SIZE_MM = (11 / 72) * 25.4;
 const DIALOG_INSET_MM = 25;
+const PAREN_INSET_MM = 35;
 
 export interface PreviewLine {
   text: string;
@@ -86,7 +87,13 @@ function tintFor(
   colors: Map<string, string>,
 ): string | null {
   const b = blocks[idx];
-  if (b.kind !== "scriptz-character" && b.kind !== "scriptz-dialog") return null;
+  if (
+    b.kind !== "scriptz-character" &&
+    b.kind !== "scriptz-dialog" &&
+    b.kind !== "scriptz-parenthetical"
+  ) {
+    return null;
+  }
   let name: string | null = b.kind === "scriptz-character" ? b.text.trim().toUpperCase() : null;
   if (name === null) {
     for (let j = idx - 1; j >= 0; j--) {
@@ -160,6 +167,9 @@ export function layoutPdfPreview(input: PreviewInput): PreviewPage[] {
       writeLine(b.text.toUpperCase(), MARGIN_LEFT_MM, contentW, "center", true, false, tint);
     } else if (b.kind === "scriptz-dialog") {
       writeLine(b.text, MARGIN_LEFT_MM + DIALOG_INSET_MM, contentW - 2 * DIALOG_INSET_MM, "left", false, false, tint);
+    } else if (b.kind === "scriptz-parenthetical") {
+      // Verbatim like the PDF: the text already carries its "( … )".
+      writeLine(b.text, MARGIN_LEFT_MM + PAREN_INSET_MM, contentW - 2 * PAREN_INSET_MM, "left", false, true, tint);
     } else {
       writeLine(b.text, MARGIN_LEFT_MM, contentW, "left", false, false, null);
     }

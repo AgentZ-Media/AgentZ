@@ -54,6 +54,27 @@ describe("liveStats", () => {
     expect(liveStats([], WPM).runtimeSec).toBe(5);
   });
 
+  it("counts parenthetical words only towards the total, keeping the speaker", () => {
+    const withParen: TimingBlock[] = [
+      { key: "c1", kind: "character", text: "Timo" },
+      { key: "p1", kind: "paren", text: "(leise)" },
+      { key: "d1", kind: "dialog", text: "So ich bin fertig" },
+      { key: "p2", kind: "paren", text: "(Pause)" },
+      { key: "d2", kind: "dialog", text: "Wirklich" },
+    ];
+    const s = liveStats(withParen, WPM);
+    expect(s.words).toBe(1 + 1 + 4 + 1 + 1);
+    expect(s.dialogWords).toBe(5);
+    expect(s.actionBlocks).toBe(0);
+    expect(s.speakerChanges).toBe(0);
+    expect(s.cast).toEqual([{ name: "TIMO", words: 5, pct: 100 }]);
+    const extracted = withParen.map((b) => ({
+      kind: b.kind === "paren" ? "scriptz-parenthetical" : `scriptz-${b.kind}`,
+      text: b.text,
+    })) as unknown as ExtractedBlock[];
+    expect(s.runtimeSec).toBe(runtimeSeconds(runtimeStatsFromBlocks(extracted), WPM));
+  });
+
   it("builds the cast sorted by share with whole percents", () => {
     const s = liveStats(blocks, WPM);
     expect(s.cast.map((c) => c.name)).toEqual(["AXEL", "TIMO"]);
@@ -114,6 +135,15 @@ describe("playheadSec", () => {
   it("sits at the end past the last timed block", () => {
     expect(playheadSec(blocks, segs, "d4")).toBeCloseTo(segmentsEnd(segs));
     expect(segmentsEnd(segs)).toBeCloseTo(2 + 2 + 3.5 + 2 + 0.5);
+  });
+  it("uses the next timed block for a parenthetical", () => {
+    const withParen: TimingBlock[] = [
+      { key: "a1", kind: "action", text: "Los." },
+      { key: "c1", kind: "character", text: "Timo" },
+      { key: "p1", kind: "paren", text: "(leise)" },
+      { key: "d1", kind: "dialog", text: "Hallo" },
+    ];
+    expect(playheadSec(withParen, computeTimeline(withParen, WPM), "p1")).toBeCloseTo(2);
   });
   it("is 0 without a caret", () => {
     expect(playheadSec(blocks, segs, null)).toBe(0);

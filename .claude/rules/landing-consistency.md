@@ -29,7 +29,9 @@ Wo was auf der Landing lebt (alles unter `apps/landing/src/`):
 - [`components/sections/`](apps/landing/src/components/sections/) -
   Inhalt pro Route: `HomeSection` (Screenshot-Galerie + Feature-Teaser),
   `WarumSection`, `IdeenSection` (statischer Nachbau der Ideen-Seite),
-  `QuickmodusSection` (Editor-Demo mit Action/Charakter/Dialog-Blöcken),
+  `QuickmodusSection` (Editor-Demo mit Action/Charakter/Dialog-Blöcken;
+  Parentheticals stehen als eigene Zeile in `WarumSection` und
+  `NoAiSection`),
   `VergleichSection` (Vergleichstabelle), `NoAiSection`,
   `DownloadSection`, `PageHero`.
 - [`public/img/app/`](apps/landing/public/img/app/) - App-Screenshots
@@ -43,7 +45,7 @@ Auslöser, bei denen die Landing **mit** angepasst werden muss:
 | Neues Feature, das ein User merkt | Ggf. Aufnahme in die Feature-Teaser (`HomeSection`, `WarumSection`) oder die Vergleichstabelle (`VergleichSection`). Wenn es ein Top-Feature ist, eines der bestehenden ablösen. Wenn das Feature im Web *nicht* funktioniert, im Web-CTA-Hinweis ehrlich erwähnen. |
 | Feature entfernt | Aus Teasern, Vergleich, Demo, Texten rauswerfen. Versprechen wie "lokal" oder "kein Konto" gegenchecken. |
 | Design-Token geändert (Farbe, Schrift, Radius, Spacing) in `packages/design/` (`tokens.css`, `components.css`) oder App-Tokens in `packages/core/styles/tokens.css` | [`src/styles/tokens.css`](apps/landing/src/styles/tokens.css) bzw. [`landing.css`](apps/landing/src/styles/landing.css) angleichen, soweit die Landing den App-Look spiegelt (Seitenleiste, Kopfleiste, Stufen-Chip, Laufzeit-Pille). Die Landing importiert `@agentz/design` nicht, sie pflegt eigene Werte. |
-| Editor-Layout geändert (Blocktypen, Einrückung, ALLCAPS-Regel, Spacing-Cluster) | Editor-Demo in `QuickmodusSection.astro` (und Skript-Optik in `landing.css`) so anpassen, dass sie weiterhin 1:1 dem echten Editor entspricht. Aktuell drei Blocktypen: Action, Charakter, Dialog. |
+| Editor-Layout geändert (Blocktypen, Einrückung, ALLCAPS-Regel, Spacing-Cluster) | Editor-Demo in `QuickmodusSection.astro` (und Skript-Optik in `landing.css`) so anpassen, dass sie weiterhin 1:1 dem echten Editor entspricht. Aktuell vier Blocktypen: Action, Charakter, Dialog, Parenthetical. |
 | App-Chrome verändert (Seitenleiste, Kopfleiste, Stufen/Pipeline, Inspector, Zeitleiste, Laufzeit-/Fokus-Pille, Trafficlight-Position) | Demo-Chrome in `AppShell.astro` nachziehen, sonst sieht die Demo aus wie eine alte Version. |
 | Ideen-Seite oder Skript-Liste verändert | `IdeenSection.astro` und die Screenshots in `public/img/app/` neu machen. |
 | Stufen (Schreiben/Drehbereit/Gedreht/Online), Längenziel/Zielbereich, Schreib-Zähler | Stufen-Chip und Laufzeit-Pille in `AppShell.astro`, zugehörige Texte in `i18n/*.ts`. |

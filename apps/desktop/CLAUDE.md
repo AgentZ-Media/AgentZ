@@ -8,7 +8,7 @@ wiring + schema migrations only. macOS Apple Silicon + Windows x64 are
 first-class; Linux not (yet) shipped.
 
 This codebase was deliberately stripped down in 2026-05 and redesigned
-as the "Werkbank" in 2026-10 (sidebar shell, three block types, stages,
+as the "Werkbank" in 2026-10 (sidebar shell, four block types, stages,
 length range; plan in [`docs/redesign/umsetzung.md`](../../docs/redesign/umsetzung.md)).
 Since then almost all UI and logic lives in `packages/core/` and the
 design system in `packages/design/`; this app is a thin Tauri shell
@@ -81,11 +81,15 @@ Detail-Layout der Subverzeichnisse: siehe `desktop-architecture.md`.
   Navigation is `stores/nav.ts` (routes, history ⌘[ / ⌘], "Zuletzt"),
   panel/dialog state is `stores/ui.ts`. **No tabs** - the sidebar shell
   replaced the tab bar in 2026-10.
-- **Exactly three block types: Action, Charakter, Dialog.**
-  Parenthetical, Kamera, Caption and SFX were deliberately removed in
-  2026-10 - don't reintroduce them. Old content is converted to Action
-  on every read (`lib/legacyBlocks.ts`) and once at boot
-  (`lib/legacyBlocksMigration.ts`). Any new code path that parses
+- **Exactly four block types: Action (⌘1), Charakter (⌘2), Dialog (⌘3),
+  Parenthetical (⌘4).** Parenthetical is NOT retired: it was briefly
+  dropped during the redesign and deliberately brought back on
+  2026-10-03 (typing `(` in a Dialog opens one, `)` jumps back into the
+  Dialog - `plugins/parentheticalLive.ts`; it counts 0 s for the runtime
+  and no dialog words). Kamera, Caption and SFX were deliberately removed
+  in 2026-10 - don't reintroduce them. Old content with those three is
+  converted to Action on every read (`lib/legacyBlocks.ts`) and once at
+  boot (`lib/legacyBlocksMigration.ts`). Any new code path that parses
   `content_json` must run it through `normalizeLegacyContent` /
   `normalizeLegacyTree` first.
 - **Stages** (`ScriptStatus`: `writing` -> `ready` -> `shot` ->
@@ -144,7 +148,8 @@ cargo check --manifest-path src-tauri/Cargo.toml
   (removed 2026-10): tabs / tab bar, the browser dashboard with
   MomentumStrip, EditorToolbar block pills, EditorRail, SprintPill,
   weekly word goal (`weeklyWordGoal`), streak display, idea badge
-  setting, "Guten Morgen" greeting, the four retired block types. The
+  setting, "Guten Morgen" greeting, the three retired block types
+  (Kamera, Caption, SFX - Parenthetical stays). The
   replacement is the adaptive writing counter (`lib/writingCounter.ts`,
   sidebar footer) and the info-only Inspector. Talk to the user first.
 - **Don't put settings into the Inspector.** It shows information only;
@@ -163,7 +168,7 @@ Mehrwert), Plugin-System, mehrere Skript-Layouts, Industry-Standard-
 Drehbuch-Layout (Courier 12pt). Plus removed in 2026-05: Projects, Tags,
 Series, global Characters with bible/aliases/description, per-script
 display-name/color overrides, vibrancy chrome. Removed in 2026-10
-("Werkbank"): Parenthetical/Kamera/Caption/SFX blocks, tabs, weekly
+("Werkbank"): Kamera/Caption/SFX blocks, tabs, weekly
 word goal, streak, sprint timer.
 
 ## Troubleshooting
@@ -185,7 +190,8 @@ word goal, streak, sprint timer.
   with a retired block type reached `parseEditorState` without going
   through `normalizeLegacyContent`. Fix the read path, don't
   re-register the old node classes.
-- **Old scripts still contain parentheticals after an update** - the
+- **Old scripts still contain Kamera/Caption/SFX blocks after an
+  update** - the
   boot migration sets `app_state["migration.legacy_blocks_v1"]` only
   after a complete run; if a script failed, it retries on the next
   start. Reads normalize on the fly in the meantime.

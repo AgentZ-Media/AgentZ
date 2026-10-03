@@ -4,7 +4,7 @@ import { describe, expect, it } from "vitest";
 import type { ExtractedBlock } from "../../../lib/lex";
 import { A4_H_MM, LINE_HEIGHT_MM, layoutPdfPreview, wrapText } from "../pdfPreview";
 
-const block = (kind: "action" | "character" | "dialog", text: string): ExtractedBlock => ({
+const block = (kind: "action" | "character" | "dialog" | "parenthetical", text: string): ExtractedBlock => ({
   kind: `scriptz-${kind}`,
   text,
   runs: [{ text, bold: false, italic: false, underline: false }],
@@ -60,6 +60,28 @@ describe("layoutPdfPreview", () => {
     expect(on[0].lines[0].tint).toBe("#d04141");
     expect(on[0].lines[1].tint).toBe("#d04141");
     expect(on[0].lines[2].tint).toBeNull();
+  });
+
+  it("lays out a parenthetical like the PDF: italic, indented further than dialog, tinted", () => {
+    const blocks = [
+      block("character", "Timo"),
+      block("parenthetical", "(leise)"),
+      block("dialog", "Feierabend!"),
+      block("action", "Stille."),
+    ];
+    const pages = layoutPdfPreview({ ...base, blocks, includeHighlighting: true });
+    const [chr, par, dia, act] = pages[0].lines;
+    expect(par.text).toBe("(leise)");
+    expect(par.italic).toBe(true);
+    expect(par.bold).toBe(false);
+    expect(par.align).toBe("left");
+    expect(par.xMm).toBeGreaterThan(dia.xMm);
+    expect(par.widthMm).toBeLessThan(dia.widthMm);
+    expect(par.xMm - act.xMm).toBeCloseTo(35);
+    expect(par.tint).toBe("#2fa56b");
+    expect(chr.tint).toBe("#2fa56b");
+    expect(dia.tint).toBe("#2fa56b");
+    expect(act.tint).toBeNull();
   });
 
   it("adds a title page in front", () => {

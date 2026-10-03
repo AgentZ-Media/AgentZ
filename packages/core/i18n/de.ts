@@ -86,6 +86,7 @@ export const de = {
   "block.action": "Action",
   "block.character": "Charakter",
   "block.dialog": "Dialog",
+  "block.parenthetical": "Paren.",
 
   // ---------- script stages (Werkbank pipeline) ----------
   "stage.idea": "Idee",

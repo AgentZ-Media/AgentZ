@@ -24,6 +24,7 @@ const { lang } = Astro.props;
   <div class="v2-block v2-action">{t(lang, "warum.action2")}</div>
 
   <div class="v2-block v2-character" data-speaker="TIMO"><span class="v2-t">TIMO</span></div>
+  <div class="v2-block v2-parenthetical" data-speaker="TIMO"><span class="v2-t">{t(lang, "warum.timo1.paren")}</span></div>
   <div class="v2-block v2-dialog" data-speaker="TIMO"><span class="v2-t">{t(lang, "warum.timo1.dialog")}</span></div>
 
   <div class="v2-block v2-character" data-speaker="AXEL"><span class="v2-t">AXEL</span></div>
@@ -33,6 +34,7 @@ const { lang } = Astro.props;
   <div class="v2-block v2-dialog" data-speaker="TIMO"><span class="v2-t">{t(lang, "warum.timo2.dialog")}</span></div>
 
   <div class="v2-block v2-character" data-speaker="AXEL"><span class="v2-t">AXEL</span></div>
+  <div class="v2-block v2-parenthetical" data-speaker="AXEL"><span class="v2-t">{t(lang, "warum.axel2.paren")}</span></div>
   <div class="v2-block v2-dialog" data-speaker="AXEL"><span class="v2-t">{t(lang, "warum.axel2.dialog")}</span></div>
 
   <div class="v2-block v2-character" data-speaker="TIMO"><span class="v2-t">TIMO</span></div>

@@ -26,7 +26,7 @@ function isWebShell(): boolean {
 }
 
 /** First-run onboarding (and "Onboarding erneut zeigen" in the settings):
- *  three steps - appearance, the three blocks, keys - on a full-window
+ *  three steps - appearance, the four blocks, keys - on a full-window
  *  grid. Parameterless, driven by `uiStore.onboardingOpen()`. */
 export function Onboarding() {
   const [step, setStep] = createSignal(0);
@@ -318,6 +318,10 @@ function StepBlocks() {
           {t("block.dialog")}
         </div>
         <div>
+          <kbd>{K("Mod+4")}</kbd>
+          {t("block.parenthetical")}
+        </div>
+        <div>
           <kbd>{t("shortcut.key.tab")}</kbd>
           {t("onb.s2.picker")}
         </div>
@@ -340,8 +344,9 @@ function StepBlocks() {
   );
 }
 
-/** The mini script from the concept: Enter walks through the three
- *  blocks; rows appear one after another (static under reduced motion). */
+/** The mini script from the concept: Enter walks through the blocks, "("
+ *  in the dialog line opens a parenthetical and ")" leads back into the
+ *  dialog; rows appear one after another (static under reduced motion). */
 function PreviewBlocks() {
   return (
     <div class="onb-sheet onb-demo tinted">
@@ -358,13 +363,20 @@ function PreviewBlocks() {
         <span class="ent">⏎</span>
       </div>
       <div class="dl" style={{ "--d": "2" }}>
+        <span class="tag">{t("block.parenthetical")}</span>
+        <div class="b par" style={{ "--c": COLOR_A }}>
+          <span class="m">{t("onb.demo.parenA")}</span>
+        </div>
+        <span class="ent">)</span>
+      </div>
+      <div class="dl" style={{ "--d": "3" }}>
         <span class="tag">{t("block.dialog")}</span>
         <div class="b dia" style={{ "--c": COLOR_A }}>
           <span class="m">{t("onb.demo.lineA")}</span>
         </div>
         <span class="ent">⏎</span>
       </div>
-      <div class="dl is-now" style={{ "--d": "3" }}>
+      <div class="dl is-now" style={{ "--d": "4" }}>
         <span class="tag on">{t("block.character")}</span>
         <div class="b char" style={{ "--c": COLOR_B }}>
           <span class="m">{t("onb.demo.nameB")}</span>
@@ -372,7 +384,7 @@ function PreviewBlocks() {
         </div>
         <span class="ent" />
       </div>
-      <div class="onb-note" style={{ "--d": "4" }}>
+      <div class="onb-note" style={{ "--d": "5" }}>
         <Icon name="bolt" size={13} />
         {t("onb.s2.note", { name: t("onb.demo.nameB") })}
       </div>

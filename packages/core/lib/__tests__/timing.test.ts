@@ -64,6 +64,23 @@ describe("computeTimeline", () => {
     ]);
   });
 
+  it("gives a parenthetical 0 s and no segment, keeping the current speaker", () => {
+    const segs = computeTimeline(
+      [
+        { key: "c", kind: "character", text: "Tom" },
+        { key: "p", kind: "paren", text: "(unschuldig)" },
+        { key: "d", kind: "dialog", text: "Ich trinke Tee." },
+        { key: "p2", kind: "paren", text: "(Pause)" },
+        { key: "d2", kind: "dialog", text: "Seit heute." },
+      ],
+      60,
+    );
+    expect(segs.map((s) => [s.key, s.kind, s.speaker, s.startSec, s.durSec])).toEqual([
+      ["d", "dialog", "TOM", 0, 3],
+      ["d2", "dialog", "TOM", 3, 2],
+    ]);
+  });
+
   it("counts empty action blocks and skips word-less dialog", () => {
     const segs = computeTimeline(
       [
@@ -126,6 +143,20 @@ describe("timeline sum equals runtime", () => {
     });
   }
 
+  it("adds nothing to the runtime for parentheticals", () => {
+    const without = lex([
+      { kind: "scriptz-character", text: "TOM" },
+      { kind: "scriptz-dialog", text: Array.from({ length: 70 }, (_, i) => `w${i}`).join(" ") },
+    ]);
+    const withParen = lex([
+      { kind: "scriptz-character", text: "TOM" },
+      { kind: "scriptz-parenthetical", text: "(sehr leise, fast flüsternd)" },
+      { kind: "scriptz-dialog", text: Array.from({ length: 70 }, (_, i) => `w${i}`).join(" ") },
+    ]);
+    expect(runtimeStatsFromContent(withParen)).toEqual(runtimeStatsFromContent(without));
+    expect(runtimeSeconds(runtimeStatsFromContent(withParen), 210)).toBe(20);
+  });
+
   it("applies the 5 s minimum to the total only, segments stay unscaled", () => {
     const json = lex([
       { kind: "scriptz-character", text: "MAX" },
@@ -143,11 +174,13 @@ describe("timingBlocksFromContentJson", () => {
     const json = lex([
       { kind: "scriptz-sfx", text: "Pling" },
       { kind: "scriptz-character", text: "MAX" },
+      { kind: "scriptz-parenthetical", text: "(leise)" },
       { kind: "scriptz-dialog", text: "Hallo" },
     ]);
     expect(timingBlocksFromContentJson(json)).toEqual([
       { kind: "action", text: "Pling" },
       { kind: "character", text: "MAX" },
+      { kind: "paren", text: "(leise)" },
       { kind: "dialog", text: "Hallo" },
     ]);
   });

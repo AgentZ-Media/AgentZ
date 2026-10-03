@@ -12,6 +12,7 @@ import {
   $createScriptzActionNode,
   $createScriptzCharacterNode,
   $createScriptzDialogNode,
+  $createScriptzParentheticalNode,
 } from "../nodes";
 import type { BlockType } from "../../../lib/types";
 
@@ -19,15 +20,18 @@ const FACTORY: Record<BlockType, () => BaseScriptzNode> = {
   "scriptz-action": $createScriptzActionNode,
   "scriptz-character": $createScriptzCharacterNode,
   "scriptz-dialog": $createScriptzDialogNode,
+  "scriptz-parenthetical": $createScriptzParentheticalNode,
 };
 
-// ⌘1 Action, ⌘2 Character, ⌘3 Dialog. ⌘4..⌘7 (the retired block types)
-// are deliberately NOT handled anymore: the editor ignores them and the
-// event keeps its default (e.g. browser tab switching on the web).
+// ⌘1 Action, ⌘2 Character, ⌘3 Dialog, ⌘4 Parenthetical. ⌘5..⌘7 (the
+// retired block types) are deliberately NOT handled anymore: the editor
+// ignores them and the event keeps its default (e.g. browser tab switching
+// on the web).
 const DIGIT_TO_BLOCK: Record<string, BlockType> = {
   "1": "scriptz-action",
   "2": "scriptz-character",
   "3": "scriptz-dialog",
+  "4": "scriptz-parenthetical",
 };
 
 function findScriptzAncestor(node: LexicalNode | null): BaseScriptzNode | null {
@@ -41,7 +45,7 @@ function findScriptzAncestor(node: LexicalNode | null): BaseScriptzNode | null {
 
 /**
  * Switches the block at the cursor to the given type. Used both by the
- * editor toolbar (block-pill click) and by the ⌘1..⌘3 hotkey
+ * editor toolbar (block-pill click) and by the ⌘1..⌘4 hotkey
  * — one shared source of truth, so toolbar click and
  * hotkey behave identically (incl. caret placement at the end of the block).
  *

@@ -1,28 +1,24 @@
 // Legacy block normalizer (Werkbank redesign).
 //
-// The editor knows three block types since the redesign: Action, Character
-// and Dialog. Older content (database rows, snapshots, .scriptz files,
-// handoff bundles) may still contain the four retired types
-// Parenthetical, Camera, Caption and SFX. Their node classes no longer
-// exist, so Lexical would refuse to parse such a state - every place that
-// parses content runs it through this module first.
+// The editor knows four block types: Action, Character, Dialog and
+// Parenthetical. Older content (database rows, snapshots, .scriptz files,
+// handoff bundles) may still contain the three retired types Camera,
+// Caption and SFX. Their node classes no longer exist, so Lexical would
+// refuse to parse such a state - every place that parses content runs it
+// through this module first.
 //
-// Conversion rules:
-//  - The node's `type` (and the serialized `blockType`, if present)
-//    becomes "scriptz-action". Children, text, inline formats and all
-//    other node fields stay untouched.
-//  - Parenthetical text is wrapped in "( … )": "(" is added unless the
-//    trimmed text already starts with "(", ")" is added unless it already
-//    ends with ")". The parentheses are glued to the words, so the
-//    whitespace-based word count does not change. Empty parentheticals
-//    stay empty (no "()").
+// Conversion rule: the node's `type` (and the serialized `blockType`, if
+// present) becomes "scriptz-action". Children, text, inline formats and
+// all other node fields stay untouched, so the word count does not change.
+//
+// Parenthetical is NOT retired (it was briefly, during the redesign, and
+// came back on 2026-10-03) - "scriptz-parenthetical" passes through as is.
 //
 // Pure module without imports so it can be used from lex.ts and every
 // storage adapter without import cycles.
 
 /** The retired block types that get converted into action blocks. */
 export const LEGACY_BLOCK_TYPES = [
-  "scriptz-parenthetical",
   "scriptz-camera",
   "scriptz-caption",
   "scriptz-sfx",
@@ -32,7 +28,6 @@ export type LegacyBlockType = (typeof LEGACY_BLOCK_TYPES)[number];
 
 const LEGACY_SET: ReadonlySet<string> = new Set<string>(LEGACY_BLOCK_TYPES);
 const TARGET_TYPE = "scriptz-action";
-const PARENTHETICAL = "scriptz-parenthetical";
 
 type JsonObject = Record<string, unknown>;
 
@@ -48,56 +43,6 @@ export function mayContainLegacyBlocks(json: string): boolean {
     if (json.includes(t)) return true;
   }
   return false;
-}
-
-/** Collects the text nodes of a block in document order. */
-function collectTextNodes(node: JsonObject, out: JsonObject[]): void {
-  const children = node.children;
-  if (!Array.isArray(children)) return;
-  for (const child of children) {
-    if (!isObject(child)) continue;
-    if (child.type === "text" && typeof child.text === "string") {
-      out.push(child);
-    } else {
-      collectTextNodes(child, out);
-    }
-  }
-}
-
-/** Wraps the block's text in parentheses (see module header). Mutates the
- *  first / last text node in place. */
-function wrapParenthetical(block: JsonObject): void {
-  const texts: JsonObject[] = [];
-  collectTextNodes(block, texts);
-  if (texts.length === 0) return;
-  const full = texts.map((n) => n.text as string).join("");
-  const trimmed = full.trim();
-  if (trimmed.length === 0) return;
-
-  if (!trimmed.startsWith("(")) {
-    // Insert after the leading whitespace of the first non-blank node.
-    const first = texts.find((n) => (n.text as string).trim().length > 0);
-    if (first) {
-      const s = first.text as string;
-      const lead = s.length - s.trimStart().length;
-      first.text = s.slice(0, lead) + "(" + s.slice(lead);
-    }
-  }
-  if (!trimmed.endsWith(")")) {
-    // Insert before the trailing whitespace of the last non-blank node.
-    let last: JsonObject | undefined;
-    for (let i = texts.length - 1; i >= 0; i--) {
-      if ((texts[i].text as string).trim().length > 0) {
-        last = texts[i];
-        break;
-      }
-    }
-    if (last) {
-      const s = last.text as string;
-      const end = s.trimEnd().length;
-      last.text = s.slice(0, end) + ")" + s.slice(end);
-    }
-  }
 }
 
 /** Converts retired block types IN PLACE anywhere below `node`. Returns
@@ -116,7 +61,6 @@ export function normalizeLegacyTree(node: unknown): boolean {
   let changed = false;
   const type = node.type;
   if (typeof type === "string" && LEGACY_SET.has(type)) {
-    if (type === PARENTHETICAL) wrapParenthetical(node);
     node.type = TARGET_TYPE;
     if ("blockType" in node) node.blockType = TARGET_TYPE;
     changed = true;

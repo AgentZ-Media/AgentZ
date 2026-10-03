@@ -104,13 +104,14 @@ export interface SearchHit {
   meta: Record<string, unknown>;
 }
 
-/** The three block types of the editor. Older content may still contain
- *  the retired types (parenthetical, camera, caption, sfx) - those are
- *  converted to action by `lib/legacyBlocks.ts` wherever content is parsed. */
+/** The four block types of the editor. Older content may still contain
+ *  the retired types (camera, caption, sfx) - those are converted to action
+ *  by `lib/legacyBlocks.ts` wherever content is parsed. */
 export type BlockType =
   | "scriptz-action"
   | "scriptz-character"
-  | "scriptz-dialog";
+  | "scriptz-dialog"
+  | "scriptz-parenthetical";
 
 /** A writing idea from the ideas drawer. `usedAt` marks the
  *  conversion into a real script. `folder_id` shares the same

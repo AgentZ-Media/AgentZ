@@ -3,10 +3,11 @@
 // Lossy on purpose - feeds FTS5 and the plain-text export, NOT round-trip
 // rendering.
 //
-// Retired block types (parenthetical, camera, caption, sfx) are converted
-// to action blocks before extraction (see ./legacyBlocks.ts), so every
-// consumer - FTS, exports, word counts, runtime, character reconciliation -
-// sees the same three block types as the editor.
+// Retired block types (camera, caption, sfx) are converted to action
+// blocks before extraction (see ./legacyBlocks.ts), so every consumer -
+// FTS, exports, word counts, runtime, character reconciliation - sees the
+// same four block types as the editor (action, character, dialog,
+// parenthetical).
 
 import { mayContainLegacyBlocks, normalizeLegacyTree } from "./legacyBlocks";
 
@@ -38,6 +39,7 @@ const SCRIPTZ_KINDS = new Set([
   "scriptz-action",
   "scriptz-character",
   "scriptz-dialog",
+  "scriptz-parenthetical",
 ]);
 
 export function extractBlocks(contentJson: string): ExtractedBlock[] {
@@ -130,6 +132,9 @@ export function extractPlainText(contentJson: string): string {
       case "scriptz-character":
         out += b.text.toUpperCase();
         break;
+      case "scriptz-parenthetical":
+        out += "(" + trimParens(b.text.trim()) + ")";
+        break;
       default:
         out += b.text;
     }
@@ -137,42 +142,29 @@ export function extractPlainText(contentJson: string): string {
   return out;
 }
 
-/** True for an action block that is fully wrapped in parentheses, e.g.
- *  "(leise)" - the form former parenthetical blocks take after the
- *  block-type reduction, and how writers now note delivery cues. */
-export function isParenCueText(text: string): boolean {
-  const t = text.trim();
-  return t.length >= 2 && t.startsWith("(") && t.endsWith(")");
-}
-
 export function extractTeleprompterText(contentJson: string): string {
-  // Plain-text (teleprompter) export: only what is spoken - Character and
-  // Dialog. Delivery cues - action blocks fully wrapped in "( … )" that sit
-  // inside a speech run (after a Character or Dialog block) - are kept,
-  // so content that used to be a parenthetical block still shows up in
-  // the export exactly as before the block-type reduction.
+  // Plain-text (teleprompter) export: only Character, Dialog and
+  // Parenthetical. Parentheticals are always written as "( … )", whether
+  // the block text already carries the parentheses (typed live with "(")
+  // or not (set via ⌘4).
   const blocks = extractBlocks(contentJson);
   let out = "";
-  let inSpeech = false;
   for (const b of blocks) {
     switch (b.kind) {
       case "scriptz-character":
         if (out.length > 0) out += "\n\n";
         out += b.text.toUpperCase();
-        inSpeech = true;
         break;
       case "scriptz-dialog":
         if (out.length > 0) out += "\n";
         out += b.text;
-        inSpeech = true;
         break;
+      case "scriptz-parenthetical": {
+        if (out.length > 0) out += "\n";
+        out += "(" + trimParens(b.text.trim()) + ")";
+        break;
+      }
       default:
-        if (inSpeech && isParenCueText(b.text)) {
-          if (out.length > 0) out += "\n";
-          out += "(" + trimParens(b.text.trim()) + ")";
-        } else {
-          inSpeech = false;
-        }
         break;
     }
   }
@@ -212,16 +204,17 @@ export function jaccardSimilarity(a: Set<string>, b: Set<string>): number {
   return inter / union;
 }
 
-/** Dialog words per character - same algorithm as in the EditorRail
- *  cast tab: words from `scriptz-dialog` blocks are assigned to the
- *  most recently preceding `scriptz-character` block. Characters
+/** Dialog words per character - same algorithm as the Inspector cast
+ *  shares: words from `scriptz-dialog` blocks are assigned to the
+ *  most recently preceding `scriptz-character` block (parenthetical
+ *  words are delivery cues and don't count). Characters
  *  without dialog have an entry of `0` (so callers know
  *  they exist). Keys are UPPERCASE because character names
  *  match case-insensitively app-wide.
  *
  *  Single source of truth for this calculation - see `scripts.ts`
- *  (for `characters_meta.share` on save) and `EditorRail.tsx`
- *  (for the cast tab). */
+ *  (for `characters_meta.share` on save); the live Inspector mirrors it
+ *  in `components/Script/timelineMath.ts::liveStats`. */
 export function dialogWordsByCharacter(contentJson: string): Record<string, number> {
   const out: Record<string, number> = {};
   let last: string | null = null;

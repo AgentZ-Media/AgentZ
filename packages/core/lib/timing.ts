@@ -5,6 +5,11 @@
 //  - Action block:    SECONDS_PER_DIRECTION_BLOCK (2 s), also when empty -
 //                     runtime.ts counts every action block
 //  - Character block: 0 s, only sets the current speaker
+//  - Parenthetical:   0 s, no segment - a delivery cue belongs to the
+//                     current speaker's speech run but is not spoken
+//                     (runtime.ts counts it neither as dialog nor as
+//                     action), so it neither moves the clock nor resets
+//                     the speaker
 //
 // Invariant: the sum of all `durSec` equals the unrounded runtime, so
 //   runtimeSeconds(stats, wpm) === Math.max(MIN_RUNTIME_SEC, Math.round(sum))
@@ -15,8 +20,8 @@
 //
 // Speaker attribution follows lex.ts::dialogWordsByCharacter (the source of
 // the cast shares): a dialog belongs to the most recent character block
-// above it, also across action blocks in between. Action segments carry
-// `speaker: null`.
+// above it, also across action and parenthetical blocks in between. Action
+// segments carry `speaker: null`.
 
 import { extractBlocks } from "./lex";
 import { SECONDS_PER_DIRECTION_BLOCK, wordCount } from "./runtime";
@@ -25,7 +30,7 @@ export type TimingBlock = {
   /** Lexical node key (editor callers) - passed through to the segment so
    *  hover/click can map back to the block. */
   key?: string;
-  kind: "action" | "character" | "dialog";
+  kind: "action" | "character" | "dialog" | "paren";
   text: string;
 };
 
@@ -40,10 +45,10 @@ export type TimelineSegment = {
   text: string;
 };
 
-/** Computes start + duration for every timed block. Character blocks yield
- *  no segment; dialog blocks without words yield no segment either (they
- *  have zero duration and contribute nothing to the runtime). Times are
- *  unrounded seconds. */
+/** Computes start + duration for every timed block. Character and
+ *  parenthetical blocks yield no segment; dialog blocks without words yield
+ *  no segment either (they have zero duration and contribute nothing to the
+ *  runtime). Times are unrounded seconds. */
 export function computeTimeline(
   blocks: TimingBlock[],
   wpm: number,
@@ -58,6 +63,7 @@ export function computeTimeline(
       speaker = name.length > 0 ? name : null;
       continue;
     }
+    if (b.kind === "paren") continue;
     if (b.kind === "action") {
       out.push({
         key: b.key,
@@ -87,14 +93,15 @@ export function computeTimeline(
 }
 
 /** Builds timing blocks from a serialized Lexical state (non-editor
- *  callers: lists, exports, tests). Retired block types arrive as action
- *  via lex.ts. Blocks carry no `key`. */
+ *  callers: lists, exports, tests). Retired block types (camera, caption,
+ *  sfx) arrive as action via lex.ts. Blocks carry no `key`. */
 export function timingBlocksFromContentJson(json: string): TimingBlock[] {
   const out: TimingBlock[] = [];
   for (const b of extractBlocks(json)) {
     if (b.kind === "scriptz-action") out.push({ kind: "action", text: b.text });
     else if (b.kind === "scriptz-character") out.push({ kind: "character", text: b.text });
     else if (b.kind === "scriptz-dialog") out.push({ kind: "dialog", text: b.text });
+    else if (b.kind === "scriptz-parenthetical") out.push({ kind: "paren", text: b.text });
   }
   return out;
 }

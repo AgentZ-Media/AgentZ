@@ -16,9 +16,10 @@ ehrlich kommuniziert sein (Web-Disclaimer, Settings-Hinweis).
 
 Alles, was auf beiden Plattformen identisch sein muss:
 
-- Editor-Engine, die drei Lexical-Nodes (Action, Charakter, Dialog),
-  alle Plugins (Hotkeys, Block-Picker, Smart-Enter, Inline-Format,
-  Character-Autocomplete, Farb-Picker, Highlight)
+- Editor-Engine, die vier Lexical-Nodes (Action, Charakter, Dialog,
+  Parenthetical), alle Plugins (Hotkeys, Block-Picker, Smart-Enter,
+  Parenthetical-Live, Inline-Format, Character-Autocomplete, Farb-Picker,
+  Highlight)
 - **Die komplette App-Schale**: [`components/Shell/AppShell.tsx`](packages/core/components/Shell/AppShell.tsx)
   (Boot, Layout, Routen, globale Shortcuts, alle Dialoge) samt
   `Sidebar`. Die Apps rendern nur `<AppShell platform=... />` und

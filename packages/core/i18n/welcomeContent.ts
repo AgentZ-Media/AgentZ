@@ -58,13 +58,15 @@ function buildJson(blocks: ReturnType<typeof textBlock>[]): string {
 
 // Both tutorials are written as a tiny office sketch so the first thing a
 // new user sees looks like what they will write: short-form, two people,
-// a punchline. Only the three block types exist (Action, Character,
-// Dialog); delivery cues go into an action line in parentheses.
+// a punchline. Four block types exist (Action, Character, Dialog,
+// Parenthetical); the tutorial shows each of them, including the
+// parenthetical typed live with "(" inside a dialog line.
 
 function deWelcome(): WelcomeContent {
   const k1 = K("Mod+1");
   const k2 = K("Mod+2");
   const k3 = K("Mod+3");
+  const k4 = K("Mod+4");
   const kB = K("Mod+B");
   const kU = K("Mod+U");
   const kK = K("Mod+K");
@@ -92,7 +94,7 @@ function deWelcome(): WelcomeContent {
       textBlock("scriptz-character", "LENA", { characterName: "LENA" }),
       textBlock(
         "scriptz-dialog",
-        "Es gibt genau drei Blocktypen: Action für das, was man sieht, Charakter für den Namen und Dialog für das, was gesagt wird.",
+        "Es gibt vier Blocktypen: Action für das, was man sieht, Charakter für den Namen, Dialog für das, was gesagt wird, und Parenthetical für das Wie.",
       ),
       textBlock("scriptz-character", "TOM", { characterName: "TOM" }),
       textBlock(
@@ -100,14 +102,14 @@ function deWelcome(): WelcomeContent {
         "Drück am Ende eines Dialogs Enter, dann kommt der nächste Charakter. Nach dem Namen geht's mit Enter direkt in den Dialog.",
       ),
       textBlock("scriptz-character", "LENA", { characterName: "LENA" }),
-      textBlock("scriptz-action", "(flüstert)"),
+      textBlock("scriptz-parenthetical", "(flüstert)"),
       textBlock(
         "scriptz-dialog",
-        "Regieanweisungen schreibst du einfach als Action-Zeile in Klammern.",
+        "Wie etwas gesagt wird, tippst du direkt im Dialog: Eine Klammer auf macht daraus ein Parenthetical, Klammer zu bringt dich zurück in den Dialog.",
       ),
       textBlock(
         "scriptz-action",
-        `TOM tippt auf den Bildschirm. Tab öffnet das Blocktyp-Menü, ${k1} macht eine Action, ${k2} einen Charakter, ${k3} einen Dialog.`,
+        `TOM tippt auf den Bildschirm. Tab öffnet das Blocktyp-Menü, ${k1} macht eine Action, ${k2} einen Charakter, ${k3} einen Dialog, ${k4} ein Parenthetical.`,
       ),
       textBlock("scriptz-character", "TOM", { characterName: "TOM" }),
       textBlock(
@@ -119,8 +121,9 @@ function deWelcome(): WelcomeContent {
       textBlock("scriptz-character", "TOM", { characterName: "TOM" }),
       textBlock("scriptz-dialog", "Ist auch nur ein Action-Block."),
       textBlock("scriptz-action", "Schnitt. Die wichtigsten Tasten:"),
-      textBlock("scriptz-action", `${k1} / ${k2} / ${k3} - Action, Charakter, Dialog`),
+      textBlock("scriptz-action", `${k1} / ${k2} / ${k3} / ${k4} - Action, Charakter, Dialog, Parenthetical`),
       textBlock("scriptz-action", "Tab - Blocktyp wählen · Enter - nächster passender Block"),
+      textBlock("scriptz-action", "( im Dialog - Parenthetical · ) - zurück in den Dialog"),
       textBlock("scriptz-action", `${kB} / ${kU} - fett / unterstrichen`),
       textBlock("scriptz-action", `${kK} - suchen und Befehle`),
       textBlock("scriptz-action", `${kN} - neues Skript`),
@@ -145,6 +148,7 @@ function enWelcome(): WelcomeContent {
   const k1 = K("Mod+1");
   const k2 = K("Mod+2");
   const k3 = K("Mod+3");
+  const k4 = K("Mod+4");
   const kB = K("Mod+B");
   const kU = K("Mod+U");
   const kK = K("Mod+K");
@@ -172,7 +176,7 @@ function enWelcome(): WelcomeContent {
       textBlock("scriptz-character", "LENA", { characterName: "LENA" }),
       textBlock(
         "scriptz-dialog",
-        "There are exactly three block types: Action for what we see, Character for the name and Dialog for what is said.",
+        "There are four block types: Action for what we see, Character for the name, Dialog for what is said and Parenthetical for how it is said.",
       ),
       textBlock("scriptz-character", "TOM", { characterName: "TOM" }),
       textBlock(
@@ -180,14 +184,14 @@ function enWelcome(): WelcomeContent {
         "Press Enter at the end of a line of dialog and the next character comes up. After the name, Enter takes you straight into the dialog.",
       ),
       textBlock("scriptz-character", "LENA", { characterName: "LENA" }),
-      textBlock("scriptz-action", "(whispers)"),
+      textBlock("scriptz-parenthetical", "(whispers)"),
       textBlock(
         "scriptz-dialog",
-        "Delivery cues are simply an action line in parentheses.",
+        "How a line is said, you type right inside the dialog: an opening parenthesis turns it into a parenthetical, the closing one takes you back into the dialog.",
       ),
       textBlock(
         "scriptz-action",
-        `TOM taps the screen. Tab opens the block type menu, ${k1} makes an action, ${k2} a character, ${k3} a dialog.`,
+        `TOM taps the screen. Tab opens the block type menu, ${k1} makes an action, ${k2} a character, ${k3} a dialog, ${k4} a parenthetical.`,
       ),
       textBlock("scriptz-character", "TOM", { characterName: "TOM" }),
       textBlock(
@@ -199,8 +203,9 @@ function enWelcome(): WelcomeContent {
       textBlock("scriptz-character", "TOM", { characterName: "TOM" }),
       textBlock("scriptz-dialog", "Just another action block."),
       textBlock("scriptz-action", "Cut. The keys that matter:"),
-      textBlock("scriptz-action", `${k1} / ${k2} / ${k3} - action, character, dialog`),
+      textBlock("scriptz-action", `${k1} / ${k2} / ${k3} / ${k4} - action, character, dialog, parenthetical`),
       textBlock("scriptz-action", "Tab - pick a block type · Enter - next fitting block"),
+      textBlock("scriptz-action", "( in a dialog - parenthetical · ) - back to the dialog"),
       textBlock("scriptz-action", `${kB} / ${kU} - bold / underline`),
       textBlock("scriptz-action", `${kK} - search and commands`),
       textBlock("scriptz-action", `${kN} - new script`),

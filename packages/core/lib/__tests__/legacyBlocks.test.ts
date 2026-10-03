@@ -57,11 +57,10 @@ function parse(json: string): Parsed {
 }
 
 describe("normalizeLegacyContent", () => {
-  it("exports the four retired types", () => {
+  it("exports the three retired types (parenthetical is not retired)", () => {
     expect([...LEGACY_BLOCK_TYPES].sort()).toEqual([
       "scriptz-camera",
       "scriptz-caption",
-      "scriptz-parenthetical",
       "scriptz-sfx",
     ]);
   });
@@ -81,51 +80,31 @@ describe("normalizeLegacyContent", () => {
     },
   );
 
-  it("wraps parenthetical text in parentheses", () => {
+  it("leaves parenthetical blocks untouched (same string)", () => {
+    const input = state([
+      block("scriptz-character", [text("MAX")], { characterName: "MAX" }),
+      block("scriptz-parenthetical", [text("(leise)")], { blockType: "scriptz-parenthetical" }),
+      block("scriptz-parenthetical", [text("ohne Klammern")]),
+      block("scriptz-dialog", [text("Hallo")]),
+    ]);
+    expect(mayContainLegacyBlocks(input)).toBe(false);
+    const out = normalizeLegacyContent(input);
+    expect(out.changed).toBe(false);
+    expect(out.json).toBe(input);
+  });
+
+  it("converts retired types next to a parenthetical without touching it", () => {
     const { json, changed } = normalizeLegacyContent(
-      state([block("scriptz-parenthetical", [text("leise")])]),
-    );
-    expect(changed).toBe(true);
-    const b = parse(json).root.children[0];
-    expect(b.type).toBe("scriptz-action");
-    expect(b.children[0].text).toBe("(leise)");
-  });
-
-  it("does not double-wrap an already parenthesized parenthetical", () => {
-    const { json } = normalizeLegacyContent(
-      state([block("scriptz-parenthetical", [text("(leise)")])]),
-    );
-    expect(parse(json).root.children[0].children[0].text).toBe("(leise)");
-  });
-
-  it("wraps across nested formatted runs, keeping their formats", () => {
-    const { json } = normalizeLegacyContent(
       state([
-        block("scriptz-parenthetical", [
-          text("  "),
-          text("sehr", 1),
-          text(" leise", 2),
-          { type: "linebreak", version: 1 },
-          text("und schnell ", 8),
-        ]),
+        block("scriptz-parenthetical", [text("leise")]),
+        block("scriptz-sfx", [text("Pling")]),
       ]),
     );
-    const children = parse(json).root.children[0].children;
-    expect(children[0].text).toBe("  ");
-    expect(children[1]).toMatchObject({ text: "(sehr", format: 1 });
-    expect(children[2]).toMatchObject({ text: " leise", format: 2 });
-    expect(children[3].type).toBe("linebreak");
-    expect(children[4]).toMatchObject({ text: "und schnell) ", format: 8 });
-  });
-
-  it("leaves an empty parenthetical empty (no '()')", () => {
-    const { json, changed } = normalizeLegacyContent(
-      state([block("scriptz-parenthetical", [])]),
-    );
     expect(changed).toBe(true);
-    const b = parse(json).root.children[0];
-    expect(b.type).toBe("scriptz-action");
-    expect(b.children).toEqual([]);
+    const [paren, sfx] = parse(json).root.children;
+    expect(paren.type).toBe("scriptz-parenthetical");
+    expect(paren.children[0].text).toBe("leise");
+    expect(sfx.type).toBe("scriptz-action");
   });
 
   it("does not change the word count", () => {
@@ -134,6 +113,7 @@ describe("normalizeLegacyContent", () => {
       block("scriptz-parenthetical", [text("sehr leise")]),
       block("scriptz-dialog", [text("Hallo Welt")]),
       block("scriptz-sfx", [text("Pling")]),
+      block("scriptz-camera", [text("Close Up")]),
     ]);
     const { json } = normalizeLegacyContent(input);
     // countWordsInContent normalizes on its own, so compare raw tokens too.
@@ -174,7 +154,7 @@ describe("normalizeLegacyContent", () => {
 
   it("is idempotent", () => {
     const once = normalizeLegacyContent(
-      state([block("scriptz-parenthetical", [text("leise")])]),
+      state([block("scriptz-caption", [text("Büro")])]),
     ).json;
     const twice = normalizeLegacyContent(once);
     expect(twice.changed).toBe(false);

@@ -6,6 +6,7 @@ import {
   createResource,
   createSignal,
   onCleanup,
+  on,
   onMount,
   untrack,
 } from "solid-js";
@@ -45,8 +46,9 @@ import { SortMenu } from "./parts/SortMenu";
 import { IdeaDetail, type IdeaDetailHandle } from "./parts/IdeaDetail";
 import "./IdeasPage.css";
 
-/** Rows a month group shows before "N weitere" (the week group shows all). */
-const GROUP_CAP = 8;
+/** Rows rendered per page across all open groups; "Weitere laden" adds
+ *  another page. Keeps the DOM small for very large idea collections. */
+const PAGE_SIZE = 50;
 
 // Session-level view state: survives leaving and re-entering the page.
 const [sort, setSort] = createSignal<IdeaSort>("newest");
@@ -54,8 +56,8 @@ const [showUsed, setShowUsed] = createSignal(false);
 const [query, setQuery] = createSignal("");
 /** Explicit open/closed state per group id; default: "older" closed. */
 const [groupOpen, setGroupOpen] = createSignal<Record<string, boolean>>({});
-/** Groups whose "N weitere" row was expanded. */
-const [groupFull, setGroupFull] = createSignal<Record<string, boolean>>({});
+/** How many rows (across open groups, in display order) are rendered. */
+const [rowLimit, setRowLimit] = createSignal(PAGE_SIZE);
 
 function isEditable(el: EventTarget | null): boolean {
   if (!(el instanceof HTMLElement)) return false;
@@ -119,10 +121,31 @@ export function IdeasPage() {
     const explicit = groupOpen()[g.id];
     return explicit ?? g.kind !== "older";
   };
-  const shownItems = (g: IdeaGroup<Idea>) => {
-    if (filtering() || g.kind !== "month" || groupFull()[g.id]) return g.items;
-    return g.items.slice(0, GROUP_CAP);
-  };
+  /** Splits the row budget over the open groups in display order. Groups
+   *  after the one where the budget runs out are not rendered at all; the
+   *  "load more" button below the list continues from there. */
+  const paging = createMemo(() => {
+    const shown = new Map<string, Idea[]>();
+    const rendered: IdeaGroup<Idea>[] = [];
+    let budget = rowLimit();
+    let remaining = 0;
+    for (const g of groups()) {
+      if (budget <= 0) {
+        if (isOpen(g)) remaining += g.items.length;
+        continue;
+      }
+      rendered.push(g);
+      if (!isOpen(g)) continue;
+      const take = g.items.slice(0, budget);
+      shown.set(g.id, take);
+      budget -= take.length;
+      remaining += g.items.length - take.length;
+    }
+    return { shown, rendered, remaining };
+  });
+  const shownItems = (g: IdeaGroup<Idea>) => paging().shown.get(g.id) ?? [];
+  // A new folder / filter / sort starts again at the first page.
+  createEffect(on([activeFolder, query, sort, showUsed], () => setRowLimit(PAGE_SIZE), { defer: true }));
   /** Row ids in display order (only rows actually rendered). */
   const visibleIds = createMemo(() => {
     const ids: string[] = [];
@@ -172,10 +195,23 @@ export function IdeasPage() {
       }
       const g = groups().find((gr) => gr.items.some((i) => i.id === want));
       if (g) {
-        // In a collapsed group or beyond the month cap: open it up, the
-        // next run selects and scrolls to it.
-        if (!isOpen(g)) setGroupOpen({ ...groupOpen(), [g.id]: true });
-        if (!shownItems(g).some((i) => i.id === want)) setGroupFull({ ...groupFull(), [g.id]: true });
+        // In a collapsed group or beyond the loaded page: open the group
+        // and extend the page so the row renders; the next run selects it.
+        if (!isOpen(g)) {
+          setGroupOpen({ ...groupOpen(), [g.id]: true });
+          return;
+        }
+        if (!shownItems(g).some((i) => i.id === want)) {
+          let index = 0;
+          for (const gr of groups()) {
+            if (gr === g) {
+              index += gr.items.findIndex((i) => i.id === want);
+              break;
+            }
+            if (isOpen(gr)) index += gr.items.length;
+          }
+          setRowLimit(Math.max(rowLimit(), Math.ceil((index + 1) / PAGE_SIZE) * PAGE_SIZE));
+        }
         return;
       }
       if (ideas().some((i) => i.id === want)) setWanted(null); // hidden by a filter
@@ -595,7 +631,7 @@ export function IdeasPage() {
                 aria-activedescendant={primary() ? `idea-row-${primary()}` : undefined}
                 tabindex="0"
               >
-                <For each={groups()}>
+                <For each={paging().rendered}>
                   {(g) => (
                     <>
                       <button
@@ -671,25 +707,16 @@ export function IdeasPage() {
                             </div>
                           )}
                         </For>
-                        <Show when={shownItems(g).length < g.items.length}>
-                          <button
-                            type="button"
-                            class="irow more"
-                            onClick={() => setGroupFull({ ...groupFull(), [g.id]: true })}
-                          >
-                            <span />
-                            <span>
-                              {t("ideasPage.group.more", {
-                                count: g.items.length - shownItems(g).length,
-                                group: groupLabel(g, new Date(now())),
-                              })}
-                            </span>
-                          </button>
-                        </Show>
                       </Show>
                     </>
                   )}
                 </For>
+                <Show when={paging().remaining > 0}>
+                  <button type="button" class="irow more" onClick={() => setRowLimit(rowLimit() + PAGE_SIZE)}>
+                    <span />
+                    <span>{t("ideasPage.loadMore", { count: Math.min(PAGE_SIZE, paging().remaining) })}</span>
+                  </button>
+                </Show>
               </div>
             </Show>
           </div>

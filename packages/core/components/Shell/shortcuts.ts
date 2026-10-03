@@ -3,7 +3,7 @@
 // focused component (editor plugins, dialogs, menus) can claim a key first
 // with preventDefault / stopPropagation.
 //
-// Editor-local keys (⌘1-3, Tab picker, Smart-Enter, ⌘B/⌘U, ⌘⇧S/⌘⇧H
+// Editor-local keys (⌘1-4, Tab picker, Smart-Enter, ⌘B/⌘U, ⌘⇧S/⌘⇧H
 // snapshots) belong to the script screen and are not handled here.
 
 import { isModKey } from "../../lib/keys";

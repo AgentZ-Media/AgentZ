@@ -129,6 +129,28 @@ describe("scriptzFile - roundtrip", () => {
       JSON.stringify(JSON.parse(baseScript.content_json)),
     );
   });
+
+  it("keeps parenthetical blocks unchanged through export and import", () => {
+    const withParen = JSON.parse(sampleContent) as {
+      root: { children: Array<Record<string, unknown>> };
+    };
+    withParen.root.children.splice(1, 0, {
+      type: "scriptz-parenthetical",
+      version: 1,
+      blockType: "scriptz-parenthetical",
+      direction: null,
+      format: "",
+      indent: 0,
+      children: [
+        { detail: 0, format: 0, mode: "normal", style: "", text: "(leise)", type: "text", version: 1 },
+      ],
+    });
+    const content = JSON.stringify(withParen);
+    const parsed = parseScriptzBytes(
+      serializeScriptToBytes({ ...baseScript, content_json: content }),
+    );
+    expect(JSON.stringify(parsed.script.contentJson)).toBe(content);
+  });
 });
 
 describe("scriptzFile - parseScriptzBytes Validierung", () => {
@@ -295,7 +317,7 @@ describe("scriptzFile - legacy block types", () => {
     },
   });
 
-  it("converts retired block types on import", () => {
+  it("converts retired block types on import, keeps parentheticals", () => {
     const file = serializeScript(baseScript) as unknown as {
       script: Record<string, unknown>;
     };
@@ -304,12 +326,14 @@ describe("scriptzFile - legacy block types", () => {
     const children = (parsed.script.contentJson as {
       root: { children: Array<{ type: string; children: Array<{ text: string }> }> };
     }).root.children;
-    expect(children.map((c) => c.type)).toEqual(["scriptz-action", "scriptz-action"]);
-    expect(children[0].children[0].text).toBe("(leise)");
+    expect(children.map((c) => c.type)).toEqual(["scriptz-parenthetical", "scriptz-action"]);
+    expect(children[0].children[0].text).toBe("leise");
   });
 
   it("never exports retired block types", () => {
     const out = serializeScript({ ...baseScript, content_json: legacyContent });
-    expect(JSON.stringify(out)).not.toMatch(/scriptz-(parenthetical|camera|caption|sfx)/);
+    const json = JSON.stringify(out);
+    expect(json).not.toMatch(/scriptz-(camera|caption|sfx)/);
+    expect(json).toContain("scriptz-parenthetical");
   });
 });

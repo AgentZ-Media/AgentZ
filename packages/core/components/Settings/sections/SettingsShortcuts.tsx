@@ -37,6 +37,8 @@ function groups(): ShortcutGroup[] {
         { keys: [K("Mod+1")], desc: t("prefs.shortcuts.action") },
         { keys: [K("Mod+2")], desc: t("prefs.shortcuts.character") },
         { keys: [K("Mod+3")], desc: t("prefs.shortcuts.dialog") },
+        { keys: [K("Mod+4")], desc: t("prefs.shortcuts.parenthetical") },
+        { keys: ["(", ")"], desc: t("prefs.shortcuts.parenLive") },
         { keys: [t("shortcut.key.tab")], desc: t("prefs.shortcuts.picker") },
         { keys: [K("Enter")], desc: t("prefs.shortcuts.smartEnter") },
         { keys: [K("Mod+B"), K("Mod+U")], desc: t("prefs.shortcuts.format") },

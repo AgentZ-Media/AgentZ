@@ -80,6 +80,7 @@ export const en: Record<keyof typeof de, string> = {
   "block.action": "Action",
   "block.character": "Character",
   "block.dialog": "Dialog",
+  "block.parenthetical": "Paren.",
 
   // ---------- script stages (Werkbank pipeline) ----------
   "stage.idea": "Idea",

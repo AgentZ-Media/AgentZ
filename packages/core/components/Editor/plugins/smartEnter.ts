@@ -18,6 +18,7 @@ import {
   $isScriptzActionNode,
   $isScriptzCharacterNode,
   $isScriptzDialogNode,
+  $isScriptzParentheticalNode,
 } from "../nodes";
 import type { ScriptCharacter } from "../../../lib/types";
 
@@ -30,14 +31,18 @@ function findScriptzAncestor(node: LexicalNode | null): BaseScriptzNode | null {
   return null;
 }
 
-// Smart-Enter state machine (three block types):
-//   Action    (text)  -> new Character below
-//   Action    (empty) -> becomes Character
-//   Character (text)  -> new Dialog below
-//   Character (empty) -> becomes Action
-//   Dialog    (text)  -> new Character below; in quick mode with exactly
-//                        two characters: pre-filled OTHER speaker + Dialog
-//   Dialog    (empty) -> becomes Character (quick mode: the other speaker)
+// Smart-Enter state machine (four block types):
+//   Action        (text)  -> new Character below
+//   Action        (empty) -> becomes Character
+//   Character     (text)  -> new Dialog below
+//   Character     (empty) -> becomes Action
+//   Dialog        (text)  -> new Character below; in quick mode with
+//                            exactly two characters: pre-filled OTHER
+//                            speaker + Dialog
+//   Dialog        (empty) -> becomes Character (quick mode: the other
+//                            speaker)
+//   Parenthetical (text)  -> new Dialog below
+//   Parenthetical (empty) -> becomes Dialog
 // So from an Action line, Enter leads to a Character and a second Enter
 // (on the still empty Character) back to Action - both are one key away.
 // Shift+Enter is left to Lexical (line break inside the block).
@@ -140,8 +145,9 @@ export function installSmartEnter(
                 charBlock.setCharacterName(other.name.toUpperCase());
                 charBlock.append($createTextNode(other.name.toUpperCase()));
                 const nextDialog = $createScriptzDialogNode();
-                // Empty dialog → replace it so we don't strand a blank
-                // line above the new character.
+                // Empty dialog (typical after closing a parenthetical)
+                // → replace it so we don't strand a blank line above the
+                // new character.
                 if (isEmpty) {
                   (block as BaseScriptzNode).replace(charBlock);
                 } else {
@@ -155,11 +161,23 @@ export function installSmartEnter(
             }
           }
           // Empty dialog → replace in place so we don't leave a blank
-          // dialog line above the new Character.
+          // dialog line above the new Character (common case after
+          // closing a parenthetical with `)`).
           if (isEmpty) {
             replaceBlockWith(block, $createScriptzCharacterNode());
           } else {
             insertNewBlockAfter(block, $createScriptzCharacterNode());
+          }
+          if (event) event.preventDefault();
+          return true;
+        }
+        if ($isScriptzParentheticalNode(block)) {
+          // Empty parenthetical → replace with Dialog (e.g. the writer
+          // typed "(" by mistake, deleted it and hit Enter).
+          if (isEmpty) {
+            replaceBlockWith(block, $createScriptzDialogNode());
+          } else {
+            insertNewBlockAfter(block, $createScriptzDialogNode());
           }
           if (event) event.preventDefault();
           return true;

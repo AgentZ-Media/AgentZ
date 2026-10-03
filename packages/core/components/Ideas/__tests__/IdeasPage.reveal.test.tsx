@@ -1,7 +1,7 @@
 // Regression tests for revealing an idea on the ideas page
 // (components/Ideas/IdeasPage.tsx): a palette result or a "similar idea"
 // link must select the idea even when it sits in a collapsed group, beyond
-// the month cap, behind the text filter, "show used" or a folder chip.
+// the loaded page (50 rows), behind the text filter, "show used" or a folder chip.
 
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { render } from "@solidjs/testing-library";
@@ -23,11 +23,12 @@ function idea(id: string, created_at: number, extra: Partial<Idea> = {}): Idea {
   return { id, title: `Idea ${id}`, notes: "", created_at, used_at: null, script_id: null, folder_id: null, ...extra };
 }
 
-// Twelve ideas in last month's group (cap 8: m0..m3 are hidden behind
-// "N more" in the newest-first sort), one in the collapsed "older" group,
+// Sixty ideas in last month's group (page size 50: the oldest ones, m0
+// among them, sit behind "load more" in the newest-first sort), one in the
+// collapsed "older" group,
 // one converted idea and two in folders.
 const IDEAS: Idea[] = [
-  ...Array.from({ length: 12 }, (_, i) => idea(`m${i}`, lastMonth(i))),
+  ...Array.from({ length: 60 }, (_, i) => idea(`m${i}`, lastMonth(i))),
   idea("old", longAgo),
   idea("used", lastMonth(30), { used_at: lastMonth(31), title: "Converted one" }),
   idea("inF", lastMonth(40), { folder_id: "f1", title: "Folder one" }),
@@ -76,12 +77,12 @@ const row = (id: string) => document.getElementById(`idea-row-${id}`);
 const isSelected = (id: string) => !!row(id)?.classList.contains("is-primary");
 
 describe("IdeasPage reveal", () => {
-  it("opens collapsed groups, the month cap and clears hiding filters", async () => {
+  it("opens collapsed groups, loads further pages and clears hiding filters", async () => {
     const { container } = render(() => <IdeasPage />);
     await settle();
-    expect(row("m11")).not.toBeNull();
+    expect(row("m59")).not.toBeNull();
 
-    // Beyond the month cap.
+    // Beyond the first page of 50 rows.
     expect(row("m0")).toBeNull();
     uiStore.revealIdea("m0");
     await settle();

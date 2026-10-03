@@ -445,8 +445,9 @@ export async function buildPdfBytes(
   }
 
   const contentW = A4_W_MM - MARGIN_LEFT_MM - MARGIN_RIGHT_MM;
-  // Three block types (Action, Character, Dialog). Retired types arrive as
-  // action - extractBlocks normalizes them via lib/legacyBlocks.ts.
+  // Four block types (Action, Character, Dialog, Parenthetical). Retired
+  // types arrive as action - extractBlocks normalizes them via
+  // lib/legacyBlocks.ts.
   const blocks = extractBlocks(deps.contentJson);
 
   // name (UPPER) -> color hex
@@ -494,6 +495,20 @@ export async function buildPdfBytes(
           b.runs,
         );
         break;
+      case "scriptz-parenthetical":
+        // The parentheticalLive plugin already wraps text in "( … )" -
+        // render verbatim so it isn't doubly parenthesized.
+        layout.writeLine(
+          b.text,
+          MARGIN_LEFT_MM + 35.0,
+          contentW - 70.0,
+          true,
+          false,
+          "left",
+          tint,
+          b.runs,
+        );
+        break;
       case "scriptz-action":
         layout.writeLine(
           b.text,
@@ -531,7 +546,11 @@ function computeTint(
   charColor: Map<string, string>,
 ): [number, number, number] | null {
   if (!includeHighlighting) return null;
-  if (b.kind !== "scriptz-character" && b.kind !== "scriptz-dialog") {
+  if (
+    b.kind !== "scriptz-character" &&
+    b.kind !== "scriptz-dialog" &&
+    b.kind !== "scriptz-parenthetical"
+  ) {
     return null;
   }
   let name: string | null =

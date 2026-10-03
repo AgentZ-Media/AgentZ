@@ -447,7 +447,7 @@
 
   .v2-action { text-align: left; }
   /* Scene line: an Action block typed in caps. The editor only has
-     Action, Character and Dialog - headings like "INT. ..." are just
+     Action, Character, Dialog and Parenthetical - headings like "INT. ..." are just
      Action text, set bold here because they double as page headings. */
   .v2-scene {
     font-weight: 700;
@@ -462,8 +462,9 @@
     letter-spacing: 0.06em;
     margin-top: 18px;
   }
-  /* Parentheticals are no longer a block type in the app. The class
-     stays only for older blog posts rendered via remarkDialogue. */
+  /* Parenthetical: delivery cue under the character name, like the
+     app's editor (22 % indent, italic, muted). Also used by blog posts
+     rendered via remarkDialogue. */
   .v2-parenthetical {
     margin-left: 22%;
     margin-right: 22%;

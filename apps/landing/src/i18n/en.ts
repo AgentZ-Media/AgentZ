@@ -157,15 +157,17 @@ export const en: Record<keyof typeof de, string> = {
   // ===================== Tab: WARUM =====================
   "warum.caption": "INT. SCRIPTZ - SCRIPT EDITOR FOR TIKTOK, REELS AND YOUTUBE SHORTS",
   "warum.action1":
-    "An empty page. Cursor blinks. You type and the formatting just happens. Three block types, nothing more: Action, Character, Dialog. Character name? Auto-centered, all caps. Tab? Block picker. Enter? Next line - usually already in the right block.",
+    "An empty page. Cursor blinks. You type and the formatting just happens. Four block types, nothing more: Action, Character, Dialog, Parenthetical. A parenthesis in a dialog line? Becomes a delivery cue. Character name? Auto-centered, all caps. Tab? Block picker. Enter? Next line - usually already in the right block.",
   "warum.action2":
     "ScriptZ is built for content creators, not for screenwriters. You don't want a 90-minute feature-film layout. You want a TikTok script done by half past two, before the good light is gone.",
+  "warum.timo1.paren": "(direct)",
   "warum.timo1.dialog":
-    "(direct) You type, the editor formats. Characters are auto-detected, get a color and their share of the speaking time. You don't have to set anything up. You don't have to click anything. You just have to write.",
+    "You type, the editor formats. Characters are auto-detected, get a color and their share of the speaking time. You don't have to set anything up. You don't have to click anything. You just have to write.",
   "warum.axel1.dialog": "Sounds like every tool since 2015.",
   "warum.timo2.dialog":
     "Try it. Make a script, write two speakers. Then hit Enter. You'll see the cursor land in the right block, with the right speaker in front. That's quick mode. It saves two keystrokes per switch - and on a 60-second reel with 12 switches, that's a minute.",
-  "warum.axel2.dialog": "(curious) And AI? Does it suggest what to say?",
+  "warum.axel2.paren": "(curious)",
+  "warum.axel2.dialog": "And AI? Does it suggest what to say?",
   "warum.timo3.dialog":
     "No. Deliberately not. Creativity is your job. If you wanted a model to write for you, you'd have ChatGPT open.",
   "warum.axel3.dialog": "And how do I know if my reel is getting too long?",
@@ -215,8 +217,9 @@ export const en: Record<keyof typeof de, string> = {
   "noai.caption": "INT. NO-AI MANIFESTO - SCRIPT EDITOR WITHOUT AI",
   "noai.action1":
     "ScriptZ has no AI built in. No chat window, no „write me a script\", no auto-rephrasing, no suggestions, no autocomplete beyond character names from your own script. Deliberately not.",
+  "noai.axel1.paren": "(skeptical)",
   "noai.axel1.dialog":
-    "(skeptical) Every other tool has AI. You're selling „no AI\" as a feature?",
+    "Every other tool has AI. You're selling „no AI\" as a feature?",
   "noai.timo1.dialog":
     "Yes. Because your voice is your product. If a model writes half the script, half the voice is the model.",
   "noai.axel2.dialog": "Sometimes you just get stuck.",
@@ -231,7 +234,7 @@ export const en: Record<keyof typeof de, string> = {
   "noai.card3.body": "Your script isn't broken. It doesn't need outside improvement.",
   "noai.card4.title": "Instead: a fast editor",
   "noai.card4.body":
-    "Quick mode, character auto-detection, three block hotkeys, a timeline. Tools that carry your idea from your head to the page - without rewriting it.",
+    "Quick mode, character auto-detection, four block hotkeys, a timeline. Tools that carry your idea from your head to the page - without rewriting it.",
 
   // ===================== Tab: VERGLEICH =====================
   "cmp.caption": "EXT. COMPARE - SCRIPTZ VS. FINAL DRAFT, NOTION, CHATGPT",

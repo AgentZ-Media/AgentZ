@@ -30,8 +30,9 @@
 ## 1. Was gestrichen wird (bewusst)
 
 - Tabs / TabBar / Home-Tab / Ideen-Tab → Seitenleiste + Verlauf + „Zuletzt".
-- Blocktypen **Parenthetical, Kamera, Caption, SFX** → werden zu **Action**
-  (Text bleibt; Parenthetical-Text wird in `( … )` gesetzt, falls nicht schon).
+- Blocktypen **Kamera, Caption, SFX** → werden zu **Action** (Text bleibt).
+  Ursprünglich stand hier auch **Parenthetical** - diese Streichung ist
+  per Entscheidung vom **2026-10-03** zurückgenommen (siehe §9).
 - Wochenziel (`weeklyWordGoal`), Streak-Anzeige, Ideen-Badge-Setting,
   MomentumStrip, Begrüßung „Guten Morgen". Ersetzt durch adaptiven Schreib-Zähler.
 - EditorToolbar (Block-Pills), EditorRail → Kopfleiste + Inspector.
@@ -80,7 +81,7 @@ setFolderLengthRange(id: string, minSec: number | null, maxSec: number | null): 
 |---|---|---|
 | `lib/legacyBlocks.ts` | `normalizeLegacyContent(json: string): { json: string; changed: boolean }` | Wandelt alte Blocktypen in Action. Wird überall angewendet, wo Content geparst wird (Editor-Load, lex, PDF, Plaintext, Import, Snapshot-Restore). |
 | `lib/legacyBlocksMigration.ts` | `migrateLegacyBlocksOnce(): Promise<void>` | Boot-Migration über alle Skripte (inkl. Papierkorb) via `api`, Flag `app_state["migration.legacy_blocks_v1"]`. |
-| `lib/timing.ts` | `computeTimeline(blocks: TimingBlock[], wpm: number): TimelineSegment[]`, `type TimingBlock = { key?: string; kind: "action" \| "character" \| "dialog"; text: string }`, `type TimelineSegment = { key?: string; kind: "action" \| "dialog"; speaker: string \| null; startSec: number; durSec: number; text: string }` | Sprecher-Spuren. Summe == `runtime.ts`-Laufzeit (gleiche Formel). |
+| `lib/timing.ts` | `computeTimeline(blocks: TimingBlock[], wpm: number): TimelineSegment[]`, `type TimingBlock = { key?: string; kind: "action" \| "character" \| "dialog" \| "paren"; text: string }`, `type TimelineSegment = { key?: string; kind: "action" \| "dialog"; speaker: string \| null; startSec: number; durSec: number; text: string }` | Sprecher-Spuren. Summe == `runtime.ts`-Laufzeit (gleiche Formel). |
 | `lib/lengthGoal.ts` | `type LengthRange = { minSec: number \| null; maxSec: number \| null }`, `resolveLengthRange(folder: Folder \| null, defaults: LengthRange): LengthRange \| null`, `lengthStatus(runtimeSec, range): { state: "none" \| "under" \| "in" \| "over"; deltaSec: number }`, `formatRange(range): string` | Zielbereich laut Spec. |
 | `lib/writingCounter.ts` | `pickWritingWindow(stats: DailyStatsSummary, now?: Date): { words: number; window: "week" \| "month" \| "year" \| "total" \| "none"; all: { week: number; month: number; year: number; total: number } }` | Adaptiver Zähler: kleinstes Fenster mit Wörtern > 0. |
 
@@ -147,7 +148,8 @@ Alle Dialoge sind parameterlos und steuern sich über `stores/ui.ts`.
 `⌘I` Idee erfassen (überall, auch Fokus; **nie** Kursiv) · `⌘[`/`⌘]` Verlauf ·
 `⌘\` Seitenleiste · `⌘⇧\` Inspector · `⌘J` Zeitleiste · `⌘⌥→`/`⌘⌥←` Stufe ·
 `⌘⇧F` Fokus · `⌘E` Export · `⌘,` Einstellungen · `⌘⇧S`/`⌘⇧H` Versionen ·
-Editor: `⌘1` Action, `⌘2` Charakter, `⌘3` Dialog, `Tab` Picker, `⏎` Smart-Enter,
+Editor: `⌘1` Action, `⌘2` Charakter, `⌘3` Dialog, `⌘4` Parenthetical
+(seit 2026-10-03, siehe §9), `(`/`)` im Dialog, `Tab` Picker, `⏎` Smart-Enter,
 `⌘B`/`⌘U`.
 
 ## 8. Phasen
@@ -206,6 +208,28 @@ Komponenten aus §6, Tastatur laut §7.
 (komplett neu), `feature-parity.md`, `landing-consistency.md`,
 `i18n.md` (Aufteilung `i18n/parts/*`), `release.md`,
 `docs/studio-spec.md`.
+
+**Entscheidung 2026-10-03: Parenthetical kommt zurück.** Der Product
+Owner hat entschieden, dass Regieanweisungen fürs Sprechen („(leise)")
+wieder ein eigener Blocktyp sind. Der Editor hat damit **vier**
+Blocktypen: Action `⌘1`, Charakter `⌘2`, Dialog `⌘3`, Parenthetical
+`⌘4`. Kamera, Caption und SFX bleiben gestrichen. Umgesetzt wie auf
+`main`: `ScriptzParentheticalNode` (Typ `scriptz-parenthetical`, gleiche
+Serialisierung, alter Content bleibt kompatibel), Plugin
+`parentheticalLive` („(" im Dialog öffnet ein Parenthetical und teilt die
+Zeile am Cursor, „)" springt in den nächsten Dialog), Smart-Enter
+Parenthetical -> Dialog, 22 % eingerückt, kursiv, gedämpft, in der
+Sprecherfarbe getönt. Laufzeit: Parenthetical zählt 0 s und keine
+Dialogwörter, bekommt kein Zeitleisten-Segment, unterbricht aber den
+Sprecher nicht (`runtime.ts`, `timing.ts`, `timelineMath.ts` bleiben
+konsistent). `legacyBlocks.ts` wandelt nur noch Kamera/Caption/SFX um;
+die Sonderfälle für in Action umgewandelte Klammer-Zeilen
+(`isParenCueText` in `lex.ts`/`highlight.ts`) sind entfernt. Onboarding,
+Tastenkürzel, Willkommens-Skript, Export-Vorschau, README, Landing und
+Rules sind nachgezogen. Hinweis: Wo die Boot-Migration auf einem
+Entwicklungsrechner schon gelaufen ist, sind alte Parentheticals bereits
+Action-Zeilen „(…)" - die bleiben so (kein Rückweg, betrifft keine
+veröffentlichte Version).
 
 **Bekannte Rest-Punkte (nicht Teil von Phase 5):**
 

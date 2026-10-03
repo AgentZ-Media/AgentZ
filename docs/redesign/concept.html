@@ -1336,7 +1336,7 @@
     <div><h4>Block-Typ am Cursor</h4><p>Statt sieben Pills oben steht der Typ des aktuellen Blocks als gelbes Label links neben der Zeile, mit Hotkey. Nur am Cursor-Block, nie mehrfach.</p></div>
     <div><h4>Autocomplete sagt, wer dran ist</h4><p>Die Vorhersage aus <code>predict.ts</code> wird sichtbar: „AXEL ist dran" steht oben, ⏎ übernimmt. Neue Namen tippt man einfach weiter.</p></div>
     <div><h4>Inspector zeigt nur Informationen</h4><p>Stufe, Länge, Cast, Idee, Versionen - nichts davon ist eine Einstellung. Quick-Modus und Farben im Text sind zwei Umschalter in der Kopfleiste, der Tooltip erklärt den Zustand. Die Stufe ändert man über den Chip daneben.</p></div>
-    <div><h4>Drei Blocktypen</h4><p>Action, Charakter, Dialog - mehr braucht ein TikTok- oder YouTube-Skript nicht. Kamera, Caption, SFX und Parenthetical entfallen; Regie steht als Action, kurze Hinweise einfach in Klammern im Dialog.</p></div>
+    <div><h4>Vier Blocktypen</h4><p>Action, Charakter, Dialog, Parenthetical - mehr braucht ein TikTok- oder YouTube-Skript nicht. Kamera, Caption und SFX entfallen; Regie steht als Action, Hinweise fürs Sprechen tippst du mit „(" direkt im Dialog als Parenthetical (Entscheidung 2026-10-03).</p></div>
     <div><h4>Endlose Schreibfläche</h4><p>Keine Seiten, keine Seitenzahlen - wie heute ein durchgehendes Blatt. Seiten gibt es erst im PDF.</p></div>
     <div><h4>Stufe per Menü oder Tastatur</h4><p>Im Menü wählen die Ziffern 1-5 direkt. <kbd style="font-size:11px">⌘⌥→</kbd> schiebt ohne Menü eine Stufe weiter, der Toast bietet Rückgängig an.</p></div>
     <div><h4>Idee erbt den Kontext</h4><p>⌘I übernimmt den Ordner des offenen Skripts und funktioniert auch im Fokus-Modus. Das Fenster dahinter bleibt, wie es war.</p></div>
@@ -1346,7 +1346,7 @@
     <div><h4>Ideen: eigene Seite für 50+</h4><p>Dichte Liste mit 36 px Zeilen, nach Zeit gruppiert, Ordner als Filter-Chips. Rechts das Detail der gewählten Idee zum direkten Weiterschreiben, plus „Ähnliche Stücke" aus der Volltextsuche, damit keine Idee doppelt entsteht. Alles per Tastatur, ⇧-Klick wählt mehrere zum Verschieben oder Senden an Studio.</p></div>
     <div><h4>Export zeigt das Ergebnis</h4><p>Links die echte erste PDF-Seite mit Farben, rechts drei Formate als Karten und nur die Optionen, die zum gewählten Format passen. Seiten tauchen erst hier auf.</p></div>
     <div><h4>Einstellungen als Liste mit Erklärung</h4><p>Jede Zeile sagt in einem Satz, was sie bewirkt. Neu: Sprechtempo und Zielbereich - global und je Ordner -, Schreib-Zähler abschaltbar. Updates bekommen ein Badge, wenn etwas bereit ist.</p></div>
-    <div><h4>Onboarding zeigt statt erklärt</h4><p>Drei Schritte (Aussehen, Schreiben, Los geht's). Im mittleren steht ein Mini-Skript, in dem Enter sichtbar durch die drei Blöcke führt und der Quick-Modus den zweiten Sprecher von selbst einsetzt.</p></div>
+    <div><h4>Onboarding zeigt statt erklärt</h4><p>Drei Schritte (Aussehen, Schreiben, Los geht's). Im mittleren steht ein Mini-Skript, in dem Enter sichtbar durch die Blöcke führt und der Quick-Modus den zweiten Sprecher von selbst einsetzt.</p></div>
     <div><h4>Zähler statt Ziel</h4><p>Kein Wochenziel, kein Streak. Unten in der Leiste steht, was geschrieben wurde - im kleinsten Zeitraum, in dem etwas passiert ist: diese Woche, sonst diesen Monat, sonst dieses Jahr. So steht dort nie eine 0, außer man ist ganz neu. Hover zeigt alle Zeiträume.</p></div>
   </div>
 </section>
@@ -1378,7 +1378,7 @@
     <div class="d-card"><h4>Unter 1200 px Fensterbreite</h4><p>Leiste + Inspector brauchen 540 px. Vorschlag: Inspector wird dann zum Overlay von rechts, Leiste bleibt.</p></div>
     <div class="d-card"><h4>Mehrere Skripte nebeneinander</h4><p>Ohne Tabs kein sichtbares Nebeneinander mehr. „Zuletzt" + ⌘K decken das ab; falls es fehlt, später geteilte Ansicht statt Tabs.</p></div>
     <div class="d-card"><h4>Web-Version</h4><p>Die Schale ist plattformneutral. Trafficlights entfallen im Web wie heute über <code>data-shell="web"</code>; das Desktop-Only-Gate (&lt; 1024 px) bleibt.</p></div>
-    <div class="d-card"><h4>Bestehende Skripte mit alten Blocktypen</h4><p>Braucht eine Migration: Kamera, Caption und SFX werden zu Action, Parentheticals wandern als „(…)" in den Dialog davor. Vorher ein Snapshot pro Skript, damit nichts verloren geht.</p></div>
+    <div class="d-card"><h4>Bestehende Skripte mit alten Blocktypen</h4><p>Braucht eine Migration: Kamera, Caption und SFX werden zu Action. Parentheticals bleiben, was sie sind. Vorher ein Snapshot pro Skript, damit nichts verloren geht.</p></div>
     <div class="d-card"><h4>Landing und README</h4><p>Beide werben mit sieben Blocktypen, Wochenziel und Streak. Beim Umsetzen müssen Features-Sektion, Workflow-Demo und Vergleichstabelle mitziehen.</p></div>
     <div class="d-card"><h4>Zeitleiste ist eine Schätzung</h4><p>Basis ist die bestehende Formel in <code>lib/runtime.ts</code> mit dem WPM aus den Einstellungen. Der Tooltip sollte das einmal ehrlich sagen.</p></div>
   </div>

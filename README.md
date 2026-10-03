@@ -62,7 +62,7 @@ Press `⌘I` from anywhere – even in focus mode – type the idea, Enter, you'
   <img src="apps/landing/public/img/app/editor.png" alt="ScriptZ editor with character colors, inspector and timeline" width="900" />
 </p>
 
-Three block types (Action · Character · Dialog) on one endless sheet, auto character detection with per-name colors, and an inspector with stage, length vs. target range, speaking shares, the original idea and versions. Press `⌘J` and a timeline under the sheet shows who speaks when.
+Four block types (Action · Character · Dialog · Parenthetical) on one endless sheet, auto character detection with per-name colors, and an inspector with stage, length vs. target range, speaking shares, the original idea and versions. Press `⌘J` and a timeline under the sheet shows who speaks when.
 
 ---
 
@@ -76,11 +76,12 @@ The moment a third character shows up, Quick Mode pauses on its own. Drop back t
 
 ### ✍️ Format happens, you don't
 
-- Three block types, nothing to learn: **Action**, **Character**, **Dialog**. `⌘1`–`⌘3` switches, `Tab` opens the block picker, `Enter` moves on to the block you most likely want next.
+- Four block types, nothing to learn: **Action**, **Character**, **Dialog**, **Parenthetical**. `⌘1`–`⌘4` switches, `Tab` opens the block picker, `Enter` moves on to the block you most likely want next.
+- Type `(` inside a dialog line and it becomes a parenthetical – a delivery cue like *(quietly)* under the character name. `)` takes you straight back into the dialog.
 - Character names auto-centered and visually all-caps – without rewriting your data.
 - One endless writing sheet. Pages only exist where they belong: in the PDF.
 - Bold and underline where they make sense. Italic is left alone, because `⌘I` belongs to quick capture.
-- Coming from an older version? Parenthetical, Camera, Caption and SFX blocks are converted to Action automatically – your text stays.
+- Coming from an older version? Camera, Caption and SFX blocks are converted to Action automatically – your text stays. Parentheticals stay parentheticals.
 
 ### 🎨 Characters as first-class citizens
 
@@ -166,7 +167,8 @@ No login. No cloud. No telemetry. The entire app is a `~10 MB` native binary plu
 
 | Shortcut | Action |
 |---|---|
-| `⌘1` / `⌘2` / `⌘3` | Action / Character / Dialog |
+| `⌘1` / `⌘2` / `⌘3` / `⌘4` | Action / Character / Dialog / Parenthetical |
+| `(` / `)` in a dialog line | Open a parenthetical / back to the dialog |
 | `Tab` | Block-type picker for the current block |
 | `Enter` | Smart-advance to the next block type |
 | `⌘B` / `⌘U` | Bold / Underline (Action & Dialog) |
