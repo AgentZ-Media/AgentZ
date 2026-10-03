@@ -12,13 +12,18 @@
       "DOM.Iterable"
     ],
     "types": [
-      "node",
-      "vite/client"
+      "vitest/globals",
+      "vite/client",
+      "node"
     ],
     "useDefineForClassFields": true
   },
   "include": [
-    "src",
-    "vite.config.ts"
+    "**/*.ts",
+    "**/*.tsx"
+  ],
+  "exclude": [
+    "node_modules",
+    "vitest.config.ts"
   ]
 }

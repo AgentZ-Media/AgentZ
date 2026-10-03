@@ -1,3 +1,4 @@
 /* ScriptZ writing surface and product tokens. Shared chrome lives in @agentz/kit/styles.css. */
+@import "@agentz/design/legacy.css";
 @import "./tokens.css";
 @import "./fonts.css";

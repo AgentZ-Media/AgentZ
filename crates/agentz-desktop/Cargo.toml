@@ -1,0 +1,22 @@
+[package]
+name = "agentz-desktop"
+version = "0.1.0"
+edition = "2021"
+links = "agentz-desktop"
+
+[build-dependencies]
+tauri-plugin = { workspace = true }
+
+[dependencies]
+tauri = { workspace = true }
+tauri-plugin-single-instance = { workspace = true }
+tauri-plugin-window-state = { workspace = true }
+tauri-plugin-clipboard-manager = { workspace = true }
+tauri-plugin-os = { workspace = true }
+tauri-plugin-updater = { workspace = true }
+tauri-plugin-process = { workspace = true }
+tauri-plugin-opener = { workspace = true }
+tauri-plugin-dialog = { workspace = true }
+tauri-plugin-fs = { workspace = true }
+tauri-plugin-sql = { workspace = true }
+serde_json = { workspace = true }

@@ -261,3 +261,24 @@ und Phasen; dieses Protokoll hält die konkreten Ergebnisse fest.
   iA-Writer-Quattro-Schrift; vier TTF-Schriftschnitte zusätzlich im Test geprüft.
   Produktive DB und bestehende Welcome-/Migrationsmarker unverändert.
   Kein Release; Windows und signierter Update-Zyklus sind nicht geprüft.
+
+### Phase 5: Gemeinsamer Desktop-Host und Rust-Crate
+
+- **Sicherung:** Konsistente SQLite-Sicherung unter
+  `~/Backups/scriptz/scriptz-20261003-203928-phase5.db`; Integritätsprüfung
+  erfolgreich, 71 Skripte. Für Phase 6 zusätzlich alle 71 Skripte über den
+  bestehenden `.scriptz`-Serializer exportiert und mit dessen Parser geprüft:
+  `~/Backups/scriptz/exports-phase6-20261003`.
+- **Host:** `bootDesktopApp` übernimmt Plattform, KvStore, Updater, gemeinsame
+  Styles, SuiteShell und Lebenszyklus. ScriptZ lädt nur sein Modul, dessen
+  Produkt-Storage und Styles. Gemeinsame Vite-Konfiguration als separater
+  Node-Einstieg `@agentz/desktop/vite`; ScriptZ behält 1420/1421.
+- **Native Basis:** `agentz_desktop::builder(Config)` registriert Standard-
+  Plugins mit Single-Instance zuerst, Menüs und Quit-Handshake. Migrationen,
+  App-ID, Icons und Capabilities bleiben pro App. ScriptZs sieben Migrationen
+  und `scriptz.db` bleiben erhalten; neue Apps erhalten `KIT_BASELINE_SQL`.
+- **Datensicherheit:** Fensterschluss und Beenden prüfen denselben Flush;
+  Update-Installation erst nach Download, Eingabesperre und erfolgreichem
+  Flush. Fehlschläge verhindern den Ausstieg beziehungsweise die Installation.
+- **Stand:** Umsetzung und Prüfung laufen. Noch keine abgeschlossene
+  Desktop-, Windows- oder signierte Update-Abnahme behauptet.

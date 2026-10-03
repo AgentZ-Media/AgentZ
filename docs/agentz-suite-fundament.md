@@ -1,6 +1,6 @@
 # AgentZ Suite - Plan für das Fundament
 
-> Interne Doku. Stand: 2026-10-03. Status: Phase 1 bis 4 vollständig umgesetzt und geprüft; als Nächstes Phase 5; externe Altressourcen bei Timo.
+> Interne Doku. Stand: 2026-10-03. Status: Phase 1 bis 4 vollständig umgesetzt und geprüft; Phase 5 in Umsetzung; weitere Phasen und ihre Abnahme folgen. Vercel und Domains übernimmt Timo.
 > Gegengeprüft von GPT-6 Astra (Effort High) am 2026-10-03, Befunde
 > eingearbeitet (siehe Abschnitt 15).
 
@@ -1172,15 +1172,15 @@ Nicht per Code erledigbar, gesammelt für den Überblick:
 - [ ] Vercel: Altprojekte und Git-Anbindung bereinigen (übernimmt Timo)
 - [ ] Convex/Studio-Ressourcen abbauen
 - [ ] Domains `write-scriptz.com`, `app.write-scriptz.com` aus Vercel
-      entfernen, über Weiterleitung oder Auslaufen entscheiden
-- [ ] Secret `VERCEL_DEPLOY_HOOK_URL` entfernen
+      entfernen, über Weiterleitung oder Auslaufen entscheiden (Timo)
+- [ ] Secret `VERCEL_DEPLOY_HOOK_URL` entfernen (Timo)
 - [x] GitHub-Repo in `AgentZ` umbenennen, Beschreibung, Homepage, Topics
 - [x] Release-Immutability aus lassen
 - [ ] Lokalen Ordner umbenennen + Claude-Memory-Pfad umziehen
 - [x] CodeRabbit-Review von PR #22 prüfen und Befunde beheben
 - [x] `CI passed` auf `main` als Pflicht-Check einrichten (inkl. Admins)
-- [ ] Domain `agentz-suite.de` registrieren
-- [ ] Vercel-Projekt für `apps/site` anlegen, Domain verbinden
+- [ ] Domain `agentz-suite.de` registrieren (Timo)
+- [ ] Vercel-Projekt für `apps/site` anlegen, Domain verbinden (Timo)
 - [ ] Zeiger-Release `scriptz-latest` beim ersten Release prüfen
 - [ ] ScriptZ 0.9.0 einmal manuell installieren
 

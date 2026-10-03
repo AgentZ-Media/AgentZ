@@ -1,0 +1,42 @@
+{
+  "name": "@agentz/desktop",
+  "private": true,
+  "version": "0.0.0",
+  "description": "Shared Tauri host for AgentZ desktop apps.",
+  "type": "module",
+  "sideEffects": [
+    "*.css"
+  ],
+  "exports": {
+    ".": "./index.ts",
+    "./vite": "./vite.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@agentz/design": "workspace:*",
+    "@agentz/kit": "workspace:*",
+    "solid-js": "catalog:",
+    "vite": "catalog:",
+    "vite-plugin-solid": "catalog:",
+    "@tauri-apps/api": "catalog:",
+    "@tauri-apps/plugin-clipboard-manager": "catalog:",
+    "@tauri-apps/plugin-dialog": "catalog:",
+    "@tauri-apps/plugin-fs": "catalog:",
+    "@tauri-apps/plugin-opener": "catalog:",
+    "@tauri-apps/plugin-os": "catalog:",
+    "@tauri-apps/plugin-process": "catalog:",
+    "@tauri-apps/plugin-sql": "catalog:",
+    "@tauri-apps/plugin-updater": "catalog:",
+    "@tauri-apps/plugin-window-state": "catalog:"
+  },
+  "devDependencies": {
+    "@agentz/vitest-preset": "workspace:*",
+    "@solidjs/testing-library": "catalog:",
+    "@types/node": "catalog:",
+    "typescript": "catalog:",
+    "vitest": "catalog:"
+  }
+}

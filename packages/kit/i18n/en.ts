@@ -5,6 +5,7 @@ export const kitEn: Record<keyof typeof kitDe, string> = {
   "shell.update.available": "{version} available",
   "shell.update.ready": "{version} is ready",
   "shell.update.downloading": "Downloading update … {progress}%",
+  "shell.update.installing": "Installing update …",
   "shell.update.error": "Update failed",
   "shell.update.action.install": "Install",
   "shell.update.action.restart": "Restart",

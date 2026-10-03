@@ -8,12 +8,11 @@ Umbau; die nachfolgende Trennung von Bestand und Ziel ist verbindlich.
 Der [Umsetzungsstand](docs/agentz-suite-fortschritt.md) dokumentiert
 abgeschlossene Schritte, Prüfungen und offene Punkte.
 
-## Aktuelle Struktur (Phase 4)
+## Aktuelle Struktur (Phase 5)
 
 - [`apps/scriptz/`](apps/scriptz/) - `@agentz/scriptz-app`, die dünne
-  Tauri-Schale für ScriptZ. Registriert Plattform- und Speicheranbindung,
-  native Dialoge, Auto-Updater und Save-Flush beim Fensterschließen.
-  Rust verdrahtet Plugins und SQL-Migrationen. App-Regeln stehen in
+  Tauri-Schale für ScriptZ. Verbindet Produktmodul und Desktop-Host;
+  App-ID, Icons, Capabilities und SQL-Migrationen bleiben app-spezifisch. App-Regeln stehen in
   [`apps/scriptz/CLAUDE.md`](apps/scriptz/CLAUDE.md).
 - [`modules/scriptz/`](modules/scriptz/) - `@agentz/scriptz`, derzeit
   **ScriptZ-Logik und Produkt-UI**: Editor, Lexical-Nodes, Plugins,
@@ -24,6 +23,11 @@ abgeschlossene Schritte, Prüfungen und offene Punkte.
   `SuiteShell`, Solid-Bausteine, i18n-Engine, Plattform-Interfaces, KvStore,
   Basis-Settings, Navigation, Shortcuts, Toasts und Speicherkoordination.
   Kein Tauri und kein Produktwissen.
+- [`packages/desktop/`](packages/desktop/) - `@agentz/desktop`, gemeinsamer
+  Tauri-Host mit Plattformadapter, Updater, Fenster-/App-Lebenszyklus und
+  separater Vite-Konfiguration unter `@agentz/desktop/vite`.
+- [`crates/agentz-desktop/`](crates/agentz-desktop/) - gemeinsame native
+  Plugin-Registrierung, Menüs, Single-Instance und Quit-Handshake.
 - [`packages/design/`](packages/design/) - `@agentz/design`, das
   Designsystem der Suite: semantische Tokens hell/dunkel, Legacy-Aliasse,
   CSS-Primitive, UI-Schrift, Icons und Logo. Reines CSS und Daten-Module,
@@ -37,21 +41,13 @@ abgeschlossene Schritte, Prüfungen und offene Punkte.
 Aktuelle Abhängigkeitsrichtung:
 
 ```text
-apps/scriptz -> modules/scriptz -> packages/kit -> packages/design
-```
-
-## Zielstruktur (noch nicht umgesetzt)
-
-Kit, gemeinsame Shell und Modul-Vertrag sind vorhanden.
-`@agentz/desktop` und die Rust-Crate
-`crates/agentz-desktop` entstehen in Phase 5. Website und Generator
-folgen später und dürfen heute nicht als vorhanden vorausgesetzt werden.
-
-```text
 apps/<app> -> modules/<app> -> packages/kit -> packages/design
     |                              ^
     +------> packages/desktop ------+
 ```
+
+Website und Generator folgen in späteren Phasen. Ihr Fortschritt ist
+im Umsetzungsprotokoll getrennt von der Abnahme dokumentiert.
 
 - `design` importiert nichts aus dem Repo.
 - `kit` importiert nur `design`: keine Tauri-Imports und kein Produktwissen.
@@ -62,8 +58,8 @@ apps/<app> -> modules/<app> -> packages/kit -> packages/design
 ESLint prüft die Paketgrenzen. `tsconfig.base.json`, der pnpm-Catalog
 und `@agentz/vitest-preset` bündeln gemeinsame Konfiguration. Der
 Cargo-Workspace nutzt `Cargo.toml`, das verschobene `Cargo.lock` und
-`target/` im Repo-Root. `crates/*` kommt erst als Workspace-Mitglied
-hinzu, wenn Phase 5 die erste Crate anlegt. PR-CI prüft JavaScript und
+`target/` im Repo-Root. App-Crates unter `apps/*/src-tauri` und
+gemeinsame Crates unter `crates/*` sind Workspace-Mitglieder. PR-CI prüft JavaScript und
 Rust. Das Release-Schema bleibt bis Phase 6 `vX.Y.Z`; der App-Name
 bleibt ScriptZ.
 
@@ -71,15 +67,14 @@ bleibt ScriptZ.
 
 ScriptZ behält sein Verhalten. Produktlogik und Produkt-UI leben in
 `modules/scriptz/`, neutrale Shell und Bausteine in `packages/kit/`,
-OS-Integration bis Phase 5 in `apps/scriptz/`.
+OS-Integration in `packages/desktop/` und `crates/agentz-desktop/`.
 
 Das Modul greift über `PlatformAdapter` aus `@agentz/kit/platform` auf
 Plattformdienste zu. Das Kit verantwortet `KvStore` für `settings` und
 `app_state`; das Produkt-Storage in `modules/scriptz/lib/storage.ts`
 beschreibt die fachlichen Datenzugriffe; `lib/api.ts` stellt `registerSqlStorageAdapter()` für die
-explizite Registrierung des SQL-Defaults bereit. Der App-Einstieg
-registriert Plattform, Kit-KvStore, Produkt-Storage und Updater vor
-dem Rendern. Kit und Produkt teilen die Verbindung, nicht die Interfaces. Die
+explizite Registrierung des SQL-Defaults bereit. Der Desktop-Boot registriert Plattform, Kit-KvStore und Updater;
+der App-Einstieg bindet das Produkt-Storage vor dem Rendern an. Kit und Produkt teilen die Verbindung, nicht die Interfaces. Die
 SQLite-Verbindung liefert `PlatformAdapter.getDb()`. Neue Datenzugriffe müssen Interface und
 Implementierung aktualisieren. Schemaänderungen laufen über additive
 SQL-Migrationen in `apps/scriptz/src-tauri/`. Änderungen am Datenmodell
@@ -157,6 +152,13 @@ sichert nur `pnpm-lock.yaml`, nicht `Cargo.lock`; dafür ist Cargo mit
 Release-Schlüssel; ein lokaler Build ohne diesen ist keine Release-Abnahme.
 
 ## Workflow nach jeder Änderung (wichtig)
+
+Ausdrückliche Freigaben in der laufenden Aufgabe gehen dem folgenden
+Standardablauf vor. Für den Fundament-Umbau hat Timo die Umsetzung aller
+verbleibenden Phasen in einzelnen PRs sowie deren Merge nach Review und
+Prüfungen ohne erneute Rückfrage beauftragt. Das ersetzt keine sachliche
+Abnahme und erlaubt keine Änderungen an den von Timo übernommenen
+Vercel-/Domain-Aufgaben.
 
 Nach **jeder** abgeschlossenen Aufgabe (Feature, Fix, Refactor,
 Doku-Update, egal was) **niemals automatisch committen, pushen oder

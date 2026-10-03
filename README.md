@@ -5,8 +5,9 @@ The suite is growing out of ScriptZ: shared design, reusable application
 infrastructure, and independent apps with their own data and releases.
 
 **ScriptZ is the only app currently included.** The shared kit provides
-the application shell, neutral UI, settings, navigation, and infrastructure. The desktop host, multi-app release pipeline, website,
-and app generator remain planned work. Progress and architecture decisions
+the application shell, neutral UI, settings, navigation, and infrastructure.
+The shared desktop host supplies native integration and safe shutdown.
+The multi-app release pipeline, website, and app generator remain planned work. Progress and architecture decisions
 are tracked in the [foundation plan](docs/agentz-suite-fundament.md) (German).
 
 ## Apps
@@ -27,12 +28,15 @@ For first-time installation, see the
 
 ```text
 apps/scriptz/              @agentz/scriptz-app
-  src/                    Solid frontend entry point and Tauri adapters
-  src-tauri/              Rust plugin wiring, SQLite migrations, app config
+  src/                    Thin frontend entry point connecting module and host
+  src-tauri/              App identity, SQLite migrations, icons and capabilities
 modules/scriptz/          @agentz/scriptz
                           ScriptZ AppModule, editor, product UI and data
 packages/kit/             @agentz/kit
                           SuiteShell, settings, navigation, neutral UI and ports
+packages/desktop/         @agentz/desktop
+                          Native adapters, updater, lifecycle and Vite config
+crates/agentz-desktop/     Shared Rust plugins, menus and lifecycle handshake
 packages/design/          @agentz/design
                           Shared CSS tokens, primitives, fonts, icons, assets
 tooling/vitest-preset/     Shared Solid/jsdom test configuration
@@ -52,8 +56,9 @@ apps/scriptz → modules/scriptz → packages/kit → packages/design
 
 The native app renders `scriptzModule` through the shared `SuiteShell`.
 Product routes, settings sections, commands, and overlays come from the module.
-A later phase will move Tauri integration into `@agentz/desktop` with a shared
-Rust crate; those host packages do not exist yet. The target dependency direction is:
+Tauri integration lives in `@agentz/desktop` and the shared Rust crate.
+Apps keep their database identity, migrations, icons, and capabilities.
+The dependency direction is:
 
 ```text
 apps/<app> → modules/<app> → packages/kit → packages/design
