@@ -128,6 +128,17 @@ unter `target/<target-triple>/release/bundle/`. `pnpm install
 --frozen-lockfile` schützt nur das JavaScript-Lockfile; Rust-Prüfungen
 verwenden zusätzlich `--locked`.
 
+Tauri-JS-Pakete im pnpm-Catalog und die zugehörigen Rust-Crates immer
+zusammen aktualisieren und anschließend beide Lockfiles prüfen. Die
+Rust-Angabe `"2"` ist nur der erlaubte Versionsbereich; `Cargo.lock`
+fixiert den tatsächlich verwendeten Stand. Nach `cargo update` deshalb
+auch die kompatiblen JS-Versionen abgleichen und den nativen Build prüfen.
+
+Die Farbprüfung ist bewusst eine Textprüfung für CSS/TSX. `.ts` und
+HTML werden nicht erfasst; CSS-IDs wie `#add` oder `#face` können als
+Farbwerte erscheinen. Solche Fälle gezielt behandeln, nicht ganze
+UI-Dateien freistellen.
+
 ## Wer verantwortet was?
 
 - **Kit (ab Phase 4):** produktneutrale Solid-UI, Shell, i18n-Engine,
