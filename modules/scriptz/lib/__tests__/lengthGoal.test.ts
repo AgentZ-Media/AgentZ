@@ -1,7 +1,7 @@
 // Tests for the length goal range helpers (lib/lengthGoal.ts).
 
 import { beforeAll, describe, expect, it } from "vitest";
-import { applyResolvedLanguage } from "../../i18n";
+import { applyResolvedLanguage } from "@agentz/kit/i18n";
 import {
   folderHasLengthRange,
   formatClock,

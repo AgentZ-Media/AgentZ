@@ -8,30 +8,6 @@ import { scriptEn } from "./parts/script";
 import { dialogsEn } from "./parts/dialogs";
 
 export const en: Record<keyof typeof de, string> = {
-  // ---------- common ----------
-  "common.cancel": "Cancel",
-  "common.save": "Save",
-  "common.delete": "Delete",
-  "common.close": "Close",
-  "common.untitled": "Untitled",
-  "common.confirm": "Confirm",
-  "common.loading": "Loading…",
-  "common.name": "Name",
-  "common.current": "Current: {value}",
-  "common.errorPrefix": "Error: {message}",
-
-  // ---------- language picker ----------
-  "lang.label": "Language",
-  "lang.help": "Interface language - change it anytime in settings.",
-  "lang.de": "Deutsch",
-  "lang.en": "English",
-  "lang.auto": "Auto",
-
-  // ---------- theme labels ----------
-  "theme.light": "Light",
-  "theme.dark": "Dark",
-  "theme.auto": "Auto",
-
   // ---------- units ----------
   "units.scripts_one": "{count} script",
   "units.scripts_other": "{count} scripts",
@@ -42,39 +18,6 @@ export const en: Record<keyof typeof de, string> = {
   "units.word_other": "words",
   "units.ideas_one": "{count} idea",
   "units.ideas_other": "{count} ideas",
-
-  // ---------- relative time / weekdays / months ----------
-  "time.justNow": "Just now",
-  "time.secondsAgo": "{n}s ago",
-  "time.minutesAgo": "{n} min ago",
-  "time.hoursAgo": "{n} h ago",
-  "time.yesterday": "Yesterday",
-  "weekday.0": "Sunday",
-  "weekday.1": "Monday",
-  "weekday.2": "Tuesday",
-  "weekday.3": "Wednesday",
-  "weekday.4": "Thursday",
-  "weekday.5": "Friday",
-  "weekday.6": "Saturday",
-  "weekday.short.0": "Sun",
-  "weekday.short.1": "Mon",
-  "weekday.short.2": "Tue",
-  "weekday.short.3": "Wed",
-  "weekday.short.4": "Thu",
-  "weekday.short.5": "Fri",
-  "weekday.short.6": "Sat",
-  "month.short.0": "Jan",
-  "month.short.1": "Feb",
-  "month.short.2": "Mar",
-  "month.short.3": "Apr",
-  "month.short.4": "May",
-  "month.short.5": "Jun",
-  "month.short.6": "Jul",
-  "month.short.7": "Aug",
-  "month.short.8": "Sep",
-  "month.short.9": "Oct",
-  "month.short.10": "Nov",
-  "month.short.11": "Dec",
 
   // ---------- block types ----------
   "block.action": "Action",
@@ -257,39 +200,14 @@ export const en: Record<keyof typeof de, string> = {
   "select.pdf.failed": "PDF export failed: {message}",
 
   // ---------- settings ----------
-  "settings.title": "Settings",
   "settings.characters.colorAria": "Change color for {name}",
   "settings.characters.reset": "Reset",
-  "settings.updates.sub": "Sourced from GitHub Releases. No telemetry.",
-  "settings.updates.enabled.label": "Check for updates",
-  "settings.updates.enabled.aria": "Check for updates",
-  "settings.updates.hourly.label": "Check automatically every hour",
-  "settings.updates.hourly.aria": "Check hourly",
-  "settings.updates.status": "Update status",
-  "settings.updates.upToDate": "You have the latest version",
-  "settings.updates.available": "Update available: v{version}",
-  "settings.updates.downloading": "Downloading update… {progress}%",
-  "settings.updates.ready": "Update ready to install on restart.",
-  "settings.updates.checkError": "Error while checking",
-  "settings.updates.action.download": "Download",
-  "settings.updates.action.onGithub": "On GitHub",
-  "settings.updates.action.restart": "Restart",
-  "settings.updates.action.retry": "Retry",
-  "settings.updates.action.checking": "Checking…",
-  "settings.updates.action.check": "Check now",
   "settings.about.sub": "Fast. Local. No account.",
   "settings.about.license": "License: MIT",
-  "settings.about.developer": "Built by",
   "settings.about.developer.linkText": "AgentZ",
-  "settings.about.repository": "Repository",
   "settings.about.repository.linkText": "github.com/AgentZ-Media/AgentZ",
-  "settings.about.onboarding.help": "Show the short app tour again.",
-  "settings.about.onboarding.button": "Show again",
   "settings.toast.colorFailed": "Saving color failed: {message}",
   "settings.toast.resetFailed": "Reset failed: {message}",
-
-  // ---------- shortcuts ----------
-  "shortcut.key.tab": "Tab",
 
   // ---------- ideas ----------
   "ideas.card.linked.title": "Open linked script",
@@ -304,10 +222,6 @@ export const en: Record<keyof typeof de, string> = {
   // ---------- status strip ----------
   "save.error.toast": "Script could not be saved: {message}",
 
-  // ---------- modal ----------
-  "modal.close.aria": "Close",
-  "modal.close.title": "Close",
-
   // ---------- character / color picker ----------
   "charDropdown.colorAria": "Change color for {name}",
   "colorPicker.aria": "Color for {name}",
@@ -318,13 +232,8 @@ export const en: Record<keyof typeof de, string> = {
 
   // ---------- boot / errors ----------
   "boot.loadingScript": "Loading script…",
-  "boot.error": "Error: {message}",
   "boot.error.title": "ScriptZ could not start",
   "boot.error.lede": "The database file could not be opened. Your scripts are most likely safe - the file is still in the app data directory untouched. Please copy the error below and send it to us.",
-  "boot.error.retry": "Try again",
-  "boot.error.detailsShow": "Show details",
-  "boot.error.detailsHide": "Hide details",
-  "boot.error.help": "Tip: fully quit and restart the app. If that doesn't help, send us the error.",
 
   // ---------- thrown errors ----------
   "error.ideaAlreadyConverted": "Idea has already been converted.",

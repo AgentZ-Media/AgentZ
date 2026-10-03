@@ -4,9 +4,9 @@
 
 import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 import { cleanup, render } from "@solidjs/testing-library";
-import { getStorageAdapter, setStorageAdapter, type StorageAdapter } from "../../../lib/storage";
+import { getStorageAdapter, setStorageAdapter, type ScriptzApiStorage } from "../../../lib/storage";
 import "../../../lib/api";
-import { registerFlusher } from "../../../lib/saveFlush";
+import { registerFlusher } from "@agentz/kit/lib";
 import { scriptsBus } from "../../../lib/scriptsBus";
 import type { Script } from "../../../lib/types";
 import { uiStore } from "../../../stores/ui";
@@ -30,7 +30,7 @@ function script(id: string, text: string): Script {
 
 beforeAll(() => {
   setStorageAdapter(
-    new Proxy({} as StorageAdapter, {
+    new Proxy({} as ScriptzApiStorage, {
       get(_, prop: string) {
         if (prop === "getScript") return getScript;
         return vi.fn().mockResolvedValue(null);

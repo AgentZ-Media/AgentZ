@@ -7,7 +7,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { cleanup, render } from "@solidjs/testing-library";
 import { Show, createSignal } from "solid-js";
-import { flushAll } from "../../../lib/saveFlush";
+import { flushAll } from "@agentz/kit/lib";
 import { TitleInput } from "../TitleInput";
 
 afterEach(() => {
@@ -28,6 +28,23 @@ function type(el: HTMLInputElement, value: string) {
 const tick = () => new Promise((r) => setTimeout(r, 0));
 
 describe("TitleInput", () => {
+  it("retains a failed teardown draft until a later global flush saves it", async () => {
+    const onCommit = vi.fn().mockRejectedValue(new Error("offline"));
+    const { container, unmount } = render(() => (
+      <TitleInput scriptId="failed-title" title="Old" focusFor={null} onCommit={onCommit} />
+    ));
+    type(input(container), "Unsaved title");
+    unmount();
+    await tick();
+    expect(await flushAll()).toEqual({ ok: false, failed: ["title:failed-title"] });
+    onCommit.mockResolvedValue(undefined);
+    expect(await flushAll()).toEqual({ ok: true, failed: [] });
+    expect(onCommit).toHaveBeenLastCalledWith("Unsaved title", "failed-title");
+    const calls = onCommit.mock.calls.length;
+    await flushAll();
+    expect(onCommit).toHaveBeenCalledTimes(calls);
+  });
+
   it("commits a pending draft when unmounted without a blur", async () => {
     const onCommit = vi.fn(async () => {});
     const [shown, setShown] = createSignal(true);

@@ -16,7 +16,7 @@ import { createSignal } from "solid-js";
 import { api } from "../../lib/api";
 import { scriptsBus } from "../../lib/scriptsBus";
 import { SCRIPT_STATUSES, type ScriptStatus } from "../../lib/types";
-import { pushToast } from "../../stores/toasts";
+import { pushToast } from "@agentz/kit/stores";
 import { t, type TranslationKey } from "../../i18n";
 
 const TOAST_MS = 5000;

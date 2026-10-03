@@ -1,9 +1,9 @@
 import { For, Match, Show, Switch, createEffect, createMemo } from "solid-js";
-import { getUpdatesStore } from "../../lib/updates";
+import { getUpdatesStore } from "@agentz/kit/platform";
 import { uiStore, type SettingsSection } from "../../stores/ui";
 import { t } from "../../i18n";
-import { Icon, type IconName } from "../Common/Icon";
-import { DialogFrame } from "./DialogFrame";
+import { Icon, type IconName } from "@agentz/kit/ui";
+import { DialogFrame } from "@agentz/kit/ui";
 import { SettingsAppearance } from "./sections/SettingsAppearance";
 import { SettingsWriting } from "./sections/SettingsWriting";
 import { SettingsFolders } from "./sections/SettingsFolders";

@@ -24,7 +24,7 @@ import { installColorPicker } from "./plugins/colorPicker";
 import { api } from "../../lib/api";
 import { normalizeLegacyContent } from "../../lib/legacyBlocks";
 import { settingsStore } from "../../stores/settings";
-import { K } from "../../lib/keys";
+import { K } from "@agentz/kit/platform";
 import { t } from "../../i18n";
 import type { ScriptCharacter } from "../../lib/types";
 import { applyCursor, type CursorAddress } from "../../lib/scriptViewCache";

@@ -3,7 +3,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render, screen, waitFor } from "@solidjs/testing-library";
 import { createSignal } from "solid-js";
-import { setStorageAdapter, type StorageAdapter } from "../../../lib/storage";
+import { setStorageAdapter, type ScriptzApiStorage } from "../../../lib/storage";
 import { settingsStore } from "../../../stores/settings";
 import { uiStore } from "../../../stores/ui";
 import { t } from "../../../i18n";
@@ -31,12 +31,12 @@ beforeEach(async () => {
   state = new Map();
   getAppState = vi.fn(async (key: string) => state.get(key) ?? null);
   setAppState = vi.fn(async (key: string, value: string) => { state.set(key, value); });
-  const adapter: Partial<StorageAdapter> = {
+  const adapter: Partial<ScriptzApiStorage> = {
     getAppState, setAppState, getScript: async (id) => script(id),
     listFolders: async () => [], listSnapshots: async () => [],
     setSetting: async () => {},
   };
-  setStorageAdapter(new Proxy(adapter as StorageAdapter, {
+  setStorageAdapter(new Proxy(adapter as ScriptzApiStorage, {
     get(target, prop) {
       const value = Reflect.get(target, prop);
       if (value !== undefined) return value;

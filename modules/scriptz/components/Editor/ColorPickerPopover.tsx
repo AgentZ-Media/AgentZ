@@ -1,3 +1,4 @@
+import { uiStore } from "../../stores/ui";
 // Shared colour-picker popover used by all three character-colour entry
 // points: the marge swatch, the right-click menu on a character block, and
 // the colour dot in the character autocomplete dropdown. Single visual
@@ -11,7 +12,7 @@ import {
   normalizeHexColor,
 } from "../../lib/colors";
 import { t } from "../../i18n";
-import { dismissOnDialog } from "../Common/dismissOnDialog";
+import { dismissOnDialog } from "@agentz/kit/ui";
 
 export interface ColorPickerPopoverProps {
   open: boolean;
@@ -45,6 +46,7 @@ export function ColorPickerPopover(props: ColorPickerPopoverProps) {
   // its Escape handler can't fire alongside the dialog's. Focus is not
   // tracked: the popover is often opened while the editor keeps focus.
   dismissOnDialog({
+    dialogOpen: uiStore.anyDialogOpen,
     open: () => props.open,
     inside: () => true,
     dismiss: () => props.onClose(),
@@ -95,7 +97,7 @@ export function ColorPickerPopover(props: ColorPickerPopoverProps) {
   return (
     <Show when={props.open}>
       <div
-        class="scriptz-color-popover"
+        class="scriptz-color-popover" data-dialog-dismiss-layer
         style={{
           position: "fixed",
           left: `${clampedPos().x}px`,

@@ -1,11 +1,12 @@
+import { uiStore } from "../../stores/ui";
 import { For, Show, createSignal, onCleanup, createEffect } from "solid-js";
-import { Icon } from "../Common/Icon";
+import { Icon } from "@agentz/kit/ui";
 import { StageGlyph } from "../Common/StageGlyph";
 import { SCRIPT_STATUSES, type ScriptStatus } from "../../lib/types";
-import { K } from "../../lib/keys";
+import { K } from "@agentz/kit/platform";
 import { t } from "../../i18n";
 import { setStageWithUndo, stageLabel } from "./stageActions";
-import { dismissOnDialog, focusWithin } from "../Common/dismissOnDialog";
+import { dismissOnDialog, focusWithin } from "@agentz/kit/ui";
 
 export interface StageChipProps {
   scriptId: string;
@@ -38,6 +39,7 @@ export function StageChip(props: StageChipProps) {
   // A dialog opening on top (⌘I, ⌘K, a confirm ...) closes the menu, so
   // its key handler can never act on keys typed into the dialog.
   dismissOnDialog({
+    dialogOpen: uiStore.anyDialogOpen,
     open,
     inside: (node) => !!wrapRef?.contains(node),
     dismiss: () => close("none"),

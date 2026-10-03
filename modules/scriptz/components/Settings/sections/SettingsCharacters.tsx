@@ -2,17 +2,19 @@ import { For, Show, createEffect, createSignal, on } from "solid-js";
 import { api } from "../../../lib/api";
 import { runCharacterPrune } from "../../../lib/characterAutoPrune";
 import { characterUsageBus } from "../../../lib/characterUsage";
-import { flushAll } from "../../../lib/saveFlush";
+import { flushAll } from "@agentz/kit/lib";
 import { scriptsBus } from "../../../lib/scriptsBus";
 import { settingsStore } from "../../../stores/settings";
-import { pushToast } from "../../../stores/toasts";
-import { localeCompare, t, tPlural } from "../../../i18n";
+import { pushToast } from "@agentz/kit/stores";
+import { localeCompare } from "@agentz/kit/i18n";
+import { t, tPlural } from "../../../i18n";
 import type { CharacterColorRecord } from "../../../lib/types";
-import { confirmDialog } from "../../Common/ConfirmDialog";
+import { confirmDialog } from "@agentz/kit/ui";
 // TODO(integration): the colour picker lives with the editor (package D);
 // follow it if it moves.
 import { ColorPickerPopover } from "../../Editor/ColorPickerPopover";
-import { Row, SectionHead, Switch } from "./parts";
+import { Row, SectionHead, Switch } from "@agentz/kit/ui";
+
 
 /** Names listed in the cleanup confirmation before "and N more". */
 const CONFIRM_NAME_LIMIT = 12;

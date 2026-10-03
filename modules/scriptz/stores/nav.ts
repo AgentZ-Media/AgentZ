@@ -1,6 +1,6 @@
 import { createSignal } from "solid-js";
 import { api } from "../lib/api";
-import { flushAll, registerFlusher } from "../lib/saveFlush";
+import { flushAll, registerFlusher } from "@agentz/kit/lib";
 import type { ScriptStatus } from "../lib/types";
 
 /**
@@ -229,6 +229,7 @@ export const navStore = {
 
 let persistTimer: ReturnType<typeof setTimeout> | null = null;
 let persistInflight: Promise<void> | null = null;
+let persistFailed = false;
 
 function writeNow(): Promise<void> {
   // Chained behind the previous write so two snapshots of the nav state
@@ -236,7 +237,10 @@ function writeNow(): Promise<void> {
   const prev = persistInflight ?? Promise.resolve();
   const payload = JSON.stringify({ route: route(), recent: recent() });
   const save = api.setAppState;
-  const p: Promise<void> = prev.then(() => save(STATE_KEY, payload)).catch(() => {});
+  const p: Promise<void> = prev.then(() => save(STATE_KEY, payload)).then(
+    () => { persistFailed = false; },
+    () => { persistFailed = true; },
+  );
   const tracked: Promise<void> = p.finally(() => {
     if (persistInflight === tracked) persistInflight = null;
   });
@@ -259,15 +263,16 @@ export function startNavRuntime(): () => void {
   if (stopRuntime) return stopRuntime;
   runtimeGeneration += 1;
   const flush = async () => {
-    if (persistTimer) {
-      clearTimeout(persistTimer);
+    if (persistTimer || persistFailed) {
+      if (persistTimer) clearTimeout(persistTimer);
       persistTimer = null;
       await writeNow();
-      return;
+    } else if (persistInflight) {
+      await persistInflight;
     }
-    if (persistInflight) await persistInflight;
+    return { ok: !persistFailed };
   };
-  const unregister = registerFlusher(flush);
+  const unregister = registerFlusher(flush, "navigation");
   let active = true;
   const stop = () => {
     if (!active) return;

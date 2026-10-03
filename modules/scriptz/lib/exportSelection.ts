@@ -5,7 +5,7 @@
 // download per script. Either way the user gets separate, individually
 // laid-out PDFs (each with its own title page / A4 geometry).
 
-import { getPlatformAdapter } from "./platform";
+import { getPlatformAdapter } from "@agentz/kit/platform";
 import { getStorageAdapter } from "./storage";
 import { buildPdfBytes } from "./exportPdf";
 import { t } from "../i18n";

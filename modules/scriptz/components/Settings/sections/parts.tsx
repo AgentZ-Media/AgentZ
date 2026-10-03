@@ -1,56 +1,10 @@
-import { JSX, Show, createEffect, createSignal, onCleanup } from "solid-js";
+import { Show, createEffect, createSignal, onCleanup } from "solid-js";
 import { t } from "../../../i18n";
-import { registerFlusher } from "../../../lib/saveFlush";
-import { createSerialSaver } from "../../../lib/serialSave";
+import { registerFlusher } from "@agentz/kit/lib";
+import { createSerialSaver } from "@agentz/kit/lib";
 import { boundText, parseRangeInput } from "../rangeInput";
 
-// Building blocks shared by the settings sections: section head, the
-// `.srow` row (label + one-sentence help + control), the switch and the
-// "von / bis" range field.
-
-export function SectionHead(props: { title: string; sub: string; onClose(): void }) {
-  return (
-    <div class="dlg-h set-head">
-      <div>
-        <b>{props.title}</b>
-        <small>{props.sub}</small>
-      </div>
-      <button type="button" class="dlg-esc" onClick={() => props.onClose()} aria-label={t("common.close")}>
-        <kbd>esc</kbd>
-      </button>
-    </div>
-  );
-}
-
-export function Row(props: { label: string; help?: JSX.Element; children?: JSX.Element; class?: string }) {
-  return (
-    <div class={`srow${props.class ? ` ${props.class}` : ""}`}>
-      <div>
-        <b>{props.label}</b>
-        <Show when={props.help}>
-          <small>{props.help}</small>
-        </Show>
-      </div>
-      <Show when={props.children}>
-        <div class="srow-ctl">{props.children}</div>
-      </Show>
-    </div>
-  );
-}
-
-export function Switch(props: { checked: boolean; onChange(v: boolean): void; label: string; disabled?: boolean }) {
-  return (
-    <button
-      type="button"
-      class="sw-t"
-      role="switch"
-      aria-checked={props.checked}
-      aria-label={props.label}
-      disabled={props.disabled}
-      onClick={() => !props.disabled && props.onChange(!props.checked)}
-    />
-  );
-}
+// Product length-range fields. Neutral rows and switches live in @agentz/kit/ui.
 
 export interface RangeFieldsProps {
   minSec: number | null;
@@ -120,11 +74,15 @@ export function RangeFields(props: RangeFieldsProps) {
     setMaxText(boundText(max));
   });
 
-  const commit = () => saver.flush();
-  const unregister = registerFlusher(commit);
+  const commit = async () => {
+    const result = await saver.flush();
+    if (disposed && result.ok) unregister();
+    return result;
+  };
+  const unregister = registerFlusher(commit, "length-range");
   onCleanup(() => {
     disposed = true;
-    void commit().finally(unregister);
+    void commit();
   });
 
   const field = (which: "min" | "max") => (

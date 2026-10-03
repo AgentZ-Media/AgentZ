@@ -16,7 +16,7 @@ describe("ScriptZ import lifecycle", () => {
     delegateEvents(["click", "keydown", "contextmenu", "mousedown", "input", "mousemove"]);
     await import("lexical");
     const storage = await import("../storage");
-    const platform = await import("../platform");
+    const platform = await import("@agentz/kit/platform");
     expect(() => storage.getStorageAdapter()).toThrow("Storage adapter not set");
     expect(() => platform.getPlatformAdapter()).toThrow("Platform adapter not set");
 

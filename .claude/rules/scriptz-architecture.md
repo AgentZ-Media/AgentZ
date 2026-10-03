@@ -16,7 +16,8 @@ Silicon + Windows x64 are first-class; Linux not (yet) shipped.
 Seit Phase 2 des Suite-Fundaments liegt die bisherige App-Logik aus
 dem Redesign „Werkbank" in `modules/scriptz/` (UI, Stores, Logik) und
 `packages/design/` (Designsystem). `apps/scriptz/` ist eine dünne Schale.
-`@agentz/kit` und `@agentz/desktop` sind noch nicht ausgegliedert.
+`@agentz/kit` enthält seit Phase 4.1 bis 4.3 die neutralen Bausteine;
+`@agentz/desktop` entsteht erst in Phase 5.
 Konzept und Arbeitsplan: [`docs/redesign/umsetzung.md`](../../docs/redesign/umsetzung.md),
 visuelle Referenz `docs/redesign/concept.html`, Längenziel-Spec
 [`docs/feature-laengenziel.md`](../../docs/feature-laengenziel.md).
@@ -26,8 +27,9 @@ Seit Phase 3 gelten außerdem die automatischen Paketgrenzen und
 Konventionen aus [`suite-architecture.md`](suite-architecture.md).
 Cargo-Workspace, Lockfile und `target/` liegen im Repo-Root;
 `apps/scriptz/src-tauri/` bleibt das App-Crate mit seinen Migrationen.
-Phase 4.0 macht den Import-Lebenszyklus explizit; die Kit-Extraktion
-folgt erst danach. Prüfungen und offene Punkte stehen im
+Phase 4.0 hat den Import-Lebenszyklus explizit gemacht. Die Kit-Grundlagen
+sind extrahiert; Shell, Einstellungen und Navigation folgen noch.
+Prüfungen und offene Punkte stehen im
 [Umsetzungsstand](../../docs/agentz-suite-fortschritt.md).
 
 ## Repo-Layout (Detail)
@@ -55,10 +57,10 @@ apps/scriptz/
                            "Legacy-Blöcke").
     capabilities/default.json, tauri.conf.json, Cargo.toml
   src/
-    index.tsx              Registers PlatformAdapter + updates store
-                           (import side effects), then the CSS layers
+    index.tsx              Explicitly registers platform, SQL and updates
+                           before render(), then imports the CSS layers
                            (@agentz/design fonts -> tokens -> legacy ->
-                           components, then core global.css), mounts <App>.
+                           components, kit styles, then module global.css), mounts <App>.
     App.tsx                <AppShell sidebarFooterSlot={<UpdateIndicator/>}> +
                            onCloseRequested -> flushAll(2000) + updater
                            background polling. Nothing else.
@@ -66,7 +68,7 @@ apps/scriptz/
                            getDb(), dialogs, fs, opener, os.
     lib/tauri.ts           isTauri flag / thin invoke wrapper (rare).
     stores/updates.ts      tauri-plugin-updater, registered into the
-                           core `updates` slot.
+                           Kit `updates` slot.
     components/Common/UpdateIndicator.tsx   Update pill (sidebar footer).
 
 packages/design/           @agentz/design - suite design system (see its README)
@@ -84,19 +86,30 @@ packages/design/           @agentz/design - suite design system (see its README)
   scripts/build-logo.mjs   Exports assets/ + the full
                            Tauri icon set from logo.ts (build:logo).
 
+packages/kit/              @agentz/kit - product-neutral application primitives
+  platform/               PlatformAdapter, DbConnection, KvStore + SQL,
+                           key helpers, updater slot. No Tauri imports.
+  i18n/                   Shared language engine and neutral DE/EN catalog.
+  lib/                    serialSave, FlushCoordinator (result: ok + failed).
+  stores/                 Toast state.
+  ui/                     Modal, ConfirmDialog, ToastHost, Icon, AppMark,
+                           BootErrorScreen, DialogFrame, settings primitives.
+  styles.css              Neutral CSS on semantic tokens, no legacy aliases.
+
 modules/scriptz/
   styles/
     tokens.css             ScriptZ-only tokens: traffic-light spacer,
                            character palette (--char-*), A4 paper geometry.
     fonts.css              iA Writer Quattro (paper font).
-    global.css             Resets + pre-redesign classes (.btn-primary,
-                           .modal*, .pill, .cselect*, ...) restyled on tokens.
+    global.css             Remaining product styles; neutral reset/dialog/
+                           settings rules are now owned by Kit.
   components/
     Shell/
       AppShell.tsx         App-Schale: Boot-Sequenz
                            (settings, welcome seed, nav/ui/prefs load,
                            runtime backfill, then migrateLegacyBlocksOnce,
-                           then markLibraryReady), sidebar | main layout,
+                           then startIdeasStore/startDailyStatsStore/
+                           startLibraryData), sidebar | main layout,
                            route rendering, mounts all dialogs once.
                            Prop: sidebarFooterSlot.
       Sidebar.tsx          Dark sidebar: app row, search + new, "Alle
@@ -137,7 +150,7 @@ modules/scriptz/
                            (used by the version preview in SnapshotsDialog -
                            same engine, no copy).
       persistence.ts       Debounced save (250 ms) through a serialized
-                           queue (lib/serialSave.ts), auto snapshot (5 min),
+                           queue (@agentz/kit/lib), auto snapshot (5 min),
                            flush on teardown.
       activeBlockReporter, canvasFocus, characterReconcile, predict.ts,
       ColorPickerPopover, SnapshotsDialog, PaperLayout.css.
@@ -175,8 +188,8 @@ modules/scriptz/
     Onboarding/            Onboarding (3 steps, ONBOARDING_KEY)
     Activity/              WritingCounter (sidebar footer), ActivityModal
                            (window totals + Heatmap). No goal, no streak.
-    Common/                Icon, StageGlyph, AppMark, Modal, ConfirmDialog,
-                           ToastHost, BootErrorScreen
+    Common/                StageGlyph (product status). Neutral components
+                           are imported directly from @agentz/kit/ui.
   stores/
     nav.ts                 Route (scripts | ideas | script | trash),
                            history (⌘[ / ⌘]), "Zuletzt" (max 8). Persisted
@@ -194,18 +207,17 @@ modules/scriptz/
                            dialogWpm, length_min/max_default_sec, update
                            flags,
                            pruneUnusedCharacters (default off).
-    dailyStats.ts, ideas.ts, saveStatus.ts, toasts.ts
+    dailyStats.ts, ideas.ts, saveStatus.ts
   lib/
     api.ts                 `api.*` facade = proxy onto the registered
-                           StorageAdapter. registerSqlStorageAdapter()
+                           ScriptzApiStorage. registerSqlStorageAdapter()
                            explicitly installs the SQL-backed default;
                            importing the facade does not register it.
-    storage.ts             StorageAdapter interface (incl. setScriptStatus,
-                           setFolderLengthRange, ListScriptsQuery.status),
-                           validateLengthRange.
-    platform.ts            PlatformAdapter slot (getDb, saveAs, openFile,
-                           openUrl, ...), applyPlatformToDocument.
-    db.ts                  getDb() via PlatformAdapter + settings/app_state.
+    storage.ts             ScriptzStorage: product CRUD; ScriptzApiStorage
+                           temporarily composes it with KvStore. Registration
+                           installs the shared KvStore as well.
+                           Includes validateLengthRange.
+    db.ts                  getDb() via Kit PlatformAdapter.
     types.ts               Script, ScriptSummary (+ status,
                            status_changed_at), Folder (+ length_min_sec,
                            length_max_sec), ScriptStatus, Stage,
@@ -230,18 +242,17 @@ modules/scriptz/
                            (week -> month -> year -> total).
     legacyBlocks.ts        normalizeLegacyContent / normalizeLegacyTree.
     legacyBlocksMigration.ts  migrateLegacyBlocksOnce() (boot).
-    exportPdf.ts, exportSelection.ts (multi PDF), scriptzFile.ts (.scriptz
+    exportPdf.ts (incl. product ExportPdfDeps), exportSelection.ts (multi PDF),
+    scriptzFile.ts (.scriptz
     v1, status additive), ideas.ts, dailyWords.ts,
     characterColors.ts, characterUsage.ts (welche Registry-Namen noch
     benutzt werden: gestückelter Scan über characters_meta, SQL-Find/Prune,
     characterUsageBus), characterAutoPrune.ts (optionales Auto-Aufräumen,
-    debounced), welcome.ts, keys.ts, format.ts, colors.ts,
-    saveFlush.ts (flushAll: awaits buffered + in-flight writes),
-    serialSave.ts (serialized "latest draft wins" saver for every
-    autosave/commit field), scriptViewCache.ts, updates.ts (updater slot),
+    debounced), welcome.ts, format.ts, colors.ts, scriptViewCache.ts,
     *Bus.ts (scripts/folders/ideas/dailyStats pub-sub).
-  i18n/                    de.ts / en.ts + parts/{shell,script,dialogs}.ts
-                           (see i18n.md)
+  i18n/                    Product catalogs de.ts / en.ts + parts;
+                           typed composition with @agentz/kit/i18n.
+                           Language state and engine belong to Kit.
 ```
 
 Gestrichen im Redesign (2026-10, bewusst, nicht wieder einführen):
@@ -333,7 +344,8 @@ Blocktyp und läuft unverändert durch. Deshalb:
   Die Desktop-Schale beendet Updater-Polling und Fenster-Listener;
   HMR entsorgt den Render-Root.
 - Navigation: `navStore.go/openScript/back/forward` ruft erst
-  `flushAll()` (Editor-Save, nav-Persist), dann wird die Route gesetzt.
+  `flushAll()` aus dem Kit auf (Editor-Save, nav-Persist), dann wird
+  die Route gesetzt. Der Koordinator liefert Fehler/Timeouts als Ergebnis.
   `ScriptScreen` mountet pro `scriptId` den Editor.
 - Editor `onUpdate` -> 250 ms debounce (`persistence.ts`) -> JSON ->
   `api.updateScript` -> `lib/scripts.ts` schreibt `content_json`,

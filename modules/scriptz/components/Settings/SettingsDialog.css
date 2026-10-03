@@ -74,22 +74,6 @@
   overflow-y: auto;
   min-width: 0;
 }
-.set-head {
-  margin-bottom: 8px;
-}
-.set-head b {
-  font-size: 18px;
-}
-.dlg-esc {
-  flex: none;
-}
-.set-body .srow-ctl {
-  display: flex;
-  justify-content: flex-end;
-}
-.set-body .srow.is-error small {
-  color: var(--warn);
-}
 .set-empty {
   margin: 12px 0 0;
   padding: 14px 16px;

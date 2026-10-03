@@ -1,10 +1,12 @@
 import { For, Show, createEffect, createResource, on, onCleanup, onMount } from "solid-js";
+import type { SaveResult } from "@agentz/kit/lib";
 import { api } from "../../../lib/api";
 import { acquireIdeaDraft, releaseIdeaDraft } from "./ideaDrafts";
-import { getCurrentLocale, t } from "../../../i18n";
-import { K } from "../../../lib/keys";
+import { getCurrentLocale } from "@agentz/kit/i18n";
+import { t } from "../../../i18n";
+import { K } from "@agentz/kit/platform";
 import type { Folder, Idea, ScriptStatus, ScriptSummary } from "../../../lib/types";
-import { Icon } from "../../Common/Icon";
+import { Icon } from "@agentz/kit/ui";
 import { StageGlyph } from "../../Common/StageGlyph";
 import { FolderMenu } from "./FolderMenu";
 import { ideaAge } from "../ideaGroups";
@@ -12,7 +14,7 @@ import { rankScriptHits, similarIdeas, similarQueryTerms } from "../similar";
 
 export interface IdeaEditorHandle {
   /** Persists pending title/notes edits now. */
-  flush(): Promise<void>;
+  flush(): Promise<SaveResult>;
   focusNotes(): void;
 }
 
@@ -61,7 +63,7 @@ export function IdeaEditor(props: IdeaEditorProps) {
 
   const schedule = () => draft?.saver.schedule();
   /** Drains the latest drafts and every write still in flight. */
-  const flush = () => draft?.saver.flush() ?? Promise.resolve();
+  const flush = () => draft?.saver.flush() ?? Promise.resolve({ ok: true });
 
   const handle: IdeaEditorHandle = {
     flush,

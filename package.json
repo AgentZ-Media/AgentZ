@@ -12,7 +12,8 @@
     "lint": "eslint .",
     "test:tooling": "node --test tooling/checks/*.test.mjs",
     "check:colors": "node tooling/checks/colors.mjs",
-    "build:frontends": "pnpm --filter './apps/*' --if-present build"
+    "build:frontends": "pnpm --filter './apps/*' --if-present build",
+    "check:tokens": "node tooling/checks/tokens.mjs"
   },
   "license": "MIT",
   "packageManager": "pnpm@10.34.6",

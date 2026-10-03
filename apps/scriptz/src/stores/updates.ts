@@ -2,8 +2,8 @@ import { createSignal } from "solid-js";
 import { check, type Update } from "@tauri-apps/plugin-updater";
 import { relaunch } from "@tauri-apps/plugin-process";
 import { settingsStore } from "@agentz/scriptz/stores/settings";
-import { setUpdatesStore, type UpdatesStore } from "@agentz/scriptz/lib/updates";
-import { flushAll } from "@agentz/scriptz/lib/saveFlush";
+import { setUpdatesStore, type UpdatesStore } from "@agentz/kit/platform";
+import { flushAll } from "@agentz/kit/lib";
 
 export type UpdateStage =
   | "idle"

@@ -1,13 +1,7 @@
 import { createSignal, createEffect, createRoot } from "solid-js";
 import { api } from "../lib/api";
-import { registerFlusher } from "../lib/saveFlush";
-import {
-  applyResolvedLanguage,
-  detectSystemLanguage,
-  resolveLanguage,
-  type Language,
-  type LanguagePref,
-} from "../i18n";
+import { registerFlusher } from "@agentz/kit/lib";
+import { applyResolvedLanguage, detectSystemLanguage, resolveLanguage, type Language, type LanguagePref } from "@agentz/kit/i18n";
 
 export type Theme = "dark" | "light" | "auto";
 
@@ -106,10 +100,19 @@ function clampWpm(n: number): number {
 // writes still in flight. Errors still reject the setter's promise.
 const settingWrites = new Map<string, Promise<void>>();
 const pendingSettingWrites = new Set<Promise<void>>();
+const failedSettingKeys = new Set<string>();
 
 function persistSetting(key: string, value: string): Promise<void> {
   const prev = settingWrites.get(key) ?? Promise.resolve();
-  const write = prev.catch(() => {}).then(() => api.setSetting(key, value));
+  const write = prev.catch(() => {}).then(async () => {
+    try {
+      await api.setSetting(key, value);
+      failedSettingKeys.delete(key);
+    } catch (error) {
+      failedSettingKeys.add(key);
+      throw error;
+    }
+  });
   settingWrites.set(key, write);
   pendingSettingWrites.add(write);
   void write
@@ -293,7 +296,8 @@ export function startSettingsRuntime(): () => void {
   applyResolvedLanguage(detectSystemLanguage());
   const unregister = registerFlusher(async () => {
     await Promise.allSettled([...pendingSettingWrites]);
-  });
+    return { ok: failedSettingKeys.size === 0 };
+  }, "settings");
   const disposeRoot = createRoot((dispose) => {
     createEffect(() => {
       if (!loaded()) return;

@@ -1,7 +1,8 @@
 import { createEffect, on, onCleanup } from "solid-js";
-import { uiStore } from "../../stores/ui";
 
 export interface DialogDismissOptions {
+  /** Reactive signal indicating an application dialog has opened. */
+  dialogOpen: () => boolean;
   /** Whether the menu / popover is open right now. */
   open: () => boolean;
   /** True when `node` belongs to the menu: trigger, surface, submenus. */
@@ -20,7 +21,7 @@ export interface DialogDismissOptions {
  * behind it and pull focus back out of the dialog.
  *
  * Closes the menu (without restoring focus) when
- *   - any shell dialog opens (`uiStore.anyDialogOpen()` turns true), or
+ *   - any shell dialog opens (`the supplied dialog signal` turns true), or
  *   - focus moves to an element outside the menu (covers the legacy modals
  *     like ConfirmDialog / PromptDialog, which grab focus on open).
  *
@@ -29,7 +30,7 @@ export interface DialogDismissOptions {
 export function dismissOnDialog(opts: DialogDismissOptions): void {
   createEffect(
     on(
-      uiStore.anyDialogOpen,
+      opts.dialogOpen,
       (now, prev) => {
         if (now && !prev && opts.open()) opts.dismiss();
       },

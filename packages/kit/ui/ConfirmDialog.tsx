@@ -1,7 +1,7 @@
 import { Show } from "solid-js";
 import { render } from "solid-js/web";
 import { Modal } from "./Modal";
-import { t } from "../../i18n";
+import { t } from "../i18n";
 
 export interface ConfirmDialogProps {
   open: boolean;
@@ -36,7 +36,7 @@ export function ConfirmDialog(props: ConfirmDialogProps) {
       }
     >
       <Show when={props.body}>
-        <p style="margin:0;color:var(--fg-muted);font-size:var(--fs-14);line-height:var(--lh-normal);">
+        <p style="margin:0;color:var(--muted);font-size:var(--fs-14);line-height:var(--lh-normal);">
           {props.body}
         </p>
       </Show>

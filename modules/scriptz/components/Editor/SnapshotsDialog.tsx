@@ -1,12 +1,12 @@
 import { For, Show, createEffect, createResource, createSignal, on, onCleanup } from "solid-js";
-import { Modal } from "../Common/Modal";
-import { confirmDialog } from "../Common/ConfirmDialog";
+import { Modal } from "@agentz/kit/ui";
+import { confirmDialog } from "@agentz/kit/ui";
 import { api } from "../../lib/api";
 import { scriptsBus } from "../../lib/scriptsBus";
-import { flushAll } from "../../lib/saveFlush";
-import { formatAbsolute } from "../../lib/format";
+import { flushAll } from "@agentz/kit/lib";
+import { formatAbsolute } from "@agentz/kit/lib";
 import type { ScriptCharacter, Snapshot, SnapshotMeta } from "../../lib/types";
-import { pushToast } from "../../stores/toasts";
+import { pushToast } from "@agentz/kit/stores";
 import { t } from "../../i18n";
 import { Editor } from "./Editor";
 import "./PaperLayout.css";

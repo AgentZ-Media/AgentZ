@@ -5,7 +5,7 @@
 // too lax).
 
 import { beforeAll, describe, it, expect } from "vitest";
-import { applyResolvedLanguage } from "../../i18n";
+import { applyResolvedLanguage } from "@agentz/kit/i18n";
 
 // Tests are pinned against the German wordings (they were there before
 // i18n moved in). In the vitest environment navigator.language runs as

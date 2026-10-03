@@ -1,15 +1,16 @@
 import { For, Match, Show, Switch, createEffect, createSignal } from "solid-js";
 import { api } from "../../lib/api";
 import { CHARACTER_PALETTE } from "../../lib/colors";
-import { K } from "../../lib/keys";
+import { K } from "@agentz/kit/platform";
 import { getWelcomeScript } from "../../lib/welcome";
 import { navStore } from "../../stores/nav";
 import { settingsStore, type Theme } from "../../stores/settings";
 import { uiStore } from "../../stores/ui";
-import { t, type LanguagePref } from "../../i18n";
-import { AppMark } from "../Common/AppMark";
-import { Icon } from "../Common/Icon";
-import { DialogFrame } from "../Settings/DialogFrame";
+import { type LanguagePref } from "@agentz/kit/i18n";
+import { t } from "../../i18n";
+import { AppMark } from "@agentz/kit/ui";
+import { Icon } from "@agentz/kit/ui";
+import { DialogFrame } from "@agentz/kit/ui";
 import "./Onboarding.css";
 
 /** app_state key marking the onboarding as done (unchanged since v1, so
@@ -113,7 +114,7 @@ export function Onboarding() {
       <div class="onb-drag" data-tauri-drag-region aria-hidden="true" />
       <div class="onb-l" onKeyDown={onKey}>
         <div class="onb-brand">
-          <AppMark size={34} />
+          <AppMark logo="scriptz" appName="ScriptZ" size={34} />
           ScriptZ
         </div>
         <div class="onb-steps" aria-hidden="true">
@@ -248,7 +249,7 @@ function PreviewAppearance() {
   return (
     <div class="onb-win">
       <div class="onb-win-side">
-        <AppMark size={18} />
+        <AppMark logo="scriptz" appName="ScriptZ" size={18} />
         <span />
         <span />
         <span class="on" />

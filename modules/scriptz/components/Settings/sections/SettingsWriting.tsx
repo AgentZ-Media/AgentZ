@@ -1,10 +1,11 @@
 import { createEffect, createSignal, on, onCleanup } from "solid-js";
-import { registerFlusher } from "../../../lib/saveFlush";
-import { createSerialSaver } from "../../../lib/serialSave";
+import { registerFlusher } from "@agentz/kit/lib";
+import { createSerialSaver } from "@agentz/kit/lib";
 import { settingsStore } from "../../../stores/settings";
-import { K } from "../../../lib/keys";
+import { K } from "@agentz/kit/platform";
 import { t } from "../../../i18n";
-import { RangeFields, Row, SectionHead, Switch } from "./parts";
+import { Row, SectionHead, Switch } from "@agentz/kit/ui";
+import { RangeFields } from "./parts";
 
 function WpmField() {
   const [text, setText] = createSignal(String(settingsStore.dialogWpm()));
@@ -37,10 +38,16 @@ function WpmField() {
     },
     onError: (err) => console.warn("[scriptz] saving the WPM setting failed", err),
   });
-  const commit = () => saver.flush();
-  const unregister = registerFlusher(commit);
+  let disposed = false;
+  const commit = async () => {
+    const result = await saver.flush();
+    if (disposed && result.ok) unregister();
+    return result;
+  };
+  const unregister = registerFlusher(commit, "settings:dialog-wpm");
   onCleanup(() => {
-    void commit().finally(unregister);
+    disposed = true;
+    void commit();
   });
   // Arrow keys only edit the draft and go through the same saver as typing,
   // so steps are serialized with commits and covered by flush (dialog

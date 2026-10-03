@@ -4,9 +4,10 @@ Local desktop tools for content creators, built in one open-source repository.
 The suite is growing out of ScriptZ: shared design, reusable application
 infrastructure, and independent apps with their own data and releases.
 
-**ScriptZ is the only app currently included.** The shared application kit,
-desktop host, multi-app release pipeline, website, and app generator are
-planned work, not available features. Progress and architecture decisions
+**ScriptZ is the only app currently included.** A shared kit now provides
+neutral UI and infrastructure; extracting the full application shell is
+still in progress. The desktop host, multi-app release pipeline, website,
+and app generator remain planned work. Progress and architecture decisions
 are tracked in the [foundation plan](docs/agentz-suite-fundament.md) (German).
 
 ## Apps
@@ -31,6 +32,8 @@ apps/scriptz/              @agentz/scriptz-app
   src-tauri/              Rust plugin wiring, SQLite migrations, app config
 modules/scriptz/          @agentz/scriptz
                           ScriptZ editor, UI, stores, and application logic
+packages/kit/            @agentz/kit
+                          Neutral Solid UI, i18n, platform ports, KV and saves
 packages/design/         @agentz/design
                           Shared CSS tokens, primitives, fonts, icons, assets
 tooling/vitest-preset/     Shared Solid/jsdom test configuration
@@ -45,12 +48,12 @@ The module uses platform and storage interfaces; it does not import Tauri.
 The design package provides framework-independent styles and data.
 
 ```text
-apps/scriptz → modules/scriptz → packages/design
+apps/scriptz → modules/scriptz → packages/kit → packages/design
 ```
 
-Later phases will extract product-neutral Solid components and the app shell
-into `@agentz/kit`, and Tauri integration into `@agentz/desktop` with a shared
-Rust crate. Those packages do not exist yet. The target dependency direction is:
+The Kit extraction continues with settings and the shared application shell.
+A later phase will move Tauri integration into `@agentz/desktop` with a shared
+Rust crate; those host packages do not exist yet. The target dependency direction is:
 
 ```text
 apps/<app> → modules/<app> → packages/kit → packages/design
@@ -76,6 +79,7 @@ pnpm lint                # check package boundaries and correctness
 pnpm typecheck           # check all TypeScript workspaces
 pnpm test                # run tooling rule tests and workspace tests
 pnpm check:colors        # check colors outside the design system
+pnpm check:tokens        # reject legacy tokens in Kit and new packages
 pnpm build:frontends     # build app frontends without native bundles
 cargo check --workspace --locked # check Rust without changing the lockfile
 ```

@@ -1,7 +1,8 @@
 import { Show } from "solid-js";
 import { formatClock, formatRange, lengthStatus, type LengthRange } from "../../lib/lengthGoal";
-import { K } from "../../lib/keys";
-import { getCurrentLocale, t, tPlural } from "../../i18n";
+import { K } from "@agentz/kit/platform";
+import { getCurrentLocale } from "@agentz/kit/i18n";
+import { t, tPlural } from "../../i18n";
 
 export interface FocusPillProps {
   runtimeSec: number;

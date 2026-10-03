@@ -2,8 +2,9 @@ import { For, createMemo } from "solid-js";
 import { dailyStatsStore } from "../../stores/dailyStats";
 import { uiStore } from "../../stores/ui";
 import { pickWritingWindow } from "../../lib/writingCounter";
-import { getCurrentLocale, t } from "../../i18n";
-import { DialogFrame } from "../Settings/DialogFrame";
+import { getCurrentLocale } from "@agentz/kit/i18n";
+import { t } from "../../i18n";
+import { DialogFrame } from "@agentz/kit/ui";
 import { Heatmap } from "./Heatmap";
 import "./ActivityModal.css";
 

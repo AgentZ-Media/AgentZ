@@ -1,7 +1,7 @@
 // These literals describe already-shipped databases. Keep them independent
 // of production constants so an extraction cannot silently rename a key.
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import type { StorageAdapter } from "../storage";
+import type { ScriptzApiStorage } from "../storage";
 
 const SETTINGS = {
   theme: "dark",
@@ -30,7 +30,7 @@ function memory() {
   const createScript = vi.fn(async () => ({ id: "welcome-id" }));
   const getScript = vi.fn(async (id: string) => ({ id, title: "Welcome", content_json: '{"root":{"children":[]}}' }));
   const operations = { getSetting, setSetting, getAppState, setAppState, listScripts, createScript, getScript };
-  const adapter = new Proxy(operations as unknown as StorageAdapter, {
+  const adapter = new Proxy(operations as unknown as ScriptzApiStorage, {
     get(target, prop) {
       const value = Reflect.get(target, prop);
       if (value !== undefined) return value;

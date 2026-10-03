@@ -77,6 +77,7 @@ jobs:
       - run: pnpm typecheck
       - run: pnpm test
       - run: pnpm check:colors
+      - run: pnpm check:tokens
       # All apps are selected by the root script, including future apps.
       - run: pnpm build:frontends
 

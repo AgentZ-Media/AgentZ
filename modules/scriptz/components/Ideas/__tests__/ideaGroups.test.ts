@@ -1,7 +1,7 @@
 // Tests for the ideas page helpers (components/Ideas/ideaGroups.ts).
 
 import { beforeAll, describe, expect, it } from "vitest";
-import { applyResolvedLanguage } from "../../../i18n";
+import { applyResolvedLanguage } from "@agentz/kit/i18n";
 import { INBOX_FOLDER_ID } from "../../../lib/folders";
 import type { Idea } from "../../../lib/types";
 import {

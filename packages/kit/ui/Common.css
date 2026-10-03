@@ -1,0 +1,142 @@
+.app-root {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  height: 100%;
+  background: var(--bg);
+  color: var(--fg);
+}
+
+.app-main {
+  flex: 1 1 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  overflow: hidden;
+}
+
+.boot-screen {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--sp-5);
+  background: var(--bg);
+}
+.boot-logo {
+  font-family: var(--ui);
+  font-size: var(--fs-24);
+  font-weight: 700;
+  letter-spacing: -0.005em;
+  color: var(--fg);
+}
+.boot-spinner {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  border: 2px solid var(--line);
+  border-top-color: var(--fg);
+  animation: rot 1s linear infinite;
+}
+@keyframes rot { to { transform: rotate(360deg); } }
+
+.error-pane,
+.loading-pane {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--muted);
+  font-size: var(--fs-13);
+}
+
+/* Boot-time recovery screen: blocking, full viewport. Shown when the
+   application setup throws an
+   unrecoverable error - usually a SQLite open failure. */
+.boot-error-screen {
+  position: fixed;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: 32px;
+  background: var(--bg);
+  z-index: 9999;
+}
+.boot-error-inner {
+  max-width: 560px;
+  width: 100%;
+  text-align: center;
+}
+.boot-error-icon {
+  font-size: 48px;
+  line-height: 1;
+  margin-bottom: 16px;
+  color: var(--warn);
+}
+.boot-error-h1 {
+  font-size: var(--fs-20);
+  margin: 0 0 8px;
+  font-weight: 600;
+}
+.boot-error-lede {
+  margin: 0 0 20px;
+  color: var(--muted);
+  font-size: var(--fs-14);
+  line-height: 1.55;
+}
+.boot-error-message {
+  display: inline-block;
+  margin: 0 0 20px;
+  padding: 10px 14px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface-2);
+  font-family: var(--type);
+  font-size: var(--fs-12);
+  color: var(--warn);
+  text-align: left;
+  max-width: 100%;
+  overflow-wrap: break-word;
+}
+.boot-error-actions {
+  display: inline-flex;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+.boot-error-details {
+  text-align: left;
+  font-family: var(--type);
+  font-size: var(--fs-11);
+  padding: 12px;
+  border-radius: 8px;
+  background: var(--surface-2);
+  max-height: 240px;
+  overflow: auto;
+  white-space: pre-wrap;
+  margin: 0 0 16px;
+}
+.boot-error-help {
+  margin: 0;
+  font-size: var(--fs-12);
+  color: var(--muted);
+}
+
+/* Settings row and section primitives. */
+.set-head {
+  margin-bottom: 8px;
+}
+.set-head b {
+  font-size: 18px;
+}
+.dlg-esc {
+  flex: none;
+}
+.set-body .srow-ctl {
+  display: flex;
+  justify-content: flex-end;
+}
+.set-body .srow.is-error small {
+  color: var(--warn);
+}

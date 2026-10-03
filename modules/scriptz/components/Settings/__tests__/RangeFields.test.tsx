@@ -5,7 +5,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { cleanup, render } from "@solidjs/testing-library";
 import { Show, createSignal } from "solid-js";
-import { flushAll } from "../../../lib/saveFlush";
+import { flushAll } from "@agentz/kit/lib";
 import { RangeFields } from "../sections/parts";
 
 afterEach(() => {

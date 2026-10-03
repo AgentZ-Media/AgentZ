@@ -4,7 +4,7 @@
 // layout logic plus pdf-lib + @pdf-lib/fontkit has no Tauri binding
 // and runs identically in the browser and on desktop. The file
 // writing part (mkdir + writeFile) moves to the
-// platform adapter (see ./platform.ts::saveAs).
+// platform adapter (see @agentz/kit/platform::saveAs).
 //
 // Layout conventions: A4 geometry, iA Writer Quattro S TTF/11pt,
 // tint-band highlighting. Byte-identical to the
@@ -19,7 +19,13 @@
 import { PDFDocument, rgb, type PDFFont, type PDFPage } from "pdf-lib";
 import fontkit from "@pdf-lib/fontkit";
 import { extractBlocks, type ExtractedBlock, type TextRun } from "./lex";
-import type { ExportPdfDeps } from "./platform";
+import type { ScriptCharacter } from "./types";
+
+export interface ExportPdfDeps {
+  title: string;
+  contentJson: string;
+  characters: ScriptCharacter[];
+}
 import { t } from "../i18n";
 
 // ---- Geometry (mm) - 1:1 like Rust src-tauri/src/commands/export.rs ----

@@ -1,3 +1,4 @@
+import { uiStore } from "../../../stores/ui";
 import { createSignal, For, onCleanup as solidOnCleanup } from "solid-js";
 import { render } from "solid-js/web";
 import {
@@ -19,9 +20,9 @@ import {
   $createScriptzParentheticalNode,
 } from "../nodes";
 import type { BlockType } from "../../../lib/types";
-import { K } from "../../../lib/keys";
+import { K } from "@agentz/kit/platform";
 import { t } from "../../../i18n";
-import { dismissOnDialog, focusWithin } from "../../Common/dismissOnDialog";
+import { dismissOnDialog, focusWithin } from "@agentz/kit/ui";
 
 function findScriptzAncestor(node: LexicalNode | null): BaseScriptzNode | null {
   let cur: LexicalNode | null = node;
@@ -66,6 +67,7 @@ function BlockDropdown(props: DropdownProps) {
   // top - or focus leaving the editor otherwise - closes it, so Enter or
   // the arrows typed into the dialog never change the block behind it.
   dismissOnDialog({
+    dialogOpen: uiStore.anyDialogOpen,
     open: () => true,
     inside: (node) => {
       if (props.root()?.contains(node)) return true;

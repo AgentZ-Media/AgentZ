@@ -1,11 +1,12 @@
 import { For, Show, createEffect, createMemo, createSignal, onCleanup } from "solid-js";
-import { Icon } from "../Common/Icon";
+import { Icon } from "@agentz/kit/ui";
 import { api } from "../../lib/api";
 import { formatClock, formatRange, lengthStatus, type LengthRange } from "../../lib/lengthGoal";
 import { SCRIPT_STATUSES, type ScriptCharacter, type ScriptStatus } from "../../lib/types";
-import { K } from "../../lib/keys";
+import { K } from "@agentz/kit/platform";
 import { ideasStore } from "../../stores/ideas";
-import { getCurrentLocale, t, tPlural } from "../../i18n";
+import { getCurrentLocale } from "@agentz/kit/i18n";
+import { t, tPlural } from "../../i18n";
 import { stageLabel } from "./stageActions";
 import { sinceBucket, type LiveStats } from "./timelineMath";
 

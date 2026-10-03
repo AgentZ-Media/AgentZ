@@ -13,10 +13,10 @@
 // mount then starts from the (now current) store again.
 
 import { createEffect, createRoot, createSignal, on, type Accessor } from "solid-js";
-import { registerFlusher } from "../../../lib/saveFlush";
-import { createSerialSaver, type SerialSaver } from "../../../lib/serialSave";
+import { registerFlusher } from "@agentz/kit/lib";
+import { createSerialSaver, type SerialSaver } from "@agentz/kit/lib";
 import { ideasStore } from "../../../stores/ideas";
-import { pushToast } from "../../../stores/toasts";
+import { pushToast } from "@agentz/kit/stores";
 import { t } from "../../../i18n";
 import type { Idea } from "../../../lib/types";
 
@@ -118,7 +118,7 @@ function createEntry(idea: Idea): Entry {
         pushToast(t("common.errorPrefix", { message: (err as Error)?.message ?? String(err) }), "error"),
     });
     // Window close / navigation drain this entry even after its panel is gone.
-    const unregister = registerFlusher(() => saver.flush());
+    const unregister = registerFlusher(() => saver.flush(), `idea:${idea.id}`);
     const entry: Entry = {
       id: idea.id,
       title,

@@ -29,7 +29,8 @@
     "@pdf-lib/fontkit": "catalog:",
     "lexical": "catalog:",
     "pdf-lib": "catalog:",
-    "solid-js": "catalog:"
+    "solid-js": "catalog:",
+    "@agentz/kit": "workspace:*"
   },
   "devDependencies": {
     "@solidjs/testing-library": "catalog:",

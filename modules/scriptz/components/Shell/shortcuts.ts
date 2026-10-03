@@ -6,7 +6,7 @@
 // Editor-local keys (⌘1-4, Tab picker, Smart-Enter, ⌘B/⌘U, ⌘⇧S/⌘⇧H
 // snapshots) belong to the script screen and are not handled here.
 
-import { isModKey } from "../../lib/keys";
+import { isModKey } from "@agentz/kit/platform";
 import { navStore } from "../../stores/nav";
 import { uiStore } from "../../stores/ui";
 import { createScript } from "../Library/actions";

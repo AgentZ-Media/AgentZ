@@ -1,9 +1,9 @@
 // Tests for the one-time legacy-block boot migration. Runs against an
-// in-memory StorageAdapter stub, so it verifies the adapter-agnostic flow
+// in-memory ScriptzApiStorage stub, so it verifies the adapter-agnostic flow
 // (flag handling, which scripts get rewritten, internalRewrite flag).
 
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { getStorageAdapter, setStorageAdapter, type StorageAdapter } from "../storage";
+import { getStorageAdapter, setStorageAdapter, type ScriptzApiStorage } from "../storage";
 import "../api";
 import {
   LEGACY_BLOCKS_MIGRATION_FLAG,
@@ -30,7 +30,7 @@ function memoryAdapter(scripts: Record<string, string>, opts: { failGet?: string
     expect(q?.includeArchived).toBe(true);
     return Object.keys(scripts).map((id) => ({ id })) as never;
   });
-  const adapter = new Proxy({} as StorageAdapter, {
+  const adapter = new Proxy({} as ScriptzApiStorage, {
     get(_, prop: string) {
       switch (prop) {
         case "getAppState":

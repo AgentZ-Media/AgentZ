@@ -1,8 +1,8 @@
 import { Show, type JSX } from "solid-js";
 import { navStore } from "../../stores/nav";
 import { uiStore } from "../../stores/ui";
-import { Icon } from "../Common/Icon";
-import { K } from "../../lib/keys";
+import { Icon } from "@agentz/kit/ui";
+import { K } from "@agentz/kit/platform";
 import { t } from "../../i18n";
 
 export interface PageBarProps {

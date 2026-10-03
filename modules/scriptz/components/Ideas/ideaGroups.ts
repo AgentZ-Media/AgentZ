@@ -2,7 +2,8 @@
 // the compact age label. Kept free of Solid so they are unit-testable.
 
 import { INBOX_FOLDER_ID } from "../../lib/folders";
-import { getCurrentLocale, t } from "../../i18n";
+import { getCurrentLocale } from "@agentz/kit/i18n";
+import { t } from "../../i18n";
 import type { Idea } from "../../lib/types";
 
 export type IdeaSort = "newest" | "oldest" | "title";

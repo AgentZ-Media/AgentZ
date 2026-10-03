@@ -1,7 +1,7 @@
 import { Show, createEffect, createSignal, on, onCleanup } from "solid-js";
 import { t } from "../../i18n";
-import { registerFlusher } from "../../lib/saveFlush";
-import { createSerialSaver } from "../../lib/serialSave";
+import { registerFlusher } from "@agentz/kit/lib";
+import { createSerialSaver } from "@agentz/kit/lib";
 
 export interface TitleInputProps {
   scriptId: string;
@@ -84,15 +84,19 @@ function TitleInputField(props: TitleInputProps) {
     );
   });
 
-  const commit = (): Promise<void> => {
+  let disposed = false;
+  const commit = async () => {
     // An emptied title is never saved - show the stored one again.
     if (!draft().trim()) setDraft(saver.baseline());
-    return saver.flush();
+    const result = await saver.flush();
+    if (disposed && result.ok) unregister();
+    return result;
   };
 
-  const unregister = registerFlusher(commit);
+  const unregister = registerFlusher(commit, `title:${scriptId}`);
   onCleanup(() => {
-    void commit().finally(unregister);
+    disposed = true;
+    void commit();
   });
 
   /** Moves the caret back into the editor (blurring the input commits). */

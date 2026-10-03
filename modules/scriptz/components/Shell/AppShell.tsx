@@ -14,7 +14,7 @@ import {
 } from "solid-js";
 import { api } from "../../lib/api";
 import { startCharacterAutoPrune } from "../../lib/characterAutoPrune";
-import { startRelativeTimeClock } from "../../lib/format";
+import { startRelativeTimeClock } from "@agentz/kit/lib";
 import { startIdeasStore } from "../../stores/ideas";
 import { startDailyStatsStore } from "../../stores/dailyStats";
 import { ensureWelcomeContent } from "../../lib/welcome";
@@ -23,9 +23,9 @@ import { settingsStore, startSettingsRuntime } from "../../stores/settings";
 import { navStore, startNavRuntime } from "../../stores/nav";
 import { uiStore } from "../../stores/ui";
 import { t } from "../../i18n";
-import { AppMark } from "../Common/AppMark";
-import { BootErrorScreen } from "../Common/BootErrorScreen";
-import { ToastHost } from "../Common/ToastHost";
+import { AppMark } from "@agentz/kit/ui";
+import { BootErrorScreen } from "@agentz/kit/ui";
+import { ToastHost } from "@agentz/kit/ui";
 import { ScriptsPage } from "../Library/ScriptsPage";
 import { libraryPrefs } from "../Library/prefs";
 import { TrashPage } from "../Library/TrashPage";
@@ -171,7 +171,7 @@ export function AppShell(props: AppShellProps) {
     <div class="app-root shell-root">
       <Show
         when={!bootError()}
-        fallback={<BootErrorScreen error={bootError()!} onRetry={() => window.location.reload()} />}
+        fallback={<BootErrorScreen appName="ScriptZ" title={t("boot.error.title")} description={t("boot.error.lede")} error={bootError()!} onRetry={() => window.location.reload()} />}
       >
         <Show when={bootReady()} fallback={<BootScreen />}>
           <div
@@ -228,7 +228,7 @@ export function AppShell(props: AppShellProps) {
 function BootScreen() {
   return (
     <div class="shell-boot" aria-busy="true" aria-label={t("common.loading")}>
-      <AppMark size={44} />
+      <AppMark logo="scriptz" appName="ScriptZ" size={44} />
       <div class="shell-boot-bar" />
     </div>
   );

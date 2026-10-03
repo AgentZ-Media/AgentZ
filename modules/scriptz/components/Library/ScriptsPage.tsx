@@ -14,19 +14,20 @@ import {
 import type { ScriptStatus, ScriptSummary, SearchHit } from "../../lib/types";
 import { SCRIPT_STATUSES } from "../../lib/types";
 import { api } from "../../lib/api";
-import { debounce, relativeTime } from "../../lib/format";
+import { debounce, relativeTime } from "@agentz/kit/lib";
 import { formatClock, formatRange, resolveLengthRange } from "../../lib/lengthGoal";
 import { INBOX_FOLDER_ID } from "../../lib/folders";
-import { K, isModKey } from "../../lib/keys";
+import { K, isModKey } from "@agentz/kit/platform";
 import { exportScriptsToPdf } from "../../lib/exportSelection";
 import { navStore } from "../../stores/nav";
 import { uiStore } from "../../stores/ui";
 import { settingsStore } from "../../stores/settings";
 import { dailyStatsStore } from "../../stores/dailyStats";
 import { ideasStore } from "../../stores/ideas";
-import { pushToast } from "../../stores/toasts";
-import { getCurrentLocale, localeCompare, t, tPlural } from "../../i18n";
-import { Icon } from "../Common/Icon";
+import { pushToast } from "@agentz/kit/stores";
+import { getCurrentLocale, localeCompare } from "@agentz/kit/i18n";
+import { t, tPlural } from "../../i18n";
+import { Icon } from "@agentz/kit/ui";
 import { StageGlyph } from "../Common/StageGlyph";
 import { safeSnippet } from "../Palette/snippet";
 import {

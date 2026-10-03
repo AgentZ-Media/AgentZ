@@ -6,7 +6,8 @@ import { settingsStore } from "../../../stores/settings";
 import { t } from "../../../i18n";
 import type { Folder } from "../../../lib/types";
 import { folderColor } from "../../Ideas/folderColor";
-import { RangeFields, SectionHead } from "./parts";
+import { SectionHead } from "@agentz/kit/ui";
+import { RangeFields } from "./parts";
 
 /** Target range per folder (overrides the default range). Folder CRUD
  *  itself lives in the sidebar. */

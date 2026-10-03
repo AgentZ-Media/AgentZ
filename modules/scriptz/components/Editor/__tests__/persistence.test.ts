@@ -4,9 +4,9 @@
 
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { LexicalEditor } from "lexical";
-import { getStorageAdapter, setStorageAdapter, type StorageAdapter } from "../../../lib/storage";
+import { getStorageAdapter, setStorageAdapter, type ScriptzApiStorage } from "../../../lib/storage";
 import "../../../lib/api";
-import { flushAll } from "../../../lib/saveFlush";
+import { flushAll } from "@agentz/kit/lib";
 import { createPersistence } from "../persistence";
 
 const originalAdapter = getStorageAdapter();
@@ -46,7 +46,7 @@ function controllableAdapter() {
         });
       }),
   );
-  const adapter = new Proxy({} as StorageAdapter, {
+  const adapter = new Proxy({} as ScriptzApiStorage, {
     get(_, prop: string) {
       if (prop === "updateScript") return updateScript;
       return vi.fn().mockResolvedValue(undefined);
@@ -87,6 +87,31 @@ function setup(initial: string) {
 }
 
 describe("createPersistence", () => {
+  it("retries the final live draft after teardown even when Lexical has cleared its document", async () => {
+    const errorLog = vi.spyOn(console, "error").mockImplementation(() => {});
+    const updateScript = vi.fn().mockRejectedValue(new Error("offline"));
+    setStorageAdapter({ updateScript } as unknown as ScriptzApiStorage);
+    const original = doc("stored");
+    const finalDraft = doc("last live draft");
+    const ed = fakeEditor(original);
+    const handle = createPersistence({
+      editor: ed.editor, scriptId: "teardown", initialContentJson: original,
+      mergeAfterSave: () => {}, knownColors: new Map(),
+    });
+    ed.set(finalDraft);
+    handle.scheduleSave();
+    handle.teardown();
+    ed.set(doc(""));
+    expect(await flushAll()).toEqual({ ok: false, failed: ["editor:teardown"] });
+    updateScript.mockResolvedValue({ id: "teardown", characters: [] });
+    expect(await flushAll()).toEqual({ ok: true, failed: [] });
+    expect(updateScript.mock.calls.at(-1)?.[0].contentJson).toBe(finalDraft);
+    const calls = updateScript.mock.calls.length;
+    await flushAll();
+    expect(updateScript).toHaveBeenCalledTimes(calls);
+    errorLog.mockRestore();
+  });
+
   it("doesn't lose an undo back to the stored state while a newer save is in flight", async () => {
     const A = doc("alpha");
     const B = doc("alpha beta");

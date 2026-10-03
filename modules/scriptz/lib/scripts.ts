@@ -351,7 +351,7 @@ export interface UpdateScriptInput {
    *  bypassing the reconcile step. */
   characters?: ScriptCharacter[];
   /** Internal rewrite (legacy-block migration): no daily-word booking,
-   *  `updated_at` untouched. See `StorageAdapter.UpdateScriptInput`. */
+   *  `updated_at` untouched. See `ScriptzApiStorage.UpdateScriptInput`. */
   internalRewrite?: boolean;
 }
 

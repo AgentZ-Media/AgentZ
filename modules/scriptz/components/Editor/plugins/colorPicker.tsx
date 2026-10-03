@@ -15,7 +15,7 @@ import { $isScriptzCharacterNode } from "../nodes";
 import { ColorPickerPopover } from "../ColorPickerPopover";
 import { api } from "../../../lib/api";
 import { scriptsBus } from "../../../lib/scriptsBus";
-import { pushToast } from "../../../stores/toasts";
+import { pushToast } from "@agentz/kit/stores";
 import type { ScriptCharacter } from "../../../lib/types";
 import { t } from "../../../i18n";
 

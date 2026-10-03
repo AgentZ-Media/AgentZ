@@ -1,5 +1,5 @@
 import { Show, createEffect, createSignal } from "solid-js";
-import { Modal } from "../Common/Modal";
+import { Modal } from "@agentz/kit/ui";
 import { t } from "../../i18n";
 
 export interface PromptDialogProps {

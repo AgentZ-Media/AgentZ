@@ -8,7 +8,7 @@
 
 import { afterEach, describe, expect, it } from "vitest";
 import { characterUsageBus } from "../characterUsage";
-import { getPlatformAdapter, setPlatformAdapter, type DbConnection, type PlatformAdapter } from "../platform";
+import { getPlatformAdapter, setPlatformAdapter, type DbConnection, type PlatformAdapter } from "@agentz/kit/platform";
 import { restoreSnapshot } from "../snapshots";
 
 interface Row {

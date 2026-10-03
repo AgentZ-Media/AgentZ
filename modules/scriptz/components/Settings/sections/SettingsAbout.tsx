@@ -1,8 +1,9 @@
 import { createSignal, onMount } from "solid-js";
-import { getPlatformAdapter } from "../../../lib/platform";
+import { getPlatformAdapter } from "@agentz/kit/platform";
 import { t } from "../../../i18n";
-import { AppMark } from "../../Common/AppMark";
-import { Row, SectionHead } from "./parts";
+import { AppMark } from "@agentz/kit/ui";
+import { Row, SectionHead } from "@agentz/kit/ui";
+
 
 const REPO_URL = "https://github.com/AgentZ-Media/AgentZ";
 const DEVELOPER_URL = "https://linktr.ee/deragentz";
@@ -22,7 +23,7 @@ export function SettingsAbout(props: { onClose(): void; onShowOnboarding(): void
     <>
       <SectionHead title={t("prefs.about.title")} sub={t("settings.about.sub")} onClose={props.onClose} />
       <div class="set-brand">
-        <AppMark size={48} />
+        <AppMark logo="scriptz" appName="ScriptZ" size={48} />
         <div>
           <b>ScriptZ</b>
           <small>

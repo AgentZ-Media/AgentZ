@@ -1,6 +1,6 @@
 import { JSX, Show, createEffect, onCleanup, onMount } from "solid-js";
 import { Portal } from "solid-js/web";
-import { t } from "../../i18n";
+import { t } from "../i18n";
 import "./Modal.css";
 
 export interface ModalProps {

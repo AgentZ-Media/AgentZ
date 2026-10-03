@@ -19,7 +19,7 @@ import {
   previousCharacterFrom,
 } from "../predict";
 import type { ScriptCharacter } from "../../../lib/types";
-import { K } from "../../../lib/keys";
+import { K } from "@agentz/kit/platform";
 import { t } from "../../../i18n";
 
 const DROPDOWN_WIDTH = 236;
