@@ -1,0 +1,3 @@
+[default]
+description = "Allows the main desktop host to announce readiness and acknowledge a requested exit."
+permissions = ["allow-ready", "allow-finish-exit", "allow-set-menu-language"]

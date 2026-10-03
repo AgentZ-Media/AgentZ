@@ -21,19 +21,20 @@ und Prüfungen fest.
 
 ## Bestand und Ziel auseinanderhalten
 
-**Stand Phase 4:** `apps/scriptz` verdrahtet das Produktmodul
-`modules/scriptz` und Tauri. `packages/kit` enthält die gemeinsame
+**Stand Phase 5:** `apps/scriptz` verdrahtet das Produktmodul
+`modules/scriptz` und den gemeinsamen Desktop-Host. `packages/kit` enthält die gemeinsame
 `SuiteShell`, neutrale UI, i18n, Basis-Settings, Navigation, Plattform-
 Interfaces, KvStore, Toasts und Speicherhelfer. Das ScriptZ-Modul
 exportiert `scriptzModule: AppModule` und liefert Fachlogik und
 Produkt-Erweiterungen. `packages/design` enthält Tokens, CSS, Schriften,
 Icons und Logo; `tooling/vitest-preset` die Testkonfiguration.
 
-**Erst später:** `packages/desktop` und `crates/agentz-desktop` in Phase 5.
-Website und App-Generator folgen in Phase 7 beziehungsweise 8. Kein Import
-darf deren Existenz voraussetzen.
+`packages/desktop` trägt Plattformadapter, Updater und den Frontend-
+Lebenszyklus; `crates/agentz-desktop` registriert Standard-Plugins,
+native Menüs, Single-Instance und den Quit-Handshake. Website und
+App-Generator folgen in Phase 7 beziehungsweise 8.
 
-Zielrichtung (die Grenzen werden bereits jetzt per ESLint geprüft):
+Abhängigkeitsrichtung (durch ESLint geprüft):
 
 ```text
 apps/<app> -> modules/<app> -> packages/kit -> packages/design
@@ -98,6 +99,27 @@ Die App-/Modulpakete behalten vorerst das Standardverhalten für Laufzeit-
 Seiteneffekte; der Import-Lebenszyklus allein ist keine Freigabe für
 pauschales `sideEffects: false`.
 
+## Desktop-Boot und native Ausstiegspfade
+
+`bootDesktopApp({ id, loadModule, services? })` registriert native Dienste
+und lädt das Produkt explizit. Die Datenbank heißt `sqlite:${id}.db`;
+App-ID und Modul-ID müssen übereinstimmen. Der Rückgabewert bietet
+`ready` und asynchrones `dispose()` für HMR und kontrollierten Abbau.
+
+Fensterschluss und natives Beenden verwenden denselben Flush-Koordinator.
+Neue Eingaben sind während der Transaktion gesperrt. Erst bei erfolgreichem
+Flush darf das Fenster zerstört oder der native Exit bestätigt werden;
+Fehler und Timeouts brechen den Ausstieg ab. Auf macOS öffnet ein Dock-Klick
+das konfigurierte Hauptfenster erneut. Ein zweiter Prozess fokussiert die
+vorhandene Instanz, bevor er eine Datenbank öffnen kann.
+
+Der Updater trennt `download()` und `install()`: Download, Eingaben sperren,
+Flush prüfen, installieren, Neustart. Installation und Ausstieg dürfen sich
+nicht überholen. Native Menüaktionen für Einstellungen und Über öffnen
+dieselben Kit-Dialoge; der Produktname kommt aus der Tauri-Konfiguration.
+`agentz-desktop:default` erlaubt den `ready`-/`finish_exit`-Handshake
+und `set_menu_language` für die gemeinsame Spracheinstellung (DE/EN).
+
 ## Paket-Konventionen und gemeinsame Konfiguration
 
 - ESM mit `"type": "module"`.
@@ -135,11 +157,14 @@ die Tooling-Regeln mit dem Node-Test-Runner, danach die Pakettests.
 
 ## Rust-Workspace
 
-Root-`Cargo.toml` bündelt die App-Crates unter `apps/*/src-tauri`, gemeinsame
-Abhängigkeiten und das Release-Profil. `Cargo.lock` wurde aus ScriptZ in
-den Root verschoben, ohne die vorhandenen Rust-Versionen zu aktualisieren.
-`crates/*` wird erst ergänzt, wenn Phase 5 tatsächlich eine Crate anlegt;
-ein leerer Cargo-Glob wäre kein gültiges Workspace-Mitglied.
+Root-`Cargo.toml` bündelt App-Crates unter `apps/*/src-tauri`, gemeinsame
+Crates unter `crates/*`, Abhängigkeiten und das Release-Profil.
+`crates/agentz-desktop` stellt `builder(Config { db_url, migrations })`
+und `KIT_BASELINE_SQL` für neue Apps bereit. ScriptZ behält seine sieben
+bisherigen Migrationen unverändert. Standard-Plugins bleiben wegen
+ihrer Capability-Metadaten zusätzlich direkte App-Abhängigkeiten;
+`global-shortcut` gehört nicht zur gemeinsamen Basis. `build.rs`,
+Capabilities, Icons und die Tauri-Konfiguration bleiben pro App.
 
 Build-Ausgaben liegen in `target/` im Repo-Root. Ohne explizites Target
 entstehen Installer unter `target/release/bundle/`, mit explizitem Target
@@ -166,7 +191,7 @@ UI-Dateien freistellen.
 - **Modul:** Produktdaten, Storage-Interface und dessen SQL-Implementierung,
   Screens, fachliche Stores, eigene i18n-Texte und Einstellungen. Der
   ScriptZ-Editor samt Lexical-Nodes und PDF-Export bleibt hier.
-- **Desktop-Host (ab Phase 5):** Plattformadapter, native Dialoge,
+- **Desktop-Host:** Plattformadapter, native Dialoge,
   Updater, Fenster-Lebenszyklus und sichere Save-Flush-Integration.
 - **App:** Modul und Host verbinden; App-ID, Datenbankname, Icons,
   Capabilities und additive Produktmigrationen konfigurieren.
@@ -248,7 +273,10 @@ Einstellungen und Shortcuts lassen sich dort unabhängig prüfen.
 
 ## Ports
 
-Vite-Port, HMR-Port und Tauri-`devUrl` immer gemeinsam pflegen:
+`defineDesktopViteConfig({ port })` aus `@agentz/desktop/vite` bündelt
+Solid, Tauri-Dev-Host, HMR, Umgebungspräfixe und Build-Ziel. Dieser
+Node-Einstieg gehört nicht ins Browser-Bundle. Vite-Port, HMR-Port und
+Tauri-`devUrl` immer gemeinsam pflegen:
 
 | App | Vite | HMR | Tauri devUrl | Stand |
 |---|---|---|---|---|
@@ -271,5 +299,5 @@ Modul tatsächlich braucht. Nicht für hypothetische Apps abstrahieren.
   bestimmt eine gemeinsame Abstraktion.
 - PDF-Export und `dark_paper` bleiben ScriptZ-Funktionen.
 - Gemeinsame Bausteine dürfen keine ScriptZ-Imports als versteckte
-  Voraussetzung haben. Die spätere Kit-Abnahme muss ohne ScriptZ-CSS
-  und ohne ScriptZ-Modul funktionieren.
+  Voraussetzung haben. Die unabhängige Kit-Fixture läuft ohne ScriptZ-CSS
+  und ohne ScriptZ-Modul.

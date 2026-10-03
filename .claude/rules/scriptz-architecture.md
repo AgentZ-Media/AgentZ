@@ -16,8 +16,8 @@ Silicon + Windows x64 are first-class; Linux not (yet) shipped.
 Produktlogik aus dem Redesign „Werkbank" liegt in `modules/scriptz/`
 (UI, fachliche Stores, Datenmodell, Editor). `packages/design/` enthält
 das Designsystem, `packages/kit/` die gemeinsame Shell und Infrastruktur.
-`apps/scriptz/` verdrahtet `scriptzModule` mit SuiteShell und den nativen
-Adaptern. `@agentz/desktop` entsteht erst in Phase 5.
+`apps/scriptz/` verdrahtet `scriptzModule` mit `@agentz/desktop`. Der Host
+verbindet SuiteShell, native Adapter und den sicheren App-Lebenszyklus.
 Konzept und Arbeitsplan: [`docs/redesign/umsetzung.md`](../../docs/redesign/umsetzung.md),
 visuelle Referenz `docs/redesign/concept.html`, Längenziel-Spec
 [`docs/feature-laengenziel.md`](../../docs/feature-laengenziel.md).
@@ -37,9 +37,8 @@ Prüfungen und offene Punkte stehen im
 ```
 apps/scriptz/
   src-tauri/
-    src/lib.rs             Tauri Builder + plugin wiring + plugin-sql
-                           migration list (001-007). No commands, no
-                           business logic.
+    src/lib.rs             agentz_desktop::builder(Config) + unchanged
+                           migration list (001-007). No business logic.
     migrations/
       001_baseline.sql     Idempotent baseline schema.
       002_ai_cleanup.sql   Drops the old AI columns/settings.
@@ -57,20 +56,21 @@ apps/scriptz/
                            "Legacy-Blöcke").
     capabilities/default.json, tauri.conf.json, Cargo.toml
   src/
-    index.tsx              Explicitly registers platform, Kit KV, product SQL
-                           and updates
-                           before render(), then imports the CSS layers
-                           (@agentz/design fonts -> tokens -> legacy ->
-                           components, kit styles, then module global.css), mounts <App>.
-    App.tsx                <SuiteShell module={scriptzModule} footer={...}> +
-                           onCloseRequested -> flushAll(2000) + updater
-                           background polling. Nothing else.
-    lib/platform.ts        Tauri PlatformAdapter: plugin-sql Database as
-                           getDb(), dialogs, fs, opener, os.
-    lib/tauri.ts           isTauri flag / thin invoke wrapper (rare).
-    stores/updates.ts      tauri-plugin-updater, registered into the
-                           Kit `updates` slot.
-    components/Common/UpdateIndicator.tsx   Update pill (sidebar footer).
+    index.tsx              bootDesktopApp: app ID, dynamically loaded product
+                           module and product storage; product styles only.
+    vite-env.d.ts          Vite type declarations.
+  vite.config.ts           defineDesktopViteConfig({ port: 1420 }).
+
+packages/desktop/          @agentz/desktop - shared native frontend host
+  lib/platform.ts         Tauri PlatformAdapter and lazy app-specific SQL DB.
+  lib/lifecycle.ts        Close/quit flush transaction and native handshake.
+  stores/updates.ts       Download, lock editing, flush, install, restart.
+  components/            Shared update indicator.
+  vite.ts                 Node-only Vite configuration.
+
+crates/agentz-desktop/     Shared builder, plugins, native menu and lifecycle.
+                          New apps use KIT_BASELINE_SQL; existing ScriptZ
+                          migrations are not replaced or renumbered.
 
 packages/design/           @agentz/design - suite design system (see its README)
   tokens.css               Semantic tokens light/dark/dark-paper
@@ -323,8 +323,8 @@ Blocktyp und läuft unverändert durch. Deshalb:
 
 ## Data flow
 
-- Host (`apps/scriptz/src/index.tsx`): Plattform -> SQL-KvStore ->
-  Produkt-SQL-Adapter -> Updater -> `render()`. Keine anwendungseigene
+- Host (`@agentz/desktop`): Plattform -> SQL-KvStore -> Updater ->
+  `loadModule()` mit Produkt-SQL-Adapter -> `render()`. Keine anwendungseigene
   Import-I/O; Solid-generierte JSX-Event-Delegation bleibt Framework-Verhalten.
 - Shell: `SuiteShell` startet Basis-Settings und lädt Theme/Sprache,
   dann `scriptzModule.setup(ctx)`. Das Modul startet seine eigenen
@@ -338,7 +338,7 @@ Blocktyp und läuft unverändert durch. Deshalb:
   schützen auch den asynchronen Boot. `ctx.runOwned()` bindet synchrone
   reaktive Arbeit nach einem `await` an die Shell-Lebensdauer. Die Shell
   beendet die Runtime, auch wenn sie erst nach Unmount fertig wird.
-  Die App beendet Updater-Polling/Fenster-Listener; HMR entsorgt den Root.
+  Der Desktop-Host beendet Updater-Polling/Fenster-Listener; HMR entsorgt den Root.
 - Navigation: Die Kit-Nav-Fabrik ruft vor Routenwechsel `flushAll()` auf.
   Bei Fehler oder Timeout bleibt die bisherige Route aktiv. Das Modul
   liefert Routen, „Zuletzt"-Metadaten und die unveränderte JSON-Kodierung.

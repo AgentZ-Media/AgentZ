@@ -36,9 +36,6 @@ catalogs:
     '@tauri-apps/plugin-fs':
       specifier: 2.5.1
       version: 2.5.1
-    '@tauri-apps/plugin-global-shortcut':
-      specifier: 2.3.1
-      version: 2.3.1
     '@tauri-apps/plugin-opener':
       specifier: 2.5.4
       version: 2.5.4
@@ -101,94 +98,25 @@ importers:
 
   apps/scriptz:
     dependencies:
-      '@agentz/design':
+      '@agentz/desktop':
         specifier: workspace:*
-        version: link:../../packages/design
-      '@agentz/kit':
-        specifier: workspace:*
-        version: link:../../packages/kit
+        version: link:../../packages/desktop
       '@agentz/scriptz':
         specifier: workspace:*
         version: link:../../modules/scriptz
-      '@lexical/history':
-        specifier: 'catalog:'
-        version: 0.44.0
-      '@lexical/rich-text':
-        specifier: 'catalog:'
-        version: 0.44.0
-      '@lexical/utils':
-        specifier: 'catalog:'
-        version: 0.44.0
-      '@pdf-lib/fontkit':
-        specifier: 'catalog:'
-        version: 1.1.1
-      '@tauri-apps/api':
-        specifier: 'catalog:'
-        version: 2.11.0
-      '@tauri-apps/plugin-clipboard-manager':
-        specifier: 'catalog:'
-        version: 2.3.2
-      '@tauri-apps/plugin-dialog':
-        specifier: 'catalog:'
-        version: 2.7.1
-      '@tauri-apps/plugin-fs':
-        specifier: 'catalog:'
-        version: 2.5.1
-      '@tauri-apps/plugin-global-shortcut':
-        specifier: 'catalog:'
-        version: 2.3.1
-      '@tauri-apps/plugin-opener':
-        specifier: 'catalog:'
-        version: 2.5.4
-      '@tauri-apps/plugin-os':
-        specifier: 'catalog:'
-        version: 2.3.2
-      '@tauri-apps/plugin-process':
-        specifier: 'catalog:'
-        version: 2.3.1
-      '@tauri-apps/plugin-sql':
-        specifier: 'catalog:'
-        version: 2.4.0
-      '@tauri-apps/plugin-updater':
-        specifier: 'catalog:'
-        version: 2.10.1
-      '@tauri-apps/plugin-window-state':
-        specifier: 'catalog:'
-        version: 2.4.1
-      lexical:
-        specifier: 'catalog:'
-        version: 0.44.0
-      pdf-lib:
-        specifier: 'catalog:'
-        version: 1.17.1
-      solid-js:
-        specifier: 'catalog:'
-        version: 1.9.12
     devDependencies:
-      '@solidjs/testing-library':
-        specifier: 'catalog:'
-        version: 0.8.10(@solidjs/router@0.15.4(solid-js@1.9.12))(solid-js@1.9.12)
       '@tauri-apps/cli':
         specifier: 'catalog:'
         version: 2.11.0
       '@types/node':
         specifier: 'catalog:'
         version: 22.19.19
-      jsdom:
-        specifier: 'catalog:'
-        version: 25.0.1
       typescript:
         specifier: 'catalog:'
         version: 5.6.3
       vite:
         specifier: 'catalog:'
         version: 6.4.2(@types/node@22.19.19)(yaml@2.8.4)
-      vite-plugin-solid:
-        specifier: 'catalog:'
-        version: 2.11.12(solid-js@1.9.12)(vite@6.4.2(@types/node@22.19.19)(yaml@2.8.4))
-      vitest:
-        specifier: 'catalog:'
-        version: 2.1.9(@types/node@22.19.19)(jsdom@25.0.1)
 
   modules/scriptz:
     dependencies:
@@ -251,6 +179,70 @@ importers:
       typescript:
         specifier: 'catalog:'
         version: 5.6.3
+
+  packages/desktop:
+    dependencies:
+      '@agentz/design':
+        specifier: workspace:*
+        version: link:../design
+      '@agentz/kit':
+        specifier: workspace:*
+        version: link:../kit
+      '@tauri-apps/api':
+        specifier: 'catalog:'
+        version: 2.11.0
+      '@tauri-apps/plugin-clipboard-manager':
+        specifier: 'catalog:'
+        version: 2.3.2
+      '@tauri-apps/plugin-dialog':
+        specifier: 'catalog:'
+        version: 2.7.1
+      '@tauri-apps/plugin-fs':
+        specifier: 'catalog:'
+        version: 2.5.1
+      '@tauri-apps/plugin-opener':
+        specifier: 'catalog:'
+        version: 2.5.4
+      '@tauri-apps/plugin-os':
+        specifier: 'catalog:'
+        version: 2.3.2
+      '@tauri-apps/plugin-process':
+        specifier: 'catalog:'
+        version: 2.3.1
+      '@tauri-apps/plugin-sql':
+        specifier: 'catalog:'
+        version: 2.4.0
+      '@tauri-apps/plugin-updater':
+        specifier: 'catalog:'
+        version: 2.10.1
+      '@tauri-apps/plugin-window-state':
+        specifier: 'catalog:'
+        version: 2.4.1
+      solid-js:
+        specifier: 'catalog:'
+        version: 1.9.12
+      vite:
+        specifier: 'catalog:'
+        version: 6.4.2(@types/node@22.19.19)(yaml@2.8.4)
+      vite-plugin-solid:
+        specifier: 'catalog:'
+        version: 2.11.12(solid-js@1.9.12)(vite@6.4.2(@types/node@22.19.19)(yaml@2.8.4))
+    devDependencies:
+      '@agentz/vitest-preset':
+        specifier: workspace:*
+        version: link:../../tooling/vitest-preset
+      '@solidjs/testing-library':
+        specifier: 'catalog:'
+        version: 0.8.10(@solidjs/router@0.15.4(solid-js@1.9.12))(solid-js@1.9.12)
+      '@types/node':
+        specifier: 'catalog:'
+        version: 22.19.19
+      typescript:
+        specifier: 'catalog:'
+        version: 5.6.3
+      vitest:
+        specifier: 'catalog:'
+        version: 2.1.9(@types/node@22.19.19)(jsdom@25.0.1)
 
   packages/kit:
     dependencies:
@@ -1073,9 +1065,6 @@ packages:
 
   '@tauri-apps/plugin-fs@2.5.1':
     resolution: {integrity: sha512-9Lz+Jopp6QyeEWhlpkMx4R/+P9HgR+AVAI4vOZhlT8Xaymtz8iVI/Ov984/XTqgJz/5gz5NretqPB/XEMS3NhQ==}
-
-  '@tauri-apps/plugin-global-shortcut@2.3.1':
-    resolution: {integrity: sha512-vr40W2N6G63dmBPaha1TsBQLLURXG538RQbH5vAm0G/ovVZyXJrmZR1HF1W+WneNloQvwn4dm8xzwpEXRW560g==}
 
   '@tauri-apps/plugin-opener@2.5.4':
     resolution: {integrity: sha512-1HnPkb+AmgO29HBazm4uPLKB+r7zzcTBW1d0fyYp1uP+jwtpoiNDGKMMzz58SFp49nOIrxdE3aUJtT57lfO9CQ==}
@@ -2726,10 +2715,6 @@ snapshots:
       '@tauri-apps/api': 2.11.0
 
   '@tauri-apps/plugin-fs@2.5.1':
-    dependencies:
-      '@tauri-apps/api': 2.11.0
-
-  '@tauri-apps/plugin-global-shortcut@2.3.1':
     dependencies:
       '@tauri-apps/api': 2.11.0
 

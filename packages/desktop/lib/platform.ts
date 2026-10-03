@@ -1,19 +1,3 @@
-// Tauri-backed implementation of @agentz/kit's PlatformAdapter.
-//
-// Explicitly registered at app startup from index.tsx, this provides a
-// concrete adapter so the module - which only knows the abstract
-// DbConnection / SaveDialogOptions / saveAs etc. - has a real
-// implementation to call.
-//
-// All @tauri-apps/* imports live in this file (plus the few other
-// remaining desktop-only files: updates.ts, UpdateIndicator.tsx,
-// tauri.ts, App.tsx's close handler).
-//
-// Since phase 2F: no own exportPdf.ts / exportPlaintext.ts anymore.
-// The PDF bytes are built by modules/scriptz/lib/exportPdf.ts, the
-// plaintext comes from modules/scriptz/lib/lex::extractTeleprompterText.
-// Here we only handle the "bytes to disk" part via saveAs.
-
 import Database from "@tauri-apps/plugin-sql";
 import { open as openDialog, save } from "@tauri-apps/plugin-dialog";
 import { mkdir, readFile, writeFile } from "@tauri-apps/plugin-fs";
@@ -21,8 +5,6 @@ import { openUrl, revealItemInDir } from "@tauri-apps/plugin-opener";
 import { getVersion } from "@tauri-apps/api/app";
 import { platform as osPlatform } from "@tauri-apps/plugin-os";
 import {
-  applyPlatformToDocument,
-  setPlatformAdapter,
   type DbConnection,
   type OpenFileResult,
   type Platform,
@@ -44,20 +26,6 @@ function detectPlatform(): Platform {
   } catch {
     return "macos";
   }
-}
-
-// Lazy plugin-sql connection. Cached, with reset-on-failure so a
-// transient open failure doesn't poison every subsequent DB call.
-let dbPromise: Promise<Database> | null = null;
-function loadDesktopDb(): Promise<DbConnection> {
-  if (!dbPromise) {
-    const p = Database.load("sqlite:scriptz.db");
-    p.catch(() => {
-      if (dbPromise === p) dbPromise = null;
-    });
-    dbPromise = p;
-  }
-  return dbPromise as Promise<DbConnection>;
 }
 
 function parentDir(path: string): string | null {
@@ -133,7 +101,23 @@ async function desktopWriteFileTo(path: string, bytes: Uint8Array): Promise<void
   await writeFile(path, bytes);
 }
 
-export function registerDesktopPlatform(): void {
+
+// Lazy plugin-sql connection. Cached, with reset-on-failure so a
+// transient open failure doesn't poison every subsequent DB call.
+export function createDesktopPlatform(id: string): PlatformAdapter {
+  if (!/^[a-z][a-z0-9-]*$/.test(id)) throw new Error("Invalid desktop app ID");
+  let dbPromise: Promise<Database> | null = null;
+  function loadDesktopDb(): Promise<DbConnection> {
+    if (!dbPromise) {
+      const pending = Database.load(`sqlite:${id}.db`);
+      pending.catch(() => {
+        if (dbPromise === pending) dbPromise = null;
+      });
+      dbPromise = pending;
+    }
+    return dbPromise as Promise<DbConnection>;
+  }
+
   const tauriAdapter: PlatformAdapter = {
     platform: detectPlatform(),
     supportsDirectoryWrite: true,
@@ -150,6 +134,5 @@ export function registerDesktopPlatform(): void {
     pickDirectory: desktopPickDirectory,
     writeFileTo: desktopWriteFileTo,
   };
-  setPlatformAdapter(tauriAdapter);
-  applyPlatformToDocument();
+  return tauriAdapter;
 }

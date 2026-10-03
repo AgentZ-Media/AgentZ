@@ -7,6 +7,7 @@ export type UpdateStage =
   | "idle"
   | "available"
   | "downloading"
+  | "installing"
   | "ready"
   | "error";
 

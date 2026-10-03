@@ -3,6 +3,7 @@ export const kitDe = {
   "shell.update.available": "{version} verfügbar",
   "shell.update.ready": "{version} ist bereit",
   "shell.update.downloading": "Update lädt … {progress} %",
+  "shell.update.installing": "Update wird installiert …",
   "shell.update.error": "Update fehlgeschlagen",
   "shell.update.action.install": "Installieren",
   "shell.update.action.restart": "Neu starten",

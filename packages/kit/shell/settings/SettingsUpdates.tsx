@@ -16,7 +16,7 @@ export function SettingsUpdates(props: { updates: UpdatesStore; releasesUrl?: st
 
   const statusLabel = () => {
     const stage = u().stage();
-    if (stage === "available" || stage === "downloading") {
+    if (stage === "available" || stage === "downloading" || stage === "installing") {
       return t("settings.updates.available", { version: u().available()?.version ?? "" });
     }
     if (stage === "ready") return t("settings.updates.ready");
@@ -24,6 +24,7 @@ export function SettingsUpdates(props: { updates: UpdatesStore; releasesUrl?: st
     return t("settings.updates.status");
   };
   const statusHelp = () => {
+    if (u().stage() === "installing") return t("shell.update.installing");
     if (u().stage() === "downloading") return t("settings.updates.downloading", { progress: u().progress() });
     if (u().manualCheck()?.kind === "error" || u().stage() === "error") return t("settings.updates.checkError");
     return t("prefs.updates.statusHelp");
@@ -58,7 +59,7 @@ export function SettingsUpdates(props: { updates: UpdatesStore; releasesUrl?: st
             <button
               class="btn sm"
               onClick={() => void u().checkNow()}
-              disabled={isChecking() || u().stage() === "downloading"}
+              disabled={isChecking() || u().stage() === "downloading" || u().stage() === "installing"}
             >
               {isChecking() ? t("settings.updates.action.checking") : t("settings.updates.action.check")}
             </button>

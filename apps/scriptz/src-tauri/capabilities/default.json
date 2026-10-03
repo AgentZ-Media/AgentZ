@@ -12,7 +12,7 @@
     "core:window:allow-close",
     "core:window:allow-destroy",
     "core:webview:default",
-    "global-shortcut:default",
+    "agentz-desktop:default",
     "clipboard-manager:default",
     "os:default",
     "updater:default",

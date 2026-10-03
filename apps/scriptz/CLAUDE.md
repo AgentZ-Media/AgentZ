@@ -4,7 +4,8 @@ App-Paket: `@agentz/scriptz-app`. Produktmodul: `@agentz/scriptz`.
 Suite-Regeln: [`CLAUDE.md`](../../CLAUDE.md). Der Kit-Kern ist seit
 Phase 4 extrahiert: SuiteShell, neutrale UI, i18n, Basis-Settings,
 Navigation, Plattform-Interfaces, KvStore und Speicherhelfer.
-Der Desktop-Host ist erst für Phase 5 geplant.
+Seit Phase 5 tragen `@agentz/desktop` und `crates/agentz-desktop` die
+gemeinsame Tauri-Anbindung und den nativen Lebenszyklus.
 Prüfungen und offene Punkte stehen im
 [Umsetzungsstand](../../docs/agentz-suite-fortschritt.md).
 
@@ -21,8 +22,7 @@ length range; plan in [`docs/redesign/umsetzung.md`](../../docs/redesign/umsetzu
 Product UI and logic live in `modules/scriptz/`, neutral components
 and infrastructure in `packages/kit/`, and the design system in
 `packages/design/`; this app is a thin Tauri shell
-(`App.tsx` renders Kit `SuiteShell` with `scriptzModule` and adds close-flush +
-auto-updater). Der tatsächliche Code ist die Referenz für das
+(`src/index.tsx` calls `bootDesktopApp` with the product module and storage). Der tatsächliche Code ist die Referenz für das
 aktuelle Verhalten.
 
 ## Path-scoped Rules
@@ -47,11 +47,10 @@ Details lazy-load aus [`/.claude/rules/`](../../.claude/rules/):
 ## Top-Level Layout
 
 ```
-src/                    Thin Solid shell: index.tsx (adapters + CSS
-                        layers), App.tsx (SuiteShell + close flush +
-                        updater), lib/platform.ts (Tauri PlatformAdapter),
-                        stores/updates.ts, components/Common/UpdateIndicator
-src-tauri/              Rust backend (Tauri 2): plugin wiring + SQL migrations
+src/                    index.tsx: bootDesktopApp, product module/storage
+                        and styles; vite-env.d.ts for Vite types.
+src-tauri/              App identity, capabilities, icons and SQL migrations;
+                        lib.rs calls the shared Rust builder.
 package.json            pnpm scripts (dev, tauri:dev, tauri:build, typecheck)
 tsconfig.json
 vite.config.ts
@@ -61,13 +60,13 @@ Detail-Layout der Subverzeichnisse: siehe `scriptz-architecture.md`.
 
 ## Expliziter App-Lebenszyklus
 
-`src/index.tsx` registriert vor `render()` die Dienste in der Reihenfolge
-`registerDesktopPlatform()` ->
-`setKvStore(createSqlKvStore(() => getPlatformAdapter().getDb()))` ->
-`registerSqlStorageAdapter()` -> `registerDesktopUpdates()`. KvStore und
-Produkt-Storage teilen die Datenbankverbindung, haben aber getrennte APIs.
-Der Import startet keine anwendungseigene I/O; Solid-generierte
-JSX-Event-Delegation bleibt Framework-Verhalten.
+`src/index.tsx` ruft `bootDesktopApp({ id: "scriptz", loadModule })` auf.
+Der Host registriert Plattformadapter, Kit-KvStore und Updater, bevor
+`loadModule()` Produktstyles, SQL-Adapter und `scriptzModule` dynamisch
+lädt. Gemeinsame Styles kommen vorher aus dem Host. KvStore und Produkt-
+Storage teilen die Verbindung, haben aber getrennte APIs. Der Import
+startet keine anwendungseigene I/O; Solid-generierte JSX-Event-Delegation
+bleibt Framework-Verhalten.
 
 `SuiteShell` startet und lädt Basis-Settings, Sprache und Theme, dann
 `scriptzModule.setup(ctx)`. Das Modul startet Produkt-Settings, Navigation,
@@ -75,8 +74,12 @@ relative Uhr und den fachlichen Boot; erst nach Boot und Legacy-Migration
 folgen Ideen-, Statistik- und Bibliotheksresources. Abbruchsignal,
 `ctx.onDispose()` und `ctx.runOwned()` verhindern verspätete Ressourcen
 und erhalten die Solid-Lebensdauer. Die Shell räumt Runtime und registrierte
-Cleanups auf. `App` räumt Fenster-Listener und Updater-Polling auf;
-HMR entsorgt den Render-Root.
+Cleanups auf. Der Desktop-Host räumt Fenster-Listener und Updater-Polling
+auf; HMR ruft seinen asynchronen `dispose()`-Pfad auf. Fenster schließen,
+natives Beenden und Update-Installation sperren neue Eingaben und prüfen
+den gemeinsamen Flush. Bei Fehlschlag bleiben App und Eingaben erhalten.
+Updates werden zuerst heruntergeladen und erst nach erfolgreichem Flush
+installiert. Single-Instance und Dock-Wiederöffnung kommen aus der Rust-Crate.
 
 Die App importiert das Produkt über `@agentz/scriptz`, den SQL-Anschluss
 über `@agentz/scriptz/storage` und Produktstyles über
@@ -87,7 +90,7 @@ Die App importiert das Produkt über `@agentz/scriptz`, den SQL-Anschluss
 - **TypeScript owns persistence.** Product SQL lives in
   `modules/scriptz/lib/` (`scripts.ts`, `folders.ts`, ...); the Kit KvStore
   owns SQL access to `settings` and `app_state`. The plugin-sql connection
-  comes from `PlatformAdapter.getDb()` in `src/lib/platform.ts`, implementing
+  comes from `PlatformAdapter.getDb()` in `packages/desktop/lib/platform.ts`, implementing
   the interface from `@agentz/kit/platform`.
   There are no Tauri commands for data access - the Rust side opens no
   DB connections. Schema changes are additive SQL migrations in
