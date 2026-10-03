@@ -1,6 +1,6 @@
 # @agentz/design
 
-The design system of the AgentZ suite (ScriptZ Desktop, future apps).
+The design system of the AgentZ suite (all apps and the website).
 Plain CSS + a few typed data modules - no framework code, so any app
 (Solid, Astro, React, static HTML) can use it.
 
@@ -37,7 +37,7 @@ Import in this order, before any app CSS:
 ```ts
 import "@agentz/design/fonts.css";      // Schibsted Grotesk, bundled offline
 import "@agentz/design/tokens.css";
-import "@agentz/design/legacy.css";     // only while old token names exist
+// legacy.css: only ScriptZ still loads it; never in new apps or the Kit.
 import "@agentz/design/components.css";
 ```
 
@@ -96,8 +96,9 @@ raster exports by hand.
 
 **No hex (or rgb) colour values outside this package.** Apps reference
 `var(--token)` only. That is what makes the system portable: to start a new
-app of the suite, add `@agentz/design` as a dependency, import the four CSS
-files, set `data-theme` on `<html>`, override `--accent` if the app needs its
-own highlighter colour - done. Exceptions are content colours that are data,
+app of the suite, add `@agentz/design` as a dependency, import `fonts.css`,
+`tokens.css` and `components.css` (never `legacy.css` in new apps), set
+`data-theme` on `<html>`, override `--accent` if the app needs its own
+highlighter colour - done. Exceptions are content colours that are data,
 not UI (e.g. a user's character palette) and OS chrome replicas (macOS
 traffic lights).

@@ -11,328 +11,90 @@ paths:
   - "Cargo.toml"
 ---
 
-# Suite: Architektur und Paket-Konventionen
+# Suite: Architektur
 
-Die Suite entwickelt unabhängige lokale Desktop-Apps in einem Repository.
-Jede App behält ihre Datenbank, App-ID, Produktlogik und Releases. Maßgeblich
-ist der [Fundament-Plan](../../docs/agentz-suite-fundament.md). Der
-[Umsetzungsstand](../../docs/agentz-suite-fortschritt.md) hält Fortschritt
-und Prüfungen fest.
+Jede App ist eigenständig: eigener Prozess, eigene App-ID, eigene Datenbank,
+eigene Releases. Gemeinsam sind Design, Kit, Desktop-Host, Tooling und Website.
 
-## Bestand und Ziel auseinanderhalten
+## Grenzen
 
-**Stand nach dem Fundament-Umbau:** `apps/scriptz` verdrahtet das Produktmodul
-`modules/scriptz` und den gemeinsamen Desktop-Host. `packages/kit` enthält die gemeinsame
-`SuiteShell`, neutrale UI, i18n, Basis-Settings, Navigation, Plattform-
-Interfaces, KvStore, Toasts und Speicherhelfer. Das ScriptZ-Modul
-exportiert `scriptzModule: AppModule` und liefert Fachlogik und
-Produkt-Erweiterungen. `packages/design` enthält Tokens, CSS, Schriften,
-Icons und Logo; `tooling/vitest-preset` die Testkonfiguration.
+`tooling/checks/architecture.mjs` (ESLint) erzwingt die Richtung aus
+`CLAUDE.md`, auch für Typ-Importe, dynamische Importe, `require` und
+TS-Aliasse. Paketübergreifend nur über den Paketnamen und dessen `exports`;
+relative Pfade nur innerhalb eines Pakets. Ein unbekanntes `@agentz/*`-Paket
+ist ein Fehler, bis seine Grenze festgelegt ist. Tooling gehört nie ins Bundle.
 
-`packages/desktop` trägt Plattformadapter, Updater und den Frontend-
-Lebenszyklus; `crates/agentz-desktop` registriert Standard-Plugins,
-native Menüs, Single-Instance und den Quit-Handshake. `apps/site` ist die
-statische Astro-Website mit Design-Paket, DE/EN-Katalog und App-Liste.
-`tooling/new-app` erzeugt unabhängige App-/Modul-Paare. Eine temporäre
-Sandbox hat Generator, parallele Nutzung, Releases und Updates geprüft
-und wurde anschließend vollständig aus den Produktquellen entfernt.
+## Lebenszyklus
 
-Abhängigkeitsrichtung (durch ESLint geprüft):
-
-```text
-apps/<app> -> modules/<app> -> packages/kit -> packages/design
-    |                              ^
-    +------> packages/desktop ------+
-
-apps/site -> packages/design
-```
-
-- `design` importiert nichts aus dem Repo und bleibt frameworkunabhängig.
-- `kit` importiert nur `design`: kein Tauri, kein Produktwissen.
-- `desktop` importiert `kit` und Tauri, keine Produktmodule.
-- Produktmodule importieren `kit` und `design`, keine Apps, anderen
-  Module oder `@tauri-apps/*`.
-- Apps verbinden ihr eigenes Modul mit dem Host. Sie enthalten die
-  App-Konfiguration und native Migrationen.
-- Paketübergreifende Importe verwenden den öffentlichen Paketnamen und
-  dessen explizite Exporte. Relative Pfade sind nur innerhalb desselben
-  Pakets erlaubt. Neue öffentliche Einstiege bewusst in `exports` anlegen.
-- Tooling ist Build-/Testkonfiguration und gehört nicht ins App-Bundle.
-
-ESLint startet bewusst ohne Formatierungsregeln. Ausnahmen nicht durch
-breitere Grenzen kaschieren, sondern gezielt und mit Begründung behandeln.
-`pnpm check:colors` prüft zusätzlich harte Hex-/rgb-Farben in CSS und
-TSX außerhalb von `packages/design`; Charakter-Palette und der neutrale
-Color-Picker-Platzhalter haben gezielte Ausnahmen. Zukünftige Nachbauten
-von OS-Trafficlights brauchen eine ebenso gezielte Ausnahme.
-Test-Fixtures sowie berechnete Charakter-/PDF-Farbdaten in TypeScript
-werden nicht als UI-Tokens behandelt. Neue UI-Farben sind semantische
-Design-Tokens.
-`pnpm check:astro` ergänzt Paket-, Farb- und Tokenregeln für `.astro`-Dateien
-über deren Parser; die CI prüft auch diesen Einstieg.
-`pnpm check:tokens` untersagt Legacy-Token-Namen und `legacy.css`-Imports
-im Kit einschließlich Fixtures sowie in neuen Apps/Modulen/Paketen. Nur
-der bestehende ScriptZ-Code und das Designpaket behalten die Übergangsschicht.
-
-## Import und Lebenszyklus
-
-Module und Kit starten beim Import **keine I/O**:
-keine DB-Resources, keine `api.*`-Aufrufe, keine Timer oder automatisch
-laufenden Effekte mit Seiteneffekten. Datenzugriff beginnt in einer
-expliziten Initialisierung nach Registrierung des Plattformadapters.
-Timer, Listener und Effekte brauchen einen definierten Aufräumpfad.
-
-Der Host registriert Plattform, Kit-KvStore, Produkt-Storage und Updater
-vor `render()`. `SuiteShell` startet den Basis-Settings-Lebenszyklus und
-lädt Sprache/Theme, bevor sie `module.setup(ctx)` aufruft. ScriptZ startet
-dort Produkt-Settings, Navigation und relative Uhr, lädt seine Boot-Daten
-und migriert Legacy-Blöcke. Erst danach starten Ideen-, Statistik- und
-Bibliotheksresources.
-
-`ctx.signal` kennzeichnet einen abgebrochenen Boot. Cleanup sofort über
-`ctx.onDispose()` registrieren, nicht erst am Ende einer langen asynchronen
-Initialisierung. Nach jedem `await` das Signal prüfen; reaktive synchrone
-Initialisierung nach einem `await` mit `ctx.runOwned()` an die Shell-Lebensdauer
-binden. Diese Funktion trägt Ownership nicht über ein weiteres `await`.
-Die Shell beendet auch eine erst nach Unmount zurückkehrende Runtime.
-Die Desktop-Schale beendet Updater-Polling und Fenster-Listener.
-Solid-generierte JSX-Event-Delegation ist Framework-Verhalten,
-keine anwendungseigene Import-I/O.
-
-Das Kit deklariert `sideEffects: ["*.css"]` und explizite Subpath-Exporte.
-Die App-/Modulpakete behalten vorerst das Standardverhalten für Laufzeit-
-Seiteneffekte; der Import-Lebenszyklus allein ist keine Freigabe für
-pauschales `sideEffects: false`.
-
-## Desktop-Boot und native Ausstiegspfade
-
-`bootDesktopApp({ id, loadModule, services? })` registriert native Dienste
-und lädt das Produkt explizit. Die Datenbank heißt `sqlite:${id}.db`;
-App-ID und Modul-ID müssen übereinstimmen. Der Rückgabewert bietet
-`ready` und asynchrones `dispose()` für HMR und kontrollierten Abbau.
-
-Fensterschluss und natives Beenden verwenden denselben Flush-Koordinator.
-Neue Eingaben sind während der Transaktion gesperrt. Erst bei erfolgreichem
-Flush darf das Fenster zerstört oder der native Exit bestätigt werden;
-Fehler und Timeouts brechen den Ausstieg ab. Auf macOS öffnet ein Dock-Klick
-das konfigurierte Hauptfenster erneut. Ein zweiter Prozess fokussiert die
-vorhandene Instanz, bevor er eine Datenbank öffnen kann.
-
-Der Updater trennt `download()` und `install()`: Download, Eingaben sperren,
-Flush prüfen, installieren, Neustart. Installation und Ausstieg dürfen sich
-nicht überholen. Native Menüaktionen für Einstellungen und Über öffnen
-dieselben Kit-Dialoge; der Produktname kommt aus der Tauri-Konfiguration.
-`agentz-desktop:default` erlaubt den `ready`-/`finish_exit`-Handshake
-und `set_menu_language` für die gemeinsame Spracheinstellung (DE/EN).
-
-## Paket-Konventionen und gemeinsame Konfiguration
-
-- ESM mit `"type": "module"`.
-- Explizite `exports` für öffentliche Subpaths; keine Wildcard-Freigabe
-  sämtlicher interner Dateien. ScriptZ exportiert nur den Moduleinstieg,
-  `./storage` und `./styles.css`. Asset-Globs im Designpaket bleiben zulässig.
-- Neue seiteneffektfreie Laufzeitpakete deklarieren
-  `"sideEffects": ["*.css"]`, damit ihre Styles beim Tree-Shaking erhalten
-  bleiben. Weitere notwendige Initialisierung explizit deklarieren;
-  Bestand siehe oben.
-- Interne Abhängigkeiten verwenden `workspace:*`. Gemeinsame externe
-  Versionen kommen aus dem Catalog in `pnpm-workspace.yaml` über
-  `catalog:`. Die pnpm-Version steht verbindlich in `package.json`.
-- `tsconfig.base.json` enthält nur gemeinsame Compileroptionen. `include`,
-  `types` und lokale Aliasse wie `~` bleiben im jeweiligen Paket.
-- Pakete mit TypeScript erhalten ein `typecheck`-Skript. Testbare Pakete
-  nutzen das gemeinsame Preset und ein `test`-Skript; kein dupliziertes
-  Solid-/jsdom-Setup pro Paket.
-
-```ts
-import { definePackageTest } from "@agentz/vitest-preset";
-
-export default definePackageTest();
-```
-
-Das Preset stellt das Solid-Plugin, jsdom sowie die Auflösungsbedingungen
-`browser` und `development` bereit. Produktspezifisches Test-Setup
-(z. B. Sprache und Adapter) bleibt beim Produkt und wird dort ergänzt.
-
-Vom Repo-Root: `pnpm lint`, `pnpm typecheck`, `pnpm test`,
-`pnpm check:colors`, `pnpm check:tokens`, `pnpm check:astro`,
-`pnpm build:frontends`.
-Der Frontend-Build erstellt keine nativen Installer. Die PR-CI prüft diese
-Schritte und `cargo check --workspace --locked`. `pnpm test` prüft zuerst
-die Tooling-Regeln mit dem Node-Test-Runner, danach die Pakettests.
-
-## Rust-Workspace
-
-Root-`Cargo.toml` bündelt App-Crates unter `apps/*/src-tauri`, gemeinsame
-Crates unter `crates/*`, Abhängigkeiten und das Release-Profil.
-`crates/agentz-desktop` stellt `builder(Config { db_url, migrations })`
-und `KIT_BASELINE_SQL` für neue Apps bereit. ScriptZ behält seine sieben
-bisherigen Migrationen unverändert. Standard-Plugins bleiben wegen
-ihrer Capability-Metadaten zusätzlich direkte App-Abhängigkeiten;
-`global-shortcut` gehört nicht zur gemeinsamen Basis. `build.rs`,
-Capabilities, Icons und die Tauri-Konfiguration bleiben pro App.
-
-Build-Ausgaben liegen in `target/` im Repo-Root. Ohne explizites Target
-entstehen Installer unter `target/release/bundle/`, mit explizitem Target
-unter `target/<target-triple>/release/bundle/`. `pnpm install
---frozen-lockfile` schützt nur das JavaScript-Lockfile; Rust-Prüfungen
-verwenden zusätzlich `--locked`.
-
-Tauri-JS-Pakete im pnpm-Catalog und die zugehörigen Rust-Crates immer
-zusammen aktualisieren und anschließend beide Lockfiles prüfen. Die
-Rust-Angabe `"2"` ist nur der erlaubte Versionsbereich; `Cargo.lock`
-fixiert den tatsächlich verwendeten Stand. Nach `cargo update` deshalb
-auch die kompatiblen JS-Versionen abgleichen und den nativen Build prüfen.
-
-Die allgemeine Farbprüfung ist bewusst eine Textprüfung für CSS/TSX.
-Astro erhält einen separaten Parser-Check. `.ts` und HTML werden nicht erfasst; CSS-IDs wie `#add` oder `#face` können als
-Farbwerte erscheinen. Solche Fälle gezielt behandeln, nicht ganze
-UI-Dateien freistellen.
-
-## Releases pro App
-
-`pnpm release:bump <app> <version>` setzt App-`package.json`, Tauri-Config,
-App-`Cargo.toml` und Root-`Cargo.lock` gemeinsam. Releases verwenden
-`<app-id>-v<semver>`; jedes Produkt hat einen eigenen Zeiger
-`<app-id>-latest` mit Manifest und stabil benannten Installern. macOS und
-Windows bauen nacheinander, damit beide Plattformen im Manifest bleiben.
-Ein manuell gestarteter Workflow baut nur Prüfartefakte und veröffentlicht
-nichts. Vollständige Abnahme umfasst zusätzlich den echten signierten
-Update-Zyklus; ein erfolgreicher Dry-Run ersetzt ihn nicht. Details und
-Recovery stehen in [`release.md`](release.md).
-
-## Wer verantwortet was?
-
-- **Kit:** produktneutrale Solid-UI und Shell, i18n, Basis-Settings,
-  Nav-Fabrik, allgemeiner Dialogzustand, Shortcuts, Toasts, Plattform-
-  Interfaces, KvStore und Speicherhelfer. Kein Wissen über Skripte oder Charaktere.
-- **Modul:** Produktdaten, Storage-Interface und dessen SQL-Implementierung,
-  Screens, fachliche Stores, eigene i18n-Texte und Einstellungen. Der
-  ScriptZ-Editor samt Lexical-Nodes und PDF-Export bleibt hier.
-- **Desktop-Host:** Plattformadapter, native Dialoge,
-  Updater, Fenster-Lebenszyklus und sichere Save-Flush-Integration.
-- **App:** Modul und Host verbinden; App-ID, Datenbankname, Icons,
-  Capabilities und additive Produktmigrationen konfigurieren.
-
-UI und Fachlogik nutzen das Storage-Interface ihres Moduls. Die
-SQL-Implementierung darf im selben Modul liegen; native APIs bleiben
-hinter dem Plattformadapter. Bundle-Identifier `de.agent-z.scriptz`,
-`scriptz.db`, Migrationen und persistierte Schlüssel sind beim
-strukturellen Umbau unverändert zu erhalten.
-
-## Bereits extrahierte Kit-APIs
-
-- `@agentz/kit/platform`: `PlatformAdapter`, `DbConnection`, `KvStore`,
-  Tastatur-Helfer und Update-Slot. Adapter werden explizit registriert.
-  Der SQL-KvStore nutzt die injizierte Verbindung; Datenbankname und
-  Migrationen bleiben Host-Verantwortung. Das Kit greift nur auf
-  `settings` und `app_state` zu. `createSqlKvStore(getDb)` erzeugt ihn,
-  `setKvStore()` registriert ihn; `getKvStore()` und `kvStore` liefern
-  den Zugriff. Produkt-Storage wird separat registriert; `ScriptzStorage`
-  enthält ausschließlich fachliche Operationen.
-- `@agentz/kit/i18n`: gemeinsame Sprachauflösung und typsichere Katalog-
-  Komposition mit `createI18n()` beziehungsweise `createModuleI18n()`.
-  Produktneutrale Texte gehören ins Kit, Produkttexte ins Modul.
-- `@agentz/kit/lib`: `serialSave`, `FlushCoordinator`, `registerFlusher`
-  und `flushAll(timeout)`. Ein Flush liefert `{ ok, failed }`; Fehler,
-  negative Save-Ergebnisse und Timeouts sind keine erfolgreiche Sicherung.
-  `requireSuccessfulFlush()` bricht abhängige Aktionen bei Fehler ab.
-  Neutrale Formatierung und relative Uhr liegen ebenfalls hier.
-  Registrierungen beim Abbau entfernen, ausstehende Saves vorher sichern.
-- `@agentz/kit/stores`: Toasts, Basis-Settings, allgemeiner Dialogzustand
-  und generische Navigation/Layout-Persistenz. Die Schlüssel `theme`,
-  `language`, `update_check_enabled` und `hourly_update_check` gehören
-  zu den Basis-Settings; `dark_paper` bleibt im Produkt.
-- `@agentz/kit/ui`: neutrale Dialoge, Icons, parametrisierbare App-Markierung,
-  Boot-Fehler, Toast-Host und Settings-Bausteine.
-- `@agentz/kit/shell`: `SuiteShell`, Modul-Vertrag, Settings-Dialog,
-  Befehlspalette und Shortcut-Registry.
-- `@agentz/kit/styles.css`: zugehörige Styles mit semantischen Tokens,
-  ohne Abhängigkeit von ScriptZ-CSS oder `legacy.css`.
-
-`ExportPdfDeps`, Lexical, Produkt-Routen und Produkt-Storage bleiben im
-ScriptZ-Modul. Keine dauerhaften Reexports alter Modulpfade anlegen.
+- Kit und Module starten beim Import keine I/O, Timer oder Effekte.
+- Der Desktop-Host registriert Plattform, `KvStore` und Updater, lädt dann
+  `loadModule()` (Produkt-Styles, Produkt-Storage, Modul) und rendert die
+  `SuiteShell`. Die Shell lädt Basis-Settings, Sprache und Theme, startet die
+  relative Uhr und ruft `module.setup(ctx)` auf.
+- In `setup`: nach jedem `await` `ctx.signal` prüfen, Aufräumen sofort über
+  `ctx.onDispose()` registrieren, reaktive Arbeit nach einem `await` mit
+  `ctx.runOwned()` binden. Die Shell beendet auch eine Runtime, die erst nach
+  Unmount fertig wird.
+- Speichern: `registerFlusher(fn, name, kind)`. `content` (Standard) für
+  Nutzerinhalt, `state` für UI-Zustand und Einstellungen. Navigation und
+  `requireSuccessfulFlush()` prüfen nur `content`; Fenster schließen, Beenden
+  und Update-Installation brauchen ein vollständig erfolgreiches `flushAll`.
+  Schlägt es wiederholt fehl, fragt der Host „Trotzdem schließen/beenden?".
 
 ## Modul-Vertrag
 
-Die verbindlichen Typen stehen in `packages/kit/shell/types.ts`.
-`AppModule` beschreibt ID, Namen, Logo, Über-Texte und i18n-Kataloge als
-reine Daten. `setup(ctx)` läuft nach Adapter, KvStore, Basis-Settings,
-Sprache und Theme. Sein `ModuleRuntime` liefert Routen mit Match-Prädikaten,
-Sidebar-Inhalt und optional Footer, Overlays, Einstellungen, Befehle,
-Tastenkürzel und Onboarding. Das Kit kennt die Produkt-Route-Union nicht.
+Typen in `packages/kit/shell/types.ts`. `AppModule` ist reine Beschreibung
+(ID, Name, Logo, Über-Texte, Kataloge); `setup(ctx)` liefert die
+`ModuleRuntime`: Routen, Sidebar, optional Footer, Overlays, Einstellungen
+(eigene Sektionen und `settings.extend` für Kit-Sektionen), Befehle,
+Shortcuts mit Kontext, Onboarding, `flushPending`, `dispose`.
+`revealsSidebar: true` nur, wenn das Modul selbst einen Button zum Einblenden
+der Sidebar anbietet; sonst zeigt die Shell einen.
 
-`ModuleContext` injiziert `platform`, `kv`, `shell`, `services` sowie
-`signal`, `onDispose()` und `runOwned()`. `ShellControls` steuert allgemeine
-Dialoge und Sidebar; Fokus blendet die Sidebar aus, ohne die gespeicherte
-Präferenz zu überschreiben. `dispose()` beendet die Runtime;
-`flushPending()` meldet bei Bedarf ein überprüfbares Flush-Ergebnis.
+Das Kit liefert ⌘K (Palette), ⌘, (Einstellungen) und ⌘\ (Sidebar) sowie die
+Sektionen Darstellung, Tastatur, Updates und Über. Die Tastatur-Übersicht
+entsteht aus derselben Registry wie die Handler; die Registry respektiert
+`defaultPrevented`, IME-Eingabe und offene Dialoge.
 
-`settings.sections` ergänzt fachliche Seiten; `settings.extend` hängt
-Zeilen an vorhandene Kit-Sektionen. Appearance, Shortcuts, Updates und
-About gehören ins Kit. Die Shortcut-Hilfe entsteht aus derselben Registry
-wie die globalen Handler. Lokale Lexical-/Listen-Handler bleiben lokal und
-können reine Dokumentationseinträge liefern. Kontexte (`shell`, `editor`,
-`list`, `dialog`), Composition und bereits behandelte Events beachten.
+## Paket-Konventionen
 
-Befehlssuche und Ranking bleiben Produktaufgabe; das Kit stellt Palette,
-Abbruchsignal, Ladezustand und Tastaturnavigation bereit. Onboarding-Inhalt
-und Markername kommen vom Modul; die Shell verwaltet Anzeige und Abschluss.
-Persistierte Marker und JSON-Formate niemals im strukturellen Umbau ändern.
+- ESM, explizite `exports`, `sideEffects: ["*.css"]` für neue Laufzeitpakete.
+- Interne Abhängigkeiten `workspace:*`, externe Versionen über `catalog:` aus
+  `pnpm-workspace.yaml`.
+- `tsconfig.base.json` nur mit gemeinsamen Optionen; Tests über
+  `@agentz/vitest-preset` (`definePackageTest()`).
+- Die Kit-Fixture (`pnpm --filter @agentz/kit test:fixture`, Port 4174) prüft
+  die Shell ohne ScriptZ und ohne `legacy.css`.
 
-## Unabhängige Kit-Abnahme
+## Desktop und Rust
 
-`packages/kit/__tests__/fixtures/` enthält ein kleines Modul mit eigener
-Route, Einstellungsseite, Overlay und DE-/EN-Texten. Die Tests rendern die
-Shell ohne ScriptZ-Import. `pnpm --filter @agentz/kit test:fixture` startet
-dieselbe Fixture auf `http://127.0.0.1:4174`; die Seite importiert nur
-Design- und Kit-Styles, kein `legacy.css`. Hell/Dunkel sowie Sprache,
-Einstellungen und Shortcuts lassen sich dort unabhängig prüfen.
+- Root-`Cargo.toml` mit `apps/*/src-tauri` und `crates/*`, ein `Cargo.lock`,
+  ein `target/`. Cargo immer mit `--locked`.
+- `agentz_desktop::builder(Config { id, migrations })`; die DB heißt
+  `sqlite:<id>.db` auf beiden Seiten. Standard-Plugins bleiben zusätzlich
+  direkte Abhängigkeiten jeder App (Tauri liest Capabilities über Cargo
+  `links`). Capabilities nur so weit wie nötig; `global-shortcut` ist keine
+  Basis.
+- Tauri-JS-Pakete im Catalog und die Rust-Crates immer gemeinsam
+  aktualisieren; Major/Minor müssen übereinstimmen, sonst bricht der Build.
+- Ports: Vite, HMR und `devUrl` gehören zusammen. ScriptZ 1420/1421, jede
+  weitere App das nächste freie Paar in Zehnerschritten (vergibt der Generator).
 
-## Ports
+## Neue Apps
 
-`defineDesktopViteConfig({ port })` aus `@agentz/desktop/vite` bündelt
-Solid, Tauri-Dev-Host, HMR, Umgebungspräfixe und Build-Ziel. Dieser
-Node-Einstieg gehört nicht ins Browser-Bundle. Vite-Port, HMR-Port und
-Tauri-`devUrl` immer gemeinsam pflegen:
+`pnpm new-app <id> "<Name>"` erzeugt App, Modul, Icons, Kataloge,
+Release-Notes-Ordner, Logo- und Website-Eintrag und aktualisiert beide
+Lockfiles. Meldet er fremde Änderungen im `pnpm-lock.yaml`, den Diff vor dem
+Commit prüfen. `pnpm remove-app <id>` entfernt nur Generiertes mit
+Eigentumsnachweis, auch spätere Änderungen in diesen Ordnern. Details:
+[`docs/neue-app.md`](../../docs/neue-app.md).
 
-| App | Vite | HMR | Tauri devUrl | Stand |
-|---|---|---|---|---|
-| ScriptZ | 1420 | 1421 | `http://localhost:1420` | aktiv |
-| Nächste App | 1430 | 1431 | `http://localhost:1430` | nach Sandbox-Abnahme wieder frei |
+## Regel der Zwei und Ausblick
 
-Weitere Apps erhalten das nächste freie Paar in Zehnerschritten. Bei
-Remote-Entwicklung (`TAURI_DEV_HOST`) nutzt ScriptZ den separaten
-HMR-Port 1421; lokal verwendet HMR standardmäßig den Vite-Server.
-Die reservierten Portpaare bleiben pro App eindeutig.
-
-## Neue Apps und kontrollierter Rückbau
-
-`pnpm new-app <id> "<Name>"` erzeugt App, Produktmodul, Icons, DE/EN-Kataloge,
-Release-Notes-Verzeichnis sowie Logo-/Website-Einträge. ID, vorhandene Pfade
-und reservierte Namen werden vorab geprüft; Port, HMR-Port und `devUrl`
-werden zusammen vergeben. Neue Apps verwenden semantische Tokens und eine
-beim Generieren eingefrorene erste SQL-Migration aus `KIT_BASELINE_SQL`.
-Die später veröffentlichte Migration niemals nachträglich ändern.
-
-Der Generator führt Installation, Icon-Build und Cargo-Prüfung aus und
-aktualisiert beide Lockfiles. Bei Fehler stellt er die vorherigen Quellen,
-Registry-Einträge und Lockfiles wieder her. `pnpm remove-app <id>` benötigt
-den Eigentumsnachweis und passende Registry-Markierungen. Es entfernt auch
-spätere Änderungen innerhalb der generierten App-/Modul-Verzeichnisse;
-gewünschte Arbeit vorher committen. Nutzerdaten, installierte Apps, Git-Tags
-und GitHub-Releases werden nicht gelöscht. Details: [`docs/neue-app.md`](../../docs/neue-app.md).
-
-## Regel der Zwei
-
-Ins Kit kommt nur, was heute bereits produktneutral ist oder ein zweites
-Modul tatsächlich braucht. Nicht für hypothetische Apps abstrahieren.
-
-- Lexical bleibt vollständig in ScriptZ, bis ein zweites Produkt ihn braucht.
-- Ordner, Papierkorb, Snapshots und Suche bleiben mit ihrem aktuellen
-  Skript-Datenmodell im Modul. Erst ein echter zweiter Anwendungsfall
-  bestimmt eine gemeinsame Abstraktion.
-- PDF-Export und `dark_paper` bleiben ScriptZ-Funktionen.
-- Gemeinsame Bausteine dürfen keine ScriptZ-Imports als versteckte
-  Voraussetzung haben. Die unabhängige Kit-Fixture läuft ohne ScriptZ-CSS
-  und ohne ScriptZ-Modul.
+- Ins Kit nur, was heute produktneutral ist oder ein zweites Produkt wirklich
+  braucht. Lexical, Ordner, Papierkorb, Snapshots, Suche und PDF bleiben in
+  ScriptZ, bis ein zweites Produkt sie braucht.
+- Konten, Sync und Web-Versionen kommen später für alle Apps gleichzeitig.
+  Deshalb: Kit bleibt plattformneutral, UI und Fachlogik nutzen das
+  Storage-Interface ihres Moduls, neue Fach-IDs sind UUIDs, und
+  app-übergreifende Funktionen laufen nie über direkte Modul-Importe.

@@ -21,7 +21,7 @@ Der Generator erstellt:
 
 Vite-Port, HMR-Port und Tauri-`devUrl` werden gemeinsam vergeben: ScriptZ bleibt bei 1420/1421, die nächste App verwendet 1430/1431. Daten und Fensterpositionen liegen durch die eigene Bundle-ID getrennt.
 
-Anschließend laufen `pnpm install --no-frozen-lockfile`, der Icon-Build und `cargo check --workspace`. Beide Lockfiles gehören zum Commit. Fehlt Chrome, nimmt der Icon-Build automatisch das mitgelieferte Platzhalterset. Scheitert ein Schritt, stellt der Generator die vorherigen Quellen, Registry-Einträge und beide Lockfiles wieder her. Nach Beheben der Ursache kann der vollständige Befehl erneut laufen. Der Paketmanager-Cache und lokale `node_modules` können bereits aktualisiert sein; bei Bedarf `pnpm install --frozen-lockfile` ausführen.
+Anschließend laufen `pnpm install --no-frozen-lockfile`, der Icon-Build und `cargo check --workspace`. Beide Lockfiles gehören zum Commit. Meldet der Generator, dass `pnpm-lock.yaml` auch fremde Pakete verändert hat, den Diff vor dem Commit prüfen (`git diff pnpm-lock.yaml`). Fehlt Chrome, nimmt der Icon-Build automatisch das mitgelieferte Platzhalterset. Scheitert ein Schritt, stellt der Generator die vorherigen Quellen, Registry-Einträge und beide Lockfiles wieder her. Nach Beheben der Ursache kann der vollständige Befehl erneut laufen. Der Paketmanager-Cache und lokale `node_modules` können bereits aktualisiert sein; bei Bedarf `pnpm install --frozen-lockfile` ausführen.
 
 ## 2. Produkt ausarbeiten
 
@@ -49,13 +49,14 @@ Der Icon-Build schreibt das native Icon-Set und `apps/site/public/img/mein-tool.
 
 ## 4. Erster Release
 
-1. App-Version in `package.json`, `src-tauri/Cargo.toml` und `tauri.conf.json` gemeinsam setzen; `Cargo.lock` aktualisieren.
-2. `docs/release-notes/mein-tool/v0.1.0.md` schreiben und Änderungen über einen geprüften PR mergen.
-3. Den vorgesehenen Release-Probelauf der Workflow-Datei ohne Veröffentlichung ausführen; macOS- und Windows-Artefakte prüfen.
-4. App-spezifischen Tag `mein-tool-v0.1.0` veröffentlichen. Die Pipeline baut und signiert mit dem gemeinsamen Updater-Schlüssel. Keine Schlüssel ins Repository kopieren.
-5. DMG/EXE, `latest.json` und den Zeiger `mein-tool-latest` prüfen. Downloads müssen ohne GitHub-Anmeldung erreichbar sein. Für öffentliche Updater-Abnahmen ein veröffentlichtes Pre-Release verwenden; ein Draft ist nicht erreichbar.
-6. Auf einem zweiten Release den echten Updatepfad einer installierten alten Version prüfen.
-7. In `apps/site/src/apps.ts` den Status auf `available` setzen und Download-Links prüfen. Alle Apps verwenden ihre eigenen Zeiger. Die neue Pipeline setzt keinen App-Release als globalen GitHub-„Latest“-Release; ein dort noch sichtbarer historischer ScriptZ-Release ist kein aktueller Updatekanal.
+1. Die App startet mit Version `0.1.0`. Für den ersten Release nur `docs/release-notes/mein-tool/v0.1.0.md` auf Englisch schreiben; ab dem zweiten Release setzt `pnpm release:bump mein-tool <version>` alle vier Versionsdateien und legt die Notes-Vorlage an (Platzhalterzeile ersetzen, sonst bricht der Workflow ab).
+2. In `apps/site/src/pages/datenschutz.astro` die Update-Prüfung der neuen App ergänzen (sie fragt wie ScriptZ GitHub ab).
+3. Änderungen per PR mergen, dann den Release-Probelauf ohne Veröffentlichung starten (`gh workflow run release.yml --ref main -f app=mein-tool`) und macOS-/Windows-Artefakte prüfen.
+4. Tag `mein-tool-v0.1.0` auf den gemergten Commit setzen und pushen. Die Pipeline baut, signiert mit dem gemeinsamen Updater-Schlüssel und füllt den Zeiger `mein-tool-latest`.
+5. DMG/EXE und `latest.json` des Zeigers ohne GitHub-Anmeldung prüfen. Mit dem zweiten Release einmal das echte Update einer installierten Vorversion testen.
+6. In `apps/site/src/apps.ts` den Status auf `available` setzen und die Download-Links prüfen.
+
+Details zur Pipeline: [`.claude/rules/release.md`](../.claude/rules/release.md).
 
 ## 5. Eine generierte App wieder entfernen
 
