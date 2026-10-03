@@ -124,22 +124,6 @@
   font-size: 14px;
   color: var(--side-strong);
 }
-.side-app-other {
-  margin-left: auto;
-  width: 22px;
-  height: 22px;
-  display: grid;
-  place-items: center;
-  border-radius: var(--r-2);
-  background: var(--side-hover);
-  color: var(--side-muted);
-  font: 700 9.5px/1 var(--ui);
-  transition: background var(--t-fast), color var(--t-fast);
-}
-.side-app-other:hover {
-  background: var(--side-active);
-  color: var(--side-strong);
-}
 
 .side-actions {
   display: grid;

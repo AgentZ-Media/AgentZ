@@ -78,7 +78,7 @@ describe("pickWritingWindow", () => {
     });
   });
 
-  it("copes with an empty series (e.g. Studio stats)", () => {
+  it("copes with an empty series", () => {
     const r = pickWritingWindow(
       {
         wordsToday: 0,

@@ -1,9 +1,6 @@
 import { For, Show, createMemo, createSignal, onCleanup, type JSX } from "solid-js";
 import { navStore } from "../../stores/nav";
 import { uiStore } from "../../stores/ui";
-import { settingsStore } from "../../stores/settings";
-import { getPlatformAdapter } from "../../lib/platform";
-import { tryParseConnectCode } from "../../lib/handoff";
 import { K } from "../../lib/keys";
 import { SCRIPT_STATUSES, type Folder, type ScriptStatus } from "../../lib/types";
 import { t } from "../../i18n";
@@ -50,8 +47,6 @@ export function Sidebar(props: SidebarProps) {
     const r = route();
     return r.kind === "scripts" && r.folderId === id && !r.status;
   };
-
-  const studio = createMemo(() => tryParseConnectCode(settingsStore.studioConnectCode()));
 
   // ---- folders: inline create / rename ----
   const [creatingFolder, setCreatingFolder] = createSignal(false);
@@ -107,19 +102,6 @@ export function Sidebar(props: SidebarProps) {
       <div class="side-app">
         <AppMark size={28} />
         <span class="side-app-name">ScriptZ</span>
-        <Show when={studio()}>
-          {(conn) => (
-            <button
-              type="button"
-              class="side-app-other"
-              title={t("shell.studio.open")}
-              aria-label={t("shell.studio.open")}
-              onClick={() => void getPlatformAdapter().openUrl(conn().baseUrl).catch(() => {})}
-            >
-              St
-            </button>
-          )}
-        </Show>
       </div>
 
       <div class="side-actions">

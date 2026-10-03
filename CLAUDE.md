@@ -1,12 +1,12 @@
 # ScriptZ - Monorepo
 
-pnpm-Workspace mit vier Apps, einem geteilten Core und einem Designsystem:
+pnpm-Workspace mit drei Apps, einem geteilten Core und einem Designsystem:
 
 - [`packages/core/`](packages/core/) - **alle gemeinsame Logik**: Editor,
   Lexical-Nodes, Plugins, UI-Komponenten inkl. der kompletten App-Schale
   (`components/Shell/AppShell.tsx`), Stores, Business-Logik,
   ScriptZ-spezifische Tokens (Charakter-Palette, A4-Geometrie,
-  Papier-Schrift). Desktop, Web und Studio importieren von hier via
+  Papier-Schrift). Desktop und Web importieren von hier via
   `@scriptz/core`. Darf **nie** `@tauri-apps/*` importieren
   (ESLint-Rule blockt das).
 - [`packages/design/`](packages/design/) - **`@agentz/design`**, das
@@ -26,13 +26,6 @@ pnpm-Workspace mit vier Apps, einem geteilten Core und einem Designsystem:
 - [`apps/landing/`](apps/landing/) - die Marketing-Seite write-scriptz.com
   (Astro, statisch, Vercel-Deploy). Eigenständig, importiert nichts aus
   `core`. Eigene [`CLAUDE.md`](apps/landing/CLAUDE.md).
-- [`apps/studio/`](apps/studio/) - **ScriptZ Studio**, das interne Cloud-
-  Agentur-Tool (Solid + Vite + Convex + Better Auth). Vierte Schale: nutzt
-  denselben Core-Editor, registriert aber einen Convex-`StorageAdapter`,
-  bringt Login/Rollen (Agentur/Kunde) und den Ideen/Skript-Freigabe-Workflow
-  mit. Nur Production-Deployment, invite-only. Eigene
-  [`CLAUDE.md`](apps/studio/CLAUDE.md), Konzept in
-  [`docs/studio-spec.md`](docs/studio-spec.md).
 
 ## Konvention
 
@@ -42,7 +35,7 @@ automatisch. Eine App-spezifische Implementierung gibt es nur, wenn
 die Plattform es erzwingt (Tauri-only-API vs. Browser-only-API).
 
 **Keine Hex- oder rgb-Farbwerte außerhalb von `packages/design/`.**
-App-Code (Core, Desktop, Web, Studio) referenziert nur `var(--token)`.
+App-Code (Core, Desktop, Web) referenziert nur `var(--token)`.
 Ausnahmen: Inhaltsfarben, die Daten sind (Charakter-Palette in
 `packages/core/styles/tokens.css`, `characterColors.ts`), und
 OS-Chrome-Nachbauten (macOS-Trafficlights). Die Landing ist davon
@@ -85,16 +78,11 @@ pnpm install                 # installiert alle Workspaces
 pnpm dev:desktop             # tauri dev der Desktop-App
 pnpm dev:web                 # vite dev der Web-App (localhost:5173)
 pnpm dev:landing             # astro dev der Landing
-pnpm dev:studio              # vite dev von ScriptZ Studio (localhost:5174)
 pnpm build:desktop           # native .app bauen
 pnpm build:web               # statische Web-App nach apps/web/dist
 pnpm build:landing           # statische Landing bauen
-pnpm build:studio            # statisches Studio-Bundle nach apps/studio/dist
 pnpm typecheck               # tsc/astro check über alle Workspaces
 pnpm test                    # vitest in packages/core
-
-# Studio-Backend (Convex, nur Production):
-cd apps/studio && npx convex deploy
 ```
 
 Innerhalb eines Workspaces können auch die eigenen Skripte direkt

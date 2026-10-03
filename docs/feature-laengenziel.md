@@ -165,9 +165,6 @@ Spuren auf `--fill`.
   (NULL/leer = aus). Validierung: Minimum < Maximum, wenn beide gesetzt.
 - **Beide Storage-Adapter** (SQLite + IndexedDB) erweitern,
   `StorageAdapter`-Interface in `packages/core/lib/storage.ts` zuerst.
-- **Studio:** Convex-Ordner haben bereits `targetCount` (Anzahl Videos) -
-  das ist etwas anderes. `lengthMinSec` / `lengthMaxSec` wären dort
-  ebenfalls additiv.
 - **`.scriptz`-Datei:** enthält keine Ordner, also keine Änderung nötig.
 - **Zeitleiste:** braucht pro Block Start/Dauer. Kann live aus dem
   Lexical-State berechnet werden (gleiche Funktion wie `runtime.ts`,

@@ -7,7 +7,7 @@
 // platform adapter (see ./platform.ts::saveAs).
 //
 // Layout conventions: A4 geometry, iA Writer Quattro S TTF/11pt,
-// tint-band highlighting (Arc Studio style). Byte-identical to the
+// tint-band highlighting. Byte-identical to the
 // early Rust code (phase 7d migration). Changes to the geometry
 // must be aligned with the editor look, otherwise the export
 // and preview diverge.
@@ -34,7 +34,7 @@ const LINE_HEIGHT_MM = 6.2;
 const PARA_GAP_MM = 1.6;
 const CHAR_W_MM = 2.3; // duospaced glyph advance at 11pt
 
-// Tint-band geometry (Arc Studio style per-line band).
+// Tint-band geometry (per-line band).
 // Values aligned with the CSS pill in the editor (`padding: 1px 4px`,
 // `border-radius: 3px`): horizontally about 4 px padding, vertically such
 // that the cap height of the glyphs is fully enclosed. PDF baseline

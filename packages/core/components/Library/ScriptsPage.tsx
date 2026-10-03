@@ -18,7 +18,6 @@ import { debounce, relativeTime } from "../../lib/format";
 import { formatClock, formatRange, resolveLengthRange } from "../../lib/lengthGoal";
 import { INBOX_FOLDER_ID } from "../../lib/folders";
 import { K, isModKey } from "../../lib/keys";
-import { tryParseConnectCode } from "../../lib/handoff";
 import { exportScriptsToPdf } from "../../lib/exportSelection";
 import { navStore } from "../../stores/nav";
 import { uiStore } from "../../stores/ui";
@@ -38,7 +37,6 @@ import {
   runtimeSecFor,
 } from "../Shell/libraryData";
 import { ContextMenu, type ContextMenuItem } from "./ContextMenu";
-import { HandoffDialog } from "./HandoffDialog";
 import { PageBar } from "./PageBar";
 import { PromptDialog } from "./PromptDialog";
 import { ScriptRow } from "./ScriptRow";
@@ -403,11 +401,6 @@ export function ScriptsPage() {
 
   const [renameTarget, setRenameTarget] = createSignal<ScriptSummary | null>(null);
   const [newFolderFor, setNewFolderFor] = createSignal<string[] | null>(null);
-  const [handoffOpen, setHandoffOpen] = createSignal(false);
-
-  const studioConnected = createMemo(
-    () => tryParseConnectCode(settingsStore.studioConnectCode()) !== null,
-  );
 
   function moveItems(ids: string[], current: string | null | undefined): ContextMenuItem[] {
     const single = ids.length === 1;
@@ -938,7 +931,6 @@ export function ScriptsPage() {
           onClear={() => setSelected(new Set<string>())}
           onExit={exitSelect}
           onExportPdf={() => void exportSelectedPdf()}
-          onSend={studioConnected() ? () => setHandoffOpen(true) : undefined}
           onMove={(anchor) =>
             menuAt(anchor, moveItems([...selected()], undefined), { placement: "above", align: "start" })
           }
@@ -999,13 +991,6 @@ export function ScriptsPage() {
         }}
       />
 
-      <HandoffDialog
-        open={handoffOpen()}
-        scriptIds={[...selected()]}
-        ideaIds={[]}
-        onClose={() => setHandoffOpen(false)}
-        onSent={() => exitSelect()}
-      />
     </div>
   );
 }

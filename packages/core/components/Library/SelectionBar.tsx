@@ -12,8 +12,6 @@ export interface SelectionBarProps {
   onExit: () => void;
   /** Omitted where there is nothing to export (ideas). */
   onExportPdf?: () => void;
-  /** Omitted without a Studio connection - no Studio surface then. */
-  onSend?: () => void;
   /** The two pickers open a menu anchored at the clicked button. */
   onMove: (anchor: HTMLElement) => void;
   onStage: (anchor: HTMLElement) => void;
@@ -27,7 +25,7 @@ export interface SelectionBarProps {
 }
 
 /** Floating action bar at the bottom of the list pages while the selection
- *  mode is on (scripts: PDF, Studio, move, stage, trash; ideas: Studio,
+ *  mode is on (scripts: PDF, move, stage, trash; ideas:
  *  move, convert into scripts, delete). */
 export function SelectionBar(props: SelectionBarProps) {
   const none = () => props.count === 0;
@@ -47,12 +45,6 @@ export function SelectionBar(props: SelectionBarProps) {
         <button type="button" class="btn sm" onClick={() => props.onExportPdf?.()} disabled={none()}>
           <Icon name="export" />
           {t("select.action.pdf")}
-        </button>
-      </Show>
-      <Show when={props.onSend}>
-        <button type="button" class="btn sm" onClick={() => props.onSend?.()} disabled={none()}>
-          <Icon name="cloud" />
-          {t("select.action.send")}
         </button>
       </Show>
       <button

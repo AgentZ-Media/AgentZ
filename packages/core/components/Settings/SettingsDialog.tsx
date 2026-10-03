@@ -9,7 +9,6 @@ import { SettingsWriting } from "./sections/SettingsWriting";
 import { SettingsFolders } from "./sections/SettingsFolders";
 import { SettingsCharacters } from "./sections/SettingsCharacters";
 import { SettingsShortcuts } from "./sections/SettingsShortcuts";
-import { SettingsStudio } from "./sections/SettingsStudio";
 import { SettingsUpdates } from "./sections/SettingsUpdates";
 import { SettingsAbout } from "./sections/SettingsAbout";
 import "./SettingsDialog.css";
@@ -28,7 +27,6 @@ const NAV: NavItem[] = [
   { id: "folders", icon: "folder", label: () => t("prefs.folders.title") },
   { id: "characters", icon: "users", label: () => t("prefs.characters.title") },
   { id: "shortcuts", icon: "keyboard", label: () => t("prefs.shortcuts.title") },
-  { id: "studio", icon: "cloud", label: () => t("prefs.studio.title"), sep: true },
   { id: "updates", icon: "refresh", label: () => t("prefs.updates.title") },
   { id: "about", icon: "info", label: () => t("prefs.about.title") },
 ];
@@ -114,9 +112,6 @@ export function SettingsDialog() {
           </Match>
           <Match when={section() === "shortcuts"}>
             <SettingsShortcuts onClose={close} />
-          </Match>
-          <Match when={section() === "studio"}>
-            <SettingsStudio onClose={close} />
           </Match>
           <Match when={section() === "updates" && updates()}>
             {(u) => <SettingsUpdates updates={u()} onClose={close} />}

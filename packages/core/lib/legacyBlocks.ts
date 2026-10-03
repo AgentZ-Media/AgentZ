@@ -1,8 +1,8 @@
 // Legacy block normalizer (Werkbank redesign).
 //
 // The editor knows four block types: Action, Character, Dialog and
-// Parenthetical. Older content (database rows, snapshots, .scriptz files,
-// handoff bundles) may still contain the three retired types Camera,
+// Parenthetical. Older content (database rows, snapshots, .scriptz files)
+// may still contain the three retired types Camera,
 // Caption and SFX. Their node classes no longer exist, so Lexical would
 // refuse to parse such a state - every place that parses content runs it
 // through this module first.

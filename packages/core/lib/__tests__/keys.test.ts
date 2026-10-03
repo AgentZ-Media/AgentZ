@@ -24,8 +24,6 @@ function stubAdapter(platform: Platform): PlatformAdapter {
     saveDialog: () => Promise.resolve(null),
     saveAs: () => Promise.resolve({ cancelled: true, path: null }),
     openFile: () => Promise.resolve(null),
-    httpPostJson: () => Promise.resolve({ status: 0, ok: false, body: "" }),
-    httpGetJson: () => Promise.resolve({ status: 0, ok: false, body: "" }),
     pickDirectory: () => Promise.resolve(null),
     writeFileTo: () => Promise.resolve(),
   };

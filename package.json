@@ -8,12 +8,9 @@
     "dev:desktop": "pnpm --filter scriptz tauri:dev",
     "dev:landing": "pnpm --filter @scriptz/landing dev",
     "dev:web": "pnpm --filter @scriptz/web dev",
-    "dev:studio": "pnpm --filter @scriptz/studio dev",
-    "dev:studio:convex": "pnpm --filter @scriptz/studio dev:convex",
     "build:desktop": "pnpm --filter scriptz tauri:build",
     "build:landing": "pnpm --filter @scriptz/landing build",
     "build:web": "pnpm --filter @scriptz/web build",
-    "build:studio": "pnpm --filter @scriptz/studio build",
     "typecheck": "pnpm -r typecheck"
   },
   "license": "MIT",

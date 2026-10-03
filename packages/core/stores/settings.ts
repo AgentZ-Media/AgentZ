@@ -55,13 +55,6 @@ const LENGTH_SEC_MAX = 24 * 60 * 60;
 const [lengthMinDefaultSec, setLengthMinDefaultSecSignal] = createSignal<number | null>(null);
 const [lengthMaxDefaultSec, setLengthMaxDefaultSecSignal] = createSignal<number | null>(null);
 
-// Permanent ScriptZ Studio connect code ("scriptzk1_..."), pasted in the
-// settings. Empty string = not connected. While empty, the app shows no
-// Studio surface at all (no "Send to Studio" button) - most users don't
-// have a Studio. Validation happens in the settings UI via
-// lib/handoff.ts::parseConnectCode before this value is persisted.
-const [studioConnectCode, setStudioConnectCodeSignal] = createSignal<string>("");
-
 // Language preference "auto" | "de" | "en". "auto" follows navigator.language.
 // Default "auto" - new users land language-wise where their system is.
 // The resolved language is not persisted here, only the user's choice;
@@ -211,12 +204,6 @@ export const settingsStore = {
     setLengthMaxDefaultSecSignal(next);
     await persistSetting("length_max_default_sec", next === null ? "" : String(next));
   },
-  studioConnectCode,
-  setStudioConnectCode: async (v: string) => {
-    const next = v.trim();
-    setStudioConnectCodeSignal(next);
-    await persistSetting("studio_connect_code", next);
-  },
   /** Current user choice "auto" | "de" | "en". */
   language,
   setLanguage: async (v: LanguagePref) => {
@@ -226,7 +213,7 @@ export const settingsStore = {
   },
   loaded,
   async load() {
-    const [t, hd, uce, huc, qmae, wpm, fmd, sws, dp, lang, scc, lmin, lmax, puc] = await Promise.all([
+    const [t, hd, uce, huc, qmae, wpm, fmd, sws, dp, lang, lmin, lmax, puc] = await Promise.all([
       api.getSetting("theme"),
       api.getSetting("highlighting_default"),
       api.getSetting("update_check_enabled"),
@@ -237,7 +224,6 @@ export const settingsStore = {
       api.getSetting("show_writing_stats"),
       api.getSetting("dark_paper"),
       api.getSetting("language"),
-      api.getSetting("studio_connect_code"),
       api.getSetting("length_min_default_sec"),
       api.getSetting("length_max_default_sec"),
       api.getSetting("prune_unused_characters"),
@@ -251,7 +237,6 @@ export const settingsStore = {
     if (sws) setShowWritingStats(sws === "1");
     if (dp) setDarkPaper(dp === "1");
     if (puc) setPruneUnusedCharacters(puc === "1");
-    if (scc) setStudioConnectCodeSignal(scc);
     setLengthMinDefaultSecSignal(parseLengthSetting(lmin));
     setLengthMaxDefaultSecSignal(parseLengthSetting(lmax));
     // Language: persisted value takes precedence, otherwise default "auto".

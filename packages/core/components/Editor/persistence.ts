@@ -63,7 +63,7 @@ export interface PersistenceHandle {
 
 /** Owns the entire save lifecycle of an editor instance: debounced save,
  *  CAS-style "don't overwrite real content with empty during teardown"
- *  guard, server-assigned color merge, auto-snapshot interval, and the
+ *  guard, persisted color merge, auto-snapshot interval, and the
  *  `registerFlusher` hook for window-close / navigation. The Editor.tsx
  *  onMount only needs to call `scheduleSave()` from its update listener
  *  and dispose via the returned `teardown`.

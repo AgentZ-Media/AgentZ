@@ -43,7 +43,7 @@ export interface EditorProps {
   initialCursor?: CursorAddress | null;
   characters: ScriptCharacter[];
   highlighting?: boolean;
-  /** Read-only mode (e.g. a client portal): the script renders identically
+  /** Read-only mode for snapshot previews: the script renders identically
    *  but the editor is not editable, no autosave/persistence is wired, and
    *  the mutating plugins (smart-enter, block hotkeys, colour picker, ...)
    *  are not installed. Additive and defaulting to false, so the existing
@@ -100,11 +100,11 @@ export function Editor(props: EditorProps) {
   let rootRef: HTMLDivElement | undefined;
   let hostRef: HTMLDivElement | undefined;
 
-  // Live character list seeded from the server, then updated client-side as
+  // Live character list seeded from storage, then updated in memory as
   // the writer adds/renames Charakter blocks. We deliberately stop refetching
   // the whole script after every save (that was disrupting contentEditable
   // focus mid-keystroke); instead, walk the Lexical state ourselves. Names
-  // already known to the server keep their assigned palette color; freshly-
+  // already persisted keep their assigned palette color; freshly-
   // typed names get a neutral placeholder until the script is reloaded.
   const [liveCharacters, setLiveCharacters] = createSignal<ScriptCharacter[]>(
     props.characters ?? [],
@@ -125,7 +125,7 @@ export function Editor(props: EditorProps) {
 
     editor.setRootElement(rootRef);
 
-    // Read-only (client portal, version preview): render the script but
+    // Read-only version preview: render the script but
     // disable editing. Set before the content is loaded so Lexical never
     // moves the DOM selection (and with it focus) into this instance.
     if (readOnly) editor.setEditable(false);
@@ -258,7 +258,7 @@ export function Editor(props: EditorProps) {
 
     // Cache of the app-wide character color records (override ?? default
     // from character_colors). Loaded once on mount and updated after
-    // every save with the server response. The sync reconcile path
+    // every save with the save result. The sync reconcile path
     // uses this so a recurring character (same name already tinted in
     // another script) gets the right color immediately instead of only
     // after the debounced DB roundtrip.

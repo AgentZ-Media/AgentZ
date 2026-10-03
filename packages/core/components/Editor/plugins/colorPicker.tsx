@@ -25,7 +25,7 @@ export interface InstallColorPickerArgs {
   /** Active script — passed to `clearCharacterColor` as the palette
    * context for the case where no default colour has been recorded yet,
    * and used to refetch fresh `characters_meta` after a reset (we can't
-   * predict the resolved colour client-side). */
+   * predict the resolved colour locally). */
   scriptId: string;
   /** Live character list — needed to resolve a name to its current colour
    * when the popover opens, and updated optimistically on pick. */
@@ -68,7 +68,7 @@ export function installColorPicker(
     return found?.color ?? NEUTRAL_PLACEHOLDER;
   };
 
-  // Optimistic update of the in-memory characters list. The server call
+  // Optimistic update of the in-memory characters list. The storage write
   // returns asynchronously; updating immediately means the highlight tint
   // refreshes within the same frame as the click — no flicker, no wait.
   const applyColorOptimistically = (name: string, color: string) => {

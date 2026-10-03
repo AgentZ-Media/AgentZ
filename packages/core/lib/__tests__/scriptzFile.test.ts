@@ -17,13 +17,10 @@ beforeAll(() => {
 import {
   defaultScriptzFilename,
   parseScriptzBytes,
-  SCRIPTZ_BUNDLE_FORMAT,
-  SCRIPTZ_BUNDLE_VERSION_CURRENT,
   SCRIPTZ_EXTENSION,
   SCRIPTZ_MIME,
   SCRIPTZ_VERSION_CURRENT,
   ScriptzParseError,
-  serializeBundle,
   serializeScript,
   serializeScriptToBytes,
 } from "../scriptzFile";
@@ -216,37 +213,6 @@ describe("scriptzFile - parseScriptzBytes Validierung", () => {
     );
     expect(parsed.script.createdAt).toMatch(/^\d{4}-\d{2}-\d{2}T/);
     expect(parsed.script.updatedAt).toMatch(/^\d{4}-\d{2}-\d{2}T/);
-  });
-});
-
-describe("scriptzFile - serializeBundle", () => {
-  it("baut ein Multi-Item-Buendel mit localId pro Eintrag", () => {
-    const bundle = serializeBundle(
-      [{ ...baseScript, localId: "s-1" }],
-      [{ localId: "i-1", title: "Idee A", notes: "Notiz", created_at: Date.UTC(2026, 4, 11) }],
-    );
-    expect(bundle.format).toBe(SCRIPTZ_BUNDLE_FORMAT);
-    expect(bundle.version).toBe(SCRIPTZ_BUNDLE_VERSION_CURRENT);
-    expect(bundle.scripts).toHaveLength(1);
-    expect(bundle.scripts[0].localId).toBe("s-1");
-    // content_json is parsed into an object, not a double-stringified string.
-    expect(bundle.scripts[0].contentJson).toBeTypeOf("object");
-    expect(bundle.scripts[0].characters).toEqual([{ name: "MAX", color: "#7aa2f7", share: 1.0 }]);
-    expect(bundle.ideas).toHaveLength(1);
-    expect(bundle.ideas[0]).toMatchObject({ localId: "i-1", title: "Idee A", notes: "Notiz" });
-    expect(bundle.ideas[0].createdAt).toMatch(/^\d{4}-\d{2}-\d{2}T/);
-  });
-
-  it("vertraegt leere Listen", () => {
-    const bundle = serializeBundle([], []);
-    expect(bundle.scripts).toEqual([]);
-    expect(bundle.ideas).toEqual([]);
-  });
-
-  it("ueberlebt JSON.stringify -> JSON.parse unveraendert (HTTP-Body)", () => {
-    const bundle = serializeBundle([{ ...baseScript, localId: "s-1" }], []);
-    const roundtrip = JSON.parse(JSON.stringify(bundle));
-    expect(roundtrip.scripts[0].contentJson).toEqual(JSON.parse(baseScript.content_json));
   });
 });
 

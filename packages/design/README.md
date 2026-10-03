@@ -1,7 +1,6 @@
 # @agentz/design
 
-The design system of the AgentZ suite (ScriptZ Desktop/Web, ScriptZ Studio,
-future apps). Plain CSS + a few typed data modules - no framework code, so
+The design system of the AgentZ suite (ScriptZ Desktop/Web, future apps). Plain CSS + a few typed data modules - no framework code, so
 any app (Solid, Astro, React, static HTML) can use it.
 
 Visual reference: `docs/redesign/concept.html` (the "Werkbank" concept).
@@ -73,8 +72,8 @@ pnpm --filter @agentz/design build:logo   # needs Node >= 22.18 + Google Chrome
 The script writes `assets/`, the landing icons (`apps/landing/public/img/
 icon.png`, `icon-large.png`) and the complete Tauri icon set
 (`apps/desktop/src-tauri/icons/`, via `tauri icon`: icns, ico, Windows
-Store tiles, iOS, Android). Web and Studio reference the SVG/PNG from
-`assets/` directly in their `index.html`. To change the icon, change
+Store tiles, iOS, Android). The web app references the SVG/PNG from
+`assets/` directly in its `index.html`. To change the icon, change
 `logo.ts` or the palette at the top of `scripts/build-logo.mjs` (keep it in
 sync with `.app-mark.is-light` / `.is-dark`) and rerun the script.
 

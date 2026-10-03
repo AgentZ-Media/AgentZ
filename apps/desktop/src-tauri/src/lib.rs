@@ -73,10 +73,6 @@ pub fn run() {
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_global_shortcut::Builder::new().build())
         .plugin(tauri_plugin_fs::init())
-        // HTTP client for the offline-editor -> Studio handoff. Runs the
-        // request through Rust, so the webview CSP `connect-src` doesn't
-        // apply; the allowed hosts are scoped in capabilities/default.json.
-        .plugin(tauri_plugin_http::init())
         .plugin(
             SqlBuilder::default()
                 .add_migrations("sqlite:scriptz.db", migrations)

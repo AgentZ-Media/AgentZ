@@ -60,8 +60,8 @@ async function run(): Promise<void> {
     const all = await api.listScripts({ includeArchived: true });
     ids = all.map((s) => s.id);
   } catch (err) {
-    // E.g. the Studio adapter has no listScripts - nothing to migrate
-    // there; the editor normalizes on load.
+    // Retry on the next boot if the script list is unavailable.
+    // The editor also normalizes content on load.
     console.warn("[scriptz] legacy-block migration skipped", err);
     return;
   }

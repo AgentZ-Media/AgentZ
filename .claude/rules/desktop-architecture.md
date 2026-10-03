@@ -105,10 +105,10 @@ packages/core/
       ScriptsPage.tsx      Script list: groups by stage/folder/none, filter,
                            sort, selection mode, length range per row.
       ScriptRow, PageBar, SelectionBar (shared by scripts + ideas: multi
-      PDF / Studio / move / stage or "Zu Skripten" / trash or delete),
+      PDF / move / stage or "Zu Skripten" / trash or delete),
       SelectCheck (tri-state group / "Alle auswählen" checkbox),
       selection.ts (pure helpers: checkState, toggleIds, rangeBetween),
-      ContextMenu, PromptDialog, HandoffDialog (Studio transfer),
+      ContextMenu, PromptDialog,
       TrashPage, actions.ts (shared script/folder ops + toasts), dnd.ts
       (row -> sidebar folder), prefs.ts (grouping/sort in app_state).
     Palette/CommandPalette.tsx   ⌘K: scripts, ideas, commands; empty = Zuletzt.
@@ -128,8 +128,8 @@ packages/core/
     Editor/
       Editor.tsx           Lexical mount: createEditor, registerRichText,
                            registerHistory, plugins below. readOnly prop
-                           (used by Studio and the version preview in
-                           SnapshotsDialog - same engine, no copy).
+                           (used by the version preview in SnapshotsDialog -
+                           same engine, no copy).
       persistence.ts       Debounced save (250 ms) through a serialized
                            queue (lib/serialSave.ts), auto snapshot (5 min),
                            flush on teardown.
@@ -165,7 +165,7 @@ packages/core/
     Export/                ExportDialog (⌘E, live preview via pdfPreview.ts)
     Settings/              SettingsDialog + sections/ (Appearance, Writing,
                            Folders incl. length range per folder, Characters,
-                           Shortcuts, Studio, Updates, About), rangeInput.ts
+                           Shortcuts, Updates, About), rangeInput.ts
     Onboarding/            Onboarding (3 steps, ONBOARDING_KEY)
     Activity/              WritingCounter (sidebar footer), ActivityModal
                            (window totals + Heatmap). No goal, no streak.
@@ -186,7 +186,7 @@ packages/core/
                            focusModeDefault (default off), quickMode,
                            showWritingStats (= writing counter, default on),
                            dialogWpm, length_min/max_default_sec, update
-                           flags, studio connect code,
+                           flags,
                            pruneUnusedCharacters (default off).
     dailyStats.ts, ideas.ts, saveStatus.ts, toasts.ts
   lib/
@@ -224,7 +224,7 @@ packages/core/
     legacyBlocks.ts        normalizeLegacyContent / normalizeLegacyTree.
     legacyBlocksMigration.ts  migrateLegacyBlocksOnce() (boot).
     exportPdf.ts, exportSelection.ts (multi PDF), scriptzFile.ts (.scriptz
-    v1, status additive), handoff.ts (Studio), ideas.ts, dailyWords.ts,
+    v1, status additive), ideas.ts, dailyWords.ts,
     characterColors.ts, characterUsage.ts (welche Registry-Namen noch
     benutzt werden: gestückelter Scan über characters_meta, SQL-Find/Prune,
     characterUsageBus), characterAutoPrune.ts (optionales Auto-Aufräumen,
