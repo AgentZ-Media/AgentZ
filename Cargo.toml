@@ -1,0 +1,27 @@
+[workspace]
+members = ["apps/*/src-tauri"]
+# Add "crates/*" when the first shared Rust crate is introduced in phase 5.
+# Cargo rejects workspace globs that do not match a crate yet.
+resolver = "2"
+
+[workspace.dependencies]
+tauri-build = { version = "2", features = [] }
+tauri = { version = "2", features = [] }
+tauri-plugin-os = "2"
+tauri-plugin-window-state = "2"
+tauri-plugin-updater = "2"
+tauri-plugin-process = "2"
+tauri-plugin-opener = "2"
+tauri-plugin-dialog = "2"
+tauri-plugin-clipboard-manager = "2"
+tauri-plugin-global-shortcut = "2"
+tauri-plugin-fs = { version = "2.5.1", default-features = false }
+tauri-plugin-sql = { version = "2", features = ["sqlite"] }
+serde_json = "1"
+
+[profile.release]
+panic = "abort"
+codegen-units = 1
+lto = "fat"
+opt-level = 3
+strip = true

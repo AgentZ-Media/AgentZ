@@ -1,6 +1,6 @@
 # AgentZ Suite - Plan für das Fundament
 
-> Interne Doku. Stand: 2026-10-03. Status: Phase 1 gemergt; Phase 2 umgesetzt und lokal geprüft, Review offen; externe Altressourcen offen.
+> Interne Doku. Stand: 2026-10-03. Status: Phase 1 und 2 gemergt; Phase 3 umgesetzt und lokal geprüft, Review offen; externe Altressourcen offen.
 > Gegengeprüft von GPT-6 Astra (Effort High) am 2026-10-03, Befunde
 > eingearbeitet (siehe Abschnitt 15).
 
@@ -13,7 +13,7 @@
   MIT-Lizenz ergänzt, Lockfile und aktive Dokumentation aktualisiert.
   Bundle-Identifier, Datenbankname, Migrationen und persistierte Schlüssel
   bleiben unverändert. PR #20 wurde am 2026-10-03 gemergt
-  (`c189125c40a1c3a79a37d94780a11cf83fe1f630`). Phase 3 bis 8 sind
+  (`c189125c40a1c3a79a37d94780a11cf83fe1f630`). Phase 4 bis 8 sind
   noch nicht begonnen.
 - **Sicherung:** Vor Phase 1 konsistenter SQLite-Snapshot der lokalen
   Arbeitsdatenbank; `PRAGMA integrity_check` meldet `ok`.
@@ -84,8 +84,9 @@
   QA-App beendet, Testinhalt dauerhaft in der Kopie gespeichert;
   produktive DB unverändert gegenüber dem Snapshot. Windows und
   signierter Update-Zyklus bleiben ungeprüft.
-- **Review-Stand:** Separate Phase-2-PR gegen `main`, noch kein Merge
-  oder Release. Interne Gegenprüfung abgeschlossen ohne offene Befunde.
+- **Review-Stand:** PR #21 am 2026-10-03 nach Freigabe gemergt
+  (`628b25543689bcf62eb0fd29127449637368e5be`). Kein Release.
+  Interne Gegenprüfung abgeschlossen ohne offene Befunde.
 - **Buildcache:** Verschobene Cargo-Artefakte enthielten absolute alte
   Plugin-Pfade. Einmaliger `cargo clean` am neuen Manifest beseitigt diese;
   in der README als Hinweis für vorhandene Checkouts dokumentiert.
@@ -99,6 +100,47 @@
   wie bei Phase 1. Neue Domain nur als geplante Homepage eingetragen;
   noch keine Registrierung und kein Website-Deployment.
 
+
+
+### Phase 3: Tooling-Fundament
+
+- **Branch:** `fundament/phase-3`, im selben Worktree aus dem gemergten
+  `main` erstellt. Separate PR für diese Phase; noch kein Release.
+- **JavaScript:** pnpm 10.34.6 mit zentralem Catalog. Bestehende direkte
+  App-/Modul-Abhängigkeiten behalten exakt ihre aufgelösten Versionen.
+  Root-TypeScript-Basis; `include`, Aliasse und Laufzeittypen bleiben
+  paketlokal. Solid-/jsdom-Test-Preset unter `tooling/vitest-preset` mit
+  eigenen Abhängigkeiten und individuellen Test-Overrides.
+- **Grenzen:** ESLint 9 Flat Config mit Korrektheitsregeln und lokaler
+  Architekturregel. Prüft auch Reexports, dynamische Imports, `require`,
+  Typimporte und TS-Aliasse; neue Workspaces werden über ihre Manifeste
+  erkannt. Farbprüfung für CSS/TSX mit deklarationsgenauen Ausnahmen für
+  Charakterfarben. Bestehende Fehlermeldungsfarben in `Common.css` nutzen
+  jetzt semantische Tokens. Allgemeine TS-Farbdaten und Test-Fixtures
+  sind nicht Teil dieser UI-Prüfung.
+- **Rust:** Root-Workspace und gemeinsames Release-Profil; `Cargo.lock`
+  bytegleich verschoben. `crates/*` wird erst mit der ersten Crate in
+  Phase 5 ergänzt, weil Cargo leere Workspace-Globs nicht akzeptiert.
+  Gemeinsames `target/`; Release-Caches und `--locked` angepasst.
+- **CI:** Neue PR-/Main-Pipeline mit JavaScript- und Linux-Rust-Prüfung.
+  Reine Doku-Änderungen überspringen schwere Jobs; `CI passed` bleibt als
+  eindeutige Sammelprüfung verfügbar. Externe Vercel-Altprojekte sind
+  weiterhin separat offen.
+- **Konventionen:** Neue Suite-Regel beschreibt Paketgrenzen, Ports,
+  Modul-Vertrag und Regel der Zwei. Bestehende ScriptZ-Importinitialisierung
+  und breite Subpath-Exporte bleiben ausdrücklich bis Phase 4 erhalten.
+- **Lokal geprüft:** Frozen-Install, Lint, Typecheck, zehn Tooling-Tests,
+  261 ScriptZ-Tests, Farbprüfung, Frontend-Build und
+  `cargo check --workspace --locked` erfolgreich. Interne Gegenprüfung
+  abgeschlossen ohne offene Befunde.
+- **Native Abnahme:** macOS-App und DMG erfolgreich mit temporärer
+  QA-App-ID und deaktivierten Updater-Artefakten gebaut. Gesicherte
+  Datenbankkopie verwendet; vorhandenes Skript geöffnet, neues Skript
+  geschrieben, gespeichert und nach App-Neustart erneut geöffnet.
+  Einstellungen und PDF-Export geprüft. PDF: eine A4-Seite, korrekter
+  Text und eingebettete iA-Writer-Schrift. Produktive Datenbank gegenüber
+  dem Snapshot unverändert. Windows-Bundle und signierter Update-Zyklus
+  bleiben ungeprüft.
 
 ## 1. Ziel
 

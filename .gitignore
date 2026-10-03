@@ -7,8 +7,10 @@ dist-ssr
 .vscode/*
 !.vscode/extensions.json
 
-# Tauri (Monorepo: apps/*/src-tauri/...)
+# Cargo workspace output; keep ignoring pre-workspace build artifacts too.
+/target/
 **/src-tauri/target/
+# Tauri (Monorepo: apps/*/src-tauri/...)
 **/src-tauri/gen/
 
 # Astro

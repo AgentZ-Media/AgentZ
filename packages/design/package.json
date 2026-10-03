@@ -24,6 +24,6 @@
     "@fontsource-variable/schibsted-grotesk": "^5.3.0"
   },
   "devDependencies": {
-    "typescript": "~5.6.2"
+    "typescript": "catalog:"
   }
 }

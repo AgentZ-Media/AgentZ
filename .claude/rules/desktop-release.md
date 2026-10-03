@@ -2,6 +2,9 @@
 paths:
   - "apps/scriptz/package.json"
   - "apps/scriptz/src-tauri/**"
+  - "Cargo.toml"
+  - "Cargo.lock"
+  - "package.json"
   - "README.md"
 ---
 
@@ -46,7 +49,7 @@ Release-Checkliste synchron:
 
 1. `apps/scriptz/package.json` → `version`
 2. `apps/scriptz/src-tauri/Cargo.toml` → `[package].version`
-3. `apps/scriptz/src-tauri/Cargo.lock` → Version des Pakets `scriptz`
+3. `Cargo.lock` → Version des Pakets `scriptz`
 4. `apps/scriptz/src-tauri/tauri.conf.json` → `version`
 
 Cargo aktualisiert den Lock-Eintrag beim nächsten Lauf; die Änderung
@@ -81,11 +84,14 @@ UWP-Container statt im echten `%APPDATA%\npm`):
 
 ```cmd
 :: Node 24+ vorausgesetzt
-npm install -g pnpm@9.0.0
+npm install -g pnpm@10.34.6
 winget install Rustlang.Rustup
 winget install Microsoft.VisualStudio.2022.BuildTools ^
   --override "--passive --wait --add Microsoft.VisualStudio.Workload.VCTools --add Microsoft.VisualStudio.Component.Windows11SDK.22621 --includeRecommended"
 ```
+
+Die pnpm-Version muss zum Feld `packageManager` im Root-`package.json`
+passen; bei einem zukünftigen Versionswechsel auch diese Anleitung pflegen.
 
 Rustup zieht automatisch `stable-x86_64-pc-windows-msvc` als Default-
 Toolchain. Webview2 ist auf Windows 10 21H2+ und Windows 11

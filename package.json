@@ -6,10 +6,19 @@
   "type": "module",
   "scripts": {
     "typecheck": "pnpm -r typecheck",
-    "test": "pnpm -r --if-present test",
+    "test": "pnpm test:tooling && pnpm -r --if-present test",
     "dev:scriptz": "pnpm --filter @agentz/scriptz-app tauri:dev",
-    "build:scriptz": "pnpm --filter @agentz/scriptz-app tauri:build"
+    "build:scriptz": "pnpm --filter @agentz/scriptz-app tauri:build",
+    "lint": "eslint .",
+    "test:tooling": "node --test tooling/checks/*.test.mjs",
+    "check:colors": "node tooling/checks/colors.mjs",
+    "build:frontends": "pnpm --filter './apps/*' --if-present build"
   },
   "license": "MIT",
-  "packageManager": "pnpm@9.0.0"
+  "packageManager": "pnpm@10.34.6",
+  "devDependencies": {
+    "eslint": "9.39.5",
+    "typescript-eslint": "8.71.0",
+    "typescript": "catalog:"
+  }
 }

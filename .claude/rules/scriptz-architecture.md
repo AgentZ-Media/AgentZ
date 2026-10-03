@@ -22,6 +22,10 @@ visuelle Referenz `docs/redesign/concept.html`, Längenziel-Spec
 [`docs/feature-laengenziel.md`](../../docs/feature-laengenziel.md).
 
 Der tatsächliche Code ist die Referenz für das aktuelle Verhalten.
+Seit Phase 3 gelten außerdem die automatischen Paketgrenzen und
+Konventionen aus [`suite-architecture.md`](suite-architecture.md).
+Cargo-Workspace, Lockfile und `target/` liegen im Repo-Root;
+`apps/scriptz/src-tauri/` bleibt das App-Crate mit seinen Migrationen.
 
 ## Repo-Layout (Detail)
 

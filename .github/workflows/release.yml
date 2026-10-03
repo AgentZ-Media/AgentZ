@@ -70,7 +70,7 @@ jobs:
       - name: Rust cache
         uses: swatinem/rust-cache@v2
         with:
-          workspaces: apps/scriptz/src-tauri
+          workspaces: . -> target
           key: macos
 
       - name: Setup pnpm
@@ -107,7 +107,7 @@ jobs:
           releaseDraft: false
           prerelease: false
           projectPath: apps/scriptz
-          args: --target aarch64-apple-darwin
+          args: --target aarch64-apple-darwin -- --locked
 
   # ============================================================
   # 3) Windows build (x64 NSIS)
@@ -134,7 +134,7 @@ jobs:
       - name: Rust cache
         uses: swatinem/rust-cache@v2
         with:
-          workspaces: apps/scriptz/src-tauri
+          workspaces: . -> target
           key: windows
 
       - name: Setup pnpm
@@ -167,4 +167,4 @@ jobs:
           releaseDraft: false
           prerelease: false
           projectPath: apps/scriptz
-          args: --target x86_64-pc-windows-msvc
+          args: --target x86_64-pc-windows-msvc -- --locked

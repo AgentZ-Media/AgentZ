@@ -10,28 +10,21 @@ name = "scriptz_lib"
 crate-type = ["staticlib", "cdylib", "rlib"]
 
 [build-dependencies]
-tauri-build = { version = "2", features = [] }
+tauri-build = { workspace = true }
 
 [dependencies]
-tauri = { version = "2", features = [] }
-tauri-plugin-os = "2"
-tauri-plugin-window-state = "2"
-tauri-plugin-updater = "2"
-tauri-plugin-process = "2"
-tauri-plugin-opener = "2"
-tauri-plugin-dialog = "2"
-tauri-plugin-clipboard-manager = "2"
-tauri-plugin-global-shortcut = "2"
-tauri-plugin-fs = { version = "2.5.1", default-features = false }
-tauri-plugin-sql = { version = "2", features = ["sqlite"] }
+tauri = { workspace = true }
+tauri-plugin-os = { workspace = true }
+tauri-plugin-window-state = { workspace = true }
+tauri-plugin-updater = { workspace = true }
+tauri-plugin-process = { workspace = true }
+tauri-plugin-opener = { workspace = true }
+tauri-plugin-dialog = { workspace = true }
+tauri-plugin-clipboard-manager = { workspace = true }
+tauri-plugin-global-shortcut = { workspace = true }
+tauri-plugin-fs = { workspace = true }
+tauri-plugin-sql = { workspace = true }
 
 # Required by `tauri::generate_context!()` — the macro expands to code
 # that references `serde_json` directly.
-serde_json = "1"
-
-[profile.release]
-panic = "abort"
-codegen-units = 1
-lto = "fat"
-opt-level = 3
-strip = true
+serde_json = { workspace = true }

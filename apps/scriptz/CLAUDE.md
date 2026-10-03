@@ -25,6 +25,8 @@ aktuelle Verhalten.
 
 Details lazy-load aus [`/.claude/rules/`](../../.claude/rules/):
 
+- [`suite-architecture.md`](../../.claude/rules/suite-architecture.md)
+  - Paketgrenzen, gemeinsame Konfiguration, Import-Lebenszyklus und Ports.
 - [`scriptz-architecture.md`](../../.claude/rules/scriptz-architecture.md)
   - Layout von `modules/scriptz`, `packages/design`, `src/` und
   `src-tauri/`, Stufen + Zielbereich, das per-script Character-Modell,
@@ -117,13 +119,21 @@ pnpm tauri:dev              # full app with hot-reload + Rust rebuild
 pnpm dev                    # Vite-only frontend (no Tauri shell)
 pnpm typecheck              # tsc --noEmit
 pnpm build                  # Vite prod bundle → dist/
-pnpm tauri:build            # native bundle at
-                            #   macOS:   src-tauri/target/release/bundle/macos/ScriptZ.app
-                            #           + .dmg in bundle/dmg/
-                            #   Windows: src-tauri/target/release/bundle/nsis/
-                            #           ScriptZ_<version>_x64-setup.exe
-cargo check --manifest-path src-tauri/Cargo.toml
+pnpm tauri:build            # native bundle under the repository root:
+                            #   target/release/bundle/macos/ScriptZ.app
+                            #   target/release/bundle/dmg/
+                            #   target/release/bundle/nsis/
+cargo check --manifest-path src-tauri/Cargo.toml --locked
 ```
+
+Bei explizitem Rust-Target steht dessen Triple zusätzlich zwischen
+`target/` und `release/`. Cargo-Workspace, Release-Profil und
+`Cargo.lock` liegen im Repo-Root. Dort prüft
+`cargo check --workspace --locked` alle Mitglieder.
+
+ScriptZ verwendet Vite-Port 1420, den separaten HMR-Port 1421 bei
+`TAURI_DEV_HOST` und `devUrl: http://localhost:1420`. Die drei Werte gemeinsam ändern,
+falls künftig ein anderer Port nötig wird.
 
 ## Don'ts
 

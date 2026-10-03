@@ -6,7 +6,7 @@ ScriptZ ist derzeit die einzige App. Der
 [Fundament-Plan](docs/agentz-suite-fundament.md) beschreibt den schrittweisen
 Umbau; die nachfolgende Trennung von Bestand und Ziel ist verbindlich.
 
-## Aktuelle Struktur (Phase 2)
+## Aktuelle Struktur (Phase 3)
 
 - [`apps/scriptz/`](apps/scriptz/) - `@agentz/scriptz-app`, die dünne
   Tauri-Schale für ScriptZ. Registriert Plattform- und Speicheranbindung,
@@ -21,6 +21,8 @@ Umbau; die nachfolgende Trennung von Bestand und Ziel ist verbindlich.
   Designsystem der Suite: semantische Tokens hell/dunkel, Legacy-Aliasse,
   CSS-Primitive, UI-Schrift, Icons und Logo. Reines CSS und Daten-Module,
   kein Framework. Details in der [Paket-README](packages/design/README.md).
+- [`tooling/vitest-preset/`](tooling/vitest-preset/) -
+  `@agentz/vitest-preset`, gemeinsame Solid-/jsdom-Testkonfiguration.
 - [`docs/release-notes/scriptz/`](docs/release-notes/scriptz/) -
   ScriptZ-Release-Notes. Der gemeinsame Install-Footer bleibt in
   `docs/release-notes/_install_footer.md`.
@@ -49,10 +51,13 @@ apps/<app> -> modules/<app> -> packages/kit -> packages/design
 - Produktmodule importieren `kit` und `design`, keine Apps oder anderen Module.
 - Apps verdrahten Produktmodul und Host; `apps/site` nutzt nur `design`.
 
-ESLint-Grenzen, gemeinsames Test-Preset, TS-Basis und Cargo-Workspace
-folgen in Phase 3. Die bisherige ESLint-Regel ist noch nicht automatisiert.
-Aktuell liegt `Cargo.lock` in `apps/scriptz/src-tauri/`. Das Release-Schema
-bleibt bis Phase 6 `vX.Y.Z`; der App-Name bleibt ScriptZ.
+ESLint prüft die Paketgrenzen. `tsconfig.base.json`, der pnpm-Catalog
+und `@agentz/vitest-preset` bündeln gemeinsame Konfiguration. Der
+Cargo-Workspace nutzt `Cargo.toml`, das verschobene `Cargo.lock` und
+`target/` im Repo-Root. `crates/*` kommt erst als Workspace-Mitglied
+hinzu, wenn Phase 5 die erste Crate anlegt. PR-CI prüft JavaScript und
+Rust. Das Release-Schema bleibt bis Phase 6 `vX.Y.Z`; der App-Name
+bleibt ScriptZ.
 
 ## Konventionen während des Umbaus
 
@@ -78,13 +83,22 @@ beim strukturellen Umbau unverändert. Vor riskanten Phasen gilt die
 App- und Modul-Code referenzieren nur `var(--token)`. Ausnahmen:
 Inhaltsfarben als Daten (Charakter-Palette in
 `modules/scriptz/styles/tokens.css`, `characterColors.ts`) und
-OS-Chrome-Nachbauten (macOS-Trafficlights).
+OS-Chrome-Nachbauten (macOS-Trafficlights). `pnpm check:colors`
+prüft diese Grenze mit einer gezielten Ausnahmeliste.
+
+Neue Module dürfen beim Import keine I/O, Resources mit Datenzugriff
+oder Timer starten. Bestehende Import-Initialisierung in ScriptZ
+(insbesondere Ideen und Tagesstatistik) wird in Phase 4.0 bereinigt;
+die neue Tooling-Phase verändert diesen Lebenszyklus noch nicht.
+Paket-Konventionen und die Regel der Zwei stehen in der Suite-Regel.
 
 ## Path-scoped Rules
 
 Details liegen in [`.claude/rules/`](.claude/rules/) und laden bei
 Dateien im jeweiligen Scope:
 
+- [`suite-architecture.md`](.claude/rules/suite-architecture.md) -
+  Paketgrenzen, Konfiguration, Seiteneffekte, Modul-Vertrag und Ports.
 - [`scriptz-architecture.md`](.claude/rules/scriptz-architecture.md) -
   ScriptZ-Modul, Design und App-Schale, Datenmodell, Migration und Data-Flow.
 - [`i18n.md`](.claude/rules/i18n.md) - zweisprachige Kataloge und
@@ -100,9 +114,17 @@ Dateien im jeweiligen Scope:
 pnpm install --frozen-lockfile # installiert die JS-Workspaces
 pnpm dev:scriptz               # tauri dev der ScriptZ-App
 pnpm build:scriptz             # native App und Installer bauen
+pnpm lint                      # Paketgrenzen und Korrektheit
 pnpm typecheck                 # TypeScript über alle Workspaces
-pnpm test                      # Tests in modules/scriptz
+pnpm test                      # Tooling-Regeln und Pakettests
+pnpm check:colors              # Farben außerhalb des Designsystems
+pnpm build:frontends           # Vite-Builds ohne native Bundles
+cargo check --workspace --locked # Rust-Workspace ohne Lockfile-Änderung
 ```
+
+Die pnpm-Version ist in `package.json` festgelegt. Gemeinsame
+JS-Versionen stehen im Catalog von `pnpm-workspace.yaml`; interne
+Abhängigkeiten verwenden `workspace:*`.
 
 Workspace-Befehle sind auch direkt nutzbar, z. B.
 `pnpm --filter @agentz/scriptz-app tauri:dev` oder
