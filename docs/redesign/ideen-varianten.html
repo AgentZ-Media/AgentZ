@@ -1,0 +1,1001 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Ideen: Erfassen & Details - Varianten · ScriptZ Redesign</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Schibsted+Grotesk:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="doc.css" />
+<style>
+/* Werkbank token layer (same values as concept.html / packages/design). */
+.A {
+  --side-bg: #1b1e24; --side-hover: #23272f; --side-active: #2c313b;
+  --side-fg: #d3d6dc; --side-muted: #868b96; --side-line: #2a2e36;
+  --bg: #f3f4f6; --surface: #ffffff; --surface-2: #f8f9fa; --fill: #eceef1;
+  --fg: #14161b; --muted: #5d6170; --faint: #9a9fab;
+  --line: #e3e5e9; --line-soft: #eef0f2; --line-strong: #d3d6dc;
+  --shadow-raise: 0 1px 2px rgba(20,22,27,0.06), 0 6px 16px rgba(20,22,27,0.08);
+  --shadow-dlg: 0 30px 80px rgba(15,17,21,0.35), 0 0 0 1px rgba(15,17,21,0.06);
+  --shadow-toast: 0 10px 30px rgba(0,0,0,0.2);
+  --scrim: rgba(15,17,21,0.32);
+  --accent: #ffe14d; --accent-fg: #14161b; --accent-soft: #fff6c2;
+  --warn: #d2452f; --warn-soft: #fdebe7; --ok: #3fae74;
+  --ease: cubic-bezier(0.2, 0.8, 0.2, 1);
+  --ui: "Schibsted Grotesk", system-ui, sans-serif;
+  --type: "iA Writer Quattro", ui-monospace, monospace;
+  font-family: var(--ui); font-size: 13px; line-height: 1.45;
+  color: var(--fg); background: var(--bg);
+  -webkit-font-smoothing: antialiased;
+}
+.A * { box-sizing: border-box; }
+.A button { font: inherit; color: inherit; background: none; border: 0; padding: 0; margin: 0; cursor: pointer; text-align: inherit; }
+.A input, .A textarea { font: inherit; color: inherit; background: transparent; border: 0; outline: 0; padding: 0; margin: 0; resize: none; }
+.A input::placeholder, .A textarea::placeholder { color: var(--faint); }
+.A svg.i { flex: none; stroke: currentColor; fill: none; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
+.A svg.st { width: 14px; height: 14px; flex: none; color: var(--faint); }
+.A kbd { font: 500 10.5px/1 var(--ui); padding: 3px 5px; border-radius: 4px; background: var(--fill); color: var(--muted); white-space: nowrap; }
+.A .sp { flex: 1; }
+.A .faint { color: var(--faint); }
+
+.A .btn { height: 28px; display: inline-flex; align-items: center; gap: 6px; padding: 0 10px; border-radius: 7px; border: 1px solid var(--line); background: var(--surface); font-weight: 600; font-size: 12.5px; color: var(--fg); white-space: nowrap; }
+.A .btn:hover { background: var(--surface-2); }
+.A .btn.primary { background: var(--fg); border-color: var(--fg); color: var(--surface); }
+.A .btn.primary:hover { opacity: 0.9; }
+.A .btn.primary kbd { background: rgba(255,255,255,0.16); color: inherit; }
+.A .btn.ghost { border-color: transparent; background: transparent; color: var(--muted); }
+.A .btn.ghost:hover { background: var(--fill); color: var(--fg); }
+.A .btn.wide { justify-content: center; height: 34px; width: 100%; }
+.A .chip { height: 26px; display: inline-flex; align-items: center; gap: 6px; padding: 0 9px; border-radius: 999px; border: 1px solid var(--line); background: var(--surface); font-size: 12px; font-weight: 600; color: var(--fg); white-space: nowrap; }
+.A .chip:hover { background: var(--surface-2); }
+.A .fdot { width: 7px; height: 7px; border-radius: 50%; display: inline-block; flex: none; }
+.A .ic-btn { width: 26px; height: 26px; border-radius: 6px; display: grid; place-items: center; color: var(--faint); flex: none; }
+.A .ic-btn:hover { background: var(--fill); color: var(--fg); }
+
+/* ---------- shell ---------- */
+.A .shell { position: absolute; inset: 0; display: grid; grid-template-columns: 232px minmax(0,1fr); }
+.A .side { background: var(--side-bg); color: var(--side-fg); padding: 0 10px 10px; display: flex; flex-direction: column; gap: 1px; border-right: 1px solid var(--side-line); }
+.A .side-top { height: 44px; display: flex; align-items: center; padding: 0 6px; }
+.A .traffic { display: flex; gap: 8px; }
+.A .traffic i { width: 12px; height: 12px; border-radius: 50%; display: block; }
+.A .traffic i:nth-child(1) { background: #ff5f57; }
+.A .traffic i:nth-child(2) { background: #febc2e; }
+.A .traffic i:nth-child(3) { background: #28c840; }
+.A .app { display: flex; align-items: center; gap: 9px; padding: 2px 6px 10px; font-weight: 700; color: #fff; font-size: 14px; }
+.A .mark { width: 24px; height: 24px; border-radius: 6px; background: var(--accent); color: var(--accent-fg); display: grid; place-items: center; font-weight: 800; font-size: 13px; }
+.A .sbx { display: flex; align-items: center; gap: 8px; height: 30px; padding: 0 8px; border-radius: 7px; background: rgba(255,255,255,0.05); color: var(--side-muted); margin-bottom: 6px; }
+.A .sbx kbd { margin-left: auto; background: rgba(255,255,255,0.07); color: var(--side-muted); }
+.A .nav { display: flex; align-items: center; gap: 9px; height: 28px; padding: 0 8px; border-radius: 6px; }
+.A .nav svg.st { color: var(--side-muted); }
+.A .nav .n { margin-left: auto; color: var(--side-muted); font-size: 12px; }
+.A .nav.on { background: var(--side-active); color: #fff; }
+.A .nav.on svg.st { color: #fff; }
+.A .sec { margin: 14px 8px 4px; font-size: 10.5px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--side-muted); }
+.A .side-foot { margin-top: auto; padding: 10px 8px 0; border-top: 1px solid var(--side-line); font-size: 12px; color: var(--side-muted); }
+.A .side-foot b { color: #fff; display: block; font-size: 13px; }
+
+.A .main { display: flex; flex-direction: column; min-width: 0; min-height: 0; }
+.A .bar { height: 44px; flex: none; display: flex; align-items: center; gap: 8px; padding: 0 14px 0 12px; border-bottom: 1px solid var(--line); }
+.A .hist { display: flex; gap: 6px; color: var(--faint); }
+.A .crumb { margin-left: 6px; }
+
+/* ---------- ideas page ---------- */
+.A .ideas { flex: 1; min-height: 0; display: grid; grid-template-columns: minmax(0,1fr); }
+.A .ideas.v-today { grid-template-columns: minmax(0,1fr) 336px; }
+.A .ideas.v-b.has-panel { grid-template-columns: minmax(0,1fr) 380px; }
+.A .ideas-main { min-width: 0; min-height: 0; width: 100%; max-width: 1180px; justify-self: center; padding: 22px 28px 0; display: flex; flex-direction: column; }
+.A .i-head { display: flex; align-items: baseline; gap: 12px; flex: none; }
+.A .i-head h1 { margin: 0; font-size: 26px; line-height: 1.1; font-weight: 800; letter-spacing: -0.025em; }
+.A .i-head span { color: var(--faint); font-variant-numeric: tabular-nums; }
+
+.A .i-cap { flex: none; margin: 16px 0 12px; border-radius: 11px; background: var(--surface); border: 1px solid var(--line); box-shadow: var(--shadow-raise); transition: border-color 120ms, box-shadow 120ms; }
+.A .i-cap:focus-within { border-color: var(--fg); box-shadow: 0 0 0 3px var(--fill); }
+.A .cap-row { height: 46px; display: flex; align-items: center; gap: 11px; padding: 0 10px 0 8px; color: var(--faint); }
+.A .i-cap-plus { width: 30px; height: 30px; flex: none; border-radius: 8px; display: grid; place-items: center; background: var(--accent); color: var(--accent-fg); }
+.A .i-cap-plus svg.i { stroke-width: 2.2; }
+.A .cap-t { flex: 1; min-width: 0; height: 100%; font-size: 14px; color: var(--fg); }
+.A .cap-hint { font-size: 12px; color: var(--faint); white-space: nowrap; display: inline-flex; gap: 6px; align-items: center; }
+.A .cap-more { display: inline-flex; align-items: center; gap: 6px; height: 26px; padding: 0 8px; border-radius: 6px; color: var(--muted); font-size: 12px; font-weight: 600; white-space: nowrap; }
+.A .cap-more:hover { background: var(--fill); color: var(--fg); }
+.A .i-cap .cap-n { display: block; width: calc(100% - 61px); margin: 0 12px 0 49px; padding: 0 0 10px; font-family: var(--type); font-size: 13px; line-height: 1.65; min-height: 44px; max-height: 220px; overflow: auto; }
+.A .cap-f { display: flex; align-items: center; gap: 8px; padding: 8px 10px 9px 49px; border-top: 1px solid var(--line-soft); }
+.A .sims { font-size: 12px; color: var(--faint); display: flex; align-items: center; gap: 5px; min-width: 0; overflow: hidden; white-space: nowrap; }
+.A .simlink { color: var(--muted); font-weight: 600; max-width: 230px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.A .simlink:hover { color: var(--fg); text-decoration: underline; }
+
+.A .i-chips { display: flex; align-items: center; gap: 6px; margin-bottom: 10px; flex: none; }
+.A .fchip { height: 28px; display: inline-flex; align-items: center; gap: 6px; padding: 0 11px; border-radius: 999px; border: 1px solid var(--line); background: var(--surface); color: var(--muted); font-weight: 600; font-size: 12px; white-space: nowrap; }
+.A .fchip i { width: 7px; height: 7px; border-radius: 50%; }
+.A .fchip em { font-style: normal; color: var(--faint); font-weight: 500; }
+.A .fchip.on { background: var(--fg); border-color: var(--fg); color: var(--bg); }
+.A .fchip.on em { color: inherit; opacity: 0.6; }
+.A .filter { display: flex; align-items: center; gap: 7px; width: 190px; height: 28px; padding: 0 6px 0 8px; border-radius: 7px; border: 1px solid var(--line); background: var(--surface); color: var(--faint); }
+.A .filter input { flex: 1; min-width: 0; font-size: 12.5px; color: var(--fg); }
+.A .filter:focus-within { border-color: var(--fg); }
+
+.A .ilist-scroll { position: relative; flex: 1; min-height: 0; overflow-y: auto; padding-bottom: 4px; }
+.A .ilist { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; overflow: hidden; outline: none; }
+.A .igrp-h { height: 30px; display: flex; align-items: center; gap: 6px; padding: 0 14px; background: var(--surface-2); border-top: 1px solid var(--line-soft); font-size: 11px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: var(--faint); }
+.A .igrp-h:first-child { border-top: 0; }
+.A .igrp-h em { font-style: normal; font-weight: 500; letter-spacing: 0; }
+.A .irow { height: 36px; display: grid; grid-template-columns: 14px minmax(0,1.15fr) minmax(0,1fr) 116px 70px; gap: 12px; align-items: center; padding: 0 14px; border-top: 1px solid var(--line-soft); position: relative; cursor: default; user-select: none; }
+.A .v-a .irow { grid-template-columns: 14px minmax(0,1.1fr) minmax(0,1.5fr) 130px 76px 22px; }
+.A .v-b .irow { grid-template-columns: 14px minmax(0,1.1fr) minmax(0,1.5fr) 130px 76px 22px; }
+.A .v-b.has-panel .irow { grid-template-columns: 14px minmax(0,1.3fr) minmax(0,1fr) 76px 22px; }
+.A .v-b.has-panel .irow .fo { display: none; }
+.A .v-c .irow { grid-template-columns: 14px minmax(0,1.1fr) minmax(0,1.5fr) 130px 76px; }
+.A .irow:hover { background: var(--surface-2); }
+.A .irow .ti { font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.A .irow .nt { color: var(--faint); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: 12.5px; }
+.A .irow .fo { display: flex; align-items: center; gap: 6px; color: var(--muted); font-size: 12px; white-space: nowrap; min-width: 0; }
+.A .irow .fo i { width: 7px; height: 7px; border-radius: 50%; flex: none; }
+.A .irow .ag { text-align: right; color: var(--faint); font-size: 12px; white-space: nowrap; }
+.A .irow.is-sel { background: var(--accent-soft); }
+.A .irow.is-sel::before { content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 3px; background: var(--accent); }
+.A .irow.is-sel svg.st { color: var(--fg); }
+.A .irow.is-new { animation: flash 1.4s ease-out; }
+@keyframes flash { 0% { background: var(--accent); } 100% { background: var(--accent-soft); } }
+.A .ropen { width: 22px; height: 22px; border-radius: 5px; display: grid; place-items: center; color: var(--faint); opacity: 0; }
+.A .irow:hover .ropen, .A .irow.is-sel .ropen { opacity: 1; }
+.A .ropen:hover { background: var(--fill); color: var(--fg); }
+.A .i-empty { padding: 28px 20px; border: 1px dashed var(--line); border-radius: 10px; background: var(--surface-2); color: var(--muted); }
+.A .i-keys { flex: none; padding: 10px 2px 12px; color: var(--faint); font-size: 11.5px; display: flex; align-items: center; gap: 4px; flex-wrap: wrap; }
+.A .i-keys kbd { margin: 0 1px; }
+
+/* ---------- A: expanded row ---------- */
+.A .ix { margin: 6px; border: 1px solid var(--line-strong); border-radius: 10px; background: var(--surface); box-shadow: var(--shadow-raise); position: relative; padding: 8px 12px 10px 8px; animation: ixin 180ms var(--ease); }
+@keyframes ixin { from { opacity: 0.3; transform: translateY(-3px); } }
+.A .ix::before { content: ""; position: absolute; left: -1px; top: 10px; bottom: 10px; width: 3px; border-radius: 0 3px 3px 0; background: var(--accent); }
+.A .ix-h { display: flex; align-items: center; gap: 12px; height: 32px; padding-left: 6px; }
+.A .ix-h svg.st { color: var(--fg); }
+.A .ix-t { flex: 1; min-width: 0; font-size: 15px; font-weight: 700; letter-spacing: -0.01em; }
+.A .ix-h .ag { color: var(--faint); font-size: 12px; white-space: nowrap; }
+.A .ix-n { display: block; width: calc(100% - 32px); margin: 4px 0 0 32px; padding: 9px 12px; border-radius: 8px; background: var(--surface-2); border: 1px solid var(--line-soft); font-family: var(--type); font-size: 13px; line-height: 1.65; min-height: 72px; overflow: hidden; }
+.A .ix-n:focus, .A .card-n:focus, .A .pnl-n:focus, .A .idet-n:focus { background: var(--surface); border-color: var(--fg); box-shadow: 0 0 0 3px var(--fill); }
+.A .ix-f { display: flex; align-items: center; gap: 10px; margin: 10px 0 0 32px; font-size: 12px; color: var(--faint); }
+.A .meta { white-space: nowrap; }
+
+/* ---------- today: inspector ---------- */
+.A .idet { min-height: 0; background: var(--surface); border-left: 1px solid var(--line); padding: 18px 20px; display: flex; flex-direction: column; gap: 14px; overflow: hidden; }
+.A .idet-top, .A .pnl-h, .A .card-top { display: flex; align-items: center; gap: 7px; color: var(--faint); font-size: 12px; min-height: 26px; }
+.A .idet-t, .A .pnl-t { width: 100%; font: 700 19px/1.3 var(--ui); letter-spacing: -0.015em; overflow: hidden; }
+.A .idet-n { width: 100%; min-height: 128px; padding: 11px 12px; border-radius: 9px; border: 1px solid var(--line); font-family: var(--type); font-size: 12.5px; line-height: 1.65; resize: vertical; }
+.A .idet-meta { display: flex; flex-direction: column; gap: 8px; }
+.A .idet-meta > div { display: flex; align-items: center; justify-content: space-between; color: var(--muted); }
+.A .idet-meta b { font-weight: 600; color: var(--fg); }
+.A .sec-h { font-size: 10.5px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--faint); margin-bottom: 8px; }
+.A .sim-row { display: flex; align-items: center; gap: 8px; height: 30px; width: 100%; border-top: 1px solid var(--line-soft); }
+.A .sim-row span { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.A .sim-row:hover span { text-decoration: underline; }
+.A .anno { flex: 1; min-height: 40px; border: 1.5px dashed var(--warn); border-radius: 10px; background: var(--warn-soft); display: grid; place-items: center; text-align: center; color: var(--warn); font-size: 12px; font-weight: 700; line-height: 1.5; }
+.A .anno small { display: block; font-weight: 500; }
+.A .idet-foot { display: flex; justify-content: space-between; }
+
+/* ---------- B: on-demand panel ---------- */
+.A .pnl { min-height: 0; background: var(--surface); border-left: 1px solid var(--line); padding: 14px 18px 16px; display: flex; flex-direction: column; gap: 12px; animation: pin 180ms var(--ease); }
+.A .pnl:empty { display: none; }
+@keyframes pin { from { transform: translateX(18px); opacity: 0.3; } }
+.A .pnl-n { flex: 1; min-height: 120px; padding: 11px 12px; border-radius: 9px; border: 1px solid var(--line); font-family: var(--type); font-size: 13px; line-height: 1.65; }
+.A .pnl-meta { display: flex; align-items: center; gap: 10px; font-size: 12px; color: var(--faint); }
+.A .pnl-sim { font-size: 12px; color: var(--faint); display: flex; flex-direction: column; gap: 3px; align-items: flex-start; }
+.A .pnl-sim .simlink { max-width: 100%; }
+.A .pnl-f { display: flex; align-items: center; gap: 8px; }
+
+/* ---------- C: idea card ---------- */
+#modal .scrim { position: absolute; inset: 0; background: var(--scrim); z-index: 20; animation: fade 150ms; }
+@keyframes fade { from { opacity: 0; } }
+.A .card { position: absolute; z-index: 21; left: 50%; top: 92px; width: 660px; transform: translateX(-50%); background: var(--surface); border-radius: 14px; box-shadow: var(--shadow-dlg); padding: 14px 18px; display: flex; flex-direction: column; gap: 10px; animation: cin 180ms var(--ease); }
+@keyframes cin { from { opacity: 0; transform: translate(-50%, -6px); } }
+.A .card .pos { font-variant-numeric: tabular-nums; margin-right: 2px; }
+.A .card-t { width: 100%; font: 700 20px/1.3 var(--ui); letter-spacing: -0.015em; }
+.A .card-n { width: 100%; min-height: 110px; max-height: 320px; overflow: auto; padding: 10px 12px; border-radius: 9px; background: var(--surface-2); border: 1px solid var(--line-soft); font-family: var(--type); font-size: 13px; line-height: 1.65; }
+.A .card-sim { min-height: 18px; }
+.A .card-f { display: flex; align-items: center; gap: 8px; padding-top: 10px; border-top: 1px solid var(--line-soft); font-size: 12px; color: var(--faint); }
+
+/* ---------- toast ---------- */
+.A .toast { position: absolute; left: 50%; bottom: 22px; z-index: 30; transform: translate(-50%, 12px); opacity: 0; pointer-events: none; background: var(--fg); color: var(--surface); padding: 9px 14px; border-radius: 9px; font-size: 12.5px; font-weight: 600; box-shadow: var(--shadow-toast); transition: opacity 180ms, transform 180ms; display: flex; gap: 14px; align-items: center; white-space: nowrap; }
+.A .toast.on { opacity: 1; transform: translate(-50%, 0); pointer-events: auto; }
+.A .toast button { color: var(--accent); font-weight: 700; }
+
+/* ---------- doc page around the stage ---------- */
+.v-stage { max-width: 1440px; margin: 0 auto; padding: 8px 32px 28px; }
+.v-note { display: none; }
+.v-note.on { display: block; }
+.v-note .d-grid3 { margin-top: 4px; }
+.v-note h3 { margin-top: 0 !important; }
+.d-card ol { margin: 6px 0 0; padding-left: 18px; color: var(--d-muted); font-size: 14px; }
+.d-card li { margin: 3px 0; }
+.d-card kbd { font: 600 11px/1 var(--d-sans); padding: 2px 5px; border-radius: 4px; background: var(--d-code); }
+.d-table td:first-child { font-weight: 600; color: var(--d-fg); }
+.d-table .good { color: #1d7a4c; }
+.d-table .bad { color: #a63030; }
+</style>
+</head>
+<body>
+
+<header class="d-top">
+  <a class="d-brand" href="index.html">ScriptZ / Redesign</a>
+  <nav>
+    <a href="index.html">Bestandsaufnahme</a>
+    <a href="concept.html">Werkbank (final)</a>
+    <a class="is-current" href="ideen-varianten.html">Ideen-Varianten</a>
+  </nav>
+</header>
+
+<main class="d-wrap">
+  <section class="d-hero" style="padding-bottom:20px">
+    <div class="d-eyebrow">Prototyp · 3. Oktober 2026</div>
+    <h1>Ideen: Erfassen & Details</h1>
+    <p>
+      Heute sitzt rechts ein festes Panel mit einem kurzen Notizfeld. Es
+      nimmt der Liste 336 px Breite, bleibt ab der Mitte leer und ist zum
+      Schreiben trotzdem zu schmal. Hier sind der Ist-Zustand und drei
+      Alternativen zum Ausprobieren. Alles ist klickbar und beschreibbar,
+      nichts wird gespeichert.
+    </p>
+  </section>
+</main>
+
+<section class="v-stage">
+  <div class="c-screens" role="tablist" id="tabs">
+    <button data-v="today" role="tab">1 · Heute</button>
+    <button data-v="a" role="tab">2 · A Aufklappen</button>
+    <button data-v="b" role="tab">3 · B Panel bei Bedarf</button>
+    <button data-v="c" role="tab">4 · C Ideenkarte</button>
+    <span class="c-hint">Tasten 1-4 wechseln · ⌘I fokussiert das Erfassen</span>
+  </div>
+  <div class="c-viewport"><div class="c-window A" id="win">
+    <div class="shell">
+      <aside class="side">
+        <div class="side-top"><div class="traffic"><i></i><i></i><i></i></div></div>
+        <div class="app"><span class="mark">Z</span>ScriptZ</div>
+        <div class="sbx" id="sbx"></div>
+        <div class="nav" id="navAll"></div>
+        <div class="sec">Pipeline</div>
+        <div id="navStages"></div>
+        <div class="sec">Ordner</div>
+        <div id="navFolders"></div>
+        <div class="side-foot"><b>1.240 Wörter</b>diese Woche geschrieben</div>
+      </aside>
+      <div class="main" id="main"></div>
+    </div>
+    <div id="modal"></div>
+    <div class="toast" id="toast"></div>
+  </div></div>
+</section>
+
+<main class="d-wrap">
+  <section class="d-sec" style="padding-top:36px">
+    <div class="v-note" data-note="today">
+      <h3>Heute</h3>
+      <div class="d-grid3">
+        <div class="d-card"><h4>Probier mal</h4><ol>
+          <li>Eine Zeile anklicken, dann <kbd>⏎</kbd>: Fokus springt ins Notizfeld rechts.</li>
+          <li>Oben einen Titel tippen und <kbd>⏎</kbd>: Die Idee entsteht ohne Notiz.</li>
+        </ol></div>
+        <div class="d-card"><h4>Was auffällt</h4><ul>
+          <li>Das Panel ist immer da, auch wenn man nur die Liste durchgeht.</li>
+          <li>Unter „Ähnliche Stücke" bleibt fast die halbe Höhe leer (rot markiert).</li>
+          <li>Das Notizfeld ist nur etwa 296 px breit.</li>
+        </ul></div>
+        <div class="d-card"><h4>Folgen</h4><ul>
+          <li>Die Notiz-Vorschau in der Liste ist nach wenigen Wörtern abgeschnitten.</li>
+          <li>Eine Notiz beim Anlegen geht nur über das ⌘I-Modal.</li>
+          <li>Rechts wird bearbeitet, obwohl der Inspector laut Prinzip nur Informationen zeigt.</li>
+        </ul></div>
+      </div>
+    </div>
+
+    <div class="v-note" data-note="a">
+      <h3>A · Aufklappbare Zeilen, Erfassen in derselben Form</h3>
+      <div class="d-grid3">
+        <div class="d-card"><h4>Probier mal</h4><ol>
+          <li>Titel tippen und <kbd>⏎</kbd>: Die Idee ist gemerkt, der Fokus bleibt im Feld für die nächste.</li>
+          <li>Titel tippen und <kbd>⇥</kbd>: Das Feld klappt auf, eine Notiz geht direkt beim Anlegen.</li>
+          <li>„Büro" oder „Drucker" tippen: Ähnliche Ideen erscheinen live.</li>
+          <li>Eine Zeile anklicken: Sie klappt auf. Mit <kbd>esc</kbd> klappt sie zu, <kbd>↑</kbd><kbd>↓</kbd> wandert weiter und schließt sie.</li>
+        </ol></div>
+        <div class="d-card"><h4>Stark</h4><ul>
+          <li>Kein Panel mehr, die Liste hat die volle Breite.</li>
+          <li>Notizen bekommen fast die ganze Breite und wachsen mit dem Text.</li>
+          <li>Anlegen und Bearbeiten sehen gleich aus.</li>
+          <li>Rechts wird nichts mehr bearbeitet, passt zur Werkbank.</li>
+        </ul></div>
+        <div class="d-card"><h4>Schwach / offen</h4><ul>
+          <li>Beim Aufklappen verschiebt sich die Liste darunter.</li>
+          <li>Ähnliche Skripte passen nur als kurze Zeile hinein.</li>
+          <li>Offene Frage: Welches Kürzel merkt die Idee aus dem Notizfeld heraus? Im Prototyp geht das über den Button, <kbd>⌘⏎</kbd> startet wie in der App das Skript.</li>
+        </ul></div>
+      </div>
+    </div>
+
+    <div class="v-note" data-note="b">
+      <h3>B · Panel nur bei Bedarf, das Notizfeld nutzt die Höhe</h3>
+      <div class="d-grid3">
+        <div class="d-card"><h4>Probier mal</h4><ol>
+          <li>Eine Zeile anklicken: Sie wird nur ausgewählt, die Liste bleibt in voller Breite.</li>
+          <li>Doppelklick, <kbd>⏎</kbd> oder der Pfeil am Zeilenende: Das Panel öffnet sich.</li>
+          <li>Bei offenem Panel mit <kbd>↑</kbd><kbd>↓</kbd> durchgehen, mit <kbd>esc</kbd> schließen.</li>
+        </ol></div>
+        <div class="d-card"><h4>Stark</h4><ul>
+          <li>Kleinster Umbau, alles Gewohnte bleibt.</li>
+          <li>Die Liste bleibt ruhig, nichts springt.</li>
+          <li>Das Notizfeld nutzt die volle Höhe statt sie leer zu lassen.</li>
+        </ul></div>
+        <div class="d-card"><h4>Schwach / offen</h4><ul>
+          <li>Zum Schreiben weiterhin schmal (etwa 340 px).</li>
+          <li>Am Erfassen ändert sich nichts.</li>
+          <li>Bearbeiten im rechten Panel bleibt ein Widerspruch zum Prinzip „Inspector nur Info".</li>
+        </ul></div>
+      </div>
+    </div>
+
+    <div class="v-note" data-note="c">
+      <h3>C · Eine Ideenkarte für alles</h3>
+      <div class="d-grid3">
+        <div class="d-card"><h4>Probier mal</h4><ol>
+          <li>Eine Zeile anklicken: Die Ideenkarte öffnet sich über der Liste.</li>
+          <li>In der Karte mit <kbd>⌘↑</kbd><kbd>⌘↓</kbd> oder den Pfeilen oben rechts blättern.</li>
+          <li>Oben Titel tippen und <kbd>⏎</kbd>: schnell merken. Mit <kbd>⇥</kbd> öffnet sich dieselbe Karte zum Anlegen mit Notiz.</li>
+          <li><kbd>⌘I</kbd> öffnet die Karte zum Anlegen, später von überall in der App.</li>
+        </ol></div>
+        <div class="d-card"><h4>Stark</h4><ul>
+          <li>Ein einziges UI für Anlegen und Bearbeiten, identisch mit ⌘I.</li>
+          <li>Viel Breite zum Schreiben, die Liste bleibt ein ruhiger Überblick.</li>
+          <li>Klein umzusetzen, weil die Karte als QuickCapture schon existiert.</li>
+        </ul></div>
+        <div class="d-card"><h4>Schwach / offen</h4><ul>
+          <li>Die Karte verdeckt die Liste.</li>
+          <li>Wer viele Ideen hintereinander durchgeht, öffnet und schließt ständig, das Blättern mildert das nur ab.</li>
+        </ul></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="d-sec">
+    <h2>Im Vergleich</h2>
+    <p class="d-lede">Breiten bezogen auf ein 1360 px breites Fenster wie im Prototyp.</p>
+    <table class="d-table">
+      <thead><tr><th></th><th>Heute</th><th>A Aufklappen</th><th>B Panel bei Bedarf</th><th>C Ideenkarte</th></tr></thead>
+      <tbody>
+        <tr><td>Breite der Liste</td><td class="bad">336 px weniger</td><td class="good">volle Breite</td><td>voll, außer beim Bearbeiten</td><td class="good">volle Breite</td></tr>
+        <tr><td>Platz für Notizen</td><td class="bad">~296 px, feste Höhe</td><td class="good">~1000 px, wächst mit</td><td>~340 px, volle Höhe</td><td class="good">~620 px, wächst mit</td></tr>
+        <tr><td>Notiz beim Anlegen</td><td>nur über ⌘I</td><td class="good">direkt im Feld (⇥)</td><td>nur über ⌘I</td><td class="good">direkt (⇥ öffnet Karte)</td></tr>
+        <tr><td>Liste bleibt ruhig</td><td class="good">ja</td><td class="bad">springt beim Aufklappen</td><td class="good">ja</td><td class="good">ja, Karte liegt darüber</td></tr>
+        <tr><td>Viele Ideen durchgehen</td><td>↑↓, rechts mitlesen</td><td>↑↓ und ⏎</td><td>↑↓ bei offenem Panel</td><td>⌘↑↓ in der Karte</td></tr>
+        <tr><td>„Inspector nur Info"</td><td class="bad">verletzt</td><td class="good">erfüllt</td><td class="bad">verletzt</td><td class="good">erfüllt</td></tr>
+        <tr><td>Ein UI für Anlegen + Bearbeiten</td><td>nein</td><td class="good">ja, auf der Seite</td><td>nein</td><td class="good">ja, überall inkl. ⌘I</td></tr>
+        <tr><td>Aufwand</td><td>-</td><td>mittel</td><td class="good">klein</td><td>klein bis mittel</td></tr>
+      </tbody>
+    </table>
+  </section>
+  <footer class="d-foot">Prototyp für die Diskussion, kein App-Code. Daten sind Beispiele aus dem Screenshot.</footer>
+</main>
+
+<script>
+(() => {
+  const W = 1360, H = 820;
+  const $ = (s, r = document) => r.querySelector(s);
+  const win = $("#win"), main = $("#main");
+  const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);
+
+  // ---------- icons ----------
+  const P = {
+    plus: '<path d="M8 3v10M3 8h10"/>',
+    search: '<circle cx="7" cy="7" r="4.5"/><path d="M10.5 10.5 14 14"/>',
+    down: '<path d="m4 6 4 4 4-4"/>',
+    up: '<path d="m4 10 4-4 4 4"/>',
+    right: '<path d="m6 4 4 4-4 4"/>',
+    left: '<path d="m10 4-4 4 4 4"/>',
+    x: '<path d="m4 4 8 8M12 4l-8 8"/>',
+    doc: '<path d="M4 2h5l3 3v9H4z"/><path d="M9 2v3h3"/>',
+    trash: '<path d="M3 4h10M6 4V2.5h4V4M4.5 4l.7 9.5h5.6l.7-9.5"/>',
+    text: '<path d="M3 4h10M3 8h10M3 12h6"/>',
+  };
+  const ic = (n, s = 15) => `<svg class="i" viewBox="0 0 16 16" width="${s}" height="${s}">${P[n]}</svg>`;
+  const ST = '<svg class="st" viewBox="0 0 14 14"><circle cx="7" cy="7" r="5.25" fill="none" stroke="currentColor" stroke-width="1.5" stroke-dasharray="2.1 1.9"/></svg>';
+  const stage = (d) => `<svg class="st" viewBox="0 0 14 14"><circle cx="7" cy="7" r="5.25" fill="none" stroke="currentColor" stroke-width="1.5"/>${d ? `<path d="${d}" fill="currentColor"/>` : ""}</svg>`;
+
+  // ---------- data ----------
+  const FOLDERS = {
+    buero: { name: "Büro-Sketche", c: "#e0791f" },
+    ges: { name: "Gesellschaft", c: "#3a8ed4" },
+    brandt: { name: "Kunde Brandt", c: "#c8a400" },
+  };
+  const FOLDER_CYCLE = [null, "buero", "ges", "brandt"];
+  const GROUPS = [["week", "Diese Woche"], ["sep", "September"], ["aug", "August"]];
+  let seq = 0;
+  const mk = (title, notes, folder, age, created, group) => ({ id: "i" + ++seq, title, notes, folder, age, created, group });
+  let ideas = [
+    mk("Urlaub vor 6 Monaten eingetragen und bewilligt", "Jetzt sagt Axel: „Du hättest mich 4 Wochen vorher erinnern müssen.“", "buero", "vor 2 Min.", "3. Okt., 11:42", "week"),
+    mk("Eine Schweigeminute für Opfer-Chefs", "Axel: „Wieso? Gibt es neue Gesetze?“\nTimo: „Ne, sind einfach alles Opfer.“\n\nHook: Timo steht auf, alle anderen auch, keiner weiß warum.", "buero", "vor 15 Std.", "2. Okt., 20:28", "week"),
+    mk("Homeoffice, aber Laptop im Büro vergessen", "Axel ruft an und fragt, wer verantwortlich ist.", "buero", "Gestern", "2. Okt., 09:10", "week"),
+    mk("Gehalt: nicht drüber reden, aber ausschreiben", "Timo liest die Stellenanzeige für seinen eigenen Job.", "ges", "Do", "1. Okt., 18:03", "week"),
+    mk("Wer hat meinen Joghurt gegessen?", "Axel startet eine interne Ermittlung mit Kreuzverhör im Büro.", "buero", "Mi", "30. Sept., 12:31", "week"),
+    mk("Chef will Feedback, aber nur positives", "", "buero", "Di", "29. Sept., 16:47", "week"),
+    mk("Elternabend als Teams-Call", "Axel kriegt das Mikro nicht aus.", "ges", "27. Sept.", "27. Sept., 21:15", "sep"),
+    mk("Influencer-Gewinnspiel, aber rechtssicher", "Für Brandt: 40 Sekunden Teilnahmebedingungen vorlesen.", "brandt", "24. Sept.", "24. Sept., 10:02", "sep"),
+    mk("Azubi fragt, was ein Faxgerät ist", "Axel erklärt es. Zum dritten Mal.", "buero", "21. Sept.", "21. Sept., 14:20", "sep"),
+    mk("Out of Office seit dem Lockdown", "Niemand weiß, ob Herr Krause noch hier arbeitet.", "buero", "17. Sept.", "17. Sept., 08:55", "sep"),
+    mk("Smart Home, aber nix geht", "Timo muss sich bei der Lampe anmelden.", "ges", "14. Sept.", "14. Sept., 19:40", "sep"),
+    mk("Betriebsausflug ins Escape-Room", "Timo ist nach 4 Minuten draußen. Axel bleibt freiwillig drin.", "buero", "9. Sept.", "9. Sept., 13:12", "sep"),
+    mk("Mittagspause im Meeting", "Timo isst, Axel präsentiert. Beide finden das normal.", "buero", "5. Sept.", "5. Sept., 12:05", "sep"),
+    mk("Bio-Supermarkt-Smalltalk", "Axel fragt, ob die Gurke regional ist.", "ges", "26. Aug.", "26. Aug., 17:30", "aug"),
+    mk("Der Drucker hat Gefühle", "", "buero", "19. Aug.", "19. Aug., 15:44", "aug"),
+    mk("Kaffeemaschine kaputt - Krisensitzung im Büro", "", "buero", "12. Aug.", "12. Aug., 09:21", "aug"),
+  ];
+
+  // ---------- state ----------
+  const S = { v: "today", sel: "i2", open: null, panel: false, modal: null, folder: "all", query: "", flash: null, cap: null };
+  const resetCap = () => (S.cap = { open: false, title: "", notes: "", folder: undefined });
+  resetCap();
+  let lastDeleted = null;
+
+  const byId = (id) => ideas.find((i) => i.id === id) || null;
+  const cur = () => byId(S.sel);
+  const firstLine = (s) => s.split("\n")[0];
+  const autoFolder = () => (S.folder !== "all" && S.folder !== "none" ? S.folder : null);
+  const capFolder = () => (S.cap.folder === undefined ? autoFolder() : S.cap.folder);
+  const cycle = (f) => FOLDER_CYCLE[(FOLDER_CYCLE.indexOf(f) + 1) % FOLDER_CYCLE.length];
+  const visibleIdeas = () => {
+    const q = S.query.trim().toLowerCase();
+    return GROUPS.flatMap(([g]) => ideas.filter((i) => i.group === g)).filter(
+      (i) =>
+        (S.folder === "all" || (S.folder === "none" ? !i.folder : i.folder === S.folder)) &&
+        (!q || (i.title + " " + i.notes).toLowerCase().includes(q)),
+    );
+  };
+
+  // ---------- similar ideas (shared word stems) ----------
+  const STOP = new Set("der die das und oder aber ist sind ein eine einen einem einer im in mit für von zu zum zur auf nicht nur hat haben wird wer was wie wieso den dem des als auch noch schon sich sein seine alle alles nix ne gibt beim über will".split(" "));
+  const toks = (s) => s.toLowerCase().replace(/[^a-zäöüß0-9]+/g, " ").split(" ").filter((w) => w.length > 3 && !STOP.has(w));
+  function similar(text, excludeId, n = 2) {
+    const q = toks(text);
+    if (!q.length) return [];
+    return ideas
+      .filter((i) => i.id !== excludeId)
+      .map((i) => {
+        const it = toks(i.title + " " + i.notes);
+        let s = 0;
+        for (const w of q) if (it.some((x) => x === w || x.startsWith(w) || w.startsWith(x))) s++;
+        return { i, s };
+      })
+      .filter((x) => x.s > 0)
+      .sort((a, b) => b.s - a.s)
+      .slice(0, n)
+      .map((x) => x.i);
+  }
+  const simLinks = (list) => list.map((i) => `<button class="simlink" data-act="jump" data-id="${i.id}">${esc(i.title)}</button>`).join('<span>·</span>');
+  const simHTML = (list, empty = "") => (list.length ? `<span>Ähnlich:</span>${simLinks(list)}` : empty);
+
+  // ---------- helpers ----------
+  const folderChip = (f) => `${f ? `<i class="fdot" style="background:${FOLDERS[f].c}"></i>${FOLDERS[f].name}` : "Ohne Ordner"}${ic("down", 11)}`;
+  const folderTag = (f) => (f ? `<i style="background:${FOLDERS[f].c}"></i><span>${FOLDERS[f].name}</span>` : "");
+  function grow(el) {
+    if (!el) return;
+    el.style.height = "auto";
+    el.style.height = el.scrollHeight + 2 + "px";
+  }
+  const growAll = (root) => root && root.querySelectorAll("textarea.grow").forEach(grow);
+  function focusEnd(el) {
+    if (!el) return;
+    el.focus({ preventScroll: true });
+    if (el.setSelectionRange) { const n = el.value.length; el.setSelectionRange(n, n); }
+  }
+  const focusList = () => $("#ilist")?.focus({ preventScroll: true });
+  let toastTimer;
+  function toast(text, undo) {
+    const t = $("#toast");
+    t.innerHTML = `<span>${esc(text)}</span>${undo ? '<button data-act="undo">Rückgängig</button>' : ""}`;
+    t.classList.add("on");
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => t.classList.remove("on"), 2600);
+  }
+  function scrollToSel() {
+    const sc = $("#list");
+    const el = sc && sc.querySelector(`.irow[data-id="${S.sel}"], .ix[data-row="${S.sel}"]`);
+    if (!el) return;
+    const top = el.offsetTop, bottom = top + el.offsetHeight;
+    if (top < sc.scrollTop + 30) sc.scrollTop = top - 30;
+    else if (bottom > sc.scrollTop + sc.clientHeight) sc.scrollTop = bottom - sc.clientHeight + 8;
+  }
+
+  const KEYS = {
+    today: "<kbd>↑</kbd><kbd>↓</kbd> wählen · <kbd>⏎</kbd> bearbeiten · <kbd>⌘⏎</kbd> als Skript anfangen · <kbd>⌫</kbd> löschen",
+    a: "<kbd>↑</kbd><kbd>↓</kbd> wählen · <kbd>⏎</kbd> oder Klick klappt auf · <kbd>esc</kbd> zu · <kbd>⇥</kbd> im Erfassen-Feld: Notiz · <kbd>⌘⏎</kbd> als Skript anfangen · <kbd>⌫</kbd> löschen",
+    b: "<kbd>↑</kbd><kbd>↓</kbd> wählen · <kbd>⏎</kbd> oder Doppelklick öffnet · <kbd>esc</kbd> schließt · <kbd>⌘⏎</kbd> als Skript anfangen · <kbd>⌫</kbd> löschen",
+    c: "<kbd>↑</kbd><kbd>↓</kbd> wählen · <kbd>⏎</kbd> oder Klick öffnet die Karte · <kbd>⌘↑</kbd><kbd>⌘↓</kbd> blättern · <kbd>⇥</kbd> im Erfassen-Feld: Karte · <kbd>⌘I</kbd> von überall",
+  };
+
+  // ---------- sidebar (static apart from the counter) ----------
+  $("#sbx").innerHTML = `${ic("search", 13)}Suchen &amp; Befehle<kbd>⌘K</kbd>`;
+  $("#navAll").innerHTML = `${ic("doc", 14)}Alle Skripte<span class="n">9</span>`;
+  $("#navStages").innerHTML = [
+    [ST, "Ideen", '<span id="sideCount"></span>', true],
+    [stage("M7 7V1.75A5.25 5.25 0 0 1 12.25 7Z"), "Schreiben", 3],
+    [stage("M7 1.75A5.25 5.25 0 0 1 7 12.25Z"), "Drehbereit", 2],
+    [stage("M7 7V1.75A5.25 5.25 0 1 1 1.75 7Z"), "Gedreht", 2],
+    ['<svg class="st" viewBox="0 0 14 14" style="color:var(--ok)"><circle cx="7" cy="7" r="6" fill="currentColor"/></svg>', "Online", 2],
+  ].map(([g, l, n, on]) => `<div class="nav${on ? " on" : ""}">${g}${l}<span class="n">${n}</span></div>`).join("");
+  $("#navFolders").innerHTML = Object.values(FOLDERS).slice(0, 2)
+    .map((f) => `<div class="nav"><i class="fdot" style="background:${f.c};margin:0 3px"></i>${f.name}</div>`).join("");
+
+  // ---------- render ----------
+  function renderAll() {
+    main.innerHTML = `
+      <div class="bar">
+        <div class="hist">${ic("left", 14)}${ic("right", 14)}</div>
+        <div class="crumb"><b>Ideen</b></div><span class="sp"></span>
+        <span class="btn ghost">Neueste zuerst ${ic("down", 12)}</span>
+        <span class="btn ghost">Umgesetzte zeigen</span>
+      </div>
+      <div class="ideas v-${S.v}" id="ideas">
+        <div class="ideas-main">
+          <div class="i-head"><h1>Ideen</h1><span id="counts"></span></div>
+          <div id="cap"></div>
+          <div class="i-chips" id="chips"></div>
+          <div class="ilist-scroll" id="list"></div>
+          <div class="i-keys">${KEYS[S.v]}</div>
+        </div>
+        <aside id="side"></aside>
+      </div>`;
+    renderCounts(); renderCap(); renderChips(); renderList(); renderSide(); renderModal();
+  }
+
+  function renderCounts() {
+    $("#counts").textContent = `${ideas.length} offen · ${ideas.filter((i) => i.group === "week").length} neu diese Woche`;
+    $("#sideCount").textContent = ideas.length;
+  }
+
+  function renderCap() {
+    const c = S.cap, open = S.v === "a" && c.open;
+    let extra = '<kbd>⏎</kbd><span class="cap-hint">⌘I geht von überall</span>';
+    if (S.v === "a") extra = open ? "" : `<kbd>⏎</kbd><button class="cap-more" data-act="capExpand" tabindex="-1">${ic("text", 13)}Notiz <kbd>⇥</kbd></button>`;
+    if (S.v === "c") extra = '<kbd>⏎</kbd><span class="cap-hint"><kbd>⇥</kbd> Karte mit Notiz</span>';
+    $("#cap").innerHTML = `
+      <div class="i-cap">
+        <div class="cap-row"><span class="i-cap-plus">${ic("plus")}</span>
+          <input class="cap-t" value="${esc(c.title)}" placeholder="Was willst du als Nächstes schreiben?" spellcheck="false">${extra}
+        </div>
+        ${open ? `
+          <textarea class="cap-n grow" rows="2" placeholder="Notizen, Hook, erste Dialogzeilen … (optional)">${esc(c.notes)}</textarea>
+          <div class="cap-f">
+            <button class="chip" data-act="capFolder" title="Klick wechselt den Ordner">${folderChip(capFolder())}</button>
+            <span class="sims" id="capSim">${simHTML(similar(c.title))}</span><span class="sp"></span>
+            <button class="btn" data-act="capConvert">Als Skript anfangen <kbd>⌘⏎</kbd></button>
+            <button class="btn primary" data-act="capSave">Merken <kbd>⏎</kbd></button>
+          </div>` : ""}
+      </div>`;
+    growAll($("#cap"));
+  }
+
+  function renderChips() {
+    const n = (f) => ideas.filter((i) => (f === "none" ? !i.folder : i.folder === f)).length;
+    const chips = [["all", "Alle", ideas.length, ""]]
+      .concat(Object.entries(FOLDERS).map(([k, f]) => [k, f.name, n(k), `<i style="background:${f.c}"></i>`]))
+      .concat([["none", "Ohne Ordner", n("none"), ""]])
+      .filter(([k, , count]) => count > 0 || k === "all" || k === S.folder);
+    $("#chips").innerHTML =
+      chips.map(([k, l, count, dot]) => `<button class="fchip${S.folder === k ? " on" : ""}" data-folder="${k}">${dot}${l} <em>${count}</em></button>`).join("") +
+      `<span class="sp"></span><label class="filter">${ic("search", 13)}<input id="filter" placeholder="Filtern" value="${esc(S.query)}" spellcheck="false"><kbd>/</kbd></label>`;
+  }
+
+  const rowHTML = (i) => `
+    <div class="irow${S.sel === i.id ? " is-sel" : ""}${S.flash === i.id ? " is-new" : ""}" data-id="${i.id}">
+      ${ST}<div class="ti">${esc(i.title)}</div><div class="nt">${esc(firstLine(i.notes))}</div>
+      <div class="fo">${folderTag(i.folder)}</div><div class="ag">${i.age}</div>
+      ${S.v === "a" ? `<button class="ropen" data-act="expand" title="Aufklappen (⏎)">${ic("down", 13)}</button>` : ""}
+      ${S.v === "b" ? `<button class="ropen" data-act="open" title="Öffnen (⏎)">${ic("right", 13)}</button>` : ""}
+    </div>`;
+
+  const expandedHTML = (i) => `
+    <div class="ix" data-row="${i.id}">
+      <div class="ix-h">${ST}<input class="f-t ix-t" data-id="${i.id}" value="${esc(i.title)}" placeholder="Titel" spellcheck="false">
+        <span class="ag">${i.age}</span>
+        <button class="ic-btn" data-act="collapse" title="Zuklappen (esc)">${ic("up", 14)}</button>
+      </div>
+      <textarea class="f-n ix-n grow" data-id="${i.id}" placeholder="Notizen, Hook, erste Dialogzeilen …">${esc(i.notes)}</textarea>
+      <div class="ix-f">
+        <button class="chip" data-act="folder" title="Klick wechselt den Ordner">${folderChip(i.folder)}</button>
+        <span class="meta">Erstellt ${i.created}</span>
+        <span class="sims">${simHTML(similar(i.title, i.id))}</span><span class="sp"></span>
+        <button class="btn ghost" data-act="del">Löschen</button>
+        <button class="btn primary" data-act="convert">Als Skript anfangen <kbd>⌘⏎</kbd></button>
+      </div>
+    </div>`;
+
+  function renderList() {
+    const vis = visibleIdeas();
+    let h = "";
+    for (const [g, label] of GROUPS) {
+      const items = vis.filter((i) => i.group === g);
+      if (!items.length) continue;
+      h += `<div class="igrp-h">${ic("down", 11)}${label} <em>${items.length}</em></div>`;
+      for (const i of items) h += S.v === "a" && S.open === i.id ? expandedHTML(i) : rowHTML(i);
+    }
+    $("#list").innerHTML = vis.length
+      ? `<div class="ilist" id="ilist" tabindex="0">${h}</div>`
+      : `<div class="i-empty"><b>Nichts gefunden.</b> Filter oder Ordner zurücksetzen.</div>`;
+    growAll($("#list"));
+  }
+
+  function renderSide() {
+    const side = $("#side"), i = cur();
+    if (S.v === "today") {
+      side.className = "idet";
+      side.innerHTML = i ? inspectorHTML(i) : '<p class="faint" style="margin:auto;text-align:center">Keine Idee ausgewählt</p>';
+    } else if (S.v === "b") {
+      const on = S.panel && !!i;
+      $("#ideas").classList.toggle("has-panel", on);
+      side.className = "pnl";
+      side.innerHTML = on ? panelHTML(i) : "";
+    } else {
+      side.className = "";
+      side.innerHTML = "";
+    }
+    growAll(side);
+  }
+
+  const inspectorHTML = (i) => {
+    const sims = similar(i.title, i.id);
+    return `
+      <div class="idet-top">${ST}Idee · ${i.age}</div>
+      <textarea class="f-t idet-t grow" rows="1" data-id="${i.id}" spellcheck="false">${esc(i.title)}</textarea>
+      <textarea class="f-n idet-n" data-id="${i.id}" placeholder="Notizen, Hook, erste Dialogzeilen …">${esc(i.notes)}</textarea>
+      <div class="idet-meta">
+        <div><span>Ordner</span><button class="chip" data-act="folder">${folderChip(i.folder)}</button></div>
+        <div><span>Erstellt</span><b>${i.created}</b></div>
+      </div>
+      <button class="btn primary wide" data-act="convert">Als Skript anfangen <kbd>⌘⏎</kbd></button>
+      <div><div class="sec-h">Ähnliche Stücke</div>
+        ${sims.length ? sims.map((s) => `<button class="sim-row" data-act="jump" data-id="${s.id}">${ST}<span>${esc(s.title)}</span></button>`).join("") : '<span class="faint">Nichts Ähnliches</span>'}
+      </div>
+      <div class="anno"><div>ungenutzte Höhe<small>bleibt bei fast jeder Idee leer</small></div></div>
+      <div class="idet-foot"><button class="btn ghost" data-act="folder">In Ordner …</button><button class="btn ghost" data-act="del">Löschen</button></div>`;
+  };
+
+  const panelHTML = (i) => `
+    <div class="pnl-h">${ST}<span>Idee · ${i.age}</span><span class="sp"></span>
+      <button class="ic-btn" data-act="closePanel" title="Schließen (esc)">${ic("x", 14)}</button></div>
+    <textarea class="f-t pnl-t grow" rows="1" data-id="${i.id}" spellcheck="false">${esc(i.title)}</textarea>
+    <textarea class="f-n pnl-n" data-id="${i.id}" placeholder="Notizen, Hook, erste Dialogzeilen …">${esc(i.notes)}</textarea>
+    <div class="pnl-meta"><button class="chip" data-act="folder">${folderChip(i.folder)}</button><span>Erstellt ${i.created}</span></div>
+    <div class="pnl-sim">${simHTML(similar(i.title, i.id), '<span>Nichts Ähnliches</span>')}</div>
+    <div class="pnl-f"><button class="btn ghost" data-act="del">${ic("trash", 13)}Löschen</button><span class="sp"></span>
+      <button class="btn primary" data-act="convert">Als Skript anfangen <kbd>⌘⏎</kbd></button></div>`;
+
+  function renderModal() {
+    const m = $("#modal");
+    if (S.v !== "c" || !S.modal) { m.innerHTML = ""; return; }
+    if (S.modal === "new") {
+      m.innerHTML = `
+        <div class="scrim" data-act="closeModal"></div>
+        <div class="card" role="dialog">
+          <div class="card-top">${ST}<span>Neue Idee</span><span class="sp"></span><button data-act="closeModal"><kbd>esc</kbd></button></div>
+          <input class="cap-t card-t" value="${esc(S.cap.title)}" placeholder="Was willst du als Nächstes schreiben?" spellcheck="false">
+          <textarea class="cap-n card-n grow" placeholder="Notizen, Hook, erste Dialogzeilen … (optional)">${esc(S.cap.notes)}</textarea>
+          <div class="sims card-sim" id="capSim">${simHTML(similar(S.cap.title))}</div>
+          <div class="card-f">
+            <button class="chip" data-act="capFolder" title="Klick wechselt den Ordner">${folderChip(capFolder())}</button><span class="sp"></span>
+            <button class="btn" data-act="capConvert">Als Skript anfangen <kbd>⌘⏎</kbd></button>
+            <button class="btn primary" data-act="capSave">Merken <kbd>⏎</kbd></button>
+          </div>
+        </div>`;
+    } else {
+      const i = cur();
+      if (!i) { S.modal = null; m.innerHTML = ""; return; }
+      const vis = visibleIdeas();
+      m.innerHTML = `
+        <div class="scrim" data-act="closeModal"></div>
+        <div class="card" role="dialog">
+          <div class="card-top">${ST}<span>Idee · ${i.age}</span><span class="sp"></span>
+            <span class="pos">${vis.findIndex((x) => x.id === i.id) + 1} / ${vis.length}</span>
+            <button class="ic-btn" data-act="prev" title="Vorherige (⌘↑)">${ic("up", 14)}</button>
+            <button class="ic-btn" data-act="next" title="Nächste (⌘↓)">${ic("down", 14)}</button>
+            <button data-act="closeModal"><kbd>esc</kbd></button>
+          </div>
+          <input class="f-t card-t" data-id="${i.id}" value="${esc(i.title)}" placeholder="Titel" spellcheck="false">
+          <textarea class="f-n card-n grow" data-id="${i.id}" placeholder="Notizen, Hook, erste Dialogzeilen …">${esc(i.notes)}</textarea>
+          <div class="sims card-sim">${simHTML(similar(i.title, i.id), "<span>Nichts Ähnliches</span>")}</div>
+          <div class="card-f">
+            <button class="chip" data-act="folder" title="Klick wechselt den Ordner">${folderChip(i.folder)}</button>
+            <span class="meta">Erstellt ${i.created}</span><span class="sp"></span>
+            <button class="btn ghost" data-act="del">Löschen</button>
+            <button class="btn primary" data-act="convert">Als Skript anfangen <kbd>⌘⏎</kbd></button>
+          </div>
+        </div>`;
+    }
+    growAll(m);
+  }
+
+  // ---------- actions ----------
+  function syncRow(i) {
+    const r = $(`#list .irow[data-id="${i.id}"]`);
+    if (!r) return;
+    r.querySelector(".ti").textContent = i.title;
+    r.querySelector(".nt").textContent = firstLine(i.notes);
+  }
+
+  function saveCap(convertToo) {
+    const title = S.cap.title.trim();
+    if (!title) return;
+    const d = new Date();
+    const idea = { id: "n" + ++seq, title, notes: S.cap.notes.trim(), folder: capFolder(), age: "gerade eben",
+      created: `3. Okt., ${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`, group: "week" };
+    ideas.unshift(idea);
+    S.sel = idea.id;
+    S.flash = idea.id;
+    setTimeout(() => (S.flash = null), 1400);
+    if (S.query) S.query = "";
+    if (!visibleIdeas().some((i) => i.id === idea.id)) S.folder = "all";
+    resetCap();
+    S.modal = null;
+    S.open = null;
+    renderCounts(); renderCap(); renderChips(); renderList(); renderSide(); renderModal();
+    $("#list").scrollTop = 0;
+    toast(convertToo ? `Prototyp: „${title}“ würde jetzt als Skript geöffnet.` : `Gemerkt: „${title}“`);
+    focusEnd($("#cap .cap-t"));
+  }
+
+  function convert() {
+    const i = cur();
+    if (i) toast(`Prototyp: „${i.title}“ würde jetzt als Skript geöffnet.`);
+  }
+
+  function del() {
+    const i = cur();
+    if (!i) return;
+    const vis = visibleIdeas();
+    const idx = vis.findIndex((x) => x.id === i.id);
+    const next = vis[idx + 1] || vis[idx - 1] || null;
+    lastDeleted = { idea: i, at: ideas.indexOf(i) };
+    ideas = ideas.filter((x) => x !== i);
+    S.sel = next ? next.id : null;
+    S.open = null;
+    if (S.modal === "edit" && !next) S.modal = null;
+    renderCounts(); renderChips(); renderList(); renderSide(); renderModal();
+    toast(`Gelöscht: „${i.title}“`, true);
+    if (S.modal) focusEnd($("#modal .f-n")); else focusList();
+  }
+
+  function undo() {
+    if (!lastDeleted) return;
+    ideas.splice(lastDeleted.at, 0, lastDeleted.idea);
+    S.sel = lastDeleted.idea.id;
+    lastDeleted = null;
+    $("#toast").classList.remove("on");
+    renderCounts(); renderChips(); renderList(); renderSide(); renderModal();
+    scrollToSel();
+  }
+
+  function move(delta) {
+    const vis = visibleIdeas();
+    if (!vis.length) return;
+    let idx = vis.findIndex((i) => i.id === S.sel);
+    idx = idx < 0 ? 0 : Math.max(0, Math.min(vis.length - 1, idx + delta));
+    S.sel = vis[idx].id;
+    if (S.v === "a" && S.open) { S.open = null; renderList(); } else updateSel();
+    renderSide();
+    scrollToSel();
+    focusList();
+  }
+
+  function navModal(delta, fieldSel = ".f-n") {
+    const vis = visibleIdeas();
+    const idx = vis.findIndex((i) => i.id === S.sel);
+    const n = vis[Math.max(0, Math.min(vis.length - 1, idx + delta))];
+    if (!n) return;
+    S.sel = n.id;
+    renderList(); renderModal();
+    scrollToSel();
+    focusEnd($("#modal " + fieldSel));
+  }
+
+  function openCurrent() {
+    if (!cur()) return;
+    if (S.v === "today") focusEnd($("#side .f-n"));
+    else if (S.v === "a") { S.open = S.sel; renderList(); scrollToSel(); focusEnd($(".ix .f-n")); }
+    else if (S.v === "b") { S.panel = true; renderSide(); focusEnd($("#side .f-n")); }
+    else { S.modal = "edit"; renderModal(); focusEnd($("#modal .f-n")); }
+  }
+
+  function closeDetail() {
+    if (S.v === "a" && S.open) { S.open = null; renderList(); }
+    else if (S.v === "b" && S.panel) { S.panel = false; renderSide(); }
+    else if (S.v === "c" && S.modal) { closeModal(); return; }
+    focusList();
+  }
+
+  function closeModal() {
+    S.modal = null;
+    renderModal(); renderCap();
+    focusList();
+  }
+
+  function openNewCard(focusNotes) {
+    S.modal = "new";
+    renderModal();
+    focusEnd($("#modal " + (focusNotes ? ".cap-n" : ".cap-t")));
+  }
+
+  function jump(id) {
+    if (!visibleIdeas().some((i) => i.id === id)) { S.query = ""; S.folder = "all"; renderChips(); }
+    S.sel = id;
+    if (S.v === "a") S.open = id;
+    if (S.v === "b") S.panel = true;
+    if (S.v === "c") S.modal = "edit";
+    renderList(); renderSide(); renderModal();
+    scrollToSel();
+  }
+
+  // Selection change without re-rendering the list, so a double click
+  // still lands on the same row element.
+  function updateSel() {
+    document.querySelectorAll("#list .irow[data-id]").forEach((r) => r.classList.toggle("is-sel", r.dataset.id === S.sel));
+  }
+
+  function rowClick(id) {
+    S.sel = id;
+    if (S.v === "a") { S.open = id; renderList(); scrollToSel(); focusEnd($(".ix .f-n")); return; }
+    updateSel();
+    focusList();
+    if (S.v === "c") { S.modal = "edit"; renderModal(); focusEnd($("#modal .f-n")); return; }
+    renderSide();
+  }
+
+  function doAct(name, el) {
+    switch (name) {
+      case "capExpand": S.cap.open = true; renderCap(); focusEnd($("#cap .cap-n")); break;
+      case "capFolder": S.cap.folder = cycle(capFolder()); el.innerHTML = folderChip(S.cap.folder); break;
+      case "capSave": saveCap(false); break;
+      case "capConvert": saveCap(true); break;
+      case "expand": rowClick(el.closest(".irow").dataset.id); break;
+      case "collapse": S.open = null; renderList(); focusList(); break;
+      case "open":
+        S.sel = el.closest(".irow").dataset.id; S.panel = true;
+        renderList(); renderSide(); focusEnd($("#side .f-n")); break;
+      case "closePanel": S.panel = false; renderSide(); focusList(); break;
+      case "closeModal": closeModal(); break;
+      case "folder": {
+        const i = cur(); if (!i) break;
+        i.folder = cycle(i.folder);
+        renderChips(); renderList(); renderSide(); renderModal(); break;
+      }
+      case "convert": convert(); break;
+      case "del": del(); break;
+      case "undo": undo(); break;
+      case "prev": navModal(-1); break;
+      case "next": navModal(1); break;
+      case "jump": jump(el.dataset.id); break;
+    }
+  }
+
+  // ---------- events ----------
+  win.addEventListener("mousedown", (e) => { if (e.target.closest(".irow")) e.preventDefault(); });
+  win.addEventListener("click", (e) => {
+    const act = e.target.closest("[data-act]");
+    if (act) { e.preventDefault(); doAct(act.dataset.act, act); return; }
+    const chip = e.target.closest("[data-folder]");
+    if (chip) { S.folder = chip.dataset.folder; S.open = null; renderChips(); renderList(); return; }
+    const row = e.target.closest(".irow[data-id]");
+    if (row) rowClick(row.dataset.id);
+  });
+  win.addEventListener("dblclick", (e) => {
+    const row = e.target.closest(".irow[data-id]");
+    if (!row) return;
+    if (S.v === "b") { S.sel = row.dataset.id; S.panel = true; updateSel(); renderSide(); focusEnd($("#side .f-n")); }
+    else if (S.v === "today") focusEnd($("#side .f-n"));
+  });
+  win.addEventListener("input", (e) => {
+    const t = e.target;
+    if (t.id === "filter") { S.query = t.value; S.open = null; renderList(); return; }
+    if (t.matches(".cap-t")) { S.cap.title = t.value; const s = $("#capSim"); if (s) s.innerHTML = simHTML(similar(t.value)); return; }
+    if (t.matches(".cap-n")) { S.cap.notes = t.value; grow(t); return; }
+    if (t.matches(".f-t, .f-n")) {
+      const i = byId(t.dataset.id);
+      if (!i) return;
+      if (t.matches(".f-t")) i.title = t.value.replace(/\n/g, " ");
+      else i.notes = t.value;
+      if (t.classList.contains("grow")) grow(t);
+      syncRow(i);
+    }
+  });
+
+  document.addEventListener("keydown", (e) => {
+    const t = e.target, mod = e.metaKey || e.ctrlKey, k = e.key;
+    const inWin = win.contains(t);
+    if (!inWin && t !== document.body) return;
+    const field = t.matches && t.matches("input, textarea");
+
+    if (mod && k.toLowerCase() === "i") {
+      e.preventDefault();
+      if (S.v === "c") openNewCard(false);
+      else { $("#list").scrollTop = 0; focusEnd($("#cap .cap-t")); }
+      return;
+    }
+    if (!field && !mod && /^[1-4]$/.test(k)) { setVariant(ORDER[+k - 1]); return; }
+    if (!inWin) return;
+
+    if (t.id === "filter") {
+      if (k === "Escape") { e.preventDefault(); if (S.query) { S.query = ""; t.value = ""; renderList(); } else t.blur(); }
+      else if (k === "Enter" || k === "ArrowDown") { e.preventDefault(); focusList(); }
+      return;
+    }
+    if (t.matches(".cap-t")) {
+      if (k === "Enter" && !e.shiftKey) { e.preventDefault(); saveCap(mod); return; }
+      if (S.v === "a" && ((k === "Tab" && !e.shiftKey) || (k === "Enter" && e.shiftKey))) {
+        e.preventDefault(); S.cap.open = true; renderCap(); focusEnd($("#cap .cap-n")); return;
+      }
+      if (S.v === "c" && k === "Tab" && !e.shiftKey && !S.modal) { e.preventDefault(); openNewCard(true); return; }
+      if (k === "Escape") {
+        e.preventDefault();
+        if (S.modal === "new") { closeModal(); return; }
+        if (S.v === "a" && S.cap.open) { S.cap.open = false; renderCap(); focusEnd($("#cap .cap-t")); return; }
+        S.cap.title = ""; t.value = ""; t.blur();
+      }
+      return;
+    }
+    if (t.matches(".cap-n")) {
+      if (mod && k === "Enter") { e.preventDefault(); saveCap(true); return; }
+      if (k === "Escape") {
+        e.preventDefault();
+        if (S.modal === "new") { closeModal(); return; }
+        S.cap.open = false; renderCap(); focusEnd($("#cap .cap-t"));
+      }
+      return;
+    }
+    if (t.matches(".f-t, .f-n")) {
+      if (k === "Escape") { e.preventDefault(); t.blur(); closeDetail(); return; }
+      if (mod && k === "Enter") { e.preventDefault(); convert(); return; }
+      if (S.v === "c" && mod && (k === "ArrowUp" || k === "ArrowDown")) {
+        e.preventDefault(); navModal(k === "ArrowDown" ? 1 : -1, t.matches(".f-t") ? ".f-t" : ".f-n"); return;
+      }
+      if (t.matches(".f-t") && k === "Enter") {
+        e.preventDefault();
+        focusEnd((t.closest(".ix") || t.closest(".card") || $("#side")).querySelector(".f-n"));
+      }
+      return;
+    }
+    if (field) return;
+
+    // List / general keys.
+    if (k === "ArrowDown" || k === "ArrowUp") {
+      e.preventDefault();
+      const d = k === "ArrowDown" ? 1 : -1;
+      if (S.v === "c" && S.modal === "edit") navModal(d); else move(d);
+      return;
+    }
+    if (k === "Enter" && mod) { e.preventDefault(); convert(); return; }
+    if (k === "Enter") { if (t.tagName === "BUTTON") return; e.preventDefault(); openCurrent(); return; }
+    if (k === "Escape") { e.preventDefault(); closeDetail(); return; }
+    if (k === "Backspace" || k === "Delete") { e.preventDefault(); del(); return; }
+    if (k === "/") { e.preventDefault(); $("#filter")?.focus({ preventScroll: true }); }
+  });
+
+  // ---------- variants ----------
+  const ORDER = ["today", "a", "b", "c"];
+  function setVariant(v) {
+    S.v = v; S.open = null; S.panel = false; S.modal = null;
+    resetCap();
+    renderAll();
+    document.querySelectorAll("#tabs button").forEach((b) => b.setAttribute("aria-selected", String(b.dataset.v === v)));
+    document.querySelectorAll(".v-note").forEach((n) => n.classList.toggle("on", n.dataset.note === v));
+    scrollToSel();
+  }
+  document.querySelectorAll("#tabs button").forEach((b) => b.addEventListener("click", () => setVariant(b.dataset.v)));
+
+  // ---------- fit-to-width scaling ----------
+  function fit() {
+    const vp = $(".c-viewport");
+    const scale = Math.min(1, vp.clientWidth / W);
+    win.style.transform = `scale(${scale})`;
+    vp.style.height = `${H * scale}px`;
+  }
+  window.addEventListener("resize", fit);
+  fit();
+  setVariant("today");
+})();
+</script>
+</body>
+</html>

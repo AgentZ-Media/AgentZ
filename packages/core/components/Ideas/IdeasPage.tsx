@@ -1,6 +1,7 @@
 import {
   For,
   Show,
+  batch,
   createEffect,
   createMemo,
   createResource,
@@ -9,6 +10,7 @@ import {
   on,
   onMount,
   untrack,
+  type Accessor,
 } from "solid-js";
 import { api } from "../../lib/api";
 import { foldersBus } from "../../lib/foldersBus";
@@ -41,9 +43,10 @@ import {
   type IdeaGroup,
   type IdeaSort,
 } from "./ideaGroups";
+import { similarIdeas } from "./similar";
 import { FolderMenu } from "./parts/FolderMenu";
 import { SortMenu } from "./parts/SortMenu";
-import { IdeaDetail, type IdeaDetailHandle } from "./parts/IdeaDetail";
+import { IdeaEditor, type IdeaEditorHandle } from "./parts/IdeaEditor";
 import "./IdeasPage.css";
 
 /** Rows rendered per page across all open groups; "Weitere laden" adds
@@ -64,8 +67,9 @@ function isEditable(el: EventTarget | null): boolean {
   return el.isContentEditable || el.tagName === "INPUT" || el.tagName === "TEXTAREA" || el.tagName === "SELECT";
 }
 
-/** The ideas page (route `{ kind: "ideas", folderId? }`): capture field,
- *  folder chips, dense time-grouped list and the detail panel. */
+/** The ideas page (route `{ kind: "ideas", folderId? }`): capture field
+ *  (expands for notes + folder), folder chips and a dense time-grouped
+ *  list whose rows open in place into an editor (IdeaEditor). */
 export function IdeasPage() {
   const ideas = () => ideasStore.ideas() ?? [];
   const [folders] = createResource(() => foldersBus.version(), () => api.listFolders(), {
@@ -156,15 +160,23 @@ export function IdeasPage() {
     return ids;
   });
 
+  const groupById = createMemo(() => new Map(groups().map((g) => [g.id, g])));
+  const ideaById = createMemo(() => new Map(ideas().map((i) => [i.id, i])));
+
   // ---- selection ----
   const [selected, setSelected] = createSignal<Set<string>>(new Set());
   const [primary, setPrimary] = createSignal<string | null>(null);
   const [anchor, setAnchor] = createSignal<string | null>(null);
   const [wanted, setWanted] = createSignal<string | null>(null);
+  /** Open the wanted idea's row once it is selected. */
+  const [wantedOpen, setWantedOpen] = createSignal(false);
+  /** The row shown expanded as an editor (always the primary selection). */
+  const [openId, setOpenId] = createSignal<string | null>(null);
   const [handoffOpen, setHandoffOpen] = createSignal(false);
-  let detail: IdeaDetailHandle | null = null;
+  let editor: IdeaEditorHandle | null = null;
   let listRef: HTMLDivElement | undefined;
   let captureRef: HTMLInputElement | undefined;
+  let captureNotesRef: HTMLTextAreaElement | undefined;
   let filterRef: HTMLInputElement | undefined;
 
   const primaryIdea = () => {
@@ -189,8 +201,14 @@ export function IdeasPage() {
     const want = wanted();
     if (want) {
       if (ids.includes(want)) {
-        setWanted(null);
-        selectOnly(want, true);
+        const openIt = wantedOpen();
+        batch(() => {
+          setWanted(null);
+          setWantedOpen(false);
+          selectOnly(want, true);
+          if (openIt) setOpenId(want);
+        });
+        if (openIt) focusEditor();
         return;
       }
       const g = groups().find((gr) => gr.items.some((i) => i.id === want));
@@ -214,8 +232,11 @@ export function IdeasPage() {
         }
         return;
       }
-      if (ideas().some((i) => i.id === want)) setWanted(null); // hidden by a filter
-      else return; // not loaded yet
+      if (ideas().some((i) => i.id === want)) {
+        // Hidden by a filter.
+        setWanted(null);
+        setWantedOpen(false);
+      } else return; // not loaded yet
     }
     const p = primary();
     if (p && ids.includes(p)) {
@@ -228,6 +249,38 @@ export function IdeasPage() {
     }
     selectOnly(ids[0] ?? null);
   });
+
+  // Only the primary row of a single selection stays open: moving the
+  // selection, multi-selecting, filtering it away or deleting it closes it.
+  createEffect(() => {
+    const id = openId();
+    if (!id) return;
+    if (primary() !== id || selected().size > 1 || !visibleIds().includes(id)) setOpenId(null);
+  });
+
+  /** Focuses the open editor's notes (read-only for used ideas: the list
+   *  keeps focus). */
+  function focusEditor() {
+    const idea = openId() ? ideas().find((i) => i.id === openId()) : undefined;
+    queueMicrotask(() => {
+      if (idea && !idea.used_at) editor?.focusNotes();
+      else listRef?.focus({ preventScroll: true });
+    });
+  }
+
+  function openRow(id: string) {
+    batch(() => {
+      selectOnly(id, true);
+      setOpenId(id);
+    });
+    focusEditor();
+  }
+
+  function closeRow() {
+    void editor?.flush();
+    setOpenId(null);
+    listRef?.focus({ preventScroll: true });
+  }
 
   function onRowClick(e: MouseEvent, id: string) {
     listRef?.focus({ preventScroll: true });
@@ -256,7 +309,7 @@ export function IdeasPage() {
       setAnchor(id);
       return;
     }
-    selectOnly(id);
+    openRow(id);
   }
 
   function move(delta: number) {
@@ -271,31 +324,80 @@ export function IdeasPage() {
   const errorToast = (err: unknown) =>
     pushToast(t("common.errorPrefix", { message: (err as Error)?.message ?? String(err) }), "error");
 
-  // ---- actions ----
-  async function capture(text: string, startScript: boolean) {
-    const title = text.trim();
-    if (!title) return;
+  // ---- capture field ----
+  const [capTitle, setCapTitle] = createSignal("");
+  const [capNotes, setCapNotes] = createSignal("");
+  const [capOpen, setCapOpen] = createSignal(false);
+  /** Explicitly picked folder; undefined follows the folder filter. */
+  const [capFolder, setCapFolder] = createSignal<string | null | undefined>(undefined);
+  const [capBusy, setCapBusy] = createSignal(false);
+  const capFolderValue = () => {
+    const picked = capFolder();
+    if (picked !== undefined) return picked;
     const fid = activeFolder();
+    return fid === INBOX_FOLDER_ID ? null : fid;
+  };
+  /** Existing ideas resembling the title being typed (duplicate check). */
+  const capSimilar = createMemo(() =>
+    capOpen() ? similarIdeas({ id: "", title: capTitle() }, ideas(), 2) : [],
+  );
+
+  function growCaptureNotes() {
+    const el = captureNotesRef;
+    if (!el) return;
+    el.style.height = "auto";
+    // scrollHeight excludes the border; add it back so no scrollbar shows.
+    el.style.height = `${el.scrollHeight + el.offsetHeight - el.clientHeight}px`;
+  }
+
+  function expandCapture() {
+    setCapOpen(true);
+    queueMicrotask(() => {
+      growCaptureNotes();
+      captureNotesRef?.focus({ preventScroll: true });
+    });
+  }
+
+  function collapseCapture() {
+    setCapOpen(false);
+    captureRef?.focus({ preventScroll: true });
+  }
+
+  // ---- actions ----
+  async function capture(startScript: boolean) {
+    const title = capTitle().trim();
+    if (!title || capBusy()) return;
+    setCapBusy(true);
     try {
       const idea = await ideasStore.createIdea({
         title,
-        folderId: fid === INBOX_FOLDER_ID ? null : fid,
+        notes: capNotes().trim(),
+        folderId: capFolderValue(),
       });
-      if (captureRef) captureRef.value = "";
+      batch(() => {
+        setCapTitle("");
+        setCapNotes("");
+        setCapFolder(undefined);
+        setCapOpen(false);
+      });
       if (startScript) {
         await convert(idea);
         return;
       }
+      // Focus stays in the field for the next idea.
+      captureRef?.focus({ preventScroll: true });
       setQuery("");
       setWanted(idea.id);
     } catch (err) {
       errorToast(err);
+    } finally {
+      setCapBusy(false);
     }
   }
 
   async function convert(idea: Idea) {
     if (idea.used_at) return;
-    await detail?.flush();
+    await editor?.flush();
     try {
       const { script } = await ideasStore.convertIdeaToScript({
         ideaId: idea.id,
@@ -355,10 +457,12 @@ export function IdeasPage() {
     return visible().filter((i) => sel.has(i.id));
   };
 
-  /** Selects `id` and scrolls it into view, first clearing whatever hides
-   *  it: the text filter, "show used", the folder chip. Collapsed groups and
-   *  the month cap are opened by the selection effect above. */
+  /** Selects `id` (and opens its row) and scrolls it into view, first
+   *  clearing whatever hides it: the text filter, "show used", the folder
+   *  chip. Collapsed groups and the page limit are handled by the selection
+   *  effect above. */
   function revealIdea(id: string) {
+    setWantedOpen(true);
     const idea = ideas().find((i) => i.id === id);
     if (idea) {
       if (scopeIdeas([idea], { query: query(), showUsed: true }).length === 0) setQuery("");
@@ -387,10 +491,10 @@ export function IdeasPage() {
     // Legacy modals (confirm) and open menus handle their own keys.
     if (target?.closest?.(".modal-backdrop, .scrim, .menu") || document.querySelector(".modal-backdrop")) return;
     const editable = isEditable(target);
-    const inDetail = !!target?.closest?.(".idet");
+    const inEditor = !!target?.closest?.(".ix");
 
     if (e.key === "Enter" && isModKey(e)) {
-      if (editable && !inDetail) return; // capture / filter fields handle it
+      if (editable && !inEditor) return; // capture / filter fields handle it
       const idea = primaryIdea();
       if (idea) {
         e.preventDefault();
@@ -405,21 +509,23 @@ export function IdeasPage() {
       return;
     }
     if (e.key === "ArrowDown" || e.key === "ArrowUp") {
-      if (target instanceof HTMLButtonElement && target.closest(".idet, .i-chips, .ideas-bar")) return;
+      if (target instanceof HTMLButtonElement && target.closest(".ix, .i-cap, .i-chips")) return;
       e.preventDefault();
       move(e.key === "ArrowDown" ? 1 : -1);
       return;
     }
     if (e.key === "Enter" && !e.metaKey && !e.ctrlKey && !e.altKey) {
       if (target instanceof HTMLButtonElement || target instanceof HTMLAnchorElement) return;
-      if (primaryIdea() && !primaryIdea()!.used_at) {
+      const idea = primaryIdea();
+      if (idea && selected().size === 1) {
         e.preventDefault();
-        detail?.focusNotes();
+        if (openId() === idea.id) focusEditor();
+        else openRow(idea.id);
       }
       return;
     }
     if ((e.key === "Backspace" || e.key === "Delete") && !e.metaKey && !e.ctrlKey) {
-      if (target instanceof HTMLButtonElement && !target.closest(".ilist")) return;
+      if (target instanceof HTMLButtonElement && (!target.closest(".ilist") || target.closest(".ix"))) return;
       const list = selected().size > 1 ? selectedIdeas() : primaryIdea() ? [primaryIdea()!] : [];
       if (list.length > 0) {
         e.preventDefault();
@@ -427,15 +533,81 @@ export function IdeasPage() {
       }
       return;
     }
-    if (e.key === "Escape" && selected().size > 1) {
-      e.preventDefault();
-      selectOnly(primary());
+    if (e.key === "Escape") {
+      if (openId()) {
+        e.preventDefault();
+        closeRow();
+      } else if (selected().size > 1) {
+        e.preventDefault();
+        selectOnly(primary());
+      }
     }
   };
   onMount(() => {
     document.addEventListener("keydown", onKey);
     onCleanup(() => document.removeEventListener("keydown", onKey));
   });
+
+  /** A collapsed list row; a click opens it in place. */
+  const ideaRow = (idea: Accessor<Idea>) => (
+    <div
+      id={`idea-row-${idea().id}`}
+      class="irow"
+      classList={{
+        "is-sel": selected().has(idea().id),
+        "is-primary": primary() === idea().id,
+        "is-used": !!idea().used_at,
+      }}
+      role="option"
+      aria-selected={selected().has(idea().id)}
+      onMouseDown={(e) => {
+        if (e.shiftKey) e.preventDefault();
+      }}
+      onClick={(e) => onRowClick(e, idea().id)}
+    >
+      <Show when={idea().used_at} fallback={<StageGlyph stage="idea" />}>
+        <Icon name="check" size={14} />
+      </Show>
+      <div class="ti">{idea().title}</div>
+      <div class="nt">
+        <Show when={idea().used_at} fallback={idea().notes.split("\n")[0]}>
+          <Show
+            when={idea().script_id ? scripts().get(idea().script_id!) : undefined}
+            fallback={<span class="stale">{t("ideas.card.linked.stale")}</span>}
+          >
+            {(s) => (
+              <button
+                type="button"
+                class="ilink"
+                title={t("ideas.card.linked.title")}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  navStore.openScript(s().id, s().title);
+                }}
+              >
+                <Icon name="doc" size={12} />
+                {s().title || t("common.untitled")}
+              </button>
+            )}
+          </Show>
+        </Show>
+      </div>
+      <div class="fo">
+        <Show when={idea().folder_id}>
+          {(fid) => (
+            <>
+              <i style={{ background: folderColor(fid()) }} />
+              <span>{folderName(fid())}</span>
+            </>
+          )}
+        </Show>
+      </div>
+      <div class="ag">{ideaAge(idea().created_at, now())}</div>
+      <span class="irow-chev" aria-hidden="true">
+        <Icon name="down" size={13} />
+      </span>
+    </div>
+  );
 
   const sortOptions = () => [
     { id: "newest" as IdeaSort, label: t("ideasPage.sort.newest") },
@@ -474,30 +646,128 @@ export function IdeasPage() {
             <span>{t("ideasPage.head.counts", { open: openCount(), fresh: freshCount() })}</span>
           </div>
 
-          <label class="i-cap">
-            <span class="i-cap-plus" aria-hidden="true">
-              <Icon name="plus" />
-            </span>
-            <input
-              ref={captureRef}
-              class="i-cap-input"
-              placeholder={t("ideasPage.capture.placeholder")}
-              aria-label={t("ideasPage.capture.aria")}
-              spellcheck={false}
-              onKeyDown={(e) => {
-                if (e.key === "Enter") {
-                  e.preventDefault();
-                  void capture(e.currentTarget.value, isModKey(e));
-                } else if (e.key === "Escape") {
-                  e.preventDefault();
-                  e.currentTarget.value = "";
-                  e.currentTarget.blur();
-                }
-              }}
-            />
-            <kbd>⏎</kbd>
-            <span class="i-cap-hint">{t("ideasPage.capture.hint", { key: K("Mod+I") })}</span>
-          </label>
+          <div class="i-cap" classList={{ "is-open": capOpen() }}>
+            <label class="i-cap-row">
+              <span class="i-cap-plus" aria-hidden="true">
+                <Icon name="plus" />
+              </span>
+              <input
+                ref={captureRef}
+                class="i-cap-input"
+                value={capTitle()}
+                placeholder={t("ideasPage.capture.placeholder")}
+                aria-label={t("ideasPage.capture.aria")}
+                spellcheck={false}
+                onInput={(e) => setCapTitle(e.currentTarget.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && !e.shiftKey) {
+                    e.preventDefault();
+                    void capture(isModKey(e));
+                  } else if (
+                    !capOpen() &&
+                    ((e.key === "Tab" && !e.shiftKey && !e.altKey && !isModKey(e)) || (e.key === "Enter" && e.shiftKey))
+                  ) {
+                    e.preventDefault();
+                    expandCapture();
+                  } else if (e.key === "Escape") {
+                    e.preventDefault();
+                    if (capOpen()) {
+                      setCapOpen(false);
+                    } else {
+                      setCapTitle("");
+                      e.currentTarget.blur();
+                    }
+                  }
+                }}
+              />
+              <Show when={!capOpen()}>
+                <kbd>⏎</kbd>
+                <button
+                  type="button"
+                  class="btn ghost sm"
+                  tabindex="-1"
+                  title={t("ideasPage.capture.addNoteTitle")}
+                  onClick={expandCapture}
+                >
+                  <Icon name="pen" size={13} />
+                  {t("ideasPage.capture.addNote")}
+                  <kbd>⇥</kbd>
+                </button>
+              </Show>
+              <span class="i-cap-hint">{t("ideasPage.capture.hint", { key: K("Mod+I") })}</span>
+            </label>
+            <Show when={capOpen()}>
+              <textarea
+                ref={captureNotesRef}
+                class="i-cap-notes"
+                rows={2}
+                value={capNotes()}
+                placeholder={t("ideasPage.detail.notesPlaceholder")}
+                aria-label={t("ideasPage.capture.notesAria")}
+                onInput={(e) => {
+                  setCapNotes(e.currentTarget.value);
+                  growCaptureNotes();
+                }}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && isModKey(e)) {
+                    e.preventDefault();
+                    void capture(true);
+                  } else if (e.key === "Escape") {
+                    e.preventDefault();
+                    collapseCapture();
+                  }
+                }}
+              />
+              <div class="i-cap-foot">
+                <FolderMenu
+                  folders={folders() ?? []}
+                  value={capFolderValue()}
+                  onChange={setCapFolder}
+                  ariaLabel={t("ideasPage.capture.folderAria")}
+                />
+                <Show when={capSimilar().length > 0}>
+                  <div class="i-sim">
+                    <span>{t("ideasPage.detail.similar")}</span>
+                    <For each={capSimilar()}>
+                      {(other) => (
+                        <button
+                          type="button"
+                          class="i-sim-it"
+                          title={`${other.title} · ${t("stage.idea")}`}
+                          onClick={() => revealIdea(other.id)}
+                        >
+                          <Show when={other.used} fallback={<StageGlyph stage="idea" />}>
+                            <Icon name="check" size={14} />
+                          </Show>
+                          <span>{other.title}</span>
+                        </button>
+                      )}
+                    </For>
+                  </div>
+                </Show>
+                <div class="i-cap-act">
+                  <button
+                    type="button"
+                    class="btn"
+                    disabled={capBusy() || !capTitle().trim()}
+                    onClick={() => void capture(true)}
+                  >
+                    {t("ideasPage.detail.convert")}
+                    <kbd>{K("Mod+Enter")}</kbd>
+                  </button>
+                  <button
+                    type="button"
+                    class="btn primary"
+                    disabled={capBusy() || !capTitle().trim()}
+                    onClick={() => void capture(false)}
+                  >
+                    {t("capture.remember")}
+                    <kbd>⏎</kbd>
+                  </button>
+                </div>
+              </div>
+            </Show>
+          </div>
 
           <div class="i-chips" role="group" aria-label={t("ideasPage.chips.aria")}>
             <button
@@ -628,87 +898,71 @@ export function IdeasPage() {
                 role="listbox"
                 aria-multiselectable="true"
                 aria-label={t("ideasPage.list.aria")}
-                aria-activedescendant={primary() ? `idea-row-${primary()}` : undefined}
+                aria-activedescendant={primary() && primary() !== openId() ? `idea-row-${primary()}` : undefined}
                 tabindex="0"
               >
-                <For each={paging().rendered}>
-                  {(g) => (
-                    <>
-                      <button
-                        type="button"
-                        class="igrp-h"
-                        classList={{ closed: !isOpen(g) }}
-                        aria-expanded={isOpen(g)}
-                        onClick={() => setGroupOpen({ ...groupOpen(), [g.id]: !isOpen(g) })}
-                      >
-                        <Icon name={isOpen(g) ? "down" : "right"} size={11} />
-                        {groupLabel(g, new Date(now()))} <em>{g.items.length}</em>
-                      </button>
-                      <Show when={isOpen(g)}>
-                        <For each={shownItems(g)}>
-                          {(idea) => (
-                            <div
-                              id={`idea-row-${idea.id}`}
-                              class="irow"
-                              classList={{
-                                "is-sel": selected().has(idea.id),
-                                "is-primary": primary() === idea.id,
-                                "is-used": !!idea.used_at,
-                              }}
-                              role="option"
-                              aria-selected={selected().has(idea.id)}
-                              onMouseDown={(e) => {
-                                if (e.shiftKey) e.preventDefault();
-                              }}
-                              onClick={(e) => onRowClick(e, idea.id)}
-                              onDblClick={() => {
-                                selectOnly(idea.id);
-                                queueMicrotask(() => detail?.focusNotes());
-                              }}
-                            >
-                              <Show when={idea.used_at} fallback={<StageGlyph stage="idea" />}>
-                                <Icon name="check" size={14} />
-                              </Show>
-                              <div class="ti">{idea.title}</div>
-                              <div class="nt">
-                                <Show when={idea.used_at} fallback={idea.notes.split("\n")[0]}>
-                                  <Show
-                                    when={idea.script_id ? scripts().get(idea.script_id) : undefined}
-                                    fallback={<span class="stale">{t("ideas.card.linked.stale")}</span>}
-                                  >
-                                    {(s) => (
-                                      <button
-                                        type="button"
-                                        class="ilink"
-                                        title={t("ideas.card.linked.title")}
-                                        onClick={(e) => {
-                                          e.stopPropagation();
-                                          navStore.openScript(s().id, s().title);
+                {/* Keyed by id, not by object: every store refresh (e.g. after an
+                    autosave) brings new objects, and remounting would tear down
+                    the open editor mid-typing. */}
+                <For each={paging().rendered.map((g) => g.id)}>
+                  {(gid) => (
+                    <Show when={groupById().get(gid)}>
+                      {(g) => (
+                        <>
+                          <button
+                            type="button"
+                            class="igrp-h"
+                            classList={{ closed: !isOpen(g()) }}
+                            aria-expanded={isOpen(g())}
+                            onClick={() => setGroupOpen({ ...groupOpen(), [gid]: !isOpen(g()) })}
+                          >
+                            <Icon name={isOpen(g()) ? "down" : "right"} size={11} />
+                            {groupLabel(g(), new Date(now()))} <em>{g().items.length}</em>
+                          </button>
+                          <Show when={isOpen(g())}>
+                            <For each={shownItems(g()).map((i) => i.id)}>
+                              {(id) => (
+                                <Show when={ideaById().get(id)}>
+                                  {(idea) => (
+                                    <Show when={openId() === id} fallback={ideaRow(idea)}>
+                                      <div
+                                        id={`idea-row-${id}`}
+                                        class="ix"
+                                        classList={{
+                                          "is-sel": selected().has(id),
+                                          "is-primary": primary() === id,
+                                          "is-used": !!idea().used_at,
                                         }}
+                                        role="group"
+                                        aria-label={idea().title}
                                       >
-                                        <Icon name="doc" size={12} />
-                                        {s().title || t("common.untitled")}
-                                      </button>
-                                    )}
-                                  </Show>
-                                </Show>
-                              </div>
-                              <div class="fo">
-                                <Show when={idea.folder_id}>
-                                  {(fid) => (
-                                    <>
-                                      <i style={{ background: folderColor(fid()) }} />
-                                      <span>{folderName(fid())}</span>
-                                    </>
+                                        <IdeaEditor
+                                          ideaId={id}
+                                          ideas={ideas()}
+                                          folders={folders() ?? []}
+                                          scripts={scripts()}
+                                          now={now()}
+                                          onReady={(h) => (editor = h)}
+                                          onDispose={(h) => {
+                                            if (editor === h) editor = null;
+                                          }}
+                                          onConvert={(i) => void convert(i)}
+                                          onDelete={(i) => void removeIdeas([i])}
+                                          onMove={(i, fid) => void moveIdeas([i], fid)}
+                                          onOpenScript={(sid, title) => navStore.openScript(sid, title)}
+                                          onSelectIdea={revealIdea}
+                                          onCollapse={closeRow}
+                                        />
+                                      </div>
+                                    </Show>
                                   )}
                                 </Show>
-                              </div>
-                              <div class="ag">{ideaAge(idea.created_at, now())}</div>
-                            </div>
-                          )}
-                        </For>
-                      </Show>
-                    </>
+                              )}
+                            </For>
+                          </Show>
+                        </>
+                      )}
+                    </Show>
                   )}
                 </For>
                 <Show when={paging().remaining > 0}>
@@ -723,40 +977,14 @@ export function IdeasPage() {
 
           <div class="i-keys">
             {keyHint("↑ ↓", t("ideasPage.keys.select"))} ·{" "}
-            {keyHint("⏎", t("ideasPage.keys.edit"))} ·{" "}
+            {keyHint("⏎", t("ideasPage.keys.open"))} ·{" "}
+            {keyHint("esc", t("ideasPage.keys.close"))} ·{" "}
             {keyHint(K("Mod+Enter"), t("ideasPage.keys.convert"))} ·{" "}
             {keyHint("⌫", t("ideasPage.keys.delete"))} ·{" "}
             <kbd>{K("Shift")}</kbd>
             {t("ideasPage.keys.multi")}
           </div>
         </div>
-
-        <aside class="idet" aria-label={t("ideasPage.detail.aria")}>
-          <Show
-            when={primary() && primaryIdea()}
-            fallback={<p class="idet-empty">{t("ideasPage.detail.empty")}</p>}
-          >
-            {/* Keyed by id: a different idea remounts the panel (fresh drafts). */}
-            <For each={[primary()!]}>
-              {(id) => (
-                <IdeaDetail
-                  ideaId={id}
-                  ideas={ideas()}
-                  folders={folders() ?? []}
-                  scripts={scripts()}
-                  now={now()}
-                  onReady={(h) => (detail = h)}
-                  onConvert={(idea) => void convert(idea)}
-                  onDelete={(idea) => void removeIdeas([idea])}
-                  onMove={(idea, fid) => void moveIdeas([idea], fid)}
-                  onOpenScript={(sid, title) => navStore.openScript(sid, title)}
-                  onSelectIdea={revealIdea}
-                  onLeave={() => listRef?.focus()}
-                />
-              )}
-            </For>
-          </Show>
-        </aside>
       </div>
 
       <HandoffDialog

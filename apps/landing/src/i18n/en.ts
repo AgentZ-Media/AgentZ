@@ -182,7 +182,7 @@ export const en: Record<keyof typeof de, string> = {
   "shot.tab.ideas": "Ideas",
   "shot.tab.editor": "Editor",
   "shot.alt.overview": "ScriptZ overview: sidebar with pipeline, scripts grouped by stage",
-  "shot.alt.ideas": "ScriptZ ideas page with folder chips and detail panel",
+  "shot.alt.ideas": "ScriptZ ideas page with folder chips and an expanded idea",
   "shot.alt.editor": "ScriptZ editor with character colors, inspector and timeline",
 
   "jump.label.long": "Up next:",
@@ -309,6 +309,7 @@ export const en: Record<keyof typeof de, string> = {
   "ideas.meta": "{open} open · {fresh} new this week",
   "ideas.input.placeholder": "What do you want to write next?",
   "ideas.input.hint": "⌘I works from anywhere",
+  "ideas.input.note": "Note",
   "ideas.filter.placeholder": "Filter",
   "ideas.chip.all": "All",
   "ideas.chip.none": "No folder",
@@ -318,17 +319,15 @@ export const en: Record<keyof typeof de, string> = {
   "ideas.group.week": "This week",
   "ideas.group.older": "Older",
   "ideas.detail.top": "Idea · 2h ago",
-  "ideas.detail.folder": "Folder",
   "ideas.detail.created": "Created",
   "ideas.detail.createdValue": "today, 6:14 AM",
-  "ideas.detail.move": "Move to folder …",
   "ideas.detail.delete": "Delete",
   "ideas.keys.select": "select",
-  "ideas.keys.edit": "edit",
+  "ideas.keys.open": "expand",
   "ideas.keys.start": "start as script",
   "ideas.detail.start": "Start as script",
   "ideas.hint.before":
-    "captures an idea from anywhere in the app, even in focus mode. Type, Enter, done. The ideas page itself is built for 50+ ideas: folder chips, filter, detail panel.",
+    "captures an idea from anywhere in the app, even in focus mode. Type, Enter, done. The ideas page itself is built for 50+ ideas: folder chips, filter, and every idea opens right inside the list.",
 
   // Idea samples
   "ideas.sample.tutorial.title": "Tutorial: From empty cursor to finished script in 5 minutes",

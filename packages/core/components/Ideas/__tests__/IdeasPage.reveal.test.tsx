@@ -1,6 +1,6 @@
 // Regression tests for revealing an idea on the ideas page
 // (components/Ideas/IdeasPage.tsx): a palette result or a "similar idea"
-// link must select the idea even when it sits in a collapsed group, beyond
+// link must select (and open) the idea even when it sits in a collapsed group, beyond
 // the loaded page (50 rows), behind the text filter, "show used" or a folder chip.
 
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
@@ -87,6 +87,8 @@ describe("IdeasPage reveal", () => {
     uiStore.revealIdea("m0");
     await settle();
     expect(isSelected("m0")).toBe(true);
+    // ...and opens it in place.
+    expect(row("m0")?.classList.contains("ix")).toBe(true);
 
     // In the collapsed "older" group.
     expect(row("old")).toBeNull();

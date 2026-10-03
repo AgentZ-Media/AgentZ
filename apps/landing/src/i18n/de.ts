@@ -191,7 +191,7 @@ export const de = {
   "shot.tab.editor": "Editor",
   "shot.alt.overview":
     "ScriptZ Übersicht: Seitenleiste mit Pipeline, Skripte nach Stufe gruppiert",
-  "shot.alt.ideas": "ScriptZ Ideen-Seite mit Ordner-Chips und Detail-Panel",
+  "shot.alt.ideas": "ScriptZ Ideen-Seite mit Ordner-Chips und aufgeklappter Idee",
   "shot.alt.editor": "ScriptZ Editor mit Charakter-Farben, Inspector und Zeitleiste",
 
   "jump.label.long": "Weiter im Programm:",
@@ -318,6 +318,7 @@ export const de = {
   "ideas.meta": "{open} offen · {fresh} neu diese Woche",
   "ideas.input.placeholder": "Was willst du als Nächstes schreiben?",
   "ideas.input.hint": "⌘I geht von überall",
+  "ideas.input.note": "Notiz",
   "ideas.filter.placeholder": "Filtern",
   "ideas.chip.all": "Alle",
   "ideas.chip.none": "Ohne Ordner",
@@ -327,17 +328,15 @@ export const de = {
   "ideas.group.week": "Diese Woche",
   "ideas.group.older": "Älter",
   "ideas.detail.top": "Idee · vor 2 Std.",
-  "ideas.detail.folder": "Ordner",
   "ideas.detail.created": "Erstellt",
   "ideas.detail.createdValue": "heute, 06:14",
-  "ideas.detail.move": "In Ordner …",
   "ideas.detail.delete": "Löschen",
   "ideas.keys.select": "wählen",
-  "ideas.keys.edit": "bearbeiten",
+  "ideas.keys.open": "aufklappen",
   "ideas.keys.start": "als Skript anfangen",
   "ideas.detail.start": "Als Skript anfangen",
   "ideas.hint.before":
-    "erfasst eine Idee von überall in der App, auch im Fokus-Modus. Eingeben, Enter, weiter. Die Ideen-Seite selbst ist für 50 und mehr Ideen gebaut: Ordner-Chips, Filter, Detail-Panel.",
+    "erfasst eine Idee von überall in der App, auch im Fokus-Modus. Eingeben, Enter, weiter. Die Ideen-Seite selbst ist für 50 und mehr Ideen gebaut: Ordner-Chips, Filter, und jede Idee klappt direkt in der Liste auf.",
 
   // Idea samples
   "ideas.sample.tutorial.title": "Tutorial: Vom leeren Cursor zum fertigen Skript in 5 Minuten",
