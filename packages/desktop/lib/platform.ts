@@ -105,7 +105,7 @@ async function desktopWriteFileTo(path: string, bytes: Uint8Array): Promise<void
 // Lazy plugin-sql connection. Cached, with reset-on-failure so a
 // transient open failure doesn't poison every subsequent DB call.
 export function createDesktopPlatform(id: string): PlatformAdapter {
-  if (!/^[a-z][a-z0-9-]*$/.test(id)) throw new Error("Invalid desktop app ID");
+  if (!/^[a-z][a-z0-9]*(?:-[a-z0-9]+)*$/.test(id)) throw new Error("Invalid desktop app ID");
   let dbPromise: Promise<Database> | null = null;
   function loadDesktopDb(): Promise<DbConnection> {
     if (!dbPromise) {

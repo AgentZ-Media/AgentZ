@@ -22,7 +22,7 @@ function restoreFiles(root, snapshot) {
 }
 const registryPaths = { logo: "packages/design/logo.ts", site: "apps/site/src/apps.ts" };
 export function validateId(id) {
-  if (typeof id !== "string" || !/^[a-z][a-z0-9-]*$/.test(id) || id.length > 50 || RESERVED.has(id)) throw new Error(`Ungültige oder reservierte App-ID: ${id}`);
+  if (typeof id !== "string" || !/^[a-z][a-z0-9]*(?:-[a-z0-9]+)*$/.test(id) || id.length > 50 || RESERVED.has(id)) throw new Error(`Ungültige oder reservierte App-ID: ${id}`);
   return id;
 }
 function safePath(root, relative) {
@@ -83,6 +83,12 @@ export function newApp(root, id, name, { run = runCommand } = {}) {
   name = name.trim();
   for (const prefix of ["packages", "tooling", "crates"]) {
     if (existsSync(safePath(root, `${prefix}/${id}`))) throw new Error(`ID gehört bereits zur Infrastruktur: ${id}`);
+  }
+  const cargoLock = safePath(root, "Cargo.lock");
+  if (existsSync(cargoLock)) {
+    const nativeNames = readFileSync(cargoLock, "utf8").split(/^\s*\[\[package\]\]\s*$/m).slice(1)
+      .map((block) => block.match(/^name\s*=\s*["']([^"']+)["']/m)?.[1]);
+    if (nativeNames.includes(id)) throw new Error(`App-ID „${id}“ ist ein reservierter nativer Paketname in Cargo.lock. Bitte eine andere ID wählen.`);
   }
   const ownedPaths = ownedAppPaths(id);
   for (const path of ownedPaths) if (existsSync(safePath(root, path))) throw new Error(`Wird niemals überschrieben: ${path}`);

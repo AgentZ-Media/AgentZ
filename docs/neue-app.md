@@ -11,7 +11,7 @@ pnpm new-app mein-tool "Mein Tool"
 pnpm dev:mein-tool
 ```
 
-Die ID besteht aus Kleinbuchstaben, Ziffern und Bindestrichen, beginnt mit einem Buchstaben und hat höchstens 50 Zeichen. Infrastruktur-Namen und ScriptZ sind reserviert. Vorhandene App-, Modul-, Release-Notes- oder Icon-Pfade werden nie überschrieben.
+Die ID besteht aus Kleinbuchstaben, Ziffern und Bindestrichen, beginnt mit einem Buchstaben und hat höchstens 50 Zeichen. Bindestriche trennen nichtleere Abschnitte; am Ende und doppelt sind sie nicht erlaubt. Infrastruktur-Namen, ScriptZ und bereits in `Cargo.lock` vorhandene native Paketnamen (etwa `image` oder `time`) sind reserviert, damit die App später eindeutig veröffentlicht werden kann. Vorhandene App-, Modul-, Release-Notes- oder Icon-Pfade werden nie überschrieben.
 
 Der Generator erstellt:
 

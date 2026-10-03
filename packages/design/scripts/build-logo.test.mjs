@@ -64,7 +64,9 @@ test("SVG exports use registered geometry, escape labels, and preserve ScriptZ",
 
 test("invalid targets fail before writing and SVG-only does not need browser or icons", async (t) => {
   const options = fixture(t);
-  await assert.rejects(() => buildLogo({ ...options, appId: "../outside" }), /Invalid app id/);
+  for (const appId of ["../outside", "notes-", "notes--pro", "Notes", "-notes"]) {
+    await assert.rejects(() => buildLogo({ ...options, appId }), /Invalid app id/);
+  }
   await assert.rejects(() => buildLogo({ ...options, logo: null }), /No LOGOS entry/);
   await assert.rejects(() => buildLogo({ ...options, appId: "missing" }), /App directory missing/);
   assert.deepEqual(await buildLogo({ ...options, chrome: null, svgOnly: true }), { placeholder: false, svgOnly: true });
