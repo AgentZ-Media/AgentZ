@@ -21,7 +21,7 @@ und Prüfungen fest.
 
 ## Bestand und Ziel auseinanderhalten
 
-**Stand Phase 8 (Abnahme läuft):** `apps/scriptz` verdrahtet das Produktmodul
+**Stand nach dem Fundament-Umbau:** `apps/scriptz` verdrahtet das Produktmodul
 `modules/scriptz` und den gemeinsamen Desktop-Host. `packages/kit` enthält die gemeinsame
 `SuiteShell`, neutrale UI, i18n, Basis-Settings, Navigation, Plattform-
 Interfaces, KvStore, Toasts und Speicherhelfer. Das ScriptZ-Modul
@@ -33,8 +33,9 @@ Icons und Logo; `tooling/vitest-preset` die Testkonfiguration.
 Lebenszyklus; `crates/agentz-desktop` registriert Standard-Plugins,
 native Menüs, Single-Instance und den Quit-Handshake. `apps/site` ist die
 statische Astro-Website mit Design-Paket, DE/EN-Katalog und App-Liste.
-`tooling/new-app` erzeugt unabhängige App-/Modul-Paare; die Sandbox ist
-das vorübergehende Abnahmeprodukt.
+`tooling/new-app` erzeugt unabhängige App-/Modul-Paare. Eine temporäre
+Sandbox hat Generator, parallele Nutzung, Releases und Updates geprüft
+und wurde anschließend vollständig aus den Produktquellen entfernt.
 
 Abhängigkeitsrichtung (durch ESLint geprüft):
 
@@ -298,8 +299,7 @@ Tauri-`devUrl` immer gemeinsam pflegen:
 | App | Vite | HMR | Tauri devUrl | Stand |
 |---|---|---|---|---|
 | ScriptZ | 1420 | 1421 | `http://localhost:1420` | aktiv |
-| Sandbox | 1430 | 1431 | `http://localhost:1430` | temporäre Generator-Abnahme |
-| Nächste App | 1440 | 1441 | `http://localhost:1440` | nächstes freies Paar |
+| Nächste App | 1430 | 1431 | `http://localhost:1430` | nach Sandbox-Abnahme wieder frei |
 
 Weitere Apps erhalten das nächste freie Paar in Zehnerschritten. Bei
 Remote-Entwicklung (`TAURI_DEV_HOST`) nutzt ScriptZ den separaten

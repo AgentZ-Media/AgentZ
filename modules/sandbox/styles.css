@@ -1,4 +1,0 @@
-.sandbox-home { padding: var(--sp-7); color: var(--fg); }
-.sandbox-home p { color: var(--muted); }
-.sandbox-actions { display: flex; flex-wrap: wrap; gap: var(--sp-3); margin-top: var(--sp-6); }
-.sandbox-nav { width: 100%; padding: var(--sp-2) var(--sp-3); border: 0; border-radius: var(--r-ctl); background: var(--side-active); color: var(--side-fg); text-align: left; cursor: pointer; }

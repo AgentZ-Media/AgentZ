@@ -19,9 +19,7 @@
     "build:site": "pnpm --filter @agentz/site build",
     "check:astro": "node tooling/checks/astro.mjs",
     "new-app": "node tooling/new-app/index.mjs create",
-    "remove-app": "node tooling/new-app/index.mjs remove",
-    "dev:sandbox": "pnpm --filter @agentz/sandbox-app tauri:dev",
-    "build:sandbox": "pnpm --filter @agentz/sandbox-app tauri:build"
+    "remove-app": "node tooling/new-app/index.mjs remove"
   },
   "license": "MIT",
   "packageManager": "pnpm@10.34.6",

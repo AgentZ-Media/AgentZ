@@ -4,13 +4,14 @@ Local desktop tools for content creators, built in one open-source repository.
 The suite is growing out of ScriptZ: shared design, reusable application
 infrastructure, and independent apps with their own data and releases.
 
-**ScriptZ is the product app.** A generated Sandbox temporarily exercises
-the shared foundation and is removed after acceptance. The shared kit provides
+**ScriptZ is the product app.** The shared foundation was verified with a
+separate generated app, including independent releases and real updates.
+That temporary app has been removed after acceptance. The shared kit provides
 the application shell, neutral UI, settings, navigation, and infrastructure.
 The shared desktop host supplies native integration and safe shutdown.
 The release pipeline supports independent app channels. A static bilingual
-suite website and an app generator are included. Website deployment and
-the generator’s full native/release acceptance remain pending. Progress and architecture decisions
+suite website and an app generator are included. Website deployment is managed
+separately. Progress and architecture decisions
 are tracked in the [foundation plan](docs/agentz-suite-fundament.md) (German).
 
 ## Apps
@@ -24,9 +25,8 @@ character colors, runtime estimates, a speaker timeline, ideas, snapshots,
 and PDF export. It uses a local SQLite database and needs no account.
 Its editor and writing workflow stay intact during the suite migration.
 
-The new `scriptz-latest` channel becomes available with the first suite
-release; its publication and live update test are still pending. Stable
-download links are [macOS Apple Silicon](https://github.com/AgentZ-Media/AgentZ/releases/download/scriptz-latest/scriptz-macos-arm64.dmg)
+The `scriptz-latest` channel is published. Both platform installers and their
+updater signatures have been verified. Stable download links are [macOS Apple Silicon](https://github.com/AgentZ-Media/AgentZ/releases/download/scriptz-latest/scriptz-macos-arm64.dmg)
 and [Windows x64](https://github.com/AgentZ-Media/AgentZ/releases/download/scriptz-latest/scriptz-windows-x64-setup.exe).
 
 For first-time installation, see the
@@ -177,9 +177,9 @@ the shared installation footer. A manually dispatched release workflow is
 always a build-only rehearsal: no publication, signing secrets, or channel
 changes. See the [release checklist](.claude/rules/release.md) before publishing.
 
-Existing ScriptZ 0.8.4 installations still use the old channel. Once 0.9.0
-is published, install it manually once to adopt the app-specific updater.
-Publication and the real 0.9.0 → 0.9.1 update remain separate acceptance checks.
+Existing ScriptZ 0.8.4 installations still use the old channel. Install 0.9.0
+or newer manually once to adopt the app-specific updater. The real in-app update
+from 0.9.0 to 0.9.1 has been verified on macOS.
 
 ## License and credits
 
