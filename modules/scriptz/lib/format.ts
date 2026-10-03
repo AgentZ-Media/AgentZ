@@ -13,7 +13,13 @@ import { getCurrentLocale, t, tPlural } from "../i18n";
 // to wire up its own interval. Components do not import this directly;
 // reactivity flows through `relativeTime()` reading the signal below.
 const [nowSignal, setNowSignal] = createSignal(Date.now());
-if (typeof window !== "undefined") {
+let stopClock: (() => void) | undefined;
+
+/** Start the visibility-gated clock for the active app runtime. */
+export function startRelativeTimeClock(): () => void {
+  if (stopClock) return stopClock;
+  if (typeof window === "undefined") return () => {};
+  setNowSignal(Date.now());
   // 60s cadence — good enough to keep "in 4 minutes" honest without
   // burning a render per second. Visibility-gated so background tabs
   // don't tick uselessly; refresh once on focus to catch up the long
@@ -29,15 +35,26 @@ if (typeof window !== "undefined") {
       timer = null;
     }
   };
-  document.addEventListener("visibilitychange", () => {
+  const onVisibilityChange = () => {
     if (document.visibilityState === "visible") {
       setNowSignal(Date.now());
       start();
     } else {
       stop();
     }
-  });
+  };
+  document.addEventListener("visibilitychange", onVisibilityChange);
   if (document.visibilityState === "visible") start();
+  let active = true;
+  const dispose = () => {
+    if (!active) return;
+    active = false;
+    stop();
+    document.removeEventListener("visibilitychange", onVisibilityChange);
+    stopClock = undefined;
+  };
+  stopClock = dispose;
+  return dispose;
 }
 
 /** Locale-aware relative time. Format adapts to the active language.

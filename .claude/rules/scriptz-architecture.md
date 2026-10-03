@@ -26,6 +26,9 @@ Seit Phase 3 gelten außerdem die automatischen Paketgrenzen und
 Konventionen aus [`suite-architecture.md`](suite-architecture.md).
 Cargo-Workspace, Lockfile und `target/` liegen im Repo-Root;
 `apps/scriptz/src-tauri/` bleibt das App-Crate mit seinen Migrationen.
+Phase 4.0 macht den Import-Lebenszyklus explizit; die Kit-Extraktion
+folgt erst danach. Prüfungen und offene Punkte stehen im
+[Umsetzungsstand](../../docs/agentz-suite-fortschritt.md).
 
 ## Repo-Layout (Detail)
 
@@ -194,8 +197,9 @@ modules/scriptz/
     dailyStats.ts, ideas.ts, saveStatus.ts, toasts.ts
   lib/
     api.ts                 `api.*` facade = proxy onto the registered
-                           StorageAdapter. Registers the SQL-backed default
-                           adapter (desktop) on import.
+                           StorageAdapter. registerSqlStorageAdapter()
+                           explicitly installs the SQL-backed default;
+                           importing the facade does not register it.
     storage.ts             StorageAdapter interface (incl. setScriptStatus,
                            setFolderLengthRange, ListScriptsQuery.status),
                            validateLengthRange.
@@ -310,10 +314,24 @@ Blocktyp und läuft unverändert durch. Deshalb:
 
 ## Data flow
 
+- Host (`apps/scriptz/src/index.tsx`): `registerDesktopPlatform()` ->
+  `registerSqlStorageAdapter()` -> `registerDesktopUpdates()` -> `render()`;
+  anwendungseigene Import-I/O entfällt. Solid-generierte JSX-Event-Delegation
+  bleibt Framework-Verhalten.
+- Shell-Lebenszyklus: `startSettingsRuntime()`, `startNavRuntime()` und
+  `startRelativeTimeClock()` starten beim Aufbau der `AppShell`.
 - Boot (`AppShell`): settings, welcome seed, `navStore.load()`,
   `uiStore.load()`, library prefs, runtime backfill parallel -> danach
-  `migrateLegacyBlocksOnce()` -> `markLibraryReady()`. Erst dann laufen
-  Listen-Queries und kann ein Editor ein Skript öffnen.
+  `migrateLegacyBlocksOnce()` -> `startIdeasStore()`,
+  `startDailyStatsStore()` und `startLibraryData()` -> `bootReady`.
+  Erst dann laufen die Listen-Resources und kann ein Editor ein Skript
+  öffnen. Runtime-Backfill und Legacy-Migration bleiben fehlertolerant
+  wie bisher; fehlgeschlagene Migrationen werden beim nächsten Start
+  erneut versucht.
+- Cleanup: Die Shell beendet ihre expliziten Laufzeiten beim Unmount.
+  Ein noch laufender Boot darf anschließend keine Resources nachstarten.
+  Die Desktop-Schale beendet Updater-Polling und Fenster-Listener;
+  HMR entsorgt den Render-Root.
 - Navigation: `navStore.go/openScript/back/forward` ruft erst
   `flushAll()` (Editor-Save, nav-Persist), dann wird die Route gesetzt.
   `ScriptScreen` mountet pro `scriptId` den Editor.

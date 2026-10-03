@@ -10,11 +10,12 @@ import { getStorageAdapter, setStorageAdapter, type StorageAdapter } from "../..
 import "../../../lib/api";
 import { ideasBus } from "../../../lib/ideasBus";
 import type { Folder, Idea } from "../../../lib/types";
-import { ideasStore } from "../../../stores/ideas";
+import { ideasStore, startIdeasStore } from "../../../stores/ideas";
 import { navStore } from "../../../stores/nav";
 import { IdeasPage } from "../IdeasPage";
 
 const originalAdapter = getStorageAdapter();
+let stopIdeas: () => void;
 
 const db = new Map<string, Idea>();
 const created: Array<{ title: string; notes?: string; folderId?: string | null }> = [];
@@ -68,10 +69,12 @@ beforeAll(async () => {
       },
     }),
   );
+  stopIdeas = startIdeasStore();
   await navStore.openIdeas(null);
 });
 
 afterAll(() => {
+  stopIdeas();
   setStorageAdapter(originalAdapter);
 });
 

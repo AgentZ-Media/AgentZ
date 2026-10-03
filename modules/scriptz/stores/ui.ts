@@ -77,7 +77,8 @@ export const uiStore = {
   focusMode,
   /** Apply the focus mode for a freshly opened script: manual per-script
    *  choice wins, otherwise the global default from the settings. */
-  async applyFocusForScript(scriptId: string) {
+  async applyFocusForScript(scriptId: string, isActive: () => boolean = () => true) {
+    if (!isActive()) return;
     const cached = focusOverride.get(scriptId);
     if (cached !== undefined) {
       setFocusMode(cached);
@@ -86,6 +87,7 @@ export const uiStore = {
     setFocusMode(settingsStore.focusModeDefault());
     try {
       const raw = await api.getAppState(FOCUS_KEY(scriptId));
+      if (!isActive()) return;
       if (raw === "1" || raw === "0") {
         const v = raw === "1";
         focusOverride.set(scriptId, v);
@@ -159,9 +161,10 @@ export const uiStore = {
     onboardingOpen() ||
     activityOpen(),
 
-  async load() {
+  async load(isActive: () => boolean = () => true) {
     try {
       const raw = await api.getAppState(LAYOUT_KEY);
+      if (!isActive()) return;
       if (!raw) return;
       const parsed = JSON.parse(raw) as { sidebar?: boolean; inspector?: boolean; timeline?: boolean };
       if (typeof parsed.sidebar === "boolean") setSidebarOpen(parsed.sidebar);

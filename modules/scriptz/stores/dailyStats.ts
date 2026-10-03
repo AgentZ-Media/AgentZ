@@ -1,4 +1,4 @@
-import { createResource } from "solid-js";
+import { createResource, createRoot, createSignal, type Resource } from "solid-js";
 import { api } from "../lib/api";
 import { dailyStatsBus } from "../lib/dailyStatsBus";
 import type { DailyStatsSummary } from "../lib/types";
@@ -16,23 +16,41 @@ const EMPTY: DailyStatsSummary = {
   totalWords: 0,
 };
 
-// Global resource slot. createResource lives at module top level so
-// subscribers share the same cache - every component that needs the
-// statistics calls `dailyStats()` without triggering a new roundtrip.
-// On a bus bump (see lib/dailyStatsBus.ts) the resource refetches
-// transparently.
-const [stats] = createResource(
-  () => dailyStatsBus.version(),
-  async () => {
-    try {
-      return await api.loadDailyStats();
-    } catch (err) {
-      console.warn("[scriptz] daily stats load failed", err);
-      return EMPTY;
-    }
-  },
-  { initialValue: EMPTY },
-);
+// Stable accessors stay empty until boot explicitly starts this shared cache.
+const [resource, setResource] = createSignal<Resource<DailyStatsSummary>>();
+const stats = () => resource()?.() ?? EMPTY;
+let stopRuntime: (() => void) | undefined;
+
+export function startDailyStatsStore(): () => void {
+  if (stopRuntime) return stopRuntime;
+  let active = true;
+  const disposeRoot = createRoot((dispose) => {
+    const [value] = createResource(
+      () => dailyStatsBus.version(),
+      async () => {
+        try {
+          const result = await api.loadDailyStats();
+          return active ? result : EMPTY;
+        } catch (err) {
+          if (active) console.warn("[scriptz] daily stats load failed", err);
+          return EMPTY as DailyStatsSummary;
+        }
+      },
+      { initialValue: EMPTY as DailyStatsSummary },
+    );
+    setResource(() => value);
+    return dispose;
+  });
+  const stop = () => {
+    if (!active) return;
+    active = false;
+    disposeRoot();
+    setResource(undefined);
+    stopRuntime = undefined;
+  };
+  stopRuntime = stop;
+  return stop;
+}
 
 export const dailyStatsStore = {
   /** Current statistics. Returns `EMPTY` while the first roundtrip

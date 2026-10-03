@@ -56,12 +56,16 @@ function sameRoute(a: Route, b: Route): boolean {
 }
 
 let navQueue: Promise<void> = Promise.resolve();
+let runtimeGeneration = 0;
 
 function deferRouteChange(apply: () => void): Promise<void> {
+  const generation = runtimeGeneration;
   navQueue = navQueue
-    .then(() => flushAll(2000))
+    .then(() => generation === runtimeGeneration ? flushAll(2000) : undefined)
     .catch(() => {})
-    .then(() => apply())
+    .then(() => {
+      if (generation === runtimeGeneration) apply();
+    })
     .catch((err) => console.warn("[scriptz] route change failed", err));
   return navQueue;
 }
@@ -186,8 +190,10 @@ export const navStore = {
   },
 
   async load() {
+    const generation = runtimeGeneration;
     try {
       const raw = await api.getAppState(STATE_KEY);
+      if (generation !== runtimeGeneration) return;
       if (raw) {
         const parsed = JSON.parse(raw) as { route?: Route; recent?: RecentEntry[] };
         const restoredRecent = Array.isArray(parsed.recent) ? parsed.recent.slice(0, MAX_RECENT) : [];
@@ -200,6 +206,7 @@ export const navStore = {
       }
       // Migration from the tab store: open tabs become "Zuletzt".
       const legacy = await api.getAppState(LEGACY_TABS_KEY);
+      if (generation !== runtimeGeneration) return;
       if (legacy) {
         const parsed = JSON.parse(legacy) as {
           tabs?: Array<{ scriptId?: string; scriptTitle?: string }>;
@@ -214,6 +221,7 @@ export const navStore = {
         persist();
       }
     } catch {
+      if (generation !== runtimeGeneration) return;
       setRoute(HOME);
     }
   },
@@ -226,10 +234,9 @@ function writeNow(): Promise<void> {
   // Chained behind the previous write so two snapshots of the nav state
   // can never land out of order.
   const prev = persistInflight ?? Promise.resolve();
-  const p: Promise<void> = prev.then(() => {
-    const payload = JSON.stringify({ route: route(), recent: recent() });
-    return api.setAppState(STATE_KEY, payload).catch(() => {});
-  });
+  const payload = JSON.stringify({ route: route(), recent: recent() });
+  const save = api.setAppState;
+  const p: Promise<void> = prev.then(() => save(STATE_KEY, payload)).catch(() => {});
   const tracked: Promise<void> = p.finally(() => {
     if (persistInflight === tracked) persistInflight = null;
   });
@@ -245,12 +252,32 @@ function persist() {
   }, 80);
 }
 
-registerFlusher(async () => {
-  if (persistTimer) {
-    clearTimeout(persistTimer);
-    persistTimer = null;
-    await writeNow();
-    return;
-  }
-  if (persistInflight) await persistInflight;
-});
+let stopRuntime: (() => void) | undefined;
+
+/** Own navigation flushing; disposal drains the final buffered snapshot. */
+export function startNavRuntime(): () => void {
+  if (stopRuntime) return stopRuntime;
+  runtimeGeneration += 1;
+  const flush = async () => {
+    if (persistTimer) {
+      clearTimeout(persistTimer);
+      persistTimer = null;
+      await writeNow();
+      return;
+    }
+    if (persistInflight) await persistInflight;
+  };
+  const unregister = registerFlusher(flush);
+  let active = true;
+  const stop = () => {
+    if (!active) return;
+    active = false;
+    runtimeGeneration += 1;
+    // Capture and drain pending navigation before allowing the next runtime
+    // to change its signals. Keep the flusher registered until it has settled.
+    void flush().finally(unregister);
+    stopRuntime = undefined;
+  };
+  stopRuntime = stop;
+  return stop;
+}

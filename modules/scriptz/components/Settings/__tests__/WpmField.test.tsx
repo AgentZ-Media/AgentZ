@@ -9,10 +9,11 @@ import { Show, createSignal } from "solid-js";
 import { getStorageAdapter, setStorageAdapter, type StorageAdapter } from "../../../lib/storage";
 import "../../../lib/api";
 import { flushAll } from "../../../lib/saveFlush";
-import { settingsStore } from "../../../stores/settings";
+import { settingsStore, startSettingsRuntime } from "../../../stores/settings";
 import { SettingsWriting } from "../sections/SettingsWriting";
 
 const originalAdapter = getStorageAdapter();
+let stopSettings: () => void;
 const writes: Array<[string, string]> = [];
 const gates: Array<() => void> = [];
 let inFlight = 0;
@@ -20,6 +21,7 @@ let maxInFlight = 0;
 const stored = new Map<string, string>();
 
 beforeAll(() => {
+  stopSettings = startSettingsRuntime();
   const fake: Partial<StorageAdapter> = {
     setSetting: (key, value) =>
       new Promise<void>((resolve) => {
@@ -43,6 +45,7 @@ beforeAll(() => {
 });
 
 afterAll(() => {
+  stopSettings();
   setStorageAdapter(originalAdapter);
 });
 

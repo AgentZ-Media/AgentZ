@@ -15,17 +15,19 @@ paths:
 
 Die Suite entwickelt unabhängige lokale Desktop-Apps in einem Repository.
 Jede App behält ihre Datenbank, App-ID, Produktlogik und Releases. Maßgeblich
-ist der [Fundament-Plan](../../docs/agentz-suite-fundament.md).
+ist der [Fundament-Plan](../../docs/agentz-suite-fundament.md). Der
+[Umsetzungsstand](../../docs/agentz-suite-fortschritt.md) hält Fortschritt
+und Prüfungen fest.
 
 ## Bestand und Ziel auseinanderhalten
 
-**Stand Phase 3:** `apps/scriptz` verdrahtet das Produktmodul
+**Stand Phase 4.0, vor der Kit-Extraktion:** `apps/scriptz` verdrahtet das Produktmodul
 `modules/scriptz` und Tauri. `packages/design` enthält Tokens, CSS,
 Schriften, Icons und Logo. `tooling/vitest-preset` bündelt die
 Testkonfiguration. Die Produktlogik, UI und viele künftig gemeinsame
 Bausteine liegen noch vollständig im ScriptZ-Modul.
 
-**Erst später:** `packages/kit` entsteht in Phase 4, `packages/desktop`
+**Erst später:** `packages/kit` entsteht ab Phase 4.1, `packages/desktop`
 und `crates/agentz-desktop` in Phase 5. Website und App-Generator folgen
 in Phase 7 beziehungsweise 8. Kein Import darf deren Existenz voraussetzen.
 
@@ -69,14 +71,26 @@ laufenden Effekte mit Seiteneffekten. Datenzugriff beginnt in einer
 expliziten Initialisierung nach Registrierung des Plattformadapters.
 Timer, Listener und Effekte brauchen einen definierten Aufräumpfad.
 
-ScriptZ hat noch bestehende Import-Initialisierung, insbesondere in
-`stores/ideas.ts` und `stores/dailyStats.ts`; auch der SQL-Default wird
-zurzeit beim Import registriert. Deren Bereinigung ist Phase 4.0 und
-nicht Teil des Tooling-Umbaus. Deshalb behalten die bestehenden App-/
-Modulpakete das Standardverhalten für Laufzeit-Seiteneffekte
-(kein einschränkendes `sideEffects`-Feld). Ein pauschales
-`sideEffects: false` oder CSS-only-Markieren wäre vor dieser Bereinigung
-falsch und könnte beim Bundeln notwendige Initialisierung entfernen.
+Seit Phase 4.0 startet ScriptZ eigene I/O, Timer und Ressourcen nur
+explizit. `apps/scriptz/src/index.tsx` ruft vor `render()` in dieser
+Reihenfolge `registerDesktopPlatform()`, `registerSqlStorageAdapter()`
+und `registerDesktopUpdates()` auf. `AppShell` startet die Einstellungen,
+Navigation und relative Uhr über `startSettingsRuntime()`,
+`startNavRuntime()` und `startRelativeTimeClock()`.
+
+Erst nach den Boot-Ladevorgängen und der Legacy-Migration folgen
+`startIdeasStore()`, `startDailyStatsStore()` und `startLibraryData()`.
+Alle liefern Cleanup-Funktionen; `AppShell` beendet die Laufzeiten beim
+Unmount und startet nach einem während des Bootens erfolgten Unmount
+keine nachträglichen Resources. Die Desktop-Schale beendet ebenfalls
+Updater-Polling und Fenster-Listener. Solid-generierte JSX-Event-Delegation
+ist Framework-Verhalten, keine anwendungseigene Import-I/O.
+
+Die App-/Modulpakete behalten bis zur tatsächlichen Extraktion ab
+Phase 4.1 das Standardverhalten für Laufzeit-Seiteneffekte (kein
+einschränkendes `sideEffects`-Feld). Erst an den neuen Paketgrenzen werden
+Exports und Bundler-Metadaten gezielt festgelegt; der Import-Lebenszyklus
+allein ist keine Freigabe für pauschales `sideEffects: false`.
 
 ## Paket-Konventionen und gemeinsame Konfiguration
 

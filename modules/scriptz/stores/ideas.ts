@@ -1,22 +1,47 @@
-import { createResource } from "solid-js";
+import { createResource, createRoot, createSignal, type Resource } from "solid-js";
 import { api } from "../lib/api";
 import { ideasBus } from "../lib/ideasBus";
 import type { Idea, ScriptSummary } from "../lib/types";
 
-// Global resource slot for the ideas list. Subscribers (drawer,
-// toggle counter, possibly quick capture) share the same cache.
-const [ideas] = createResource(
-  () => ideasBus.version(),
-  async () => {
-    try {
-      return await api.listIdeas();
-    } catch (err) {
-      console.warn("[scriptz] ideas load failed", err);
-      return [] as Idea[];
-    }
-  },
-  { initialValue: [] },
-);
+// Stable accessors stay empty until boot explicitly starts this shared cache.
+const [resource, setResource] = createSignal<Resource<Idea[]>>();
+const ideas = Object.defineProperty(
+  () => resource()?.() ?? [],
+  "latest",
+  { get: () => resource()?.latest ?? [] },
+) as (() => Idea[]) & { readonly latest: Idea[] };
+let stopRuntime: (() => void) | undefined;
+
+export function startIdeasStore(): () => void {
+  if (stopRuntime) return stopRuntime;
+  let active = true;
+  const disposeRoot = createRoot((dispose) => {
+    const [value] = createResource(
+      () => ideasBus.version(),
+      async () => {
+        try {
+          const result = await api.listIdeas();
+          return active ? result : [];
+        } catch (err) {
+          if (active) console.warn("[scriptz] ideas load failed", err);
+          return [] as Idea[];
+        }
+      },
+      { initialValue: [] as Idea[] },
+    );
+    setResource(() => value);
+    return dispose;
+  });
+  const stop = () => {
+    if (!active) return;
+    active = false;
+    disposeRoot();
+    setResource(undefined);
+    stopRuntime = undefined;
+  };
+  stopRuntime = stop;
+  return stop;
+}
 
 export const ideasStore = {
   ideas,

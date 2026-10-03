@@ -90,8 +90,8 @@ import type {
 
 // SQL-based default implementation of the StorageAdapter. The lib/*
 // modules access the host database via DbConnection (see ./platform.ts).
-// Registered on module load; the `api` proxy reads the active adapter on
-// every call, so hosts can replace storage without changing callers.
+// Registered explicitly by the host; the `api` proxy reads the active
+// adapter on every call, so hosts can replace storage without changing callers.
 const sqlBackedAdapter: StorageAdapter = {
   // Scripts - fully TS-side since Migration Phase 7d.
   async createScript(input: {
@@ -384,9 +384,10 @@ const sqlBackedAdapter: StorageAdapter = {
   },
 };
 
-// Default registration on module load. Hosts can replace this with
-// `setStorageAdapter()`; `api` always reads the currently active adapter.
-setStorageAdapter(sqlBackedAdapter);
+/** Register ScriptZ SQL storage after the host platform adapter is ready. */
+export function registerSqlStorageAdapter(): void {
+  setStorageAdapter(sqlBackedAdapter);
+}
 
 // Proxy facade for drop-in compatibility. Older code that does
 // `import { api } from "@agentz/scriptz/lib/api"` and calls `api.getScript(id)`

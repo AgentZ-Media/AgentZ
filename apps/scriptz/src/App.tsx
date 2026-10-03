@@ -16,11 +16,13 @@ export default function App() {
   onMount(() => {
     let unlisten: (() => void) | null = null;
     let closing = false;
+    let disposed = false;
     void (async () => {
       try {
         const { getCurrentWindow } = await import("@tauri-apps/api/window");
         const win = getCurrentWindow();
-        unlisten = await win.onCloseRequested(async (event) => {
+        if (disposed) return;
+        const stop = await win.onCloseRequested(async (event) => {
           if (closing) return;
           event.preventDefault();
           closing = true;
@@ -38,11 +40,14 @@ export default function App() {
             }
           }
         });
+        if (disposed) stop();
+        else unlisten = stop;
       } catch (err) {
         console.warn("[scriptz] close-flush hook unavailable", err);
       }
     })();
     onCleanup(() => {
+      disposed = true;
       try {
         unlisten?.();
       } catch {

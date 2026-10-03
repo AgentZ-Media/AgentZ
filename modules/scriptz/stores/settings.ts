@@ -1,4 +1,4 @@
-import { createSignal, createEffect } from "solid-js";
+import { createSignal, createEffect, createRoot } from "solid-js";
 import { api } from "../lib/api";
 import { registerFlusher } from "../lib/saveFlush";
 import {
@@ -64,12 +64,10 @@ const [language, setLanguagePref] = createSignal<LanguagePref>("auto");
 
 const [loaded, setLoaded] = createSignal(false);
 
-// matchMedia + resolved theme - declared early so that settingsStore.resolvedTheme
-// works in the store definition below without a forward reference.
-const prefersDark =
-  typeof window !== "undefined" && typeof window.matchMedia === "function"
-    ? window.matchMedia("(prefers-color-scheme: dark)")
-    : null;
+// System listeners and DOM updates are attached only by the app runtime.
+let prefersDark: MediaQueryList | null = null;
+let stopRuntime: (() => void) | undefined;
+let runtimeGeneration = 0;
 
 function resolveTheme(t: Theme): "dark" | "light" {
   if (t === "auto") return prefersDark?.matches ? "dark" : "light";
@@ -123,9 +121,6 @@ function persistSetting(key: string, value: string): Promise<void> {
   return write;
 }
 
-registerFlusher(async () => {
-  await Promise.allSettled([...pendingSettingWrites]);
-});
 
 function applyLanguage(pref: LanguagePref): void {
   const lang: Language = resolveLanguage(pref);
@@ -213,6 +208,7 @@ export const settingsStore = {
   },
   loaded,
   async load() {
+    const generation = runtimeGeneration;
     const [t, hd, uce, huc, qmae, wpm, fmd, sws, dp, lang, lmin, lmax, puc] = await Promise.all([
       api.getSetting("theme"),
       api.getSetting("highlighting_default"),
@@ -228,6 +224,7 @@ export const settingsStore = {
       api.getSetting("length_max_default_sec"),
       api.getSetting("prune_unused_characters"),
     ]);
+    if (generation !== runtimeGeneration) return;
     if (t === "dark" || t === "light" || t === "auto") setTheme(t);
     if (hd) setHighlightingDefault(hd === "1");
     if (uce) setUpdateCheckEnabled(uce === "1");
@@ -266,7 +263,7 @@ export const settingsStore = {
 //
 // Before `load()` has run, we don't write anything - otherwise
 // the default ("light") would briefly flicker over the persisted theme,
-// because this effect already fires once on module import.
+// when the runtime effect first runs, before stored settings have loaded.
 // data-paper strictly follows the **resolved** theme: only when the theme
 // (incl. auto resolution) is actually dark does data-paper="dark"
 // get set. In light mode the attribute is removed so the user
@@ -285,40 +282,48 @@ function applyChrome() {
   }
 }
 
-createEffect(() => {
-  if (!loaded()) return;
-  // Track theme() and darkPaper() — both trigger applyChrome.
-  theme();
-  darkPaper();
-  applyChrome();
-});
-
-// Follow system changes live, as long as the user is on "auto".
-// Without this listener, auto mode would resolve correctly on app start,
-// but would not react if the user changed the system theme
-// during the session. applyChrome() also gets the darkPaper attribute
-// right at that moment - on a system switch to dark with active
-// darkPaper, the sheet automatically goes dark too.
-if (prefersDark) {
-  prefersDark.addEventListener("change", () => {
-    if (!loaded()) return;
-    if (theme() === "auto") applyChrome();
-  });
-}
-
-// Language: follow system language changes live, as long as the user
-// is on "auto". The `languagechange` event fires on locale change in
-// the browser/OS. Rare, but it costs us nothing.
-if (typeof window !== "undefined") {
-  window.addEventListener("languagechange", () => {
-    if (!loaded()) return;
-    if (language() === "auto") applyLanguage("auto");
-  });
-}
-
-// Seed the system language before settings.load() finishes so early UI
-// (such as the boot screen) already uses the user's language.
-// settings.load() may then overwrite that with the persisted preference.
-if (typeof document !== "undefined") {
+/** Own theme/language effects, system listeners and pending-settings flushing. */
+export function startSettingsRuntime(): () => void {
+  if (stopRuntime) return stopRuntime;
+  runtimeGeneration += 1;
+  setLoaded(false);
+  prefersDark = typeof window !== "undefined" && typeof window.matchMedia === "function"
+    ? window.matchMedia("(prefers-color-scheme: dark)")
+    : null;
   applyResolvedLanguage(detectSystemLanguage());
+  const unregister = registerFlusher(async () => {
+    await Promise.allSettled([...pendingSettingWrites]);
+  });
+  const disposeRoot = createRoot((dispose) => {
+    createEffect(() => {
+      if (!loaded()) return;
+      theme();
+      darkPaper();
+      if (typeof document !== "undefined") applyChrome();
+    });
+    return dispose;
+  });
+  const onThemeChange = () => {
+    if (loaded() && theme() === "auto" && typeof document !== "undefined") applyChrome();
+  };
+  const onLanguageChange = () => {
+    if (loaded() && language() === "auto") applyLanguage("auto");
+  };
+  prefersDark?.addEventListener("change", onThemeChange);
+  if (typeof window !== "undefined") window.addEventListener("languagechange", onLanguageChange);
+  let active = true;
+  const stop = () => {
+    if (!active) return;
+    active = false;
+    runtimeGeneration += 1;
+    disposeRoot();
+    unregister();
+    prefersDark?.removeEventListener("change", onThemeChange);
+    prefersDark = null;
+    if (typeof window !== "undefined") window.removeEventListener("languagechange", onLanguageChange);
+    setLoaded(false);
+    stopRuntime = undefined;
+  };
+  stopRuntime = stop;
+  return stop;
 }

@@ -151,5 +151,7 @@ export const updatesStore: UpdatesStore = {
   stopBackgroundPolling,
 };
 
-// Register with @agentz/scriptz so SettingsDialog can pick it up.
-setUpdatesStore(updatesStore);
+/** Register explicitly after the desktop platform and before rendering. */
+export function registerDesktopUpdates(): void {
+  setUpdatesStore(updatesStore);
+}

@@ -158,3 +158,38 @@ und Phasen; dieses Protokoll hält die konkreten Ergebnisse fest.
 - Vercel übernimmt Timo ausdrücklich selbst. Keine externen Projekte
   oder Git-Anbindungen verändert.
 - Fortschrittslog aus dem Architekturplan in diese Datei ausgelagert.
+
+### Phase 4.0: Expliziter Start und Persistenz-Verträge
+
+- **Umfang:** Vorarbeit im bestehenden Modul; noch kein Kit und keine
+  Dateiverschiebungen. Branch `fundament/phase-4-0` aus dem gemergten
+  `main`, im selben Worktree. Dokumentationsnacharbeiten in einem
+  eigenen Commit vor den Codeänderungen.
+- **Lebenszyklus:** Host registriert Plattform, SQL und Updater explizit
+  vor dem Rendern. Settings, Navigation und Zeitaktualisierung starten
+  mit der Shell; Ideen-, Statistik- und Bibliotheksresources erst nach
+  Boot und Legacy-Migration. Cleanup entfernt Listener, Timer und
+  Subscriptions und sichert gepufferte Navigation. Solid-eigene
+  JSX-Eventdelegation ist von der Import-Regel getrennt.
+- **Abgebrochener Start:** Verspätete Daten-, Settings-, Layout-, Fokus-
+  und Präferenzantworten dürfen einen neuen Lauf nicht überschreiben;
+  Onboarding startet nicht nach dem Abbau der Shell.
+- **Persistenz:** Verhaltenstests fixieren alle 13 Settings-Schlüssel,
+  String-Kodierung sowie Navigation, Legacy-Tabs, Layout, Bibliotheksansicht,
+  Fokus, Quick Mode, Welcome-, Onboarding- und Migrationsmarker.
+- **Prüfung:** Lint, Typecheck, Farbprüfung, elf Tooling-Tests und
+  290 ScriptZ-Tests grün. Unabhängige Gegenprüfung; gefundene Lücke bei
+  verspäteten Layout-/Fokusantworten behoben und durch Tests abgesichert.
+  Bekannte Solid-Warnungen in bestehenden interaktiven Tests und
+  Bundle-Größenwarnung bleiben, keine importseitigen DB-Fehler mehr.
+- **Native Abnahme:** macOS-App und DMG mit isolierter QA-ID und
+  deaktivierten Updater-Artefakten erfolgreich gebaut (`--locked`).
+  Gegen konsistente DB-Kopie geprüft: Bestand öffnen, Idee anlegen und
+  live aktualisieren, Skript schreiben, Statistik, Theme/Sprache/Inspector,
+  PDF-Export, Neustart sowie letzte Eingabe direkt vor Fensterschluss.
+  Einstellungen, Verlauf und Inhalt bleiben erhalten; PDF mit einer
+  A4-Seite, korrektem Text und eingebetteter iA-Writer-Schrift.
+  Keine doppelten Welcome-Inhalte; produktive DB unverändert.
+- **Review:** Separate PR zur Durchsicht, kein Merge und kein Release.
+  Windows-Bundle und signierter Update-Zyklus weiterhin nicht geprüft.
+  Nächster Umsetzungsschritt: Phase 4.1, Grundlagen ins Kit extrahieren.

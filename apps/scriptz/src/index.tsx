@@ -1,12 +1,9 @@
 /* @refresh reload */
 import { render } from "solid-js/web";
 
-// Register the Tauri-backed PlatformAdapter and the auto-updater store
-// before anything from @agentz/scriptz gets imported transitively - these
-// modules call setPlatformAdapter() / setUpdatesStore() at import time
-// and core code crashes if the adapter is missing on first use.
-import "./lib/platform";
-import "./stores/updates";
+import { registerDesktopPlatform } from "./lib/platform";
+import { registerDesktopUpdates } from "./stores/updates";
+import { registerSqlStorageAdapter } from "@agentz/scriptz/lib/api";
 
 // Styles: design system first (fonts -> tokens -> legacy aliases ->
 // component primitives), then core's global.css, which pulls in the
@@ -21,4 +18,10 @@ import App from "./App";
 const root = document.getElementById("root");
 if (!root) throw new Error("#root not found");
 
-render(() => <App />, root);
+// Imports are inert. Host services are ready before the module boots.
+registerDesktopPlatform();
+registerSqlStorageAdapter();
+registerDesktopUpdates();
+
+const dispose = render(() => <App />, root);
+if (import.meta.hot) import.meta.hot.dispose(dispose);

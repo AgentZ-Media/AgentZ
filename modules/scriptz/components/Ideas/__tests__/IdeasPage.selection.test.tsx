@@ -8,12 +8,13 @@ import { render } from "@solidjs/testing-library";
 import { getStorageAdapter, setStorageAdapter, type StorageAdapter } from "../../../lib/storage";
 import "../../../lib/api";
 import type { Idea, ScriptSummary } from "../../../lib/types";
-import { ideasStore } from "../../../stores/ideas";
+import { ideasStore, startIdeasStore } from "../../../stores/ideas";
 import { navStore } from "../../../stores/nav";
 import { t } from "../../../i18n";
 import { IdeasPage } from "../IdeasPage";
 
 const originalAdapter = getStorageAdapter();
+let stopIdeas: () => void;
 
 const now = Date.now();
 const longAgo = new Date(new Date().getFullYear() - 1, 0, 1).getTime();
@@ -54,10 +55,12 @@ beforeAll(async () => {
     }),
   );
   ideasStore.refresh();
+  stopIdeas = startIdeasStore();
   await navStore.openIdeas(null);
 });
 
 afterAll(() => {
+  stopIdeas();
   setStorageAdapter(originalAdapter);
 });
 
