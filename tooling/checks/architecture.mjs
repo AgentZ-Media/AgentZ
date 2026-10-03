@@ -12,12 +12,7 @@ function ownerOf(root, filename) {
 }
 
 function packageOwners(root) {
-  const names = new Map([
-    ["@agentz/design", "packages/design"],
-    ["@agentz/kit", "packages/kit"],
-    ["@agentz/desktop", "packages/desktop"],
-    ["@agentz/vitest-preset", "tooling/vitest-preset"],
-  ]);
+  const names = new Map();
   for (const group of ["apps", "modules", "packages", "tooling"]) {
     const directory = path.join(root, group);
     if (!fs.existsSync(directory)) continue;
@@ -25,9 +20,8 @@ function packageOwners(root) {
       if (!entry.isDirectory()) continue;
       const owner = `${group}/${entry.name}`;
       const manifest = path.join(directory, entry.name, "package.json");
-      const name = fs.existsSync(manifest)
-        ? JSON.parse(fs.readFileSync(manifest, "utf8")).name
-        : `@agentz/${entry.name}${group === "apps" ? "-app" : ""}`;
+      if (!fs.existsSync(manifest)) continue;
+      const name = JSON.parse(fs.readFileSync(manifest, "utf8")).name;
       if (name) names.set(name, owner);
     }
   }

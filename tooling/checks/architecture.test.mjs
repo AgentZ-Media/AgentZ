@@ -31,14 +31,14 @@ fs.mkdirSync(path.join(root, "node_modules/@tauri-apps/api"), { recursive: true 
 fs.writeFileSync(path.join(root, "node_modules/@tauri-apps/api/index.d.ts"), "export const invoke: unknown;");
 after(() => fs.rmSync(root, { recursive: true, force: true }));
 
-function lint(owner, code, name = "index.ts") {
-  const linter = new Linter({ cwd: root });
+function lint(owner, code, name = "index.ts", workspaceRoot = root) {
+  const linter = new Linter({ cwd: workspaceRoot });
   return linter.verify(code, [{
     files: ["**/*.ts", "**/*.tsx"],
     languageOptions: { parser: tseslint.parser },
-    plugins: { agentz: { rules: { architecture: createArchitectureRule(root) } } },
+    plugins: { agentz: { rules: { architecture: createArchitectureRule(workspaceRoot) } } },
     rules: { "agentz/architecture": "error" },
-  }], { filename: path.join(root, owner, name) });
+  }], { filename: path.join(workspaceRoot, owner, name) });
 }
 
 test("enforces the full workspace dependency matrix", () => {
@@ -111,4 +111,20 @@ test("unregistered suite packages and computed imports fail closed", () => {
   assert.equal(lint("modules/scriptz", "import('@agentz/' + product);")[0].messageId, "dynamic");
   assert.equal(lint("modules/scriptz", "require(dependency);")[0].messageId, "dynamic");
   assert.deepEqual(lint("modules/scriptz", "import 'solid-js';"), []);
+});
+
+test("planned packages require a manifest before imports are allowed", () => {
+  const workspaceRoot = fs.mkdtempSync(path.join(os.tmpdir(), "agentz-unregistered-"));
+  try {
+    fs.mkdirSync(path.join(workspaceRoot, "modules/scriptz"), { recursive: true });
+    for (const group of ["modules", "packages", "apps", "tooling"]) {
+      fs.mkdirSync(path.join(workspaceRoot, group, "empty"), { recursive: true });
+    }
+    // Neither a future package name nor an empty directory is a workspace.
+    for (const target of ["@agentz/kit", "@agentz/desktop", "@agentz/empty"]) {
+      assert.equal(lint("modules/scriptz", `import '${target}';`, "index.ts", workspaceRoot)[0].messageId, "unknown");
+    }
+  } finally {
+    fs.rmSync(workspaceRoot, { recursive: true, force: true });
+  }
 });
