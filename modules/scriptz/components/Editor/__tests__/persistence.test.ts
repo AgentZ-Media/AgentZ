@@ -102,9 +102,9 @@ describe("createPersistence", () => {
     handle.scheduleSave();
     handle.teardown();
     ed.set(doc(""));
-    expect(await flushAll()).toEqual({ ok: false, failed: ["editor:teardown"] });
+    expect(await flushAll()).toEqual({ ok: false, failed: ["editor:teardown"], contentFailed: ["editor:teardown"] });
     updateScript.mockResolvedValue({ id: "teardown", characters: [] });
-    expect(await flushAll()).toEqual({ ok: true, failed: [] });
+    expect(await flushAll()).toEqual({ ok: true, failed: [], contentFailed: [] });
     expect(updateScript.mock.calls.at(-1)?.[0].contentJson).toBe(finalDraft);
     const calls = updateScript.mock.calls.length;
     await flushAll();

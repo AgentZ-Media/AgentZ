@@ -25,7 +25,7 @@ import type { Folder, Script, ScriptCharacter } from "../../lib/types";
 import { navStore } from "../../stores/nav";
 import { settingsStore } from "../../stores/settings";
 import { uiStore } from "../../stores/ui";
-import { pushToast } from "@agentz/kit/stores";
+import { createStatePersistence, pushToast } from "@agentz/kit/stores";
 import { t } from "../../i18n";
 import { TopBar } from "./TopBar";
 import { Inspector } from "./Inspector";
@@ -221,11 +221,19 @@ export function ScriptScreen(props: ScriptScreenProps) {
       cancelled = true;
     });
   });
+  // Buffered like the focus choice, so window close waits for the write.
+  let quickWrite: { key: string; persistence: ReturnType<typeof createStatePersistence> } | undefined;
+  onCleanup(() => quickWrite?.persistence.dispose());
   const toggleQuick = () => {
     if (!quickAvailable()) return;
     const next = quickMode() ? "0" : "1";
     setQuickOverride(next);
-    void kvStore.setAppState(QUICK_MODE_KEY(props.scriptId), next).catch(() => {});
+    const key = QUICK_MODE_KEY(props.scriptId);
+    if (quickWrite?.key !== key) {
+      quickWrite?.persistence.dispose();
+      quickWrite = { key, persistence: createStatePersistence(kvStore, key) };
+    }
+    quickWrite.persistence.schedule(next);
   };
 
   // ---------- title ----------

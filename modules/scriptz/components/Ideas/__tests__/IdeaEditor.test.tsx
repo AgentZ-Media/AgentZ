@@ -260,7 +260,7 @@ describe("IdeaEditor autosave", () => {
     failWrites = true;
     p.select(null);
     await tick();
-    expect(await flushAll()).toEqual({ ok: false, failed: ["idea:a"] });
+    expect(await flushAll()).toEqual({ ok: false, failed: ["idea:a"], contentFailed: ["idea:a"] });
     expect(ideaDraftCount()).toBe(1);
     failWrites = false;
     await settle();

@@ -4,7 +4,7 @@ import {
 } from "solid-js";
 import { Dynamic } from "solid-js/web";
 import { createModuleI18n, t } from "../i18n";
-import { registerFlusher } from "../lib";
+import { registerFlusher, startRelativeTimeClock } from "../lib";
 import { getKvStore, getPlatformAdapter, setPlatformAdapter, setKvStore, applyPlatformToDocument, K } from "../platform";
 import { baseSettingsStore, startBaseSettingsRuntime } from "../stores/baseSettings";
 import { clearToasts } from "../stores/toasts";
@@ -71,6 +71,8 @@ export function SuiteShell(props: SuiteShellProps) {
       if (props.kv) setKvStore(kv);
       applyPlatformToDocument();
       onDispose(startBaseSettingsRuntime(kv));
+      // Shared clock behind relativeTime(); every module gets fresh labels.
+      onDispose(startRelativeTimeClock());
       await baseSettingsStore.load();
       if (controller.signal.aborted) return;
       const context: ModuleContext = {
@@ -85,7 +87,7 @@ export function SuiteShell(props: SuiteShellProps) {
       if (controller.signal.aborted) { disposeRuntime(); return; }
       if (activeRuntime.flushPending) {
         const flush = activeRuntime.flushPending.bind(activeRuntime);
-        onDispose(registerFlusher(() => flush(2000), `module:${props.module.id}`));
+        onDispose(registerFlusher((timeoutMs) => flush(timeoutMs), `module:${props.module.id}`));
       }
       setRuntime(activeRuntime);
       const registry = createShortcutRegistry(shortcuts, () => runtime()?.shortcutContext?.() ?? "shell", () =>
@@ -151,6 +153,11 @@ export function SuiteShell(props: SuiteShellProps) {
                 </aside>
               </Show>
               <main class="shell-main">
+                <Show when={!shellUi.sidebarOpen() && !active().revealsSidebar}>
+                  <button type="button" class="btn ghost icon shell-reveal" onClick={() => shellUi.toggleSidebar()}
+                    title={t("shell.sidebar.toggle", { hotkey: K("Mod+\\") })}
+                    aria-label={t("shell.sidebar.toggleAria")}><Icon name="sidebar" /></button>
+                </Show>
                 <Show when={selectedRoute()}>{(route) => <Dynamic component={route().component} />}</Show>
               </main>
             </div>

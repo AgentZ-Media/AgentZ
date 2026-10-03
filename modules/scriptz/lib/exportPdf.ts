@@ -1,16 +1,11 @@
 // PDF generator - browser-compatible byte generation.
 //
-// Migration from apps/scriptz/src/lib/exportPdf.ts (phase 2F): the pure
-// layout logic plus pdf-lib + @pdf-lib/fontkit has no Tauri binding
-// and runs identically in the browser and on desktop. The file
-// writing part (mkdir + writeFile) moves to the
-// platform adapter (see @agentz/kit/platform::saveAs).
+// Pure layout logic on pdf-lib + @pdf-lib/fontkit without a Tauri binding.
+// Writing the file is the platform adapter's job (`saveAs`).
 //
 // Layout conventions: A4 geometry, iA Writer Quattro S TTF/11pt,
-// tint-band highlighting. Byte-identical to the
-// early Rust code (phase 7d migration). Changes to the geometry
-// must be aligned with the editor look, otherwise the export
-// and preview diverge.
+// tint-band highlighting. Changes to the geometry must be aligned with the
+// editor look, otherwise the export and preview diverge.
 //
 // Font assets belong to the product module. Vite resolves their URLs
 // for both the dev server and the bundled desktop application.
@@ -31,7 +26,7 @@ export interface ExportPdfDeps {
 }
 import { t } from "../i18n";
 
-// ---- Geometry (mm) - 1:1 like Rust src-tauri/src/commands/export.rs ----
+// ---- Geometry (mm) ----
 const A4_W_MM = 210.0;
 const A4_H_MM = 297.0;
 const MARGIN_TOP_MM = 25.0;
@@ -99,7 +94,7 @@ class Layout {
   doc: PDFDocument;
   fonts: Fonts;
   page: PDFPage;
-  // y in mm, top-down - exactly like the Rust struct field. Converted
+  // y in mm, top-down. Converted
   // to pt when drawing. PDF origin is bottom-left, so y_pt = mm(y_mm).
   y_mm: number;
 

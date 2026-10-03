@@ -22,7 +22,7 @@ function setup() {
   };
   const deps = {
     check: vi.fn(async () => update),
-    flush: vi.fn(async () => { sequence.push("flush"); return { ok: true, failed: [] as string[] }; }),
+    flush: vi.fn(async () => { sequence.push("flush"); return { ok: true, failed: [] as string[], contentFailed: [] as string[] }; }),
     notifySaveFailure: vi.fn(), notifyUpdateFailure: vi.fn(),
     isDevelopment: false,
     updateCheckEnabled: () => true,
@@ -49,7 +49,7 @@ describe("desktop updater safety", () => {
 
   it("aborts on failed flush, unlocks, and retries saving the existing download", async () => {
     const s = setup();
-    s.deps.flush.mockImplementationOnce(async () => { s.sequence.push("flush"); return { ok: false, failed: ["editor"] }; });
+    s.deps.flush.mockImplementationOnce(async () => { s.sequence.push("flush"); return { ok: false, failed: ["editor"], contentFailed: ["editor"] }; });
     await s.store.checkNow();
     await s.store.downloadAndInstall();
     expect(s.sequence).toEqual(["download", "lock", "flush", "unlock"]);

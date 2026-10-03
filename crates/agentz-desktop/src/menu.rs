@@ -19,11 +19,14 @@ pub fn set_menu_language(
     if !matches!(language, "de" | "en") {
         return Err("unsupported menu language".into());
     }
+    super::lifecycle::set_language(&app, language == "de");
+    #[cfg(target_os = "macos")]
     app.set_menu(build(&app, language).map_err(|error| error.to_string())?)
         .map_err(|error| error.to_string())?;
     Ok(())
 }
 
+#[cfg_attr(not(target_os = "macos"), allow(dead_code))]
 pub fn build(app: &AppHandle<Wry>, language: &str) -> tauri::Result<Menu<Wry>> {
     let de = language == "de";
     let label = |german, english| if de { german } else { english };

@@ -23,15 +23,13 @@
     "vite": "catalog:",
     "vite-plugin-solid": "catalog:",
     "@tauri-apps/api": "catalog:",
-    "@tauri-apps/plugin-clipboard-manager": "catalog:",
     "@tauri-apps/plugin-dialog": "catalog:",
     "@tauri-apps/plugin-fs": "catalog:",
     "@tauri-apps/plugin-opener": "catalog:",
     "@tauri-apps/plugin-os": "catalog:",
     "@tauri-apps/plugin-process": "catalog:",
     "@tauri-apps/plugin-sql": "catalog:",
-    "@tauri-apps/plugin-updater": "catalog:",
-    "@tauri-apps/plugin-window-state": "catalog:"
+    "@tauri-apps/plugin-updater": "catalog:"
   },
   "devDependencies": {
     "@agentz/vitest-preset": "workspace:*",

@@ -36,6 +36,17 @@ describe("generic navigation persistence", () => {
     expect(nav.route()).toBe("next");
   });
 
+  it("navigates despite failed UI state such as a layout write", async () => {
+    const blocked = vi.fn();
+    const nav = navigation(blocked);
+    cleanups.push(nav.start(memory()));
+    const unregister = registerFlusher(() => ({ ok: false }), "failed-layout", "state");
+    await nav.go("next");
+    expect(nav.route()).toBe("next");
+    expect(blocked).not.toHaveBeenCalled();
+    unregister();
+  });
+
   it("retries a frozen disposed payload on its original adapter", async () => {
     const old = memory();
     const next = memory();

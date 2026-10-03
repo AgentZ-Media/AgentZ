@@ -53,6 +53,6 @@ export function createSettingsWriter(kv: KvStore, name: string) {
     release();
     return { ok: failed.size === 0 };
   };
-  unregister = registerFlusher(flush, name);
+  unregister = registerFlusher(flush, name, "state");
   return { write, flush, dispose() { disposed = true; release(); } };
 }

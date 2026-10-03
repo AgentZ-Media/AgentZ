@@ -1,10 +1,5 @@
-// FTS5 helpers - TS-side mirror of src-tauri/src/fts.rs.
-//
-// During the Rust -> TS migration both sides write to the same
-// `scripts_fts` virtual table (DELETE + INSERT). The Rust scripts.rs
-// commands still own create/update writes; this module is used by the
-// TS-side snapshot restore (Phase 5) and global search (Phase 6), and
-// will absorb the rest in Phase 7.
+// FTS5 helpers for the `scripts_fts` virtual table (DELETE + INSERT on every
+// content write), used by script saves, snapshot restore and global search.
 
 import { extractPlainText } from "./lex";
 import { getDb } from "./db";
@@ -14,10 +9,8 @@ import { getDb } from "./db";
  *  word gets a `*` suffix for prefix matching, words are joined with
  *  spaces (FTS5 treats that as implicit AND).
  *
- *  Mirrors Rust's `sanitize_fts_query` (UAX #29 word segmentation via
- *  `unicode-segmentation::unicode_words`). The TS side uses
- *  `Intl.Segmenter` with `granularity: "word"` and the same
- *  `isWordLike` filter, which agrees with Rust on Latin/Cyrillic/etc.
+ *  Word segmentation follows UAX #29 via `Intl.Segmenter` with
+ *  `granularity: "word"` and the `isWordLike` filter.
  *
  *  CJK twist: V8/JSC's segmenter does dictionary-based grouping of Han
  *  ideographs ("中文" → one token), but UAX #29 (and the SQLite

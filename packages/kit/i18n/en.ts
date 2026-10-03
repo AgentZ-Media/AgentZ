@@ -16,6 +16,10 @@ export const kitEn: Record<keyof typeof kitDe, string> = {
   "shell.update.title.error": "Update failed - try again",
 
   "persistence.saveFailed": "Some changes could not be saved. Please try again.",
+  "persistence.unsavedTitle": "Changes not saved",
+  "persistence.unsavedBody": "Your latest changes could not be saved, even after retrying. If you continue anyway, they will be lost.",
+  "persistence.unsavedClose": "Close Anyway",
+  "persistence.unsavedQuit": "Quit Anyway",
   "common.cancel": "Cancel",
   "common.save": "Save",
   "common.delete": "Delete",

@@ -1,42 +1,47 @@
-# Gemeinsamer nativer Desktop-Host
+# agentz-desktop
 
-`builder(Config { db_url, migrations })` liefert einen normalen
-`tauri::Builder<Wry>`. Apps ergänzen eigene Plugins/Commands und rufen
-`.run(tauri::generate_context!())` auf. Fensterkonfiguration, Identifier,
-Updater-Schlüssel und Produktmigrationen bleiben in der App.
+Shared native host for AgentZ desktop apps.
 
-Neue Apps verwenden `KIT_BASELINE_SQL` als erste Migration für `settings`
-und `app_state`. Bestehende Migrationen werden nicht ersetzt.
+`builder(Config { id, migrations })` returns a plain `tauri::Builder<Wry>`.
+Apps may add their own plugins and commands, then call
+`.run(tauri::generate_context!())`. The database is `sqlite:<id>.db`, the
+same name the frontend host (`@agentz/desktop`) opens. Window config,
+identifier, updater key and product migrations stay in the app.
 
-Die Standard-Plugins werden zentral registriert; Single-Instance steht
-zuerst. Alle Plugins bleiben zusätzlich direkte App-Abhängigkeiten,
-weil Tauri ihre Capability-Metadaten über Cargo-`links` liest. Die App
-benötigt außerdem die Capability `agentz-desktop:default` für den
-Lebenszyklus-Vertrag. Systemweite Tastenkürzel gehören nicht zur Basis.
+- New apps use `KIT_BASELINE_SQL` (`settings`, `app_state`) as migration 1.
+  Published migrations are never replaced.
+- Standard plugins are registered here, single-instance first. Every app
+  still lists them as direct Cargo dependencies: Tauri reads their
+  capability metadata through Cargo `links`. Apps need the capability
+  `agentz-desktop:default`. System-wide shortcuts are not part of the base.
+- macOS gets a native app menu (About, Settings, Quit, Edit, Window);
+  Windows keeps a plain window without a menu bar.
 
-## Frontend-Vertrag
+## Frontend contract
 
-Die Implementierung in `@agentz/desktop` installiert Listener und meldet
-anschließend `plugin:agentz-desktop|ready`. Ein vorher angefordertes
-Beenden bleibt bis dahin ausstehend.
+`@agentz/desktop` installs its listeners and then calls
+`plugin:agentz-desktop|ready`. A quit requested earlier waits for it.
 
-- `agentz:exit-requested` liefert `{ requestId }`. Das Frontend sperrt
-  Bearbeitung, flusht und quittiert mit
-  `plugin:agentz-desktop|finish_exit({ requestId, ok })`. Nur die aktuelle,
-  erfolgreiche Quittierung erlaubt genau einen Exit. Fehler lassen die
-  App geöffnet; ein neuer Versuch erhält eine neue ID.
-- `agentz:menu-action` liefert `settings` oder `about`. Bei geschlossenem
-  Fenster wird das konfigurierte Hauptfenster neu erstellt. Aktionen
-  warten bis zur Bereitschaft des Frontends.
-- `plugin:agentz-desktop|set_menu_language({ language })` übernimmt `de`
-  oder `en` aus den Kit-Einstellungen. Rust liest dafür keine Datenbank.
+- `agentz:exit-requested` sends `{ requestId }`. The frontend locks editing,
+  flushes and answers `plugin:agentz-desktop|finish_exit({ requestId, ok })`.
+  Only the current, successful answer allows one exit.
+- If the frontend never becomes ready, the app quits after 10 s (nothing can
+  be unsaved). If a save hangs, a second Quit after 2 s offers
+  "Quit Anyway" in a native dialog.
+- `agentz:menu-action` sends `settings` or `about`; a closed window is
+  recreated first.
+- `plugin:agentz-desktop|set_menu_language({ language })` passes `de` or `en`
+  for the menu and native dialogs. Rust never reads the database.
 
-Fensterschließen wird im Frontend vor dem Flush verhindert; erst Erfolg
-zerstört das Fenster. Auf macOS bleibt der Prozess im Dock und stellt
-beim erneuten Öffnen das Fenster aus der App-Konfiguration wieder her.
-Ein zweiter App-Start fokussiert dieses Fenster.
+Closing the window is prevented in the frontend until the flush succeeded.
+On macOS the process stays in the Dock and a Dock click reopens the window;
+a Quit that arrives while the window closes still completes. A second app
+launch focuses the existing window.
 
-**Updates:** Tauri-Neustart lässt sich nicht durch `prevent_exit()`
-aufhalten, und der Windows-Installer beendet den Prozess direkt. Deshalb
-muss der gemeinsame Updater bereits **vor** `install()` und `relaunch()`
-die Bearbeitung sperren und erfolgreich flushen.
+**Updates:** a Tauri restart cannot be prevented and the Windows installer
+ends the process itself, so the updater must lock editing and flush
+successfully **before** `install()` and `relaunch()`.
+
+**Known limit:** a system-initiated quit on macOS (Dock menu, logout,
+shutdown) bypasses the quit handshake; edits rely on the editor's short
+autosave debounce.

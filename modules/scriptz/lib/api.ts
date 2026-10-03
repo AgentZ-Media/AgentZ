@@ -87,7 +87,7 @@ import type {
 // Registered explicitly by the host; the `api` proxy reads the active
 // adapter on every call, so hosts can replace storage without changing callers.
 const sqlBackedAdapter: ScriptzStorage = {
-  // Scripts - fully TS-side since Migration Phase 7d.
+  // Scripts
   async createScript(input: {
     title?: string;
     initialContentJson?: string;
@@ -158,7 +158,7 @@ const sqlBackedAdapter: ScriptzStorage = {
     return scriptsBackfillRuntime();
   },
 
-  // Folders - TS-side via plugin-sql since Migration Phase 4.
+  // Folders
   async listFolders(): Promise<Folder[]> {
     return foldersList();
   },
@@ -188,7 +188,7 @@ const sqlBackedAdapter: ScriptzStorage = {
     return foldersMoveScripts(scriptIds, folderId);
   },
 
-  // Snapshots - TS-side via plugin-sql since Migration Phase 5.
+  // Snapshots
   async createSnapshot(scriptId: string, trigger: "auto" | "manual"): Promise<SnapshotMeta> {
     return snapsCreate(scriptId, trigger);
   },
@@ -205,13 +205,12 @@ const sqlBackedAdapter: ScriptzStorage = {
     return snapsDelete(id);
   },
 
-  // Search - TS-side via plugin-sql since Migration Phase 6.
+  // Search
   async globalSearch(query: string, limit = 50): Promise<SearchHit[]> {
     return searchGlobal(query, limit);
   },
 
-  // Character-colour records (app-wide) - TS-side via plugin-sql since
-  // Migration Phase 3.
+  // Character-colour records (app-wide)
   async listCharacterColors(): Promise<CharacterColorRecord[]> {
     return ccList();
   },
@@ -235,10 +234,8 @@ const sqlBackedAdapter: ScriptzStorage = {
     return cuPruneUnused(only);
   },
 
-  // Export - fully in core since phase 2F: PDF bytes built via
-  // pdf-lib (browser-compatible, see ./exportPdf.ts), plaintext via
-  // extractTeleprompterText. The PlatformAdapter writes the bytes
-  // out through the host platform adapter.
+  // Export: PDF bytes via pdf-lib (./exportPdf.ts), plaintext via
+  // extractTeleprompterText; the platform adapter writes the bytes.
   async exportPdf(input: {
     scriptId: string;
     includeHighlighting: boolean;
@@ -283,7 +280,7 @@ const sqlBackedAdapter: ScriptzStorage = {
     );
   },
 
-  // .scriptz container (phase 2G). Pure function for serialization
+  // .scriptz container. Pure function for serialization
   // sits in ./scriptzFile.ts; here only the "load script -> bytes -> saveAs"
   // composition. Importer counterpart see importScriptz below.
   async exportScriptz(scriptId: string): Promise<ExportResult> {
@@ -367,12 +364,9 @@ export function registerSqlStorageAdapter(): void {
   setStorageAdapter(sqlBackedAdapter);
 }
 
-// Proxy facade for drop-in compatibility. Older code that does
-// `import { api } from "@agentz/scriptz/lib/api"` and calls `api.getScript(id)`
-// passes through here to `getStorageAdapter()` - i.e. always to
-// the currently registered adapter. Functions are bound to the adapter
-// so any `this` references in a custom impl
-// keep working.
+// Proxy facade: module code calls `api.getScript(id)` and always reaches the
+// currently registered adapter via `getStorageAdapter()`. Functions are bound
+// to the adapter so `this` references in a custom implementation keep working.
 export const api: ScriptzStorage = new Proxy({} as ScriptzStorage, {
   get(_target, prop: string | symbol) {
     const a = getStorageAdapter() as unknown as Record<string | symbol, unknown>;

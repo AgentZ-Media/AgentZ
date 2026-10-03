@@ -41,6 +41,20 @@ describe("independent module in the real Kit shell", () => {
     expect(Object.keys(fixtureCatalogs.en).sort()).toEqual(Object.keys(fixtureCatalogs.de).sort());
   });
 
+  it("offers a way back to a hidden sidebar when the module has no own control", async () => {
+    const { kv } = createFixtureKv();
+    let context: ModuleContext | undefined;
+    const fixture = createFixtureModule({ onSetup: (value) => { context = value; } });
+    const page = render(() => <SuiteShell module={fixture} platform={fixturePlatform} kv={kv} />);
+    await waitFor(() => expect(page.getByRole("heading", { name: "Ein eigenständiges Modul" })).toBeTruthy());
+    expect(document.querySelector(".shell-reveal")).toBeNull();
+    context!.shell.toggleSidebar();
+    await waitFor(() => expect(document.querySelector("aside.side")).toBeNull());
+    fireEvent.click(document.querySelector(".shell-reveal")!);
+    await waitFor(() => expect(document.querySelector("aside.side")).toBeTruthy());
+    expect(document.querySelector(".shell-reveal")).toBeNull();
+  });
+
   it("dispatches module shortcuts, honors prevented/composing events and dialog context, and disposes", async () => {
     const { kv } = createFixtureKv();
     const dispose = vi.fn();

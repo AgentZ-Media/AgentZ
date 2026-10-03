@@ -79,7 +79,7 @@ export function RangeFields(props: RangeFieldsProps) {
     if (disposed && result.ok) unregister();
     return result;
   };
-  const unregister = registerFlusher(commit, "length-range");
+  const unregister = registerFlusher(commit, "length-range", "state");
   onCleanup(() => {
     disposed = true;
     void commit();

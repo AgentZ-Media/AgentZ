@@ -38,10 +38,6 @@ export function getScriptzShortcuts(): ShortcutDef[] {
       matches: (event) => isModKey(event) && (event.key === "[" || event.key === "]"),
       run: (event) => { if (event.key === "[") navStore.back(); else navStore.forward(); },
     }),
-    entry("sidebar", "prefs.shortcuts.sidebar", ["Mod+\\"], "app", {
-      matches: (event) => isModKey(event) && event.key === "\\" && !event.shiftKey,
-      run: () => uiStore.toggleSidebar(),
-    }),
     entry("inspector", "prefs.shortcuts.inspector", ["Mod+Shift+\\"], "app", {
       matches: (event) => isModKey(event) && (event.key === "|" || (event.key === "\\" && event.shiftKey)),
       enabled: hasScript, run: () => uiStore.toggleInspector(),

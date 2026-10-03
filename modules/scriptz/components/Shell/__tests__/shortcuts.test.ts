@@ -36,12 +36,13 @@ describe("ScriptZ shortcut contribution", () => {
     expect(navStore.forward).toHaveBeenCalledOnce();
   });
 
-  it("keeps shifted inspector variants separate from sidebar", () => {
+  it("handles shifted inspector variants and leaves plain Mod+\\ to the shell", () => {
     press("|", { shiftKey: true });
     press("\\", { shiftKey: true });
     press("\\");
     expect(uiStore.toggleInspector).toHaveBeenCalledTimes(2);
-    expect(uiStore.toggleSidebar).toHaveBeenCalledOnce();
+    // The sidebar shortcut is a kit shell shortcut since all apps need it.
+    expect(uiStore.toggleSidebar).not.toHaveBeenCalled();
   });
 
   it("keeps product actions available inside the editor", () => {

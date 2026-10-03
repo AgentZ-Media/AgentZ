@@ -36,7 +36,9 @@ export function createNavStore<Route>(options: NavStoreOptions<Route>) {
       if (!current.active) return;
       const result = await flushAll(2000);
       if (!current.active) return;
-      if (!result.ok) { options.onFlushFailed?.(); return; }
+      // Only unsaved content blocks navigation; failed UI state stays queued
+      // in its saver and is retried by the next flush.
+      if (result.contentFailed.length) { options.onFlushFailed?.(); return; }
       apply();
     }).catch(() => { if (current.active) options.onFlushFailed?.(); });
     return current.queue;

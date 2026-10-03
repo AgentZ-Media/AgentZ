@@ -1,11 +1,10 @@
 // Snapshots - auto + manual versioning for a script's content.
 //
-// TS port of src-tauri/src/commands/snapshots.rs (Migration Phase 5).
-// Schema is unchanged: `snapshots(id, script_id, content_json, trigger,
-// created_at)`, FK to `scripts.id` ON DELETE CASCADE. Cap is 50 per
-// script (oldest dropped automatically on each create).
+// Table `snapshots(id, script_id, content_json, trigger, created_at)`, FK to
+// `scripts.id` ON DELETE CASCADE. Cap is 50 per script (oldest dropped
+// automatically on each create).
 //
-// Caveat (same as earlier phases): tauri-plugin-sql has no transaction
+// Caveat: tauri-plugin-sql has no transaction
 // API in JS, so multi-statement operations run as independent
 // auto-committed steps. Effects:
 //   - createSnapshot: a crash between INSERT and the trim DELETE

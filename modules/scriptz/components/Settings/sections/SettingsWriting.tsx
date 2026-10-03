@@ -44,7 +44,7 @@ function WpmField() {
     if (disposed && result.ok) unregister();
     return result;
   };
-  const unregister = registerFlusher(commit, "settings:dialog-wpm");
+  const unregister = registerFlusher(commit, "settings:dialog-wpm", "state");
   onCleanup(() => {
     disposed = true;
     void commit();

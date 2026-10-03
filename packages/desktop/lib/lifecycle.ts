@@ -13,7 +13,12 @@ export interface LifecyclePorts {
   editingLocked(): boolean;
   openSettings(section?: string): void;
   failed(error?: unknown): void;
+  /** Asked after a repeated failed save: leave anyway and lose the changes? */
+  confirmUnsaved(kind: "close" | "exit"): Promise<boolean>;
 }
+
+/** If an authorized exit does not end the process, editing comes back. */
+const EXIT_UNLOCK_FALLBACK_MS = 3000;
 
 /** Every close is synchronously prevented, including duplicate requests.
  * Native quit and window close share one pending transaction. */
@@ -22,6 +27,8 @@ export async function startDesktopLifecycle(ports: LifecyclePorts, signal?: Abor
   let disposed = false;
   let busy = false;
   let pendingExit: number | undefined;
+  // A failed save is reported once; the next attempt may leave without it.
+  let previousFailed = false;
   const stop = () => {
     disposed = true;
     signal?.removeEventListener("abort", stop);
@@ -42,17 +49,36 @@ export async function startDesktopLifecycle(ports: LifecyclePorts, signal?: Abor
     }
     busy = true;
     const unlock = ports.lockEditing();
+    // Once the window or app is leaving, editing stays locked so nothing
+    // typed in the last moment can be lost.
+    let leaving = false;
     try {
       const result = await ports.flush();
       const exitId = pendingExit ?? requestId;
       pendingExit = undefined;
-      if (!result.ok || disposed) {
-        if (!disposed) ports.failed();
+      if (disposed) {
         if (exitId !== undefined) await ports.finishExit(exitId, false);
         return;
       }
-      if (exitId !== undefined) await ports.finishExit(exitId, true);
-      else if (kind === "close") await ports.destroy();
+      let proceed = result.ok;
+      if (!proceed) {
+        if (previousFailed) proceed = await ports.confirmUnsaved(exitId !== undefined ? "exit" : "close");
+        else ports.failed();
+        previousFailed = !proceed;
+      }
+      if (!proceed || disposed) {
+        if (exitId !== undefined) await ports.finishExit(exitId, false);
+        return;
+      }
+      previousFailed = false;
+      if (exitId !== undefined) {
+        await ports.finishExit(exitId, true);
+        leaving = true;
+        setTimeout(unlock, EXIT_UNLOCK_FALLBACK_MS);
+      } else if (kind === "close") {
+        await ports.destroy();
+        leaving = true;
+      }
     } catch (error) {
       ports.failed(error);
       const exitId = pendingExit ?? requestId;
@@ -62,7 +88,7 @@ export async function startDesktopLifecycle(ports: LifecyclePorts, signal?: Abor
       }
     } finally {
       busy = false;
-      unlock();
+      if (!leaving) unlock();
     }
   }
   try {

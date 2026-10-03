@@ -5,7 +5,7 @@
 // characterDropdown.tsx).
 //
 // The popover always edits the **app-wide** colour for that name (see
-// CLAUDE.md and `commands/character_colors.rs`). Per-script overrides
+// `lib/characterColors.ts`). Per-script overrides
 // don't exist on purpose.
 
 import { createSignal } from "solid-js";

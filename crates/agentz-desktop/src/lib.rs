@@ -10,7 +10,8 @@ use tauri_plugin_sql::Migration;
 pub const KIT_BASELINE_SQL: &str = include_str!("baseline.sql");
 
 pub struct Config {
-    pub db_url: &'static str,
+    /// App ID; the database is `sqlite:<id>.db`, matching the frontend host.
+    pub id: &'static str,
     pub migrations: Vec<Migration>,
 }
 
@@ -35,7 +36,7 @@ pub fn builder(config: Config) -> tauri::Builder<Wry> {
         .plugin(tauri_plugin_fs::init())
         .plugin(
             tauri_plugin_sql::Builder::default()
-                .add_migrations(config.db_url, config.migrations)
+                .add_migrations(&format!("sqlite:{}.db", config.id), config.migrations)
                 .build(),
         )
         .plugin(host_plugin())
@@ -48,8 +49,10 @@ fn host_plugin() -> TauriPlugin<Wry> {
             lifecycle::finish_exit,
             menu::set_menu_language
         ])
-        .setup(|app, _| {
-            app.set_menu(menu::build(app, "en")?)?;
+        .setup(|_app, _| {
+            // Only macOS gets an app menu; Windows keeps a plain window frame.
+            #[cfg(target_os = "macos")]
+            _app.set_menu(menu::build(_app, "en")?)?;
             Ok(())
         })
         .on_event(lifecycle::on_event)

@@ -8,8 +8,9 @@ export class FlushError extends Error {
   }
 }
 
-/** Gate operations that must read the latest persisted data. */
+/** Gate operations that must read the latest persisted content. Failed UI
+ *  state (layout, navigation, settings) does not block them. */
 export async function requireSuccessfulFlush(timeoutMs = 2000): Promise<void> {
   const result = await flushAll(timeoutMs);
-  if (!result.ok) throw new FlushError(result.failed);
+  if (result.contentFailed.length) throw new FlushError(result.contentFailed);
 }

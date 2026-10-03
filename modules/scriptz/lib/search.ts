@@ -1,9 +1,7 @@
 // Global search across scripts.
 //
-// TS port of src-tauri/src/commands/search.rs (Migration Phase 6).
-// Read-only path: the FTS5 index is still maintained by Rust's
-// `commands::scripts::*` writes (Phase 7 absorbs that); we just query
-// it. BM25 ranking + 8-token snippet with `<mark>` highlights.
+// Read-only path over the FTS5 index that `scripts.ts` maintains on every
+// save. BM25 ranking + 8-token snippet with `<mark>` highlights.
 
 import { getDb } from "./db";
 import { sanitizeFtsQuery } from "./fts";

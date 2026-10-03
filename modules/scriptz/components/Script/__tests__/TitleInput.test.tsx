@@ -36,9 +36,9 @@ describe("TitleInput", () => {
     type(input(container), "Unsaved title");
     unmount();
     await tick();
-    expect(await flushAll()).toEqual({ ok: false, failed: ["title:failed-title"] });
+    expect(await flushAll()).toEqual({ ok: false, failed: ["title:failed-title"], contentFailed: ["title:failed-title"] });
     onCommit.mockResolvedValue(undefined);
-    expect(await flushAll()).toEqual({ ok: true, failed: [] });
+    expect(await flushAll()).toEqual({ ok: true, failed: [], contentFailed: [] });
     expect(onCommit).toHaveBeenLastCalledWith("Unsaved title", "failed-title");
     const calls = onCommit.mock.calls.length;
     await flushAll();
