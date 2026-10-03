@@ -178,7 +178,8 @@ packages/core/
                            focusModeDefault (default off), quickMode,
                            showWritingStats (= writing counter, default on),
                            dialogWpm, length_min/max_default_sec, update
-                           flags, studio connect code.
+                           flags, studio connect code,
+                           pruneUnusedCharacters (default off).
     dailyStats.ts, ideas.ts, saveStatus.ts, toasts.ts
   lib/
     api.ts                 `api.*` facade = proxy onto the registered
@@ -216,7 +217,10 @@ packages/core/
     legacyBlocksMigration.ts  migrateLegacyBlocksOnce() (boot).
     exportPdf.ts, exportSelection.ts (multi PDF), scriptzFile.ts (.scriptz
     v1, status additive), handoff.ts (Studio), ideas.ts, dailyWords.ts,
-    characterColors.ts, welcome.ts, keys.ts, format.ts, colors.ts,
+    characterColors.ts, characterUsage.ts (welche Registry-Namen noch
+    benutzt werden: gestückelter Scan über characters_meta, SQL-Find/Prune,
+    characterUsageBus), characterAutoPrune.ts (optionales Auto-Aufräumen,
+    debounced), welcome.ts, keys.ts, format.ts, colors.ts,
     saveFlush.ts (flushAll: awaits buffered + in-flight writes),
     serialSave.ts (serialized "latest draft wins" saver for every
     autosave/commit field), scriptViewCache.ts, updates.ts (updater slot),
@@ -264,6 +268,15 @@ global character table.
   dots in `ScriptRow` and the autocomplete dropdown. There is no
   "create character" UI - it happens implicitly when you type a new name
   into a Charakter block.
+- Die app-weite Farb-Registry (`character_colors`) wächst bei jedem Save
+  mit (auch Zwischenstände beim Tippen). Einstellungen > Charaktere kann
+  sie aufräumen: „Jetzt prüfen" scannt `characters_meta` aller Skripte
+  (Papierkorb zählt mit, Snapshots nicht) seitenweise mit UI-Pausen und
+  löscht nach Bestätigung; der Schalter „Nur verwendete Namen behalten"
+  räumt nach jedem Save/Purge/Restore, der einen Namen verliert, nach
+  4 s Ruhe automatisch auf (`lib/characterAutoPrune.ts`). Das Löschen
+  prüft selbst noch einmal nach, ein zwischendurch wieder getippter Name
+  bleibt.
 
 ## Legacy-Blöcke (Kamera/Caption/SFX)
 

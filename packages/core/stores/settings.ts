@@ -34,6 +34,11 @@ const [showWritingStats, setShowWritingStats] = createSignal<boolean>(true);
 // Only applies when the resolved theme is actually "dark" (light
 // mode ignores the setting; in auto mode it depends on the system).
 const [darkPaper, setDarkPaper] = createSignal<boolean>(false);
+// Keep only character names that some stored script still uses: names
+// that drop out of every script are deleted from the colour registry in
+// the background (lib/characterAutoPrune.ts). Default off - deleting a
+// name also forgets its colour.
+const [pruneUnusedCharacters, setPruneUnusedCharacters] = createSignal<boolean>(false);
 
 // Words per minute for the runtime estimate (inspector, list, timeline).
 // Default 210 is calibrated for TikTok / sketch pace.
@@ -177,6 +182,11 @@ export const settingsStore = {
     setDarkPaper(v);
     await persistSetting("dark_paper", v ? "1" : "0");
   },
+  pruneUnusedCharacters,
+  setPruneUnusedCharacters: async (v: boolean) => {
+    setPruneUnusedCharacters(v);
+    await persistSetting("prune_unused_characters", v ? "1" : "0");
+  },
   resolvedTheme,
   dialogWpm,
   setDialogWpm: async (v: number) => {
@@ -216,7 +226,7 @@ export const settingsStore = {
   },
   loaded,
   async load() {
-    const [t, hd, uce, huc, qmae, wpm, fmd, sws, dp, lang, scc, lmin, lmax] = await Promise.all([
+    const [t, hd, uce, huc, qmae, wpm, fmd, sws, dp, lang, scc, lmin, lmax, puc] = await Promise.all([
       api.getSetting("theme"),
       api.getSetting("highlighting_default"),
       api.getSetting("update_check_enabled"),
@@ -230,6 +240,7 @@ export const settingsStore = {
       api.getSetting("studio_connect_code"),
       api.getSetting("length_min_default_sec"),
       api.getSetting("length_max_default_sec"),
+      api.getSetting("prune_unused_characters"),
     ]);
     if (t === "dark" || t === "light" || t === "auto") setTheme(t);
     if (hd) setHighlightingDefault(hd === "1");
@@ -239,6 +250,7 @@ export const settingsStore = {
     if (fmd) setFocusModeDefault(fmd === "1");
     if (sws) setShowWritingStats(sws === "1");
     if (dp) setDarkPaper(dp === "1");
+    if (puc) setPruneUnusedCharacters(puc === "1");
     if (scc) setStudioConnectCodeSignal(scc);
     setLengthMinDefaultSecSignal(parseLengthSetting(lmin));
     setLengthMaxDefaultSecSignal(parseLengthSetting(lmax));

@@ -13,6 +13,7 @@ import {
   type JSX,
 } from "solid-js";
 import { api } from "../../lib/api";
+import { startCharacterAutoPrune } from "../../lib/characterAutoPrune";
 import { dailyStatsBus } from "../../lib/dailyStatsBus";
 import { ensureWelcomeContent } from "../../lib/welcome";
 import { migrateLegacyBlocksOnce } from "../../lib/legacyBlocksMigration";
@@ -101,6 +102,14 @@ export function AppShell(props: AppShellProps) {
   // Writing counter + week line: first stats load after boot.
   createEffect(() => {
     if (bootReady()) dailyStatsBus.bump();
+  });
+
+  // Optional character-registry cleanup (settings > characters). Wired
+  // after boot so the legacy migration's rewrites never trigger it.
+  createEffect(() => {
+    if (!bootReady()) return;
+    const stop = untrack(() => startCharacterAutoPrune(() => settingsStore.pruneUnusedCharacters()));
+    onCleanup(stop);
   });
 
   // Keep history / "Zuletzt" in sync with the live script list: purged or

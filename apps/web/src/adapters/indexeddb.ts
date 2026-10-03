@@ -19,6 +19,13 @@ import {
   DEFAULT_PALETTE,
   eqIgnoreAsciiCase,
 } from "@scriptz/core/lib/characterColors";
+import {
+  characterUsageBus,
+  dropsCharacterNames,
+  namesInCharsMeta,
+  scanUsedCharacterNames,
+  unusedRegistryNames,
+} from "@scriptz/core/lib/characterUsage";
 import { getPlatformAdapter } from "@scriptz/core/lib/platform";
 import {
   setStorageAdapter,
@@ -569,6 +576,7 @@ class IndexedDbStorage implements StorageAdapter {
     const delta =
       mode !== "edit" || isFirstMeasurement ? 0 : newWordCount - row.last_word_count;
 
+    if (dropsCharacterNames(existing, chars)) characterUsageBus.notifyNamesDropped();
     row.content_json = contentJson;
     row.characters_meta = serializeChars(chars);
     row.last_word_count = newWordCount;
@@ -638,11 +646,14 @@ class IndexedDbStorage implements StorageAdapter {
   }
 
   async purgeScript(id: string): Promise<void> {
-    await db.transaction("rw", db.scripts, db.snapshots, async () => {
+    const hadCharacters = await db.transaction("rw", db.scripts, db.snapshots, async () => {
+      const row = await db.scripts.get(id);
       await db.scripts.delete(id);
       await db.snapshots.where("script_id").equals(id).delete();
+      return row ? parseChars(row.characters_meta).length > 0 : false;
     });
     this.removeSearchDoc(id);
+    if (hadCharacters) characterUsageBus.notifyNamesDropped();
   }
 
   async emptyTrash(): Promise<void> {
@@ -1115,6 +1126,46 @@ class IndexedDbStorage implements StorageAdapter {
       }
     }
     return affected;
+  }
+
+  async findUnusedCharacterNames(): Promise<string[]> {
+    return this.unusedCharacterNames();
+  }
+
+  async pruneUnusedCharacterNames(only?: string[]): Promise<string[]> {
+    const scanStart = Date.now();
+    const candidates = await this.unusedCharacterNames(only);
+    if (candidates.length === 0) return [];
+    const removed = await db.transaction("rw", db.scripts, db.character_colors, async () => {
+      // The paged scan can't run inside one transaction (it yields to the
+      // UI), so re-check every script written since it started: a save
+      // that re-added a candidate keeps that name.
+      const recent = await db.scripts.where("updated_at").aboveOrEqual(scanStart).toArray();
+      const usedAgain = new Set<string>();
+      for (const r of recent) for (const n of namesInCharsMeta(r.characters_meta)) usedAgain.add(n);
+      const doomed = candidates.filter((n) => !usedAgain.has(n.trim().toUpperCase()));
+      await db.character_colors.bulkDelete(doomed);
+      return doomed;
+    });
+    if (removed.length > 0) characterUsageBus.bumpRegistry();
+    return removed;
+  }
+
+  /** Paged by primary key so only one page of rows (content included -
+   *  IndexedDB can't project columns) is in memory at a time. */
+  private async unusedCharacterNames(only?: string[]): Promise<string[]> {
+    if (only && only.length === 0) return [];
+    const registry = await db.character_colors.toCollection().primaryKeys();
+    if (registry.length === 0) return [];
+    const used = await scanUsedCharacterNames(
+      (after, pageSize) =>
+        (after === null ? db.scripts.orderBy(":id") : db.scripts.where(":id").above(after))
+          .limit(pageSize)
+          .toArray(),
+      // Full rows are heavier than the SQL projection - smaller pages.
+      100,
+    );
+    return unusedRegistryNames(registry, used, only);
   }
 
   private async loadColorMap(): Promise<Map<string, CharacterColorRow>> {
