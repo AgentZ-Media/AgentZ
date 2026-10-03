@@ -1,14 +1,15 @@
-import { For, Show, createMemo, createResource, createSignal } from "solid-js";
+import { For, Show, createEffect, createResource, createSignal, on, onCleanup } from "solid-js";
 import { Modal } from "../Common/Modal";
 import { confirmDialog } from "../Common/ConfirmDialog";
 import { api } from "../../lib/api";
 import { scriptsBus } from "../../lib/scriptsBus";
 import { flushAll } from "../../lib/saveFlush";
 import { formatAbsolute } from "../../lib/format";
-import type { Snapshot, SnapshotMeta } from "../../lib/types";
+import type { ScriptCharacter, Snapshot, SnapshotMeta } from "../../lib/types";
 import { pushToast } from "../../stores/toasts";
 import { t } from "../../i18n";
-import { normalizeLegacyContent } from "../../lib/legacyBlocks";
+import { Editor } from "./Editor";
+import "./PaperLayout.css";
 import "./SnapshotsDialog.css";
 
 export interface SnapshotsDialogProps {
@@ -17,6 +18,11 @@ export interface SnapshotsDialogProps {
   open: boolean;
   onClose(): void;
   onRestore?(snapshotId: string): void;
+  /** Current character colours of the script, so the preview tints the
+   *  cast exactly like the live editor does. */
+  characters?: ScriptCharacter[];
+  /** Whether character highlighting is on for this script. */
+  highlighting?: boolean;
 }
 
 export function SnapshotsDialog(props: SnapshotsDialogProps) {
@@ -58,13 +64,10 @@ export function SnapshotsDialog(props: SnapshotsDialogProps) {
     },
   );
 
-  const previewText = createMemo(() => {
-    const snap = selectedSnap.latest;
-    if (!snap) return "";
-    // Old snapshots may hold retired block types (camera, caption, sfx) -
-    // preview them as they would be restored (as action).
-    return extractPreview(normalizeLegacyContent(snap.content_json).json);
-  });
+  // Snapshot ids whose content Lexical could not parse - shown as a note
+  // instead of a sheet.
+  const [broken, setBroken] = createSignal<ReadonlySet<string>>(new Set());
+  const markBroken = (id: string) => setBroken((prev) => new Set(prev).add(id));
 
   const onCreateManual = async () => {
     try {
@@ -133,7 +136,8 @@ export function SnapshotsDialog(props: SnapshotsDialogProps) {
       open={props.open}
       onClose={props.onClose}
       title={title()}
-      maxWidth={860}
+      // Wide enough for the list plus a full-size A4 sheet.
+      maxWidth={1180}
       footer={
         <>
           <button class="btn btn-danger" onClick={onDelete} disabled={!selectedId()}>
@@ -205,7 +209,19 @@ export function SnapshotsDialog(props: SnapshotsDialogProps) {
             when={selectedSnap.latest}
             fallback={<div class="snap-empty">{t("snapshots.noneSelected")}</div>}
           >
-            <pre class="snap-preview-text">{previewText() || t("snapshots.previewEmpty")}</pre>
+            {(snap) => (
+              <Show
+                when={!broken().has(snap().id)}
+                fallback={<div class="snap-empty">{t("snapshots.previewBroken")}</div>}
+              >
+                <SnapshotPaper
+                  snapshot={snap()}
+                  characters={props.characters ?? []}
+                  highlighting={!!props.highlighting}
+                  onParseError={() => markBroken(snap().id)}
+                />
+              </Show>
+            )}
           </Show>
         </div>
       </div>
@@ -213,50 +229,74 @@ export function SnapshotsDialog(props: SnapshotsDialogProps) {
   );
 }
 
-const MAX_WALK_DEPTH = 200;
-const MAX_BLOCKS = 5000;
-const MAX_TEXT_NODES_PER_BLOCK = 2000;
-
-function extractPreview(json: string): string {
-  try {
-    const parsed = JSON.parse(json);
-    const lines: string[] = [];
-    const ctx = { blockCount: 0 };
-    walk(parsed?.root, lines, 0, ctx);
-    return lines.join("\n").slice(0, 4000);
-  } catch {
-    return "";
-  }
+interface SnapshotPaperProps {
+  snapshot: Snapshot;
+  characters: ScriptCharacter[];
+  highlighting: boolean;
+  onParseError(): void;
 }
 
-function walk(node: any, out: string[], depth: number, ctx: { blockCount: number }) {
-  if (!node || typeof node !== "object") return;
-  if (depth > MAX_WALK_DEPTH) return;
-  if (ctx.blockCount >= MAX_BLOCKS) return;
-  const t: string | undefined = node.type;
-  if (typeof t === "string" && t.startsWith("scriptz-")) {
-    ctx.blockCount++;
-    const text = collectText(node, 0, { textCount: 0 }).trim();
-    if (text) out.push(text);
-    return;
-  }
-  const children = Array.isArray(node.children) ? node.children : null;
-  if (children) {
-    for (const c of children) walk(c, out, depth + 1, ctx);
-  }
-}
+/**
+ * Read-only rendering of a snapshot: the very same `Editor` (Lexical nodes,
+ * Editor.css, highlight pass, legacy-block normalisation) on the very same
+ * paper sheet as the script screen, just with `readOnly` set. If the dialog
+ * is narrower than an A4 sheet, the sheet is zoomed down as a whole so line
+ * breaks stay identical to the editor instead of re-wrapping.
+ */
+function SnapshotPaper(props: SnapshotPaperProps) {
+  let canvasRef: HTMLDivElement | undefined;
+  let sheetRef: HTMLDivElement | undefined;
+  const [zoom, setZoom] = createSignal(1);
 
-function collectText(node: any, depth: number, ctx: { textCount: number }): string {
-  if (!node || typeof node !== "object") return "";
-  if (depth > MAX_WALK_DEPTH) return "";
-  if (ctx.textCount >= MAX_TEXT_NODES_PER_BLOCK) return "";
-  if (typeof node.text === "string") {
-    ctx.textCount++;
-    return node.text;
-  }
-  const children = Array.isArray(node.children) ? node.children : null;
-  if (!children) return "";
-  let s = "";
-  for (const c of children) s += collectText(c, depth + 1, ctx);
-  return s;
+  const fit = () => {
+    if (!canvasRef || !sheetRef) return;
+    const cs = getComputedStyle(canvasRef);
+    const avail =
+      canvasRef.clientWidth - parseFloat(cs.paddingLeft || "0") - parseFloat(cs.paddingRight || "0");
+    // The visual width divided by the current zoom is the natural A4 width,
+    // independent of how the engine reports layout sizes of zoomed boxes.
+    const sheetW = sheetRef.getBoundingClientRect().width / zoom();
+    if (avail <= 0 || sheetW <= 0) return;
+    setZoom(Math.min(1, avail / sheetW));
+  };
+
+  // Every version starts reading at the top, not at the previous one's
+  // scroll position.
+  createEffect(
+    on(
+      () => props.snapshot.id,
+      () => {
+        if (canvasRef) canvasRef.scrollTop = 0;
+      },
+      { defer: true },
+    ),
+  );
+
+  const attachCanvas = (el: HTMLDivElement) => {
+    canvasRef = el;
+    if (typeof ResizeObserver === "undefined") return;
+    const ro = new ResizeObserver(fit);
+    ro.observe(el);
+    onCleanup(() => ro.disconnect());
+  };
+
+  return (
+    <div class="paper-canvas snap-canvas" ref={attachCanvas}>
+      <div class="paper-sheet snap-sheet" ref={sheetRef} style={{ zoom: zoom() }}>
+        {/* Keyed: every snapshot gets a fresh editor instance. */}
+        <Show when={props.snapshot} keyed>
+          {(snap) => (
+            <Editor
+              scriptId={snap.script_id}
+              initialContentJson={snap.content_json}
+              characters={props.characters}
+              highlighting={props.highlighting}
+              readOnly
+              onParseError={props.onParseError}
+            />
+          )}
+        </Show>
+      </div>
+    </div>
+  );
 }

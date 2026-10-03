@@ -74,6 +74,9 @@ packages/design/           @agentz/design - suite design system (see its README)
   fonts.css                Schibsted Grotesk (UI, offline via fontsource).
   icons.ts                 ICONS (24er stroke icons), STAGE_GLYPHS (14er).
   logo.ts                  Dot-matrix Z (LOGO_DOTS ...).
+  assets/                  Generated logo files + app icon (SVG, 1024 PNG).
+  scripts/build-logo.mjs   Exports assets/ + landing icons + the full
+                           Tauri icon set from logo.ts (build:logo).
 
 packages/core/
   styles/
@@ -101,8 +104,11 @@ packages/core/
     Library/
       ScriptsPage.tsx      Script list: groups by stage/folder/none, filter,
                            sort, selection mode, length range per row.
-      ScriptRow, PageBar, SelectionBar (multi PDF / Studio / move / stage /
-      trash), ContextMenu, PromptDialog, HandoffDialog (Studio transfer),
+      ScriptRow, PageBar, SelectionBar (shared by scripts + ideas: multi
+      PDF / Studio / move / stage or "Zu Skripten" / trash or delete),
+      SelectCheck (tri-state group / "Alle auswählen" checkbox),
+      selection.ts (pure helpers: checkState, toggleIds, rangeBetween),
+      ContextMenu, PromptDialog, HandoffDialog (Studio transfer),
       TrashPage, actions.ts (shared script/folder ops + toasts), dnd.ts
       (row -> sidebar folder), prefs.ts (grouping/sort in app_state).
     Palette/CommandPalette.tsx   ⌘K: scripts, ideas, commands; empty = Zuletzt.
@@ -122,7 +128,8 @@ packages/core/
     Editor/
       Editor.tsx           Lexical mount: createEditor, registerRichText,
                            registerHistory, plugins below. readOnly prop
-                           (used by Studio).
+                           (used by Studio and the version preview in
+                           SnapshotsDialog - same engine, no copy).
       persistence.ts       Debounced save (250 ms) through a serialized
                            queue (lib/serialSave.ts), auto snapshot (5 min),
                            flush on teardown.
@@ -148,7 +155,12 @@ packages/core/
         highlight.ts       per-block --char-tint (Character, Dialog,
                            Parenthetical)
         colorPicker.tsx    character colour popover (3 entry points)
-    Ideas/                 IdeasPage (+ parts/), QuickCapture (⌘I modal),
+    Ideas/                 IdeasPage (+ parts/; rows open in place into
+                           IdeaEditor, no side panel; selection mode like the
+                           scripts page: checkboxes, ⌘A, ⇧-range, bulk move /
+                           convert into scripts of a stage / delete - closes
+                           the open row),
+                           QuickCapture (⌘I modal),
                            ideaGroups.ts, similar.ts, folderColor.ts
     Export/                ExportDialog (⌘E, live preview via pdfPreview.ts)
     Settings/              SettingsDialog + sections/ (Appearance, Writing,
@@ -174,7 +186,8 @@ packages/core/
                            focusModeDefault (default off), quickMode,
                            showWritingStats (= writing counter, default on),
                            dialogWpm, length_min/max_default_sec, update
-                           flags, studio connect code.
+                           flags, studio connect code,
+                           pruneUnusedCharacters (default off).
     dailyStats.ts, ideas.ts, saveStatus.ts, toasts.ts
   lib/
     api.ts                 `api.*` facade = proxy onto the registered
@@ -212,7 +225,10 @@ packages/core/
     legacyBlocksMigration.ts  migrateLegacyBlocksOnce() (boot).
     exportPdf.ts, exportSelection.ts (multi PDF), scriptzFile.ts (.scriptz
     v1, status additive), handoff.ts (Studio), ideas.ts, dailyWords.ts,
-    characterColors.ts, welcome.ts, keys.ts, format.ts, colors.ts,
+    characterColors.ts, characterUsage.ts (welche Registry-Namen noch
+    benutzt werden: gestückelter Scan über characters_meta, SQL-Find/Prune,
+    characterUsageBus), characterAutoPrune.ts (optionales Auto-Aufräumen,
+    debounced), welcome.ts, keys.ts, format.ts, colors.ts,
     saveFlush.ts (flushAll: awaits buffered + in-flight writes),
     serialSave.ts (serialized "latest draft wins" saver for every
     autosave/commit field), scriptViewCache.ts, updates.ts (updater slot),
@@ -260,6 +276,15 @@ global character table.
   dots in `ScriptRow` and the autocomplete dropdown. There is no
   "create character" UI - it happens implicitly when you type a new name
   into a Charakter block.
+- Die app-weite Farb-Registry (`character_colors`) wächst bei jedem Save
+  mit (auch Zwischenstände beim Tippen). Einstellungen > Charaktere kann
+  sie aufräumen: „Jetzt prüfen" scannt `characters_meta` aller Skripte
+  (Papierkorb zählt mit, Snapshots nicht) seitenweise mit UI-Pausen und
+  löscht nach Bestätigung; der Schalter „Nur verwendete Namen behalten"
+  räumt nach jedem Save/Purge/Restore, der einen Namen verliert, nach
+  4 s Ruhe automatisch auf (`lib/characterAutoPrune.ts`). Das Löschen
+  prüft selbst noch einmal nach, ein zwischendurch wieder getippter Name
+  bleibt.
 
 ## Legacy-Blöcke (Kamera/Caption/SFX)
 
@@ -270,7 +295,7 @@ Blocktyp und läuft unverändert durch. Deshalb:
 - **On-the-fly**: Jeder Pfad, der Content parst, läuft über
   `lib/legacyBlocks.ts` (Editor-Load, `lex.ts`, PDF, Plaintext,
   `.scriptz`-Import, Snapshot-Restore in `snapshots.ts` und im Web-Adapter,
-  SnapshotsDialog). Alte Typen werden zu `scriptz-action`, Text und
+  SnapshotsDialog-Vorschau über den Editor-Load). Alte Typen werden zu `scriptz-action`, Text und
   Formatierung bleiben.
 - **Boot-Migration**: `migrateLegacyBlocksOnce()` schreibt einmalig alle
   Skripte (inkl. Papierkorb) über `api` um, mit `internalRewrite: true`

@@ -7,6 +7,7 @@
 // statements involved (no SQLite engine in the test environment).
 
 import { afterEach, describe, expect, it } from "vitest";
+import { characterUsageBus } from "../characterUsage";
 import { getPlatformAdapter, setPlatformAdapter, type DbConnection, type PlatformAdapter } from "../platform";
 import { restoreSnapshot } from "../snapshots";
 
@@ -149,5 +150,33 @@ describe("restoreSnapshot (SQL)", () => {
     expect(row.dialog_word_count).toBe(0);
     expect(row.direction_block_count).toBe(1);
     expect(fake.executed.some((q) => q.includes("daily_word_log"))).toBe(false);
+  });
+
+  it("signals a possibly orphaned name only when the restore drops one", async () => {
+    let signals = 0;
+    const off = characterUsageBus.onNamesDropped(() => signals++);
+    try {
+      const withMax = content([["scriptz-character", "Max"]]);
+      const row: Row = {
+        id: "s3",
+        title: "T",
+        content_json: content([["scriptz-character", "Eve"]]),
+        characters_meta: JSON.stringify([{ name: "EVE", color: "#e0791f" }]),
+        updated_at: 1,
+        last_word_count: 1,
+        dialog_word_count: 0,
+        direction_block_count: 0,
+      };
+      setPlatformAdapter({ getDb: async () => fakeDb(row, withMax).db } as unknown as PlatformAdapter);
+      await restoreSnapshot("snap3");
+      expect(signals).toBe(1);
+
+      // MAX -> MAX: nothing dropped, no signal.
+      setPlatformAdapter({ getDb: async () => fakeDb(row, withMax).db } as unknown as PlatformAdapter);
+      await restoreSnapshot("snap4");
+      expect(signals).toBe(1);
+    } finally {
+      off();
+    }
   });
 });

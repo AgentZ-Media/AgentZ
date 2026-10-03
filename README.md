@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="apps/desktop/docs/scriptz-icon-400.png" alt="ScriptZ" width="160" height="160" />
+  <img src="packages/design/assets/scriptz-app-icon.png" alt="ScriptZ" width="160" height="160" />
 </p>
 
 <h1 align="center">ScriptZ</h1>

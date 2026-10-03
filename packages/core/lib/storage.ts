@@ -172,6 +172,15 @@ export interface StorageAdapter {
    * with other characters in the script the writer is currently looking
    * at. */
   clearCharacterColor(name: string, activeScriptId?: string): Promise<string[]>;
+  /** Registry names that no stored script (trash included) references.
+   *  Scans `characters_meta` page by page and yields to the UI between
+   *  pages (see `lib/characterUsage.ts`), so it stays responsive with
+   *  thousands of scripts. */
+  findUnusedCharacterNames(): Promise<string[]>;
+  /** Deletes registry entries no stored script references - only those
+   *  in `only` when given - and returns the deleted names. Re-checks usage
+   *  itself; a name that got used again in the meantime is kept. */
+  pruneUnusedCharacterNames(only?: string[]): Promise<string[]>;
 
   // ===== Export (delegates internally to PlatformAdapter) =====
   exportPdf(input: ExportPdfRequest): Promise<ExportResult>;

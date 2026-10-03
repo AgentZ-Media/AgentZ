@@ -50,7 +50,7 @@ Auslöser, bei denen die Landing **mit** angepasst werden muss:
 | Ideen-Seite oder Skript-Liste verändert | `IdeenSection.astro` und die Screenshots in `public/img/app/` neu machen. |
 | Stufen (Schreiben/Drehbereit/Gedreht/Online), Längenziel/Zielbereich, Schreib-Zähler | Stufen-Chip und Laufzeit-Pille in `AppShell.astro`, zugehörige Texte in `i18n/*.ts`. |
 | Schriftart oder Schrift-Größen | [`src/styles/fonts.css`](apps/landing/src/styles/fonts.css) und Tokens. |
-| `app_icon`, Logo, Branding (`packages/design/logo.ts`) | Icons in `apps/landing/public/img/` neu setzen, App-Mark in `AppShell.astro`. |
+| `app_icon`, Logo, Branding (`packages/design/logo.ts`) | `pnpm --filter @agentz/design build:logo` setzt die Icons in `apps/landing/public/img/` automatisch neu; App-Mark in `AppShell.astro` (eigene Punkt-Koordinaten) von Hand prüfen. |
 | Plattform-Support erweitert (z.B. Linux-Build) | Hero-Meta, `DownloadSection`, Vergleichstabelle, "First-Run"-Anleitung anpassen. |
 | Lizenzmodell, Tracking-Verhalten, Konto-Verhalten | `NoAiSection`, Open-Source-Hinweise und Datenschutzerklärung gegenchecken. |
 | Versionsnummer der Desktop-App | Siehe Release-Checkliste in `.claude/rules/release.md`. |

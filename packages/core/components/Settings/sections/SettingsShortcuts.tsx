@@ -54,6 +54,14 @@ function groups(): ShortcutGroup[] {
         { keys: ["/"], desc: t("prefs.shortcuts.ideasFilter") },
       ],
     },
+    {
+      title: t("prefs.shortcuts.group.lists"),
+      items: [
+        { keys: [K("Mod+A")], desc: t("prefs.shortcuts.listsSelectAll") },
+        { keys: [t("prefs.shortcuts.shiftClick", { key: K("Shift") })], desc: t("prefs.shortcuts.listsRange") },
+        { keys: ["esc"], desc: t("prefs.shortcuts.listsExit") },
+      ],
+    },
   ];
 }
 

@@ -3,6 +3,10 @@ import {
   listCharacterColors as ccList,
   setCharacterColor as ccSet,
 } from "./characterColors";
+import {
+  findUnusedCharacterNames as cuFindUnused,
+  pruneUnusedCharacterNames as cuPruneUnused,
+} from "./characterUsage";
 import { extractTeleprompterText } from "./lex";
 import { getPlatformAdapter } from "./platform";
 import {
@@ -250,6 +254,12 @@ const sqlBackedAdapter: StorageAdapter = {
     activeScriptId?: string,
   ): Promise<string[]> {
     return ccClear(name, activeScriptId ?? null);
+  },
+  async findUnusedCharacterNames(): Promise<string[]> {
+    return cuFindUnused();
+  },
+  async pruneUnusedCharacterNames(only?: string[]): Promise<string[]> {
+    return cuPruneUnused(only);
   },
 
   // Export - fully in core since phase 2F: PDF bytes built via

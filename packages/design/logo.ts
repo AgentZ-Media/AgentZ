@@ -11,6 +11,9 @@
  * - "sub" dots (the two diagonal shadow rows): `fill: var(--z2, currentColor)`
  *   at `opacity: var(--z2o, 0.62)`. On the yellow accent tile the
  *   concept uses `--z2o: 0.5`.
+ *
+ * Standalone SVG/PNG exports and the app icon set are generated from this
+ * file by `scripts/build-logo.mjs` (see README, "Logo and app icon").
  */
 
 export const LOGO_VIEWBOX = "0 0 50 60";

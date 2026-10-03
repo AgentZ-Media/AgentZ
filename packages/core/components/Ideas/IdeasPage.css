@@ -30,6 +30,8 @@
 }
 /* Same centered content column as the script library (.lib). */
 .ideas-main {
+  /* Anchors the floating selection bar over the list column. */
+  position: relative;
   min-width: 0;
   min-height: 0;
   width: 100%;
@@ -221,33 +223,6 @@
   color: var(--fg);
 }
 
-/* ---------- selection bar ---------- */
-.isel {
-  flex: none;
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  margin-bottom: 10px;
-  padding: 4px 6px 4px 12px;
-  border-radius: var(--r-pop);
-  background: var(--accent-soft);
-  border: 1px solid var(--line);
-}
-.isel b {
-  font-weight: 700;
-  margin-right: 6px;
-  font-variant-numeric: tabular-nums;
-}
-.isel .sp {
-  flex: 1;
-}
-.isel .btn.ghost {
-  color: var(--fg);
-}
-.isel .btn.ghost:hover {
-  background: var(--surface);
-}
-
 /* ---------- list ---------- */
 .ilist-scroll {
   flex: 1;
@@ -271,7 +246,7 @@
   height: 30px;
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 12px;
   padding: 0 14px;
   background: var(--surface-2);
   border-top: 1px solid var(--line-soft);
@@ -298,6 +273,37 @@
 }
 .igrp-h svg.i {
   margin-left: -4px;
+}
+.igrp-tog {
+  flex: 1;
+  min-width: 0;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0;
+  color: inherit;
+  font: inherit;
+  letter-spacing: inherit;
+  text-transform: inherit;
+  text-align: left;
+}
+.ilist-scroll.has-selbar {
+  padding-bottom: 72px;
+}
+.ilist.is-selecting .irow {
+  cursor: pointer;
+}
+/* Selection mode: the keyboard cursor row, when not checked. */
+.ilist.is-selecting .irow.is-primary:not(.is-sel) {
+  background: var(--surface-2);
+}
+.irow .selchk-box {
+  width: 14px;
+  height: 14px;
+}
+.ideas-main .selhead {
+  padding: 0 15px;
 }
 
 .irow {
@@ -410,6 +416,10 @@
 .irow.is-primary .irow-chev {
   opacity: 1;
 }
+/* Rows toggle instead of opening while selecting. */
+.ilist.is-selecting .irow-chev {
+  visibility: hidden;
+}
 .irow.more {
   grid-template-columns: 14px 1fr;
   color: var(--muted);
@@ -448,6 +458,10 @@
 }
 .i-keys kbd {
   margin: 0 1px;
+}
+/* The selection bar floats over this line while selecting. */
+.i-keys.is-hidden {
+  visibility: hidden;
 }
 
 /* ---------- open row (inline editor) ---------- */
