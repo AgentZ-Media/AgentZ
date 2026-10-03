@@ -16,6 +16,7 @@ import { api } from "../../lib/api";
 import { foldersBus } from "../../lib/foldersBus";
 import { scriptsBus } from "../../lib/scriptsBus";
 import { INBOX_FOLDER_ID } from "../../lib/folders";
+import { flushAll } from "../../lib/saveFlush";
 import { tryParseConnectCode } from "../../lib/handoff";
 import { K, isModKey } from "../../lib/keys";
 import { ideasStore } from "../../stores/ideas";
@@ -108,8 +109,23 @@ export function IdeasPage() {
   const folderName = (id: string | null) =>
     id ? (folders() ?? []).find((f) => f.id === id)?.name ?? "" : t("ideasPage.folder.none");
 
+  /** The row shown expanded as an editor (always the primary selection). */
+  const [openId, setOpenId] = createSignal<string | null>(null);
+  /** The text filter when the row was opened: while it is unchanged, the
+   *  open idea stays listed even if editing it stops it from matching. */
+  const [openQuery, setOpenQuery] = createSignal("");
+
   // ---- derived lists ----
-  const scoped = createMemo(() => scopeIdeas(ideas(), { query: query(), showUsed: showUsed() }));
+  const scoped = createMemo(() => {
+    const list = scopeIdeas(ideas(), { query: query(), showUsed: showUsed() });
+    const id = openId();
+    if (!id || query() !== openQuery() || list.some((i) => i.id === id)) return list;
+    const pinned = scopeIdeas(
+      ideas().filter((i) => i.id === id),
+      { query: "", showUsed: showUsed() },
+    );
+    return pinned.length > 0 ? [...list, ...pinned] : list;
+  });
   const counts = createMemo(() => folderCounts(scoped()));
   const visible = createMemo(() => sortIdeas(inFolder(scoped(), activeFolder()), sort(), localeCompare));
   const groups = createMemo(() => groupIdeas(visible(), sort(), new Date(now())));
@@ -170,8 +186,6 @@ export function IdeasPage() {
   const [wanted, setWanted] = createSignal<string | null>(null);
   /** Open the wanted idea's row once it is selected. */
   const [wantedOpen, setWantedOpen] = createSignal(false);
-  /** The row shown expanded as an editor (always the primary selection). */
-  const [openId, setOpenId] = createSignal<string | null>(null);
   const [handoffOpen, setHandoffOpen] = createSignal(false);
   let editor: IdeaEditorHandle | null = null;
   let listRef: HTMLDivElement | undefined;
@@ -206,7 +220,10 @@ export function IdeasPage() {
           setWanted(null);
           setWantedOpen(false);
           selectOnly(want, true);
-          if (openIt) setOpenId(want);
+          if (openIt) {
+            setOpenQuery(query());
+            setOpenId(want);
+          }
         });
         if (openIt) focusEditor();
         return;
@@ -271,6 +288,7 @@ export function IdeasPage() {
   function openRow(id: string) {
     batch(() => {
       selectOnly(id, true);
+      setOpenQuery(query());
       setOpenId(id);
     });
     focusEditor();
@@ -330,7 +348,6 @@ export function IdeasPage() {
   const [capOpen, setCapOpen] = createSignal(false);
   /** Explicitly picked folder; undefined follows the folder filter. */
   const [capFolder, setCapFolder] = createSignal<string | null | undefined>(undefined);
-  const [capBusy, setCapBusy] = createSignal(false);
   const capFolderValue = () => {
     const picked = capFolder();
     if (picked !== undefined) return picked;
@@ -358,46 +375,60 @@ export function IdeasPage() {
     });
   }
 
+  /** Closes the expanded part; its notes and folder pick are dropped so
+   *  nothing invisible rides along with the next idea. */
   function collapseCapture() {
-    setCapOpen(false);
+    batch(() => {
+      setCapOpen(false);
+      setCapNotes("");
+      setCapFolder(undefined);
+    });
     captureRef?.focus({ preventScroll: true });
   }
 
   // ---- actions ----
   async function capture(startScript: boolean) {
     const title = capTitle().trim();
-    if (!title || capBusy()) return;
-    setCapBusy(true);
+    if (!title) return;
+    const draft = { title: capTitle(), notes: capNotes(), folder: capFolder(), open: capOpen() };
+    const folderId = capFolderValue();
+    // Clear right away: the field stays usable for the next idea while this
+    // one is saved (and a second Enter cannot submit it twice).
+    batch(() => {
+      setCapTitle("");
+      setCapNotes("");
+      setCapFolder(undefined);
+      setCapOpen(false);
+    });
+    // Focus stays in the field for the next idea.
+    captureRef?.focus({ preventScroll: true });
     try {
-      const idea = await ideasStore.createIdea({
-        title,
-        notes: capNotes().trim(),
-        folderId: capFolderValue(),
-      });
-      batch(() => {
-        setCapTitle("");
-        setCapNotes("");
-        setCapFolder(undefined);
-        setCapOpen(false);
-      });
+      const idea = await ideasStore.createIdea({ title, notes: draft.notes.trim(), folderId });
       if (startScript) {
         await convert(idea);
         return;
       }
-      // Focus stays in the field for the next idea.
-      captureRef?.focus({ preventScroll: true });
       setQuery("");
+      setWantedOpen(false);
       setWanted(idea.id);
     } catch (err) {
+      // Give the text back unless the field was reused meanwhile.
+      if (!capTitle() && !capNotes()) {
+        batch(() => {
+          setCapTitle(draft.title);
+          setCapNotes(draft.notes);
+          setCapFolder(draft.folder);
+          setCapOpen(draft.open);
+        });
+      }
       errorToast(err);
-    } finally {
-      setCapBusy(false);
     }
   }
 
   async function convert(idea: Idea) {
     if (idea.used_at) return;
-    await editor?.flush();
+    // All pending idea drafts, including a row collapsed a moment ago.
+    await flushAll();
     try {
       const { script } = await ideasStore.convertIdeaToScript({
         ideaId: idea.id,
@@ -495,6 +526,12 @@ export function IdeasPage() {
 
     if (e.key === "Enter" && isModKey(e)) {
       if (editable && !inEditor) return; // capture / filter fields handle it
+      if (target?.closest?.(".i-cap")) {
+        // A capture button (folder, similar link, ...) has focus.
+        e.preventDefault();
+        void capture(true);
+        return;
+      }
       const idea = primaryIdea();
       if (idea) {
         e.preventDefault();
@@ -647,7 +684,16 @@ export function IdeasPage() {
           </div>
 
           <div class="i-cap" classList={{ "is-open": capOpen() }}>
-            <label class="i-cap-row">
+            <div
+              class="i-cap-row"
+              onMouseDown={(e) => {
+                // The whole row focuses the input, like a label would.
+                if (!(e.target as HTMLElement).closest("button, input")) {
+                  e.preventDefault();
+                  captureRef?.focus();
+                }
+              }}
+            >
               <span class="i-cap-plus" aria-hidden="true">
                 <Icon name="plus" />
               </span>
@@ -672,7 +718,7 @@ export function IdeasPage() {
                   } else if (e.key === "Escape") {
                     e.preventDefault();
                     if (capOpen()) {
-                      setCapOpen(false);
+                      collapseCapture();
                     } else {
                       setCapTitle("");
                       e.currentTarget.blur();
@@ -695,7 +741,7 @@ export function IdeasPage() {
                 </button>
               </Show>
               <span class="i-cap-hint">{t("ideasPage.capture.hint", { key: K("Mod+I") })}</span>
-            </label>
+            </div>
             <Show when={capOpen()}>
               <textarea
                 ref={captureNotesRef}
@@ -713,8 +759,9 @@ export function IdeasPage() {
                     e.preventDefault();
                     void capture(true);
                   } else if (e.key === "Escape") {
+                    // Back to the title; a second esc closes the notes.
                     e.preventDefault();
-                    collapseCapture();
+                    captureRef?.focus({ preventScroll: true });
                   }
                 }}
               />
@@ -749,7 +796,7 @@ export function IdeasPage() {
                   <button
                     type="button"
                     class="btn"
-                    disabled={capBusy() || !capTitle().trim()}
+                    disabled={!capTitle().trim()}
                     onClick={() => void capture(true)}
                   >
                     {t("ideasPage.detail.convert")}
@@ -758,7 +805,7 @@ export function IdeasPage() {
                   <button
                     type="button"
                     class="btn primary"
-                    disabled={capBusy() || !capTitle().trim()}
+                    disabled={!capTitle().trim()}
                     onClick={() => void capture(false)}
                   >
                     {t("capture.remember")}

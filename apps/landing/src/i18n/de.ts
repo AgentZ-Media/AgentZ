@@ -336,7 +336,7 @@ export const de = {
   "ideas.keys.start": "als Skript anfangen",
   "ideas.detail.start": "Als Skript anfangen",
   "ideas.hint.before":
-    "erfasst eine Idee von überall in der App, auch im Fokus-Modus. Eingeben, Enter, weiter. Die Ideen-Seite selbst ist für 50 und mehr Ideen gebaut: Ordner-Chips, Filter, und jede Idee klappt direkt in der Liste auf.",
+    "erfasst eine Idee von überall in der App, auch im Fokus-Modus. Eingeben, Enter, weiter. Die Ideen-Seite selbst ist für 50 und mehr Ideen gebaut: Ordner-Chips, Filter und jede Idee klappt direkt in der Liste auf.",
 
   // Idea samples
   "ideas.sample.tutorial.title": "Tutorial: Vom leeren Cursor zum fertigen Skript in 5 Minuten",

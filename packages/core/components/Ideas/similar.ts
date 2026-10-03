@@ -1,5 +1,5 @@
-// "Ähnliche Stücke" for the idea detail panel: finds scripts and other
-// ideas that look like the selected idea, so nothing gets written twice.
+// "Similar" links of the open idea row and the capture field: finds scripts
+// and other ideas that look like the idea, so nothing gets written twice.
 //
 // Scripts come from the full-text search. Both adapters combine query
 // words with AND, so searching the whole title would rarely hit anything;

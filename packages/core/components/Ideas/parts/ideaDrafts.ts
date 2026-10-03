@@ -1,14 +1,15 @@
-// Title + notes drafts of the idea detail panel, kept per idea id.
+// Title + notes drafts of the inline idea editor, kept per idea id.
 //
-// The detail panel remounts on every idea switch. If it owned its drafts,
-// switching A -> B -> A while A's save is still in flight would remount A
-// from the cached ideas list, which only refreshes after the save AND the
-// refetch landed - the panel would show the old notes, never resync, and
-// the next keystroke would overwrite the earlier addition.
+// The editor mounts while its row is open and unmounts on collapse. If it
+// owned its drafts, collapsing A, opening B and reopening A while A's save
+// is still in flight would remount A from the cached ideas list, which only
+// refreshes after the save AND the refetch landed - the editor would show
+// the old notes, never resync, and the next keystroke would overwrite the
+// earlier addition.
 //
 // So the drafts and their serial saver live here, outside the component,
 // and survive remounts. An entry is dropped once nothing is pending, no
-// panel shows it and the store reflects what was acknowledged; the next
+// editor shows it and the store reflects what was acknowledged; the next
 // mount then starts from the (now current) store again.
 
 import { createEffect, createRoot, createSignal, on, type Accessor } from "solid-js";

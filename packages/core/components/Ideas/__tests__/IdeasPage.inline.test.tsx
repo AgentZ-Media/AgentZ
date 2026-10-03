@@ -163,6 +163,49 @@ describe("IdeasPage inline editing", () => {
     expect(notes.value).toBe("Typing on");
   });
 
+  it("keeps the open row listed while editing makes it stop matching the filter", async () => {
+    const { container } = render(() => <IdeasPage />);
+    await settle();
+    const filter = container.querySelector(".i-filter input") as HTMLInputElement;
+    input(filter, "Notes of");
+    await settle();
+    (row("a") as HTMLElement).click();
+    await settle();
+    const notes = container.querySelector(".ix .ix-n") as HTMLTextAreaElement;
+    input(notes, "Something else");
+    db.set("a", { ...db.get("a")!, notes: "Something else" });
+    ideasStore.refresh();
+    await settle();
+    expect(container.querySelector(".ix .ix-n")).toBe(notes);
+    // A new filter text drops it again.
+    input(filter, "Notes of A");
+    await settle();
+    expect(openRows()).toHaveLength(0);
+    expect(row("a")).toBeNull();
+  });
+
+  it("drops the capture notes when esc closes the expanded field", async () => {
+    const { container } = render(() => <IdeasPage />);
+    await settle();
+    const title = container.querySelector(".i-cap-input") as HTMLInputElement;
+    title.focus();
+    input(title, "Later");
+    key(title, "Tab");
+    await settle();
+    input(container.querySelector(".i-cap-notes") as HTMLTextAreaElement, "Gone");
+    // esc in the notes goes back to the title, esc there closes.
+    key(container.querySelector(".i-cap-notes")!, "Escape");
+    await settle();
+    expect(document.activeElement).toBe(title);
+    expect(container.querySelector(".i-cap-notes")).not.toBeNull();
+    key(title, "Escape");
+    await settle();
+    expect(container.querySelector(".i-cap-notes")).toBeNull();
+    key(title, "Enter");
+    await settle();
+    expect(created).toEqual([{ title: "Later", notes: "", folderId: null }]);
+  });
+
   it("captures a title with Enter and keeps focus in the field", async () => {
     const { container } = render(() => <IdeasPage />);
     await settle();

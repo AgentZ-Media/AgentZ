@@ -327,7 +327,7 @@ export const en: Record<keyof typeof de, string> = {
   "ideas.keys.start": "start as script",
   "ideas.detail.start": "Start as script",
   "ideas.hint.before":
-    "captures an idea from anywhere in the app, even in focus mode. Type, Enter, done. The ideas page itself is built for 50+ ideas: folder chips, filter, and every idea opens right inside the list.",
+    "captures an idea from anywhere in the app, even in focus mode. Type, Enter, done. The ideas page itself is built for 50+ ideas: folder chips, a filter and every idea opens right inside the list.",
 
   // Idea samples
   "ideas.sample.tutorial.title": "Tutorial: From empty cursor to finished script in 5 minutes",
