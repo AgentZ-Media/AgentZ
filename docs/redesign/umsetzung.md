@@ -151,6 +151,9 @@ Alle Dialoge sind parameterlos und steuern sich über `stores/ui.ts`.
 Editor: `⌘1` Action, `⌘2` Charakter, `⌘3` Dialog, `⌘4` Parenthetical
 (seit 2026-10-03, siehe §9), `(`/`)` im Dialog, `Tab` Picker, `⏎` Smart-Enter,
 `⌘B`/`⌘U`.
+Listen (Skripte und Ideen, seit 2026-10-03): `⌘A` alle auswählen
+(Auswahlmodus), `⇧`-Klick Bereich, `⌘`-Klick einzeln dazu, `Esc` beendet
+die Auswahl.
 
 ## 8. Phasen
 

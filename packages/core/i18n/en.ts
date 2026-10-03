@@ -247,6 +247,8 @@ export const en: Record<keyof typeof de, string> = {
   "select.exit": "Done",
   "select.count": "{count} selected",
   "select.selectAll": "All",
+  "select.all": "Select all",
+  "select.group": "Select all in \"{name}\"",
   "select.clear": "Clear selection",
   "select.action.pdf": "As PDF",
   "select.action.send": "Send to Studio",

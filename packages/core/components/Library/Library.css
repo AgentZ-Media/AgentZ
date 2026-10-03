@@ -1,5 +1,6 @@
 /* =========================================================================
-   Library: scripts overview, trash, page bar, row menus, selection bar.
+   Library: scripts overview, trash, page bar, row menus (selection bar
+   and checkboxes: SelectionBar.css).
    Visual reference: docs/redesign/concept.html screen "Übersicht"
    (`.bar`, `.lib`, `.grp`, `.rows`, `.row`, `.teaser`, `.who`).
    Colours come from @agentz/design tokens only.
@@ -578,37 +579,6 @@ button.grp-act:hover {
 }
 .ctx-pop .menu-it .fdot {
   margin: 0 3.5px;
-}
-
-/* ---------------- Selection bar ---------------- */
-.lib-selbar {
-  position: absolute;
-  left: 50%;
-  bottom: 18px;
-  transform: translateX(-50%);
-  z-index: 40;
-  max-width: calc(100% - 32px);
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  padding: 6px 6px 6px 14px;
-  border-radius: var(--r-4);
-  background: var(--surface);
-  box-shadow: var(--shadow-pop);
-  white-space: nowrap;
-  overflow-x: auto;
-  animation: ds-toast-in var(--t-med);
-}
-.lib-selbar-count {
-  margin-right: 6px;
-  font-weight: 700;
-}
-.lib-selbar-div {
-  width: 1px;
-  height: 18px;
-  margin: 0 4px;
-  flex: none;
-  background: var(--line);
 }
 
 /* ---------------- Prompt dialog ---------------- */

@@ -17,7 +17,7 @@ import { api } from "../../lib/api";
 import { debounce, relativeTime } from "../../lib/format";
 import { formatClock, formatRange, resolveLengthRange } from "../../lib/lengthGoal";
 import { INBOX_FOLDER_ID } from "../../lib/folders";
-import { K } from "../../lib/keys";
+import { K, isModKey } from "../../lib/keys";
 import { tryParseConnectCode } from "../../lib/handoff";
 import { exportScriptsToPdf } from "../../lib/exportSelection";
 import { navStore } from "../../stores/nav";
@@ -43,6 +43,8 @@ import { PageBar } from "./PageBar";
 import { PromptDialog } from "./PromptDialog";
 import { ScriptRow } from "./ScriptRow";
 import { SelectionBar } from "./SelectionBar";
+import { SelectAllLine, SelectCheck } from "./SelectCheck";
+import { checkState, rangeBetween, toggleIds, withIds } from "./selection";
 import { libraryPrefs, type Grouping, type SortKey } from "./prefs";
 import { setStageWithUndo } from "../Script/stageActions";
 import {
@@ -150,18 +152,23 @@ export function ScriptsPage() {
   // ---- selection ----
   const [selectMode, setSelectMode] = createSignal(false);
   const [selected, setSelected] = createSignal<Set<string>>(new Set());
+  /** Last toggled row: start of a shift-click range. */
+  let rangeAnchor: string | null = null;
   const exitSelect = () => {
     setSelectMode(false);
     setSelected(new Set<string>());
+    rangeAnchor = null;
   };
-  const toggleSelect = (id: string) => {
+  const toggleSelect = (id: string, e?: MouseEvent | KeyboardEvent) => {
+    const wasSelecting = selectMode();
     setSelectMode(true);
-    setSelected((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
-      return next;
-    });
+    // Shift-click inside the selection mode adds the whole range from the
+    // last toggled row, in display order.
+    const range =
+      wasSelecting && e?.shiftKey && rangeAnchor ? rangeBetween(renderedIds(), rangeAnchor, id) : null;
+    if (range) setSelected((prev) => withIds(prev, range, true));
+    else setSelected((prev) => toggleIds(prev, [id]));
+    rangeAnchor = id;
   };
 
   // ---- pagination ----
@@ -312,6 +319,35 @@ export function ScriptsPage() {
     if (!teaserPlaced) out.push({ kind: "teaser" });
     return out;
   });
+
+  // ---- selection scope ----
+  /** Rows on screen, in display order (shift-click ranges). */
+  const renderedIds = createMemo(() => {
+    const ids: string[] = [];
+    for (const b of blocks()) if (b.kind === "group") for (const s of b.group.items) ids.push(s.id);
+    for (const h of contentHits()) ids.push(h.script.id);
+    return ids;
+  });
+  /** What "select all" covers: every match of the current scope and filter
+   *  (beyond the loaded page too), except groups the user collapsed. */
+  const selectableIds = createMemo(() => {
+    const ids: string[] = [];
+    for (const grp of groups()) if (!isClosed(grp.key)) for (const s of grp.all) ids.push(s.id);
+    for (const h of contentHits()) ids.push(h.script.id);
+    return ids;
+  });
+  const allState = () => checkState(selectableIds(), selected());
+  const selectAll = () => setSelected(new Set(selectableIds()));
+  const toggleAll = () => (allState() === "all" ? setSelected(new Set<string>()) : selectAll());
+  const groupCheck = (label: string, ids: () => string[]) => (
+    <Show when={selectMode()}>
+      <SelectCheck
+        state={checkState(ids(), selected())}
+        label={t("select.group", { name: label })}
+        onToggle={() => setSelected((prev) => toggleIds(prev, ids()))}
+      />
+    </Show>
+  );
 
   // ---- header ----
   const folderName = () => {
@@ -491,10 +527,23 @@ export function ScriptsPage() {
     }
   }
 
-  // ---- keyboard: "/" focuses the filter, Esc leaves the selection ----
+  // ---- keyboard: "/" focuses the filter, ⌘A selects all, Esc leaves the selection ----
   onMount(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.defaultPrevented || modalOpen() || menu()) return;
+      if (
+        isModKey(e) &&
+        !e.shiftKey &&
+        !e.altKey &&
+        e.key.toLowerCase() === "a" &&
+        !isTypingTarget(e.target) &&
+        selectableIds().length > 0
+      ) {
+        e.preventDefault();
+        setSelectMode(true);
+        selectAll();
+        return;
+      }
       if (e.key === "/" && !e.metaKey && !e.ctrlKey && !e.altKey && !isTypingTarget(e.target)) {
         e.preventDefault();
         filterRef?.focus();
@@ -534,7 +583,7 @@ export function ScriptsPage() {
             selectMode={selectMode()}
             selected={selected().has(s.id)}
             onOpen={() => navStore.openScript(s.id, s.title)}
-            onToggleSelect={() => toggleSelect(s.id)}
+            onToggleSelect={(e) => toggleSelect(s.id, e)}
             onMenu={(e, anchor) => openRowMenu(s, e, anchor)}
           />
         )}
@@ -761,6 +810,9 @@ export function ScriptsPage() {
               </div>
             </Match>
             <Match when={true}>
+              <Show when={selectMode() && selectableIds().length > 0}>
+                <SelectAllLine state={allState()} count={selectableIds().length} onToggle={toggleAll} />
+              </Show>
               <For each={blocks()}>
                 {(block) => (
                   <Switch>
@@ -801,6 +853,7 @@ export function ScriptsPage() {
                           <section class="grp">
                             <Show when={grp().key !== "all"}>
                               <div class="grp-h">
+                                {groupCheck(grp().label, () => grp().all.map((s) => s.id))}
                                 <button
                                   type="button"
                                   class="grp-tog"
@@ -840,6 +893,7 @@ export function ScriptsPage() {
               <Show when={contentHits().length > 0}>
                 <section class="grp">
                   <div class="grp-h">
+                    {groupCheck(t("shell.group.contentHits"), () => contentHits().map((h) => h.script.id))}
                     <span class="grp-tog is-static">
                       <Icon name="search" size={12} />
                       <span>{t("shell.group.contentHits")}</span>
@@ -855,7 +909,7 @@ export function ScriptsPage() {
                           selectMode={selectMode()}
                           selected={selected().has(hit.script.id)}
                           onOpen={() => navStore.openScript(hit.script.id, hit.script.title)}
-                          onToggleSelect={() => toggleSelect(hit.script.id)}
+                          onToggleSelect={(e) => toggleSelect(hit.script.id, e)}
                           onMenu={(e, anchor) => openRowMenu(hit.script, e, anchor)}
                         />
                       )}
@@ -871,7 +925,8 @@ export function ScriptsPage() {
       <Show when={selectMode()}>
         <SelectionBar
           count={selected().size}
-          onSelectAll={() => setSelected(new Set(sorted().map((s) => s.id)))}
+          allSelected={allState() === "all"}
+          onSelectAll={selectAll}
           onClear={() => setSelected(new Set<string>())}
           onExit={exitSelect}
           onExportPdf={() => void exportSelectedPdf()}
