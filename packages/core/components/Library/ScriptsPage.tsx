@@ -189,6 +189,13 @@ export function ScriptsPage() {
     ),
   );
   createEffect(on([query, libraryPrefs.sort], () => setLimit(PAGE_SIZE), { defer: true }));
+  // A new filter starts a new selection scope. Clear immediately while
+  // typing, before the debounced query and full-text results arrive, so
+  // bulk actions cannot include rows hidden by the new filter.
+  createEffect(on(filter, () => {
+    setSelected(new Set<string>());
+    rangeAnchor = null;
+  }, { defer: true }));
 
   // ---- data ----
   const scope = createMemo(() => {
@@ -559,9 +566,10 @@ export function ScriptsPage() {
     onCleanup(() => window.removeEventListener("keydown", onKey));
   });
 
-  // Drop selected ids that vanished (trashed, sent to Studio, ...).
+  // Drop selected ids that left this folder/stage as well as deleted rows.
+  // Keep off-page selections: scope() is not limited by pagination.
   createEffect(() => {
-    const live = new Set(library.scripts().map((s) => s.id));
+    const live = new Set(scope().map((s) => s.id));
     const cur = selected();
     if ([...cur].some((id) => !live.has(id))) {
       setSelected(new Set([...cur].filter((id) => live.has(id))));
