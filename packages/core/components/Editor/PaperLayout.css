@@ -1,7 +1,6 @@
 /* =========================================================================
    ScriptZ - paper canvas + sheet (concept `.canvas`, `.sheet`).
-   Shared by the Werkbank script screen (components/Script) and Studio's
-   script editor. Design tokens only.
+   Used by the Werkbank script screen (components/Script). Design tokens only.
    ========================================================================= */
 
 /* ---- Paper canvas ---------------------------------------------------- */

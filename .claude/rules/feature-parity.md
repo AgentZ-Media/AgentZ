@@ -26,7 +26,7 @@ Alles, was auf beiden Plattformen identisch sein muss:
   hängen ihr Plattform-Chrome über `topSlot` (Web: Disclaimer) bzw. `sidebarFooterSlot` (Desktop:
   Update-Indikator, Web: Storage-Badge) an.
 - UI-Komponenten nach Bereich: `Shell/`, `Library/` (Skript-Liste,
-  Papierkorb, Auswahl, Handoff), `Palette/` (⌘K), `Script/`
+  Papierkorb, Auswahl), `Palette/` (⌘K), `Script/`
   (Editor-Screen, Kopfleiste, Inspector, Zeitleiste, Stufen-Chip),
   `Editor/`, `Ideas/`, `Export/`, `Settings/`, `Onboarding/`,
   `Activity/` (Schreib-Zähler, Heatmap), `Common/`
@@ -38,8 +38,7 @@ Alles, was auf beiden Plattformen identisch sein muss:
   `snapshots.ts`, `search.ts`/`fts.ts`, `format.ts`, `lex.ts`,
   `runtime.ts`, `timing.ts`, `lengthGoal.ts`, `writingCounter.ts`,
   `legacyBlocks.ts` + `legacyBlocksMigration.ts`,
-  `characterColors.ts`, `dailyWords.ts`, `scriptzFile.ts`,
-  `handoff.ts`, ...
+  `characterColors.ts`, `dailyWords.ts`, `scriptzFile.ts`, ...
 - App-spezifische Tokens (Charakter-Palette, A4-Geometrie,
   Trafficlight-Spacer) und die Papier-Schrift (iA Writer Quattro) in
   `packages/core/styles/`
@@ -57,7 +56,7 @@ Feature-Detection.
 Farben, Typo-Skala, Spacing, Radien, Motion, Hell/Dunkel/Dunkles-Papier,
 Komponenten-Primitive (`.btn`, `.chip`, `.menu`, `.dlg`, `.seg`, ...),
 UI-Schrift (Schibsted Grotesk), Icons und Logo leben in
-[`packages/design/`](packages/design/README.md). Desktop, Web und Studio
+[`packages/design/`](packages/design/README.md). Desktop und Web
 importieren dieselben vier CSS-Schichten in derselben Reihenfolge
 (`fonts.css` -> `tokens.css` -> `legacy.css` -> `components.css`, danach
 `@scriptz/core/styles/global.css`). Keine Hex-/rgb-Werte außerhalb des
@@ -88,16 +87,8 @@ Pakets - nur `var(--token)`. Ausnahmen: Inhaltsfarben, die Daten sind
    [`packages/core/lib/storage.ts`](packages/core/lib/storage.ts)
    erweitern. TypeScript meckert dann in **allen** Adapter-Impls -
    SQL-Default (`packages/core/lib/api.ts` + die Module in `lib/`),
-   IndexedDB-Adapter (Web) UND Convex-Adapter (Studio,
-   [`apps/studio/src/adapters/convex.ts`](apps/studio/src/adapters/convex.ts))
-   mit aktualisieren, sonst bricht die jeweils andere App
-   stillschweigend. Studio darf Methoden, die es fachlich nicht
-   anbietet, als `notSupported("...")` implementieren - so geschehen
-   bei den Werkbank-Methoden `setScriptStatus` und
-   `setFolderLengthRange` (Studio hat einen eigenen Freigabe-Workflow
-   und bildet nur lesend ab: approved -> `ready`, filmed -> `shot`,
-   alles andere -> `writing`). Kein Convex-Schema-Change für
-   Desktop/Web-Features (Production-only Deployment).
+   IndexedDB-Adapter (Web) mit aktualisieren, sonst bricht die jeweils
+   andere App stillschweigend.
    Neue Felder auf bestehenden Tabellen: Desktop per additiver
    SQL-Migration (`apps/desktop/src-tauri/migrations/00X_*.sql`, in
    `src-tauri/src/lib.rs` registrieren), Web per optional gelesenem

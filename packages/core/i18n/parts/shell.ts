@@ -15,7 +15,6 @@ export const shellDe = {
   "shell.section.folders": "Ordner",
   "shell.section.recent": "Zuletzt",
   "shell.settings.title": "Einstellungen ({hotkey})",
-  "shell.studio.open": "ScriptZ Studio öffnen",
   "shell.folder.rangeMenu": "Zielbereich …",
 
   // ---------- page bar ----------
@@ -129,7 +128,6 @@ export const shellEn: Record<keyof typeof shellDe, string> = {
   "shell.section.folders": "Folders",
   "shell.section.recent": "Recent",
   "shell.settings.title": "Settings ({hotkey})",
-  "shell.studio.open": "Open ScriptZ Studio",
   "shell.folder.rangeMenu": "Target range …",
 
   // ---------- page bar ----------

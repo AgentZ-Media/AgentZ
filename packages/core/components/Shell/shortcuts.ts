@@ -13,8 +13,8 @@ import { createScript } from "../Library/actions";
 import { stepStage } from "../Script/stageActions";
 
 /** True while any modal surface is open. Covers the ui-store dialogs and
- *  every other `aria-modal` dialog (rename prompts, confirms, Studio
- *  handoff, snapshots, ...). Context menus close on their own keys. */
+ *  every other `aria-modal` dialog (rename prompts, confirms, snapshots,
+ *  ...). Context menus close on their own keys. */
 export function modalSurfaceOpen(): boolean {
   if (uiStore.anyDialogOpen()) return true;
   return typeof document !== "undefined" && document.querySelector('[aria-modal="true"]') !== null;

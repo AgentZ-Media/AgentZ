@@ -227,7 +227,7 @@ For the curious – this stays out of the way of writing, but if you want to kno
 
 ## Building from source
 
-This repository is a pnpm monorepo. The app lives in [`apps/desktop/`](apps/desktop/), the browser version in [`apps/web/`](apps/web/), the marketing site write-scriptz.com in [`apps/landing/`](apps/landing/), and the internal cloud workspace in [`apps/studio/`](apps/studio/).
+This repository is a pnpm monorepo. The app lives in [`apps/desktop/`](apps/desktop/), the browser version in [`apps/web/`](apps/web/), and the marketing site write-scriptz.com in [`apps/landing/`](apps/landing/).
 
 ```bash
 pnpm install              # install all workspaces
@@ -237,14 +237,9 @@ pnpm typecheck            # TypeScript across all apps
 
 pnpm dev:web              # browser version (localhost:5173)
 pnpm dev:landing          # Astro dev server for the landing
-pnpm dev:studio           # ScriptZ Studio (localhost:5174)
 ```
 
 Code conventions are in [`CLAUDE.md`](CLAUDE.md) (monorepo overview) and [`apps/desktop/CLAUDE.md`](apps/desktop/CLAUDE.md) (app details).
-
-### ScriptZ Studio (cloud companion)
-
-[`apps/studio/`](apps/studio/) is a separate, self-hostable web app built for **agencies**: a multi-user cloud workspace where a team manages ideas and scripts for their clients, and clients log in to review, comment and approve. It **reuses the exact same Lexical editor** from `@scriptz/core` (read-only for clients), but adds accounts, roles and a review workflow on top of a [Convex](https://convex.dev) backend with [Better Auth](https://better-auth.com). It's invite-only and runs independently of the offline apps above. Architecture: [`docs/studio-spec.md`](docs/studio-spec.md) and [`apps/studio/CLAUDE.md`](apps/studio/CLAUDE.md).
 
 ---
 

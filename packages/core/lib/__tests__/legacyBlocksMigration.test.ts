@@ -107,7 +107,7 @@ describe("migrateLegacyBlocksOnce", () => {
     warn.mockRestore();
   });
 
-  it("skips silently when the adapter cannot list scripts (Studio)", async () => {
+  it("skips silently when the adapter cannot list scripts", async () => {
     const m = memoryAdapter({});
     m.listScripts.mockRejectedValueOnce(new Error("not supported"));
     setStorageAdapter(m.adapter);

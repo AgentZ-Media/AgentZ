@@ -67,10 +67,6 @@
         { "path": "$DESKTOP/**" },
         { "path": "/Volumes/**" }
       ]
-    },
-    {
-      "identifier": "http:default",
-      "allow": [{ "url": "https://**" }, { "url": "http://localhost:*/**" }]
     }
   ]
 }

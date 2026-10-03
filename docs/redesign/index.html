@@ -35,23 +35,23 @@
 <section class="d-sec" id="arch">
   <h2>1 · Architektur heute</h2>
   <p class="d-lede">
-    Ein pnpm-Monorepo, vier Apps, ein geteilter Core. Desktop, Web und Studio
-    sind drei Schalen um denselben Editor - sie unterscheiden sich nur in
+    Ein pnpm-Monorepo, drei Apps, ein geteilter Core. Desktop und Web
+    sind zwei Schalen um denselben Editor - sie unterscheiden sich nur in
     ihren Adaptern. Die Landing ist eigenständig.
   </p>
 <pre class="d-diagram">
-  <b>apps/desktop</b>  Tauri 2 + Solid      <b>apps/web</b>  Solid + Vite        <b>apps/studio</b>  Solid + Convex       <b>apps/landing</b>
-  ├ PlatformAdapter (Dialoge,     ├ PlatformAdapter (Blob-   ├ ConvexStorageAdapter       Astro, statisch
-  │  Auto-Updater, Close-Flush)    │  Download, Disclaimer)   ├ Better Auth, Rollen        importiert <i>nichts</i>
-  └ StorageAdapter → SQLite/FTS5  └ StorageAdapter →         ├ Freigabe-Workflow          aus core
-                                     IndexedDB + MiniSearch   └ <em>eigene Tokens (--s-*)</em>   <em>eigene Tokens (Kopie)</em>
-           │                              │                         │
-           └──────────────┬───────────────┴─────────────────────────┘
+  <b>apps/desktop</b>  Tauri 2 + Solid       <b>apps/web</b>  Solid + Vite          <b>apps/landing</b>
+  ├ PlatformAdapter (Dialoge,          ├ PlatformAdapter (Blob-      Astro, statisch
+  │  Auto-Updater, Close-Flush)        │  Download, Disclaimer)      importiert <i>nichts</i>
+  └ StorageAdapter → SQLite/FTS5       └ StorageAdapter →            aus core
+                                         IndexedDB + MiniSearch   <em>eigene Tokens (Kopie)</em>
+           │                                 │
+           └──────────────┬──────────────────┘
                           ▼
   <b>packages/core</b>  @scriptz/core   ·  ~19.500 Zeilen TS/TSX  ·  ~5.400 Zeilen CSS
   ├ components/   Browser · Ideas · Editor · CommandBar · Settings · Onboarding · TabBar · Common
   ├ Editor/       Lexical (vanilla) · 7 Block-Nodes · 9 Plugins · predict.ts · persistence.ts
-  ├ lib/          scripts · ideas · folders · snapshots · search/fts · exportPdf · lex · dailyWords · handoff …
+  ├ lib/          scripts · ideas · folders · snapshots · search/fts · exportPdf · lex · dailyWords …
   ├ stores/       tabs · settings · ideas · dailyStats · saveStatus · toasts
   ├ i18n/         de.ts (Referenz, ~530 Keys) · en.ts
   └ styles/       <em>tokens.css · global.css · fonts.css</em>  ← das heutige "Designsystem"
@@ -79,10 +79,10 @@
 Overlays (modal, über allem):
   <b>⌘K</b>  CommandBar      Volltextsuche über Skripte (nur Skripte, keine Befehle)
   <b>⌘I</b>  QuickCapture    "Neue Idee" · Ordner wählen · ⏎ Merken · ⌘⏎ sofort Skript  <i>(im Fokus-Modus gesperrt)</i>
-  <b>⌘,</b>  Settings        Erscheinungsbild · Editor · Charaktere · Tastatur · Studio · Updates · Über
+  <b>⌘,</b>  Settings        Erscheinungsbild · Editor · Charaktere · Tastatur · Updates · Über
   <b>⌘E</b>  Export          PDF · Plain Text · .scriptz
   <b>⌘⇧H</b> Snapshots       Verlauf + Wiederherstellen
-  ·    NewScript · Activity (Heatmap) · Handoff an Studio · Onboarding (2 Schritte) · Confirm · Toasts
+  ·    NewScript · Activity (Heatmap) · Onboarding (2 Schritte) · Confirm · Toasts
 </pre>
   <div class="d-grid3" style="margin-top:20px">
     <div class="d-card"><h4>Tastatur zuerst</h4><p>Fast alles hat einen Hotkey: ⌘N, ⌘T, ⌘W, ⌘0-9, ⌘⌥←/→, ⌃Tab. Das ist eine Stärke, die jedes Redesign behalten muss.</p></div>
@@ -200,7 +200,6 @@ heute nur über <em>Ordner</em> ausdrücken.
   <table class="d-table">
     <tr><th>Ort</th><th>Präfix</th><th>Akzent</th><th>Zustand</th></tr>
     <tr><td><code>packages/core/styles/tokens.css</code></td><td><code>--bg --fg --text --brand-* --ink-*</code></td><td>Tinten-Schwarz</td><td>Vier Namensfamilien mit identischen Werten (<code>--fg</code> = <code>--text</code> = <code>--brand-500</code> = <code>--ink-500</code>). Im Dark-Mode kippt <code>--ink-700</code> auf Weiß.</td></tr>
-    <tr><td><code>apps/studio/src/styles/studio.css</code></td><td><code>--s-*</code></td><td><b>Orange</b> #c8631a</td><td>Komplett eigener Satz, eigene Radien und Schatten. Widerspricht der monochromen Marke.</td></tr>
     <tr><td><code>apps/landing/src/styles/tokens.css</code></td><td><code>--brand-* --char-*</code></td><td>Tinten-Schwarz</td><td>Kopie des Core-Satzes, schon abgewichen (<code>--brand-200</code> #d4cdb9 vs. #d4d4d2), Charakter-Palette auf Schwarz gesetzt.</td></tr>
   </table>
   <div class="d-grid3" style="margin-top:20px">
@@ -225,7 +224,7 @@ heute nur über <em>Ordner</em> ausdrücken.
   </div></div>
   <div class="d-finding"><span class="d-tag is-high">Design</span><div>
     <h4>Kein ausgliederbares Designsystem</h4>
-    <p>Drei Token-Sätze, vier Alias-Familien, Primitives in <code>global.css</code>, Studio mit Orange. Für eine Suite muss das ein Paket mit einer Quelle werden.</p>
+    <p>Mehrere Token-Sätze und Alias-Familien, Primitives in <code>global.css</code>. Für eine Suite muss das ein Paket mit einer Quelle werden.</p>
   </div></div>
   <div class="d-finding"><span class="d-tag is-mid">Navigation</span><div>
     <h4>Tab-Leiste macht vier Jobs</h4>
@@ -246,10 +245,6 @@ heute nur über <em>Ordner</em> ausdrücken.
   <div class="d-finding"><span class="d-tag is-low">Konsistenz</span><div>
     <h4>README verspricht einen Sprint-Timer, den es nicht mehr gibt</h4>
     <p>Im Code von <code>packages/core</code> existiert keine Sprint-Komponente mehr; README (Editor-Abschnitt, Motivation, Vergleichstabelle) und Landing erwähnen ihn noch.</p>
-  </div></div>
-  <div class="d-finding"><span class="d-tag is-low">Konsistenz</span><div>
-    <h4>Studio und lokale App sprechen verschiedene Status-Sprachen</h4>
-    <p>Studio kennt draft · in_review · approved · filmed · …, die lokale App gar nichts. Beim Handoff geht die Information "das ist schon gedreht" verloren.</p>
   </div></div>
 </section>
 
@@ -283,7 +278,6 @@ heute nur über <em>Ordner</em> ausdrücken.
       <ul style="font-size:14px;color:var(--d-muted);padding-left:18px">
         <li><b style="color:var(--d-fg)">Neue Spalte</b> <code>scripts.status</code> + <code>status_changed_at</code>. Additive Migration, Default <code>writing</code>, also kein Bestandsskript ändert sein Verhalten.</li>
         <li><b style="color:var(--d-fg)">Ideen bleiben vorerst eine eigene Tabelle</b>, werden aber in der UI als Stufe "Idee" gezeigt. Beim Umwandeln wird die Idee <i>zum</i> Skript (Notiz wandert in ein Notizfeld des Skripts statt in den ersten ACTION-Block). Eine echte Zusammenlegung der Tabellen wäre Schritt zwei.</li>
-        <li><b style="color:var(--d-fg)">Studio-Mapping</b>: Idee ↔ draft-Idee, Schreiben ↔ draft, Drehbereit ↔ approved, Gedreht ↔ filmed. Der Handoff überträgt den Status mit.</li>
         <li><b style="color:var(--d-fg)">Kein Tag-System</b>. Tags, Projekte und globale Charaktere wurden 2026-05 bewusst entfernt. Status ist bewusst eine geschlossene Liste, keine frei definierbaren Labels - sonst sind wir in drei Monaten wieder bei der Ordner-Frage.</li>
         <li><b style="color:var(--d-fg)">Wirkung auf Statistik</b>: "Gedreht diese Woche" ist eine Zahl, die Creator wirklich interessiert - mehr als Wörter. Kann die Wochenziel-Logik ergänzen.</li>
       </ul>
@@ -324,10 +318,9 @@ packages/
       <h3 style="margin-top:0">Regeln, damit es sauber bleibt</h3>
       <ul style="font-size:14px;color:var(--d-muted);padding-left:18px">
         <li><b style="color:var(--d-fg)">Drei Ebenen</b>: Primitives (Rohwerte) → Semantik (Rollen) → Theme (App-Akzent). Komponenten lesen nur Semantik.</li>
-        <li><b style="color:var(--d-fg)">Ein Namensraum</b>: <code>--brand-*</code>, <code>--ink-*</code>, <code>--fg</code>/<code>--text</code> und <code>--s-*</code> werden über eine Alias-Datei auf die neuen Namen gemappt und dann schrittweise entfernt.</li>
+        <li><b style="color:var(--d-fg)">Ein Namensraum</b>: <code>--brand-*</code>, <code>--ink-*</code> und <code>--fg</code>/<code>--text</code> werden über eine Alias-Datei auf die neuen Namen gemappt und dann schrittweise entfernt.</li>
         <li><b style="color:var(--d-fg)">Stylelint</b> verbietet Hex-Werte außerhalb von <code>packages/design</code>, analog zur bestehenden ESLint-Regel gegen <code>@tauri-apps</code> im Core.</li>
         <li><b style="color:var(--d-fg)">Landing darf <code>@agentz/design</code> importieren</b> - es ist reines CSS ohne App-Logik. Damit endet die Kopie in <code>apps/landing/src/styles/tokens.css</code>.</li>
-        <li><b style="color:var(--d-fg)">Studio</b> zieht seine <code>--s-*</code>-Tokens auf das Paket um und verliert sein eigenes Orange.</li>
         <li><b style="color:var(--d-fg)">Rüberkopieren</b> heißt dann: <code>packages/design</code> kopieren, ein Theme anlegen, fertig.</li>
       </ul>
     </div>

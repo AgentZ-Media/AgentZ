@@ -122,8 +122,6 @@
 .A .app-mark svg { width: 13px; height: 16px; --z2o: 0.5; }
 .A .app-name { font-weight: 700; font-size: 14px; color: #fff; display: flex; align-items: center; gap: 5px; }
 .A .app-name svg { width: 12px; height: 12px; color: var(--side-muted); }
-.A .app-others { margin-left: auto; display: flex; gap: 4px; }
-.A .app-others span { width: 22px; height: 22px; border-radius: 6px; display: grid; place-items: center; font: 700 9.5px/1 var(--ui); color: var(--side-muted); background: var(--side-hover); }
 .A .side-actions { display: grid; grid-template-columns: 1fr 32px; gap: 6px; margin: 10px 0 8px; }
 .A .side-search { height: 32px; display: flex; align-items: center; gap: 8px; padding: 0 8px 0 9px; border-radius: 7px; background: var(--side-hover); color: var(--side-muted); }
 .A .side-search kbd { margin-left: auto; }
@@ -613,7 +611,6 @@
     <symbol id="i-pen" viewBox="0 0 24 24"><path d="M4 20h4L19 9a2.8 2.8 0 0 0-4-4L4 16z"/><path d="M13.5 6.5l4 4"/></symbol>
     <symbol id="i-users" viewBox="0 0 24 24"><circle cx="9" cy="8" r="3.5"/><path d="M3 20a6 6 0 0 1 12 0"/><path d="M16 4.5a3.5 3.5 0 0 1 0 7M21 20a6 6 0 0 0-4-5.7"/></symbol>
     <symbol id="i-keyboard" viewBox="0 0 24 24"><rect x="3" y="6" width="18" height="12" rx="2"/><path d="M7 10h.01M11 10h.01M15 10h.01M8 14h8"/></symbol>
-    <symbol id="i-cloud" viewBox="0 0 24 24"><path d="M7 18a4.5 4.5 0 0 1-.5-9A6 6 0 0 1 18 9.5a4 4 0 0 1-.5 8.5z"/></symbol>
     <symbol id="i-refresh" viewBox="0 0 24 24"><path d="M20 11a8 8 0 0 0-14.5-4.5L4 8"/><path d="M4 4v4h4"/><path d="M4 13a8 8 0 0 0 14.5 4.5L20 16"/><path d="M20 20v-4h-4"/></symbol>
     <symbol id="i-info" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M12 11v5M12 8h.01"/></symbol>
     <symbol id="i-return" viewBox="0 0 24 24"><path d="M19 5v6.5a2 2 0 0 1-2 2H6"/><path d="M9.5 10L6 13.5 9.5 17"/></symbol>
@@ -987,7 +984,6 @@
           <div class="set-it"><svg class="i"><use href="#i-users"/></svg>Charaktere</div>
           <div class="set-it"><svg class="i"><use href="#i-keyboard"/></svg>Tastatur</div>
           <div class="set-sep"></div>
-          <div class="set-it"><svg class="i"><use href="#i-cloud"/></svg>Studio</div>
           <div class="set-it"><svg class="i"><use href="#i-refresh"/></svg>Updates<span class="set-badge">1</span></div>
           <div class="set-it"><svg class="i"><use href="#i-info"/></svg>Über ScriptZ</div>
         </nav>
@@ -1062,7 +1058,6 @@
     <div class="app">
       <div class="app-mark"><svg viewBox="0 0 50 60"><use href="#logo-z"/></svg></div>
       <div class="app-name">ScriptZ<svg class="i"><use href="#i-down"/></svg></div>
-      <div class="app-others"><span title="ScriptZ Studio">St</span></div>
     </div>
     <div class="side-actions">
       <div class="side-search"><svg class="i" style="width:14px;height:14px"><use href="#i-search"/></svg>Suchen &amp; Befehle<kbd>⌘K</kbd></div>
@@ -1346,7 +1341,7 @@
     <div><h4>Aktive Navigation</h4><p>Aktiver Eintrag: hellere Fläche plus 3 px Textmarker-Kante am Rand. Ordner und Zuletzt sind eine Stufe leiser als die Pipeline.</p></div>
     <div><h4>Zeilen zeigen beim Hover Aktionen</h4><p>Öffnen und „⋯" ersetzen beim Hover das Datum, die Laufzeit bleibt stehen. Darunter steht der Logline-Satz, damit Titel kurz bleiben dürfen.</p></div>
     <div><h4>Liste klappt, was erledigt ist</h4><p>Gedreht und Online sind standardmäßig eingeklappt. Ideen stehen nicht in der Skript-Liste, nur ein Hinweis „48 Ideen warten" führt zur Ideen-Seite. Oben bleibt, was Arbeit braucht.</p></div>
-    <div><h4>Ideen: eigene Seite für 50+</h4><p>Dichte Liste mit 36 px Zeilen, nach Zeit gruppiert, Ordner als Filter-Chips. Rechts das Detail der gewählten Idee zum direkten Weiterschreiben, plus „Ähnliche Stücke" aus der Volltextsuche, damit keine Idee doppelt entsteht. Alles per Tastatur, ⇧-Klick wählt mehrere zum Verschieben oder Senden an Studio.</p></div>
+    <div><h4>Ideen: eigene Seite für 50+</h4><p>Dichte Liste mit 36 px Zeilen, nach Zeit gruppiert, Ordner als Filter-Chips. Rechts das Detail der gewählten Idee zum direkten Weiterschreiben, plus „Ähnliche Stücke" aus der Volltextsuche, damit keine Idee doppelt entsteht. Alles per Tastatur, ⇧-Klick wählt mehrere zum Verschieben.</p></div>
     <div><h4>Export zeigt das Ergebnis</h4><p>Links die echte erste PDF-Seite mit Farben, rechts drei Formate als Karten und nur die Optionen, die zum gewählten Format passen. Seiten tauchen erst hier auf.</p></div>
     <div><h4>Einstellungen als Liste mit Erklärung</h4><p>Jede Zeile sagt in einem Satz, was sie bewirkt. Neu: Sprechtempo und Zielbereich - global und je Ordner -, Schreib-Zähler abschaltbar. Updates bekommen ein Badge, wenn etwas bereit ist.</p></div>
     <div><h4>Onboarding zeigt statt erklärt</h4><p>Drei Schritte (Aussehen, Schreiben, Los geht's). Im mittleren steht ein Mini-Skript, in dem Enter sichtbar durch die Blöcke führt und der Quick-Modus den zweiten Sprecher von selbst einsetzt.</p></div>

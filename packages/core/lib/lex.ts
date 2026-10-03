@@ -1,4 +1,4 @@
-// Lexical state -> plain text extraction (server-side mirror of the renderer).
+// Lexical state -> plain text extraction independent of the renderer.
 //
 // Lossy on purpose - feeds FTS5 and the plain-text export, NOT round-trip
 // rendering.

@@ -39,7 +39,7 @@ function findScriptzAncestor(node: LexicalNode | null): BaseScriptzNode | null {
  *    preventDefault(): the shell shortcut handler skips events that are
  *    already default-prevented, so preventing here would swallow the
  *    capture. The shell calls preventDefault itself, which also stops the
- *    browser's native italic; without a shell (e.g. Studio) a native
+ *    browser's native italic; without a shell a native
  *    `formatItalic` beforeinput ends in the FORMAT_TEXT_COMMAND guard.
  *  - A FORMAT_TEXT_COMMAND guard swallows "italic" from any other source
  *    (context menus, programmatic dispatches, future toolbars). */

@@ -10,7 +10,7 @@ import { DEFAULT_PALETTE } from "../../lib/characterColors";
 import type { ScriptCharacter } from "../../lib/types";
 
 /** Neutral placeholder color for character pills the user JUST typed —
- *  the next debounced save canonicalizes it via the server response. We
+ *  the next debounced save canonicalizes it via the save result. We
  *  no longer rest on this color in the live reconcile path (would have
  *  caused grey dots while typing fast), but legacy reads still need the
  *  sentinel to detect "not yet resolved". */
@@ -34,10 +34,10 @@ export interface CharacterReconcileHandle {
    *  synchronously inside `editor.getEditorState().read()` — safe to call
    *  on every update listener tick. */
   reconcileLiveCharactersSync: () => boolean;
-  /** Re-walks the editor state and merges in server-assigned colors from
-   *  the save summary. Names typed mid-flight (not yet known to the
-   *  server) keep their locally-chosen palette color instead of
-   *  reverting to `PENDING_CHAR_COLOR`. Returns whether anything changed. */
+  /** Re-walks the editor state and merges in persisted colors from the
+   *  save summary. Names typed mid-flight (not yet persisted) keep their
+   *  locally-chosen palette color instead of reverting to
+   *  `PENDING_CHAR_COLOR`. Returns whether anything changed. */
   mergeAfterSave: (
     summary: { characters: ScriptCharacter[] },
   ) => boolean;
@@ -86,7 +86,7 @@ function collectCharacterNames(editor: LexicalEditor): string[] {
 }
 
 /** Mirrors `pickPaletteInScript` from characterColors.ts so the later
- *  server save (which uses the same heuristic) lands on the same color
+ *  storage write (which uses the same heuristic) lands on the same color
  *  and no visible re-coloring happens. */
 function pickFallbackColor(existing: ScriptCharacter[]): string {
   const used = new Set<string>();

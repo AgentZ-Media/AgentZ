@@ -19,7 +19,6 @@ import { foldersBus } from "../../lib/foldersBus";
 import { scriptsBus } from "../../lib/scriptsBus";
 import { INBOX_FOLDER_ID } from "../../lib/folders";
 import { flushAll } from "../../lib/saveFlush";
-import { tryParseConnectCode } from "../../lib/handoff";
 import { K, isModKey } from "../../lib/keys";
 import { ideasStore } from "../../stores/ideas";
 import { navStore } from "../../stores/nav";
@@ -32,7 +31,6 @@ import { SCRIPT_STATUSES } from "../../lib/types";
 import { Icon } from "../Common/Icon";
 import { StageGlyph } from "../Common/StageGlyph";
 import { confirmDialog } from "../Common/ConfirmDialog";
-import { HandoffDialog } from "../Library/HandoffDialog";
 import { PageBar } from "../Library/PageBar";
 import { ContextMenu, type ContextMenuItem } from "../Library/ContextMenu";
 import { PromptDialog } from "../Library/PromptDialog";
@@ -200,7 +198,6 @@ export function IdeasPage() {
   const [wanted, setWanted] = createSignal<string | null>(null);
   /** Open the wanted idea's row once it is selected. */
   const [wantedOpen, setWantedOpen] = createSignal(false);
-  const [handoffOpen, setHandoffOpen] = createSignal(false);
   let editor: IdeaEditorHandle | null = null;
   let listRef: HTMLDivElement | undefined;
   let captureRef: HTMLInputElement | undefined;
@@ -401,7 +398,6 @@ export function IdeasPage() {
     queueMicrotask(() => document.getElementById(`idea-row-${id}`)?.scrollIntoView({ block: "nearest" }));
   }
 
-  const studioConnected = () => tryParseConnectCode(settingsStore.studioConnectCode()) !== null;
   const errorToast = (err: unknown) =>
     pushToast(t("common.errorPrefix", { message: (err as Error)?.message ?? String(err) }), "error");
 
@@ -1190,7 +1186,6 @@ export function IdeasPage() {
               onSelectAll={selectAll}
               onClear={() => setSelected(new Set<string>())}
               onExit={exitSelectMode}
-              onSend={studioConnected() ? () => setHandoffOpen(true) : undefined}
               onMove={(el) => menuAbove(el, moveMenu(selectedIdeas()))}
               onStage={(el) => menuAbove(el, stageMenu(selectedIdeas()), 200)}
               stageLabel={t("ideasPage.selection.convert")}
@@ -1201,18 +1196,6 @@ export function IdeasPage() {
           </Show>
         </div>
       </div>
-
-      <HandoffDialog
-        open={handoffOpen()}
-        scriptIds={[]}
-        ideaIds={[...selected()]}
-        onClose={() => setHandoffOpen(false)}
-        onSent={() => {
-          setHandoffOpen(false);
-          exitSelectMode();
-          ideasStore.refresh();
-        }}
-      />
 
       <Show when={menu()}>
         {(m) => (

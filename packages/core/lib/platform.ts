@@ -91,26 +91,6 @@ export interface OpenFileResult {
   bytes: Uint8Array;
 }
 
-// ===== Outbound HTTP =====
-//
-// The Studio handoff talks JSON to a URL the user configures at runtime
-// (learned from a connect code - core never hardcodes a domain): a GET for
-// the destination list, a POST for the bundle itself. Desktop must route
-// both through tauri-plugin-http: the webview CSP `connect-src` would block
-// a plain fetch() to an arbitrary host. Web uses fetch() directly; the
-// receiving endpoint sets the CORS headers.
-
-export interface HttpPostResult {
-  /** HTTP status code (0 on a transport-level failure that produced no
-   *  response, e.g. DNS / connection refused / CORS block). */
-  status: number;
-  /** True for a 2xx response. */
-  ok: boolean;
-  /** Raw response body text. The caller parses JSON. Empty on transport
-   *  failure. */
-  body: string;
-}
-
 // ===== Adapter interface =====
 
 export interface PlatformAdapter {
@@ -119,7 +99,7 @@ export interface PlatformAdapter {
   platform: Platform;
 
   /** True when the host can pick a directory and write multiple files into
-   *  it (desktop). Web/Studio set false and fall back to per-file blob
+   *  it (desktop). Web sets false and falls back to per-file blob
    *  downloads. Lets the multi-PDF export pick the right strategy. */
   supportsDirectoryWrite: boolean;
 
@@ -150,25 +130,12 @@ export interface PlatformAdapter {
    *  Returns null when the user cancels. */
   openFile(accept: string): Promise<OpenFileResult | null>;
 
-  /** POSTs a JSON string to `url` with a Bearer `token`, returning the
-   *  status + raw body. Used by the Studio handoff. The URL is supplied at
-   *  runtime (from a pairing code), so this must work against ANY host.
-   *  Desktop: tauri-plugin-http (bypasses the webview CSP). Web: fetch
-   *  (the endpoint must send CORS headers). Rejects only on a programming
-   *  error; transport failures resolve with status 0. */
-  httpPostJson(url: string, token: string, jsonBody: string): Promise<HttpPostResult>;
-
-  /** GETs `url` with a Bearer `token`, returning the status + raw body.
-   *  Same transport rules as `httpPostJson` (Tauri plugin vs. fetch, status 0
-   *  on transport failure). Used to load the Studio destination list. */
-  httpGetJson(url: string, token: string): Promise<HttpPostResult>;
-
   /** Opens a directory picker, returning the chosen absolute path or null
    *  (cancelled). Only meaningful when `supportsDirectoryWrite` is true. */
   pickDirectory(): Promise<string | null>;
 
   /** Writes bytes to an absolute path, creating parent dirs as needed. Only
-   *  valid when `supportsDirectoryWrite` is true; web/Studio throw. */
+   *  valid when `supportsDirectoryWrite` is true; web throws. */
   writeFileTo(path: string, bytes: Uint8Array): Promise<void>;
 }
 

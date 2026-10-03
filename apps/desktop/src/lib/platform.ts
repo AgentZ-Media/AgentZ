@@ -17,7 +17,6 @@
 import Database from "@tauri-apps/plugin-sql";
 import { open as openDialog, save } from "@tauri-apps/plugin-dialog";
 import { mkdir, readFile, writeFile } from "@tauri-apps/plugin-fs";
-import { fetch as tauriFetch } from "@tauri-apps/plugin-http";
 import { openUrl, revealItemInDir } from "@tauri-apps/plugin-opener";
 import { getVersion } from "@tauri-apps/api/app";
 import { platform as osPlatform } from "@tauri-apps/plugin-os";
@@ -25,7 +24,6 @@ import {
   applyPlatformToDocument,
   setPlatformAdapter,
   type DbConnection,
-  type HttpPostResult,
   type OpenFileResult,
   type Platform,
   type PlatformAdapter,
@@ -135,42 +133,6 @@ async function desktopWriteFileTo(path: string, bytes: Uint8Array): Promise<void
   await writeFile(path, bytes);
 }
 
-async function desktopHttpPostJson(
-  url: string,
-  token: string,
-  jsonBody: string,
-): Promise<HttpPostResult> {
-  try {
-    // tauri-plugin-http's fetch runs through Rust, so the webview CSP does
-    // not gate it - only the capability scope (https://**) does.
-    const res = await tauriFetch(url, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`,
-      },
-      body: jsonBody,
-    });
-    const body = await res.text();
-    return { status: res.status, ok: res.ok, body };
-  } catch {
-    return { status: 0, ok: false, body: "" };
-  }
-}
-
-async function desktopHttpGetJson(url: string, token: string): Promise<HttpPostResult> {
-  try {
-    const res = await tauriFetch(url, {
-      method: "GET",
-      headers: { Authorization: `Bearer ${token}` },
-    });
-    const body = await res.text();
-    return { status: res.status, ok: res.ok, body };
-  } catch {
-    return { status: 0, ok: false, body: "" };
-  }
-}
-
 const tauriAdapter: PlatformAdapter = {
   platform: detectPlatform(),
   supportsDirectoryWrite: true,
@@ -184,8 +146,6 @@ const tauriAdapter: PlatformAdapter = {
   },
   saveAs: desktopSaveAs,
   openFile: desktopOpenFile,
-  httpPostJson: desktopHttpPostJson,
-  httpGetJson: desktopHttpGetJson,
   pickDirectory: desktopPickDirectory,
   writeFileTo: desktopWriteFileTo,
 };

@@ -54,10 +54,6 @@ Folder        += { length_min_sec: number | null; length_max_sec: number | null 
 - Web Dexie (`apps/web/src/adapters/indexeddb.ts`): Felder optional lesen,
   Default `status = "writing"`, Ranges `null`. Version nur bumpen, wenn ein
   Index nötig ist.
-- Studio (`apps/studio/src/adapters/convex.ts`): neue Methoden als
-  `notSupported(...)` bzw. Status aus Studio-Status abbilden
-  (draft/in_review/changes_requested/rejected → writing, approved → ready,
-  filmed → shot). **Kein** Convex-Schema-Change (Production-only Deployment).
 - `.scriptz`-Datei (`lib/scriptzFile.ts`): `status` optional additiv
   mitschreiben/lesen (Format-Version bleibt 1, Tests ergänzen).
 - Settings (Key/Value): `length_min_default_sec`, `length_max_default_sec`
@@ -95,7 +91,7 @@ setFolderLengthRange(id: string, minSec: number | null, maxSec: number | null): 
   `--t-*`-Logik bleibt in `highlight.ts`.
 - `legacy.css` - Alias-Schicht alter Namen (`--fg`, `--text*`, `--brand-*`,
   `--ink-*`, `--bg-elev-*`, `--border*`, `--hover*`, …) auf neue Tokens, damit
-  unveränderte Komponenten (Snapshots, Heatmap, Handoff, ColorPicker, Trash, …)
+  unveränderte Komponenten (Snapshots, Heatmap, ColorPicker, Trash, …)
   automatisch den neuen Look bekommen.
 - `components.css` - `.btn` (+ `.primary`, `.ghost`, `.icon`, `.danger`),
   `.chip`, `kbd`, `.menu`/`.menu-it`, `.dlg`/Modal, `.scrim`, `.toast`,
@@ -110,8 +106,6 @@ setFolderLengthRange(id: string, minSec: number | null, maxSec: number | null): 
 - Core-Komponenten dazu: `components/Common/Icon.tsx` (`<Icon name size? />`),
   `components/Common/StageGlyph.tsx` (`<StageGlyph stage size? />`),
   `components/Common/AppMark.tsx` (`<AppMark size? variant?="accent" />`).
-- Studio: `apps/studio/src/styles/studio.css` `--s-*` auf Design-Tokens mappen
-  (Orange-Akzent entfällt → Textmarker/Tinte).
 
 ## 5. Navigation & UI-State (vom Orchestrator vorgegeben)
 
@@ -124,7 +118,7 @@ Signaturen stehen in den Dateien selbst (Orchestrator legt sie vor Phase 2 an).
 
 | Paket | Besitzt | Liefert |
 |---|---|---|
-| **C Shell** | `components/Shell/**`, `components/Library/**`, `components/Palette/**`, `apps/desktop/src/App.tsx`, `apps/web/src/App.tsx`, `i18n/parts/shell.ts`, Löschen von `TabBar*`, `Browser/MomentumStrip*`, `stores/tabs.ts` | `AppShell` (Boot, Shortcuts, Layout, mountet D+E), `Sidebar`, `ScriptsPage` (Gruppen nach Stufe, Ideen-Hinweis, Filter, Sortierung/Gruppierung, Auswahlmodus + PDF/Studio/Verschieben/Papierkorb, Kontextmenü, Ordner-CRUD, Import), `TrashPage`, `CommandPalette` (⌘K: Skripte, Ideen, Befehle, leer = Zuletzt) |
+| **C Shell** | `components/Shell/**`, `components/Library/**`, `components/Palette/**`, `apps/desktop/src/App.tsx`, `apps/web/src/App.tsx`, `i18n/parts/shell.ts`, Löschen von `TabBar*`, `Browser/MomentumStrip*`, `stores/tabs.ts` | `AppShell` (Boot, Shortcuts, Layout, mountet D+E), `Sidebar`, `ScriptsPage` (Gruppen nach Stufe, Ideen-Hinweis, Filter, Sortierung/Gruppierung, Auswahlmodus + PDF/Verschieben/Papierkorb, Kontextmenü, Ordner-CRUD, Import), `TrashPage`, `CommandPalette` (⌘K: Skripte, Ideen, Befehle, leer = Zuletzt) |
 | **D Script** | `components/Script/**`, `components/Editor/**` außer `nodes/` und Logik-Plugins aus Phase 1, `i18n/parts/script.ts` | `ScriptScreen` (`{ scriptId: string }`): Kopfleiste, Stufen-Chip+Menü, Quick/Farben-Umschalter, Export-Button, Inspector, Gutter-Label, Autocomplete-Restyle, Zeitleiste (Mini + ausgeklappt, Hover-Link, Klick springt), Fokus-Pille, Recovery, Snapshots |
 | **E Dialoge & Ideen** | `components/Ideas/**`, `components/Export/**`, `components/Settings/**`, `components/Onboarding/**`, `components/Activity/**`, `i18n/parts/dialogs.ts` | `IdeasPage`, `QuickCapture` (⌘I, echtes Modal), `ExportDialog`, `SettingsDialog` (inkl. Zielbereich global + je Ordner), `Onboarding` (3 Schritte), `WritingCounter` (Sidebar-Fuß + Aktivitäts-Popover ohne Streak/Ziel) |
 
@@ -173,7 +167,7 @@ sind nachgezogen. Offen: Codex-Review, PR, CodeRabbit (Phase 6).
 
 **Wie geplant umgesetzt:** Datenmodell inkl. Migration
 `007_werkbank.sql` (in `lib.rs` als Version 7 registriert), die neuen
-StorageAdapter-Methoden in allen drei Adaptern, die fünf neuen
+StorageAdapter-Methoden in beiden Adaptern, die fünf neuen
 Core-Bibliotheken samt Tests, `@agentz/design` mit allen vier
 CSS-Schichten plus Icons/Logo, `stores/nav.ts` + `stores/ui.ts`, alle
 Komponenten aus §6, Tastatur laut §7.
@@ -192,10 +186,6 @@ Komponenten aus §6, Tastatur laut §7.
 - **Web (Dexie)**: kein Versions-Bump. `status` und die Range-Felder
   werden optional gelesen und in JS gefiltert, ein Index war nicht
   nötig.
-- **Studio**: `setScriptStatus` und `setFolderLengthRange` sind
-  `notSupported(...)`. Der Status wird nur lesend abgebildet (approved
-  -> `ready`, filmed -> `shot`, alles andere -> `writing`); der
-  Freigabe-Workflow bleibt die Wahrheit. Kein Convex-Schema-Change.
 - **Export-Dialog**: drei Formate (PDF, Teleprompter-Text,
   ScriptZ-Datei) mit Live-Vorschau über `Export/pdfPreview.ts` (ohne
   pdf-lib zu laden).
@@ -209,8 +199,7 @@ Komponenten aus §6, Tastatur laut §7.
 `packages/design`, Hex-Regel), `apps/desktop/CLAUDE.md`,
 `apps/landing/CLAUDE.md`, `.claude/rules/desktop-architecture.md`
 (komplett neu), `feature-parity.md`, `landing-consistency.md`,
-`i18n.md` (Aufteilung `i18n/parts/*`), `release.md`,
-`docs/studio-spec.md`.
+`i18n.md` (Aufteilung `i18n/parts/*`), `release.md`.
 
 **Entscheidung 2026-10-03: Parenthetical kommt zurück.** Der Product
 Owner hat entschieden, dass Regieanweisungen fürs Sprechen („(leise)")

@@ -18,7 +18,6 @@ export type SettingsSection =
   | "folders"
   | "characters"
   | "shortcuts"
-  | "studio"
   | "updates"
   | "about";
 
