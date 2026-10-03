@@ -1,4 +1,4 @@
-// Sanity tests for the ScriptzApiStorage slot.
+// Sanity tests for the ScriptzStorage slot.
 //
 // Validates that the `api` proxy from ./api.ts really goes through
 // `getStorageAdapter()` - otherwise a future
@@ -6,23 +6,24 @@
 // `api.*` calls.
 
 import { afterEach, describe, it, expect, vi } from "vitest";
+import { getKvStore } from "@agentz/kit/platform";
 import {
   setStorageAdapter,
   getStorageAdapter,
-  type ScriptzApiStorage,
+  type ScriptzStorage,
 } from "../storage";
 import { api, registerSqlStorageAdapter } from "../api";
 
-// Stub factory: returns a ScriptzApiStorage where all 30+ methods are
+// Stub factory: returns a ScriptzStorage where all 30+ methods are
 // produced via `vi.fn()`. Tests override individual methods with
 // real values; the rest is enough as "won't be called".
-function stubAdapter(overrides: Partial<ScriptzApiStorage> = {}): ScriptzApiStorage {
+function stubAdapter(overrides: Partial<ScriptzStorage> = {}): ScriptzStorage {
   // Eager-eval default fields per required interface key.
   // We use a proxy: anything that isn't overridden becomes a
   // `vi.fn()` that returns an empty result.
-  return new Proxy({} as ScriptzApiStorage, {
+  return new Proxy({} as ScriptzStorage, {
     get(_, prop: string) {
-      if (prop in overrides) return overrides[prop as keyof ScriptzApiStorage];
+      if (prop in overrides) return overrides[prop as keyof ScriptzStorage];
       return vi.fn().mockResolvedValue(undefined);
     },
   });
@@ -36,7 +37,7 @@ afterEach(() => {
   setStorageAdapter(originalAdapter);
 });
 
-describe("ScriptzApiStorage slot", () => {
+describe("ScriptzStorage slot", () => {
   it("api proxies through getStorageAdapter() (not a static bind)", async () => {
     const getScript = vi
       .fn()
@@ -61,6 +62,16 @@ describe("ScriptzApiStorage slot", () => {
     expect(await api.listFolders()).toEqual([{ id: "b" }]);
     expect(second).toHaveBeenCalledTimes(1);
     expect(first).toHaveBeenCalledTimes(1); // first not called again
+  });
+
+  it("product adapter registration does not replace the independent key-value store", () => {
+    const kv = getKvStore();
+    setStorageAdapter(stubAdapter());
+    expect(getKvStore()).toBe(kv);
+    registerSqlStorageAdapter();
+    expect(getKvStore()).toBe(kv);
+    expect(Reflect.get(getStorageAdapter(), "getSetting")).toBeUndefined();
+    expect(Reflect.get(getStorageAdapter(), "setAppState")).toBeUndefined();
   });
 
   it("SQL adapter can be registered explicitly", () => {

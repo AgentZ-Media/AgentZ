@@ -3,7 +3,7 @@ import { Modal } from "@agentz/kit/ui";
 import { confirmDialog } from "@agentz/kit/ui";
 import { api } from "../../lib/api";
 import { scriptsBus } from "../../lib/scriptsBus";
-import { flushAll } from "@agentz/kit/lib";
+import { requireSuccessfulFlush } from "@agentz/kit/lib";
 import { formatAbsolute } from "@agentz/kit/lib";
 import type { ScriptCharacter, Snapshot, SnapshotMeta } from "../../lib/types";
 import { pushToast } from "@agentz/kit/stores";
@@ -72,7 +72,7 @@ export function SnapshotsDialog(props: SnapshotsDialogProps) {
   const onCreateManual = async () => {
     try {
       // The snapshot copies the stored content: write buffered typing first.
-      await flushAll();
+      await requireSuccessfulFlush();
       await api.createSnapshot(props.scriptId, "manual");
       pushToast(t("snapshots.toast.created"), "ok");
       setReloadKey(reloadKey() + 1);
@@ -114,7 +114,7 @@ export function SnapshotsDialog(props: SnapshotsDialogProps) {
       // Write any buffered keystrokes first: the editor is remounted with
       // the restored content afterwards, and a save still pending in the
       // old instance would otherwise overwrite the restore on teardown.
-      await flushAll();
+      await requireSuccessfulFlush();
       await api.restoreSnapshot(id);
       scriptsBus.bump();
       pushToast(t("snapshots.toast.restored"), "ok");

@@ -1,3 +1,4 @@
+import { baseSettingsStore } from "@agentz/kit/stores";
 import { Show, onCleanup, onMount, createEffect, createSignal } from "solid-js";
 import {
   createEditor,
@@ -244,7 +245,7 @@ export function Editor(props: EditorProps) {
     let firstPaperSync = true;
     createEffect(() => {
       settingsStore.darkPaper();
-      settingsStore.resolvedTheme();
+      baseSettingsStore.resolvedTheme();
       if (firstPaperSync) {
         firstPaperSync = false;
         return;

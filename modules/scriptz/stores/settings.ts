@@ -1,14 +1,8 @@
 import { createSignal, createEffect, createRoot } from "solid-js";
-import { api } from "../lib/api";
-import { registerFlusher } from "@agentz/kit/lib";
-import { applyResolvedLanguage, detectSystemLanguage, resolveLanguage, type Language, type LanguagePref } from "@agentz/kit/i18n";
+import { getKvStore, type KvStore } from "@agentz/kit/platform";
+import { baseSettingsStore, createSettingsWriter } from "@agentz/kit/stores";
 
-export type Theme = "dark" | "light" | "auto";
-
-const [theme, setTheme] = createSignal<Theme>("light");
 const [highlightingDefault, setHighlightingDefault] = createSignal<boolean>(false);
-const [updateCheckEnabled, setUpdateCheckEnabled] = createSignal<boolean>(true);
-const [hourlyUpdateCheck, setHourlyUpdateCheck] = createSignal<boolean>(true);
 // Open scripts in focus mode. Default false for fresh installs since the
 // Werkbank redesign (head bar + inspector are the normal writing view);
 // a value stored by an existing install still wins (see load()).
@@ -49,31 +43,11 @@ const LENGTH_SEC_MAX = 24 * 60 * 60;
 const [lengthMinDefaultSec, setLengthMinDefaultSecSignal] = createSignal<number | null>(null);
 const [lengthMaxDefaultSec, setLengthMaxDefaultSecSignal] = createSignal<number | null>(null);
 
-// Language preference "auto" | "de" | "en". "auto" follows navigator.language.
-// Default "auto" - new users land language-wise where their system is.
-// The resolved language is not persisted here, only the user's choice;
-// the i18n module resolves again on every load, so a system
-// switch doesn't get stuck on a stale cached language.
-const [language, setLanguagePref] = createSignal<LanguagePref>("auto");
-
 const [loaded, setLoaded] = createSignal(false);
-
-// System listeners and DOM updates are attached only by the app runtime.
-let prefersDark: MediaQueryList | null = null;
 let stopRuntime: (() => void) | undefined;
 let runtimeGeneration = 0;
-
-function resolveTheme(t: Theme): "dark" | "light" {
-  if (t === "auto") return prefersDark?.matches ? "dark" : "light";
-  return t;
-}
-
-// Reactive "is the app currently dark?" - UI components need this,
-// e.g. to (de)activate the darkPaper option. Stays on the current
-// system state in auto mode (listener further below).
-const [resolvedTheme, setResolvedTheme] = createSignal<"dark" | "light">(
-  resolveTheme(theme()),
-);
+let settingsKv: KvStore | undefined;
+let writer: ReturnType<typeof createSettingsWriter> | undefined;
 
 /** Normalizes a stored/typed range bound: non-negative whole seconds or
  *  null. Ordering (min < max) is the UI's job - lib/lengthGoal.ts treats
@@ -93,66 +67,20 @@ function clampWpm(n: number): number {
   return Math.max(DIALOG_WPM_MIN, Math.min(DIALOG_WPM_MAX, Math.round(n)));
 }
 
-// Settings writes: every setter updates its signal synchronously and queues
-// the storage write behind the previous write of the same key. Rapid
-// toggles (on/off/on) thereby land in order - the last choice is what
-// stays stored - and flushAll() (route change, window close) waits for
-// writes still in flight. Errors still reject the setter's promise.
-const settingWrites = new Map<string, Promise<void>>();
-const pendingSettingWrites = new Set<Promise<void>>();
-const failedSettingKeys = new Set<string>();
-
 function persistSetting(key: string, value: string): Promise<void> {
-  const prev = settingWrites.get(key) ?? Promise.resolve();
-  const write = prev.catch(() => {}).then(async () => {
-    try {
-      await api.setSetting(key, value);
-      failedSettingKeys.delete(key);
-    } catch (error) {
-      failedSettingKeys.add(key);
-      throw error;
-    }
-  });
-  settingWrites.set(key, write);
-  pendingSettingWrites.add(write);
-  void write
-    .catch(() => {})
-    .finally(() => {
-      pendingSettingWrites.delete(write);
-      if (settingWrites.get(key) === write) settingWrites.delete(key);
-    });
-  return write;
-}
-
-
-function applyLanguage(pref: LanguagePref): void {
-  const lang: Language = resolveLanguage(pref);
-  applyResolvedLanguage(lang);
+  if (!writer) throw new Error("Product settings runtime has not started.");
+  return writer.write(key, value);
 }
 
 export const settingsStore = {
-  theme,
-  setTheme: async (v: Theme) => {
-    setTheme(v);
-    // dataset.theme is set by the createEffect below — no redundant
-    // writing here anymore.
-    await persistSetting("theme", v);
-  },
+
   highlightingDefault,
   setHighlightingDefault: async (v: boolean) => {
     setHighlightingDefault(v);
     await persistSetting("highlighting_default", v ? "1" : "0");
   },
-  updateCheckEnabled,
-  setUpdateCheckEnabled: async (v: boolean) => {
-    setUpdateCheckEnabled(v);
-    await persistSetting("update_check_enabled", v ? "1" : "0");
-  },
-  hourlyUpdateCheck,
-  setHourlyUpdateCheck: async (v: boolean) => {
-    setHourlyUpdateCheck(v);
-    await persistSetting("hourly_update_check", v ? "1" : "0");
-  },
+
+
   focusModeDefault,
   setFocusModeDefault: async (v: boolean) => {
     setFocusModeDefault(v);
@@ -178,7 +106,6 @@ export const settingsStore = {
     setPruneUnusedCharacters(v);
     await persistSetting("prune_unused_characters", v ? "1" : "0");
   },
-  resolvedTheme,
   dialogWpm,
   setDialogWpm: async (v: number) => {
     const next = clampWpm(v);
@@ -202,129 +129,62 @@ export const settingsStore = {
     setLengthMaxDefaultSecSignal(next);
     await persistSetting("length_max_default_sec", next === null ? "" : String(next));
   },
-  /** Current user choice "auto" | "de" | "en". */
-  language,
-  setLanguage: async (v: LanguagePref) => {
-    setLanguagePref(v);
-    applyLanguage(v);
-    await persistSetting("language", v);
-  },
+
   loaded,
   async load() {
     const generation = runtimeGeneration;
-    const [t, hd, uce, huc, qmae, wpm, fmd, sws, dp, lang, lmin, lmax, puc] = await Promise.all([
-      api.getSetting("theme"),
-      api.getSetting("highlighting_default"),
-      api.getSetting("update_check_enabled"),
-      api.getSetting("hourly_update_check"),
-      api.getSetting("quick_mode_auto_enable"),
-      api.getSetting("dialog_wpm"),
-      api.getSetting("focus_mode_default"),
-      api.getSetting("show_writing_stats"),
-      api.getSetting("dark_paper"),
-      api.getSetting("language"),
-      api.getSetting("length_min_default_sec"),
-      api.getSetting("length_max_default_sec"),
-      api.getSetting("prune_unused_characters"),
+    const kv = settingsKv ?? getKvStore();
+    const [hd, qmae, wpm, fmd, sws, dp, lmin, lmax, puc] = await Promise.all([
+      kv.getSetting("highlighting_default"),
+      kv.getSetting("quick_mode_auto_enable"),
+      kv.getSetting("dialog_wpm"),
+      kv.getSetting("focus_mode_default"),
+      kv.getSetting("show_writing_stats"),
+      kv.getSetting("dark_paper"),
+      kv.getSetting("length_min_default_sec"),
+      kv.getSetting("length_max_default_sec"),
+      kv.getSetting("prune_unused_characters"),
     ]);
     if (generation !== runtimeGeneration) return;
-    if (t === "dark" || t === "light" || t === "auto") setTheme(t);
-    if (hd) setHighlightingDefault(hd === "1");
-    if (uce) setUpdateCheckEnabled(uce === "1");
-    if (huc) setHourlyUpdateCheck(huc === "1");
-    if (qmae) setQuickModeAutoEnable(qmae === "1");
-    if (fmd) setFocusModeDefault(fmd === "1");
-    if (sws) setShowWritingStats(sws === "1");
-    if (dp) setDarkPaper(dp === "1");
-    if (puc) setPruneUnusedCharacters(puc === "1");
+    setHighlightingDefault(hd === null ? false : hd === "1");
+    setQuickModeAutoEnable(qmae === null ? false : qmae === "1");
+    setFocusModeDefault(fmd === null ? false : fmd === "1");
+    setShowWritingStats(sws === null ? true : sws === "1");
+    setDarkPaper(dp === null ? false : dp === "1");
+    setPruneUnusedCharacters(puc === null ? false : puc === "1");
     setLengthMinDefaultSecSignal(parseLengthSetting(lmin));
     setLengthMaxDefaultSecSignal(parseLengthSetting(lmax));
-    // Language: persisted value takes precedence, otherwise default "auto".
-    // Existing users thereby get their system language without an explicit
-    // migration (auto-detection on the first resolve).
-    if (lang === "auto" || lang === "de" || lang === "en") {
-      setLanguagePref(lang);
-    }
-    applyLanguage(language());
-    if (wpm) {
-      const parsed = Number(wpm);
-      if (Number.isFinite(parsed)) setDialogWpm(clampWpm(parsed));
-    }
+    setDialogWpm(wpm === null ? DIALOG_WPM_DEFAULT : clampWpm(Number(wpm)));
     setLoaded(true);
   },
 };
 
-// Apply theme to the document. "auto" is resolved via matchMedia (declared
-// above) to "dark" or "light", so the CSS only knows
-// two sources of truth - otherwise every dark token block would have to
-// be maintained twice (once for [data-theme="dark"], once
-// for @media + auto), which in the past has led to incomplete
-// auto blocks and style-layer bugs.
-//
-// Solid tracks theme() as a dependency and fires on every change,
-// including the first read/set at the end of load().
-//
-// Before `load()` has run, we don't write anything - otherwise
-// the default ("light") would briefly flicker over the persisted theme,
-// when the runtime effect first runs, before stored settings have loaded.
-// data-paper strictly follows the **resolved** theme: only when the theme
-// (incl. auto resolution) is actually dark does data-paper="dark"
-// get set. In light mode the attribute is removed so the user
-// setting "darkPaper" has no effect here - the sheet stays
-// light. That way the auto logic works out of the box: user enables
-// darkPaper once, and the sheet only goes dark when the
-// app is currently in the dark look.
-function applyChrome() {
-  const resolved = resolveTheme(theme());
-  setResolvedTheme(resolved);
-  document.documentElement.dataset.theme = resolved;
-  if (resolved === "dark" && darkPaper()) {
-    document.documentElement.dataset.paper = "dark";
-  } else {
-    delete document.documentElement.dataset.paper;
-  }
-}
-
-/** Own theme/language effects, system listeners and pending-settings flushing. */
-export function startSettingsRuntime(): () => void {
+/** Product-owned writing surface follows the shared resolved chrome theme. */
+export function startSettingsRuntime(kv: KvStore = getKvStore()): () => void {
   if (stopRuntime) return stopRuntime;
   runtimeGeneration += 1;
   setLoaded(false);
-  prefersDark = typeof window !== "undefined" && typeof window.matchMedia === "function"
-    ? window.matchMedia("(prefers-color-scheme: dark)")
-    : null;
-  applyResolvedLanguage(detectSystemLanguage());
-  const unregister = registerFlusher(async () => {
-    await Promise.allSettled([...pendingSettingWrites]);
-    return { ok: failedSettingKeys.size === 0 };
-  }, "settings");
+  settingsKv = kv;
+  const runtimeWriter = createSettingsWriter(kv, "product-settings");
+  writer = runtimeWriter;
   const disposeRoot = createRoot((dispose) => {
     createEffect(() => {
-      if (!loaded()) return;
-      theme();
-      darkPaper();
-      if (typeof document !== "undefined") applyChrome();
+      if (!loaded() || !baseSettingsStore.loaded() || typeof document === "undefined") return;
+      if (baseSettingsStore.resolvedTheme() === "dark" && darkPaper()) document.documentElement.dataset.paper = "dark";
+      else delete document.documentElement.dataset.paper;
     });
     return dispose;
   });
-  const onThemeChange = () => {
-    if (loaded() && theme() === "auto" && typeof document !== "undefined") applyChrome();
-  };
-  const onLanguageChange = () => {
-    if (loaded() && language() === "auto") applyLanguage("auto");
-  };
-  prefersDark?.addEventListener("change", onThemeChange);
-  if (typeof window !== "undefined") window.addEventListener("languagechange", onLanguageChange);
   let active = true;
   const stop = () => {
     if (!active) return;
     active = false;
     runtimeGeneration += 1;
     disposeRoot();
-    unregister();
-    prefersDark?.removeEventListener("change", onThemeChange);
-    prefersDark = null;
-    if (typeof window !== "undefined") window.removeEventListener("languagechange", onLanguageChange);
+    runtimeWriter.dispose();
+    if (typeof document !== "undefined") delete document.documentElement.dataset.paper;
+    writer = undefined;
+    settingsKv = undefined;
     setLoaded(false);
     stopRuntime = undefined;
   };

@@ -6,13 +6,13 @@
 import { afterAll, afterEach, beforeAll, describe, expect, it } from "vitest";
 import { cleanup, render } from "@solidjs/testing-library";
 import { Show, createSignal } from "solid-js";
-import { getStorageAdapter, setStorageAdapter, type ScriptzApiStorage } from "../../../lib/storage";
+import { getTestStorage, setTestStorage, type TestStorage } from "../../../test/storage";
 import "../../../lib/api";
 import { flushAll } from "@agentz/kit/lib";
 import { settingsStore, startSettingsRuntime } from "../../../stores/settings";
 import { SettingsWriting } from "../sections/SettingsWriting";
 
-const originalAdapter = getStorageAdapter();
+const originalAdapter = getTestStorage();
 let stopSettings: () => void;
 const writes: Array<[string, string]> = [];
 const gates: Array<() => void> = [];
@@ -21,8 +21,7 @@ let maxInFlight = 0;
 const stored = new Map<string, string>();
 
 beforeAll(() => {
-  stopSettings = startSettingsRuntime();
-  const fake: Partial<ScriptzApiStorage> = {
+  const fake: Partial<TestStorage> = {
     setSetting: (key, value) =>
       new Promise<void>((resolve) => {
         writes.push([key, value]);
@@ -35,18 +34,19 @@ beforeAll(() => {
         });
       }),
   };
-  setStorageAdapter(
-    new Proxy(fake as ScriptzApiStorage, {
+  setTestStorage(
+    new Proxy(fake as TestStorage, {
       get(target, prop: string) {
         return (target as unknown as Record<string, unknown>)[prop] ?? (async () => null);
       },
     }),
   );
+  stopSettings = startSettingsRuntime();
 });
 
 afterAll(() => {
   stopSettings();
-  setStorageAdapter(originalAdapter);
+  setTestStorage(originalAdapter);
 });
 
 const tick = () => new Promise((r) => setTimeout(r, 0));

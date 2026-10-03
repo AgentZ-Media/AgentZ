@@ -3,28 +3,28 @@
 // end of the history.
 
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
-import { getStorageAdapter, setStorageAdapter, type ScriptzApiStorage } from "../../lib/storage";
+import { getTestStorage, setTestStorage, type TestStorage } from "../../test/storage";
 import "../../lib/api";
 import { registerFlusher } from "@agentz/kit/lib";
 import { navStore, startNavRuntime } from "../nav";
 
-const originalAdapter = getStorageAdapter();
+const originalAdapter = getTestStorage();
 let stopNav: () => void;
 
 beforeAll(() => {
-  stopNav = startNavRuntime();
-  setStorageAdapter(
-    new Proxy({} as ScriptzApiStorage, {
+  setTestStorage(
+    new Proxy({} as TestStorage, {
       get() {
         return vi.fn().mockResolvedValue(null);
       },
     }),
   );
+  stopNav = startNavRuntime();
 });
 
 afterAll(() => {
   stopNav();
-  setStorageAdapter(originalAdapter);
+  setTestStorage(originalAdapter);
 });
 
 /** Holds every flushAll() until `open()` - like a slow editor save. */

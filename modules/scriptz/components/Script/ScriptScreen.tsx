@@ -1,3 +1,4 @@
+import { kvStore } from "@agentz/kit/platform";
 import {
   Show,
   createEffect,
@@ -16,7 +17,7 @@ import { api } from "../../lib/api";
 import { scriptsBus } from "../../lib/scriptsBus";
 import { foldersBus } from "../../lib/foldersBus";
 import { isModKey } from "@agentz/kit/platform";
-import { flushAll } from "@agentz/kit/lib";
+import { requireSuccessfulFlush } from "@agentz/kit/lib";
 import { computeTimeline, type TimelineSegment } from "../../lib/timing";
 import { folderHasLengthRange, resolveLengthRange } from "../../lib/lengthGoal";
 import { captureCursor, scriptViewCache, type CursorAddress } from "../../lib/scriptViewCache";
@@ -210,7 +211,7 @@ export function ScriptScreen(props: ScriptScreenProps) {
     const id = props.scriptId;
     let cancelled = false;
     setQuickOverride(null);
-    void api
+    void kvStore
       .getAppState(QUICK_MODE_KEY(id))
       .then((raw) => {
         if (!cancelled) setQuickOverride(raw === "1" || raw === "0" ? raw : null);
@@ -224,7 +225,7 @@ export function ScriptScreen(props: ScriptScreenProps) {
     if (!quickAvailable()) return;
     const next = quickMode() ? "0" : "1";
     setQuickOverride(next);
-    void api.setAppState(QUICK_MODE_KEY(props.scriptId), next).catch(() => {});
+    void kvStore.setAppState(QUICK_MODE_KEY(props.scriptId), next).catch(() => {});
   };
 
   // ---------- title ----------
@@ -418,7 +419,7 @@ export function ScriptScreen(props: ScriptScreenProps) {
   const createManualSnapshot = async () => {
     try {
       // The snapshot copies the stored content: write buffered typing first.
-      await flushAll();
+      await requireSuccessfulFlush();
       await api.createSnapshot(props.scriptId, "manual");
       pushToast(t("editor.toast.snapshotSaved"), "ok");
       bumpVersions();

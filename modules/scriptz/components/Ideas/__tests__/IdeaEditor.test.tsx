@@ -7,7 +7,7 @@
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { cleanup, render } from "@solidjs/testing-library";
 import { For, createSignal } from "solid-js";
-import { getStorageAdapter, setStorageAdapter, type ScriptzApiStorage } from "../../../lib/storage";
+import { getTestStorage, setTestStorage, type TestStorage } from "../../../test/storage";
 import "../../../lib/api";
 import { ideasBus } from "../../../lib/ideasBus";
 import { flushAll } from "@agentz/kit/lib";
@@ -16,7 +16,7 @@ import { ideasStore, startIdeasStore } from "../../../stores/ideas";
 import { IdeaEditor } from "../parts/IdeaEditor";
 import { ideaDraftCount } from "../parts/ideaDrafts";
 
-const originalAdapter = getStorageAdapter();
+const originalAdapter = getTestStorage();
 let stopIdeas: () => void;
 
 // In-memory storage: updateIdea waits for a gate (slow disk), applies the
@@ -26,11 +26,12 @@ const db = new Map<string, Idea>();
 const updates: Array<{ id: string; title?: string; notes?: string }> = [];
 const gates: Array<() => void> = [];
 let holdList = false;
+let failWrites = false;
 const listGates: Array<() => void> = [];
 
 beforeAll(() => {
-  const fake: Partial<ScriptzApiStorage> = {
-    updateIdea: (input) =>
+  const fake: Partial<TestStorage> = {
+    updateIdea: (input) => failWrites ? Promise.reject(new Error("offline")) :
       new Promise<Idea>((resolve) => {
         updates.push(input);
         gates.push(() => {
@@ -51,8 +52,8 @@ beforeAll(() => {
     },
     globalSearch: async () => [],
   };
-  setStorageAdapter(
-    new Proxy(fake as ScriptzApiStorage, {
+  setTestStorage(
+    new Proxy(fake as TestStorage, {
       get(target, prop: string) {
         return (target as unknown as Record<string, unknown>)[prop] ?? (async () => undefined);
       },
@@ -63,7 +64,7 @@ beforeAll(() => {
 
 afterAll(() => {
   stopIdeas();
-  setStorageAdapter(originalAdapter);
+  setTestStorage(originalAdapter);
 });
 
 const tick = () => new Promise((r) => setTimeout(r, 0));
@@ -250,6 +251,21 @@ describe("IdeaEditor autosave", () => {
     p.notes().blur();
     await tick();
     expect(updates).toEqual([{ id: "a", notes: "From elsewhere!" }]);
+  });
+
+
+  it("retains a failed collapsed draft and releases its registration after a successful retry", async () => {
+    const p = renderPanel("a");
+    type(p.notes(), "Retry this draft");
+    failWrites = true;
+    p.select(null);
+    await tick();
+    expect(await flushAll()).toEqual({ ok: false, failed: ["idea:a"] });
+    expect(ideaDraftCount()).toBe(1);
+    failWrites = false;
+    await settle();
+    expect(db.get("a")?.notes).toBe("Retry this draft");
+    expect(ideaDraftCount()).toBe(0);
   });
 
   it("drops the per-idea drafts once everything is saved and in sync", async () => {

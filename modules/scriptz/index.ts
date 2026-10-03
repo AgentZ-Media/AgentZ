@@ -1,2 +1,3 @@
-// Product-specific public types. Shell module registration follows in Phase 4.5.
+// Product descriptor and host registration are the public module entrypoints.
 export type { ExportPdfDeps } from "./lib/exportPdf";
+export { scriptzModule } from "./module";

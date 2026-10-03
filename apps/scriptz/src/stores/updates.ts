@@ -1,7 +1,7 @@
 import { createSignal } from "solid-js";
 import { check, type Update } from "@tauri-apps/plugin-updater";
 import { relaunch } from "@tauri-apps/plugin-process";
-import { settingsStore } from "@agentz/scriptz/stores/settings";
+import { baseSettingsStore } from "@agentz/kit/stores";
 import { setUpdatesStore, type UpdatesStore } from "@agentz/kit/platform";
 import { flushAll } from "@agentz/kit/lib";
 
@@ -114,12 +114,12 @@ async function restart(): Promise<void> {
 function startBackgroundPolling(): void {
   if (backgroundStarted) return;
   if (import.meta.env.DEV) return;
-  if (!settingsStore.updateCheckEnabled()) return;
+  if (!baseSettingsStore.updateCheckEnabled()) return;
   backgroundStarted = true;
   startupTimer = setTimeout(() => {
     void poll({ manual: false });
   }, STARTUP_DELAY_MS);
-  if (settingsStore.hourlyUpdateCheck()) {
+  if (baseSettingsStore.hourlyUpdateCheck()) {
     hourlyTimer = setInterval(() => {
       void poll({ manual: false });
     }, HOUR_MS);

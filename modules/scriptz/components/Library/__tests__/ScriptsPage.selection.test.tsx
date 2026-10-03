@@ -1,15 +1,16 @@
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { cleanup, fireEvent, render, waitFor } from "@solidjs/testing-library";
-import { getStorageAdapter, setStorageAdapter, type ScriptzApiStorage } from "../../../lib/storage";
+import { getTestStorage, setTestStorage, type TestStorage } from "../../../test/storage";
 import "../../../lib/api";
 import type { ScriptSummary } from "../../../lib/types";
 import { scriptsBus } from "../../../lib/scriptsBus";
-import { navStore } from "../../../stores/nav";
+import { navStore, startNavRuntime } from "../../../stores/nav";
 import { t } from "../../../i18n";
 import { startLibraryData } from "../../Shell/libraryData";
 import { ScriptsPage } from "../ScriptsPage";
 
-const originalAdapter = getStorageAdapter();
+const originalAdapter = getTestStorage();
+let stopNav: () => void;
 let scripts: ScriptSummary[] = [];
 let stopLibrary: () => void;
 
@@ -23,14 +24,15 @@ function script(id: string, title: string): ScriptSummary {
 }
 
 beforeAll(() => {
-  const fake: Partial<ScriptzApiStorage> = {
+  const fake: Partial<TestStorage> = {
     listScripts: async () => scripts.map((s) => ({ ...s })),
     listFolders: async () => [], listIdeas: async () => [], globalSearch: async () => [],
     getAppState: async () => null,
   };
-  setStorageAdapter(new Proxy(fake as ScriptzApiStorage, {
+  setTestStorage(new Proxy(fake as TestStorage, {
     get: (target, prop) => Reflect.get(target, prop) ?? (async () => null),
   }));
+  stopNav = startNavRuntime();
   stopLibrary = startLibraryData();
 });
 beforeEach(async () => {
@@ -40,8 +42,9 @@ beforeEach(async () => {
 });
 afterEach(cleanup);
 afterAll(() => {
+  stopNav();
   stopLibrary();
-  setStorageAdapter(originalAdapter);
+  setTestStorage(originalAdapter);
 });
 
 async function selectAll() {

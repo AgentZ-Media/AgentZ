@@ -7,6 +7,7 @@
 // a save while typing produces ("B", "BO", "BOB"). Passes are serialized
 // so two scans never run at the same time.
 
+import { requireSuccessfulFlush } from "@agentz/kit/lib";
 import { api } from "./api";
 import { characterUsageBus } from "./characterUsage";
 
@@ -36,7 +37,11 @@ export function scheduleCharacterPrune(delayMs = AUTO_PRUNE_DEBOUNCE_MS): void {
 export function runCharacterPrune(): Promise<string[]> {
   const pass = chain
     .catch(() => {})
-    .then(() => (isEnabled() ? api.pruneUnusedCharacterNames() : []));
+    .then(async () => {
+      if (!isEnabled()) return [];
+      await requireSuccessfulFlush();
+      return isEnabled() ? api.pruneUnusedCharacterNames() : [];
+    });
   chain = pass;
   return pass;
 }

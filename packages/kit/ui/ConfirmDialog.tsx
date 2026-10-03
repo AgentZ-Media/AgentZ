@@ -52,13 +52,25 @@ export interface ConfirmOpts {
   danger?: boolean;
 }
 
+const pendingDialogs = new Set<() => void>();
+
+/** Cancel programmatic confirmations when their shell is disposed. */
+export function dismissConfirmDialogs(): void {
+  for (const dismiss of [...pendingDialogs]) dismiss();
+}
+
 /** Promise-based helper. Mounts a temporary <ConfirmDialog/> to <body> and resolves with the user's choice. */
 export function confirmDialog(opts: ConfirmOpts): Promise<boolean> {
   return new Promise<boolean>((resolve) => {
     const host = document.createElement("div");
     document.body.appendChild(host);
 
+    let settled = false;
+    const cancel = () => cleanup(false);
     const cleanup = (result: boolean) => {
+      if (settled) return;
+      settled = true;
+      pendingDialogs.delete(cancel);
       try {
         dispose();
       } finally {
@@ -82,5 +94,6 @@ export function confirmDialog(opts: ConfirmOpts): Promise<boolean> {
       ),
       host,
     );
+    pendingDialogs.add(cancel);
   });
 }

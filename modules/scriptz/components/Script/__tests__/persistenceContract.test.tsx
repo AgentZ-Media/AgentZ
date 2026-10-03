@@ -3,12 +3,14 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render, screen, waitFor } from "@solidjs/testing-library";
 import { createSignal } from "solid-js";
-import { setStorageAdapter, type ScriptzApiStorage } from "../../../lib/storage";
-import { settingsStore } from "../../../stores/settings";
+import { setTestStorage, type TestStorage } from "../../../test/storage";
+import { settingsStore, startSettingsRuntime } from "../../../stores/settings";
 import { uiStore } from "../../../stores/ui";
 import { t } from "../../../i18n";
 import { ScriptScreen } from "../ScriptScreen";
-import { Onboarding } from "../../Onboarding/Onboarding";
+import { Onboarding, ONBOARDING_KEY } from "../../Onboarding/Onboarding";
+import { completeOnboarding } from "@agentz/kit/shell";
+import { kvStore } from "@agentz/kit/platform";
 import type { Script } from "../../../lib/types";
 
 vi.mock("../../Editor/Editor", () => ({ Editor: () => null }));
@@ -24,6 +26,7 @@ const script = (id: string): Script => ({
 });
 
 let state: Map<string, string>;
+let stopSettings: () => void;
 let getAppState: ReturnType<typeof vi.fn<(key: string) => Promise<string | null>>>;
 let setAppState: ReturnType<typeof vi.fn<(key: string, value: string) => Promise<void>>>;
 
@@ -31,24 +34,26 @@ beforeEach(async () => {
   state = new Map();
   getAppState = vi.fn(async (key: string) => state.get(key) ?? null);
   setAppState = vi.fn(async (key: string, value: string) => { state.set(key, value); });
-  const adapter: Partial<ScriptzApiStorage> = {
+  const adapter: Partial<TestStorage> = {
     getAppState, setAppState, getScript: async (id) => script(id),
     listFolders: async () => [], listSnapshots: async () => [],
     setSetting: async () => {},
   };
-  setStorageAdapter(new Proxy(adapter as ScriptzApiStorage, {
+  setTestStorage(new Proxy(adapter as TestStorage, {
     get(target, prop) {
       const value = Reflect.get(target, prop);
       if (value !== undefined) return value;
       throw new Error(`Unexpected storage call in UI persistence contract: ${String(prop)}`);
     },
   }));
+  stopSettings = startSettingsRuntime();
   await settingsStore.setQuickModeAutoEnable(true);
   uiStore.clearFocus();
   uiStore.closeOnboarding();
 });
 afterEach(() => {
   cleanup();
+  stopSettings();
   uiStore.closeOnboarding();
 });
 
@@ -72,7 +77,7 @@ describe("component persistence contracts", () => {
 
   it("marks skipped onboarding complete using its existing database key", async () => {
     uiStore.openOnboarding();
-    render(() => <Onboarding />);
+    render(() => <Onboarding open={uiStore.onboardingOpen()} complete={() => completeOnboarding(kvStore, ONBOARDING_KEY, () => uiStore.closeOnboarding())} />);
     fireEvent.click(screen.getByRole("button", { name: t("onb.skip") }));
     await waitFor(() => expect(uiStore.onboardingOpen()).toBe(false));
     expect(setAppState.mock.calls).toEqual([["onboarding_completed_v1", "1"]]);

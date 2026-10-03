@@ -220,6 +220,7 @@ export const en: Record<keyof typeof de, string> = {
   "idea.quick.toast.remembered": "Idea \"{title}\" saved",
 
   // ---------- status strip ----------
+  "save.navigationBlocked": "Changes could not be saved. Please try again.",
   "save.error.toast": "Script could not be saved: {message}",
 
   // ---------- character / color picker ----------

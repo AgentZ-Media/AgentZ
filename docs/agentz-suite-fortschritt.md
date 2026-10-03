@@ -223,3 +223,41 @@ und Phasen; dieses Protokoll hält die konkreten Ergebnisse fest.
   Editor, neues Dokument, Autosave, Einstellungen, Dark Mode und Sprachwechsel
   mit DB-Kopie geprüft. Testtext und Settings dauerhaft gespeichert;
   produktive Datenbank gegenüber der Sicherung unverändert.
+
+- **Merge:** PR #24 nach grüner Pflicht-CI gemergt
+  (`f508d784d4eb4ff785eae87e0d02bc7901b4d7f3`). Kein Release.
+
+### Phase 4.4 bis 4.7: SuiteShell und eigenständiges Produktmodul
+
+- **Shell-Vertrag:** `AppModule`, `ModuleContext` und `ModuleRuntime`
+  verbinden die neutrale SuiteShell mit Produkt-Routen, Sidebar, Overlays,
+  Einstellungen, Befehlen und Onboarding. Abbruchsignal, früh registriertes
+  Cleanup und `runOwned()` sichern den asynchronen Lebenszyklus.
+- **Settings und Navigation:** Vier Basis-Settings im Kit, fachliche
+  Settings und `dark_paper` im Modul. Gemeinsame Settings-Sektionen,
+  Shortcut-Registry, Befehlspalette sowie Navigation/Layout-Persistenz
+  werden vom Kit getragen; ScriptZ liefert Texte, Routen und Produktdaten.
+  Bestehende Schlüssel und JSON-Formate bleiben erhalten.
+- **ScriptZ-Modul:** `scriptzModule.setup(ctx)` ersetzt die eigene
+  AppShell. Welcome, Migrationen, Backfill, fachliche Resources und
+  Overlays bleiben Produktaufgabe. Der Host registriert Kit-KvStore und
+  `ScriptzStorage` separat; die gemischte Speicherfassade entfällt.
+- **Paketgrenzen und Assets:** Öffentliche Modul-Exporte auf Einstieg,
+  Storage und Styles begrenzt. PDF-TTFs liegen mit Lizenz im Modul und
+  werden über `?url` gebündelt; Papierfonts und Produkt-Tokens bleiben dort.
+- **Unabhängige Fixture:** Kleines Testmodul mit Route, eigener Settings-
+  Sektion, Overlay und Übersetzungen. Als Vitest-Fixture und separat
+  startbare Vite-Seite ohne ScriptZ-Import oder Legacy-Styles angelegt.
+
+- **Abnahme:** 17 Tooling-, 74 Kit- und 302 Modultests, Typecheck, ESLint,
+  Farb-/Legacy-Tokenprüfung und Frontend-Build erfolgreich. Unabhängiges
+  Kit-Testmodul ohne ScriptZ/Legacy-CSS in Hell und Dunkel visuell geprüft,
+  inklusive eigener Settings-Sektion, Sprache und Über-Seite.
+- **Desktop:** macOS-App und DMG aus dem Release-Build mit QA-ID gebaut.
+  Bestehende Daten, Editor-Kürzel, Fokusmodus, Palette/Suche, modulare
+  Einstellungen, Layout und Neustart mit isolierter DB geprüft. Unmittelbar
+  vor Fensterschluss eingegebener Text ist nach Neustart vorhanden.
+  PDF aus dem Bundle enthält eine A4-Seite, erwarteten Text und eingebettete
+  iA-Writer-Quattro-Schrift; vier TTF-Schriftschnitte zusätzlich im Test geprüft.
+  Produktive DB und bestehende Welcome-/Migrationsmarker unverändert.
+  Kein Release; Windows und signierter Update-Zyklus sind nicht geprüft.

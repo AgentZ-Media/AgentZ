@@ -18,7 +18,7 @@ import { api } from "../../lib/api";
 import { foldersBus } from "../../lib/foldersBus";
 import { scriptsBus } from "../../lib/scriptsBus";
 import { INBOX_FOLDER_ID } from "../../lib/folders";
-import { flushAll } from "@agentz/kit/lib";
+import { requireSuccessfulFlush } from "@agentz/kit/lib";
 import { K, isModKey } from "@agentz/kit/platform";
 import { ideasStore } from "../../stores/ideas";
 import { navStore } from "../../stores/nav";
@@ -487,9 +487,9 @@ export function IdeasPage() {
 
   async function convert(idea: Idea) {
     if (idea.used_at) return;
-    // All pending idea drafts, including a row collapsed a moment ago.
-    await flushAll();
     try {
+      // All pending idea drafts, including a row collapsed a moment ago.
+      await requireSuccessfulFlush();
       const { script } = await ideasStore.convertIdeaToScript({
         ideaId: idea.id,
         folderId: idea.folder_id,
@@ -549,9 +549,9 @@ export function IdeasPage() {
     const open = list.filter((i) => !i.used_at);
     const skipped = list.length - open.length;
     if (open.length === 0) return;
-    await flushAll();
     let done = 0;
     try {
+      await requireSuccessfulFlush();
       for (const idea of open) {
         const { script } = await ideasStore.convertIdeaToScript({ ideaId: idea.id });
         if (stage !== "writing") await api.setScriptStatus(script.id, stage);

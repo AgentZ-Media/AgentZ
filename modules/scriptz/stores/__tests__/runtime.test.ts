@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { getStorageAdapter, setStorageAdapter, type ScriptzApiStorage } from "../../lib/storage";
+import { getTestStorage, setTestStorage, type TestStorage } from "../../test/storage";
 import type { DailyStatsSummary, Idea, ScriptSummary } from "../../lib/types";
 import { ideasStore, startIdeasStore } from "../ideas";
 import { dailyStatsStore, startDailyStatsStore } from "../dailyStats";
@@ -11,12 +11,12 @@ import { navStore, startNavRuntime } from "../nav";
 import { flushAll, registerFlusher } from "@agentz/kit/lib";
 import { settingsStore, startSettingsRuntime } from "../settings";
 
-const originalAdapter = getStorageAdapter();
+const originalAdapter = getTestStorage();
 const cleanups: Array<() => void> = [];
 const tick = () => new Promise<void>((resolve) => setTimeout(resolve, 0));
 
-function install(adapter: Partial<ScriptzApiStorage>) {
-  setStorageAdapter(adapter as ScriptzApiStorage);
+function install(adapter: Partial<TestStorage>) {
+  setTestStorage(adapter as TestStorage);
 }
 
 function deferred<T>() {
@@ -27,7 +27,7 @@ function deferred<T>() {
 
 afterEach(() => {
   cleanups.splice(0).reverse().forEach((stop) => stop());
-  setStorageAdapter(originalAdapter);
+  setTestStorage(originalAdapter);
   vi.restoreAllMocks();
   vi.useRealTimers();
 });
@@ -122,6 +122,26 @@ describe("explicit singleton runtimes", () => {
     pending.resolve("dark");
     await load;
     expect(settingsStore.loaded()).toBe(false);
+  });
+
+  it("restores product defaults when the next runtime has no stored preferences", async () => {
+    install({ getSetting: async (key) => key === "dialog_wpm" ? "300" : "1", setSetting: async () => {} });
+    const stop = startSettingsRuntime();
+    await settingsStore.load();
+    expect(settingsStore.darkPaper()).toBe(true);
+    expect(settingsStore.dialogWpm()).toBe(300);
+    stop();
+    install({ getSetting: async () => null, setSetting: async () => {} });
+    cleanups.push(startSettingsRuntime());
+    await settingsStore.load();
+    expect([
+      settingsStore.highlightingDefault(), settingsStore.quickModeAutoEnable(),
+      settingsStore.focusModeDefault(), settingsStore.darkPaper(), settingsStore.pruneUnusedCharacters(),
+    ]).toEqual([false, false, false, false, false]);
+    expect(settingsStore.showWritingStats()).toBe(true);
+    expect(settingsStore.dialogWpm()).toBe(210);
+    expect(settingsStore.lengthMinDefaultSec()).toBeNull();
+    expect(settingsStore.lengthMaxDefaultSec()).toBeNull();
   });
 
   it("drains buffered navigation when disposed and prevents late route changes", async () => {

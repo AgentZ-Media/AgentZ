@@ -34,7 +34,7 @@ describe("ScriptZ import lifecycle", () => {
     });
 
     await import("../../index");
-    await import("../../components/Shell/AppShell");
+    await import("@agentz/kit/shell");
     // Include immediately queued effects, not just the synchronous module body.
     await Promise.resolve();
     await Promise.resolve();

@@ -1,4 +1,4 @@
-// Tauri-backed implementation of @agentz/scriptz's PlatformAdapter.
+// Tauri-backed implementation of @agentz/kit's PlatformAdapter.
 //
 // Explicitly registered at app startup from index.tsx, this provides a
 // concrete adapter so the module - which only knows the abstract

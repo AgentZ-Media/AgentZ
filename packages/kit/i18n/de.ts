@@ -1,5 +1,18 @@
 // Product-neutral labels. German is the canonical catalog.
 export const kitDe = {
+  "shell.update.available": "{version} verfügbar",
+  "shell.update.ready": "{version} ist bereit",
+  "shell.update.downloading": "Update lädt … {progress} %",
+  "shell.update.error": "Update fehlgeschlagen",
+  "shell.update.action.install": "Installieren",
+  "shell.update.action.restart": "Neu starten",
+  "shell.update.action.retry": "Erneut",
+  "shell.update.title.available": "Update herunterladen und installieren",
+  "shell.update.title.ready": "Neu starten und das Update installieren",
+  "shell.update.title.downloading": "Das Update wird heruntergeladen und installiert",
+  "shell.update.title.error": "Update fehlgeschlagen - erneut versuchen",
+
+  "persistence.saveFailed": "Änderungen konnten nicht vollständig gespeichert werden. Bitte versuche es erneut.",
   "common.cancel": "Abbrechen",
   "common.save": "Speichern",
   "common.delete": "Löschen",

@@ -7,8 +7,6 @@
 // The `api` export is a proxy onto `getStorageAdapter()`, so replacing
 // the adapter takes effect immediately for existing callers.
 
-import { setKvStore, type KvStore } from "@agentz/kit/platform";
-
 import type {
   CharacterColorRecord,
   DailyStatsSummary,
@@ -190,9 +188,6 @@ export interface ScriptzStorage {
   loadDailyStats(): Promise<DailyStatsSummary>;
 }
 
-/** Transitional facade while module callers migrate to the injected KvStore. */
-export type ScriptzApiStorage = ScriptzStorage & KvStore;
-
 /** Shared validation for `setFolderLengthRange` (all adapters). Returns the
  *  normalized pair or throws a user-facing (translated) error. Rules:
  *  null = unset; otherwise a non-negative whole number of seconds; when
@@ -216,18 +211,17 @@ export function validateLengthRange(
   return { minSec: min, maxSec: max };
 }
 
-let adapter: ScriptzApiStorage | null = null;
+let adapter: ScriptzStorage | null = null;
 
 /** Register the high-level storage adapter. Called once at app
  * startup. The SQL-backed default is registered explicitly; a host can
- * replace it with another persistence backend. Until shell composition
- * injects separate stores, this also registers the shared key-value methods. */
-export function setStorageAdapter(a: ScriptzApiStorage): void {
+ * replace it with another persistence backend. Kit key-value storage is
+ * registered separately by the host. */
+export function setStorageAdapter(a: ScriptzStorage): void {
   adapter = a;
-  setKvStore(a);
 }
 
-export function getStorageAdapter(): ScriptzApiStorage {
+export function getStorageAdapter(): ScriptzStorage {
   if (!adapter) {
     throw new Error(
       "Storage adapter not set. Call registerSqlStorageAdapter() or setStorageAdapter() before this call.",

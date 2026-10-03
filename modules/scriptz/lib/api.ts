@@ -8,7 +8,7 @@ import {
   pruneUnusedCharacterNames as cuPruneUnused,
 } from "./characterUsage";
 import { extractTeleprompterText } from "./lex";
-import { createSqlKvStore, getPlatformAdapter } from "@agentz/kit/platform";
+import { getPlatformAdapter } from "@agentz/kit/platform";
 import {
   defaultScriptzFilename,
   parseScriptzBytes,
@@ -20,9 +20,8 @@ import {
   getStorageAdapter,
   setStorageAdapter,
   type ExportResult,
-  type ScriptzApiStorage,
+  type ScriptzStorage,
 } from "./storage";
-import { getDb } from "./db";
 import {
   countLiveScripts as foldersCountLive,
   createFolder as foldersCreate,
@@ -83,12 +82,11 @@ import type {
   SnapshotMeta,
 } from "./types";
 
-// SQL-based product storage composed with Kit key-value storage. The lib/*
+// SQL-based product storage. Shared key-value storage lives in Kit. The lib/*
 // modules access the host database via DbConnection (see @agentz/kit/platform).
 // Registered explicitly by the host; the `api` proxy reads the active
 // adapter on every call, so hosts can replace storage without changing callers.
-const sqlBackedAdapter: ScriptzApiStorage = {
-  ...createSqlKvStore(getDb),
+const sqlBackedAdapter: ScriptzStorage = {
   // Scripts - fully TS-side since Migration Phase 7d.
   async createScript(input: {
     title?: string;
@@ -375,7 +373,7 @@ export function registerSqlStorageAdapter(): void {
 // the currently registered adapter. Functions are bound to the adapter
 // so any `this` references in a custom impl
 // keep working.
-export const api: ScriptzApiStorage = new Proxy({} as ScriptzApiStorage, {
+export const api: ScriptzStorage = new Proxy({} as ScriptzStorage, {
   get(_target, prop: string | symbol) {
     const a = getStorageAdapter() as unknown as Record<string | symbol, unknown>;
     const value = a[prop];

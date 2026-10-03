@@ -1,19 +1,18 @@
 import { Show } from "solid-js";
-import { settingsStore } from "../../../stores/settings";
-import { getPlatformAdapter } from "@agentz/kit/platform";
-import type { UpdatesStore } from "@agentz/kit/platform";
-import { t } from "../../../i18n";
-import { Row, SectionHead, Switch } from "@agentz/kit/ui";
+import { baseSettingsStore } from "../../stores";
+import { getPlatformAdapter } from "../../platform";
+import type { UpdatesStore } from "../../platform";
+import { t } from "../../i18n";
+import { Row, SectionHead, Switch } from "../../ui";
 
 
-const REPO_URL = "https://github.com/AgentZ-Media/AgentZ";
 
 /** Auto-update (desktop only - the dialog hides this section when no
  *  updates store is registered). */
-export function SettingsUpdates(props: { updates: UpdatesStore; onClose(): void }) {
+export function SettingsUpdates(props: { updates: UpdatesStore; releasesUrl?: string; onClose(): void }) {
   const u = () => props.updates;
   const isChecking = () => u().manualCheck()?.kind === "checking";
-  const openLatestRelease = () => void getPlatformAdapter().openUrl(`${REPO_URL}/releases/latest`).catch(() => {});
+  const openLatestRelease = () => props.releasesUrl && void getPlatformAdapter().openUrl(props.releasesUrl).catch(() => {});
 
   const statusLabel = () => {
     const stage = u().stage();
@@ -36,9 +35,11 @@ export function SettingsUpdates(props: { updates: UpdatesStore; onClose(): void 
       <Row label={statusLabel()} help={statusHelp()} class={u().stage() === "error" ? "is-error" : undefined}>
         <div class="set-actions">
           <Show when={u().stage() === "available"}>
+            <Show when={props.releasesUrl}>
             <button class="btn ghost sm" onClick={openLatestRelease}>
               {t("settings.updates.action.onGithub")}
             </button>
+            </Show>
             <button class="btn primary sm" onClick={() => void u().downloadAndInstall()}>
               {t("settings.updates.action.download")}
             </button>
@@ -66,16 +67,16 @@ export function SettingsUpdates(props: { updates: UpdatesStore; onClose(): void 
       </Row>
       <Row label={t("settings.updates.enabled.label")} help={t("prefs.updates.enabledHelp")}>
         <Switch
-          checked={settingsStore.updateCheckEnabled()}
-          onChange={(v) => void settingsStore.setUpdateCheckEnabled(v)}
+          checked={baseSettingsStore.updateCheckEnabled()}
+          onChange={(v) => void baseSettingsStore.setUpdateCheckEnabled(v)}
           label={t("settings.updates.enabled.aria")}
         />
       </Row>
       <Row label={t("settings.updates.hourly.label")} help={t("prefs.updates.hourlyHelp")}>
         <Switch
-          checked={settingsStore.hourlyUpdateCheck()}
-          disabled={!settingsStore.updateCheckEnabled()}
-          onChange={(v) => void settingsStore.setHourlyUpdateCheck(v)}
+          checked={baseSettingsStore.hourlyUpdateCheck()}
+          disabled={!baseSettingsStore.updateCheckEnabled()}
+          onChange={(v) => void baseSettingsStore.setHourlyUpdateCheck(v)}
           label={t("settings.updates.hourly.aria")}
         />
       </Row>

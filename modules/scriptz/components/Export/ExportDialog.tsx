@@ -2,7 +2,7 @@ import { For, Match, Show, Switch, createEffect, createMemo, createSignal, on, u
 import { api } from "../../lib/api";
 import { extractBlocks, extractTeleprompterText } from "../../lib/lex";
 import { getPlatformAdapter } from "@agentz/kit/platform";
-import { flushAll } from "@agentz/kit/lib";
+import { requireSuccessfulFlush } from "@agentz/kit/lib";
 import { scriptsBus } from "../../lib/scriptsBus";
 import { defaultScriptzFilename } from "../../lib/scriptzFile";
 import { settingsStore } from "../../stores/settings";
@@ -55,7 +55,7 @@ export function ExportDialog() {
   async function load(id: string, applyScriptOptions: boolean): Promise<void> {
     const seq = ++loadSeq;
     try {
-      await flushAll();
+      await requireSuccessfulFlush();
       const s = await api.getScript(id);
       if (seq !== loadSeq || uiStore.exportScriptId() !== id) return;
       setScript(s);
@@ -118,7 +118,7 @@ export function ExportDialog() {
     setExporting(true);
     try {
       // The exporters read the stored content - persist pending typing.
-      await flushAll();
+      await requireSuccessfulFlush();
       const fmt = format();
       const result =
         fmt === "pdf"

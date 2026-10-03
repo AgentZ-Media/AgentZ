@@ -1,0 +1,9 @@
+.pal-ic svg.st {
+  color: var(--fg);
+}
+.pal-snip mark {
+  background: var(--accent-soft);
+  color: var(--fg);
+  border-radius: 2px;
+  padding: 0 1px;
+}

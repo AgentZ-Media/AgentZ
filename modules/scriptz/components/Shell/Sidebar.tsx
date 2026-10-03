@@ -4,7 +4,6 @@ import { uiStore } from "../../stores/ui";
 import { K } from "@agentz/kit/platform";
 import { SCRIPT_STATUSES, type Folder, type ScriptStatus } from "../../lib/types";
 import { t } from "../../i18n";
-import { AppMark } from "@agentz/kit/ui";
 import { Icon } from "@agentz/kit/ui";
 import { StageGlyph } from "../Common/StageGlyph";
 import { ContextMenu, type ContextMenuItem } from "../Library/ContextMenu";
@@ -19,11 +18,6 @@ import {
 import { WritingCounter } from "../Activity/WritingCounter";
 import { folderColor, library } from "./libraryData";
 
-export interface SidebarProps {
-  /** Rendered above the footer (desktop: update indicator). */
-  footerSlot?: JSX.Element;
-}
-
 const MAX_RECENT = 5;
 
 /**
@@ -31,7 +25,7 @@ const MAX_RECENT = 5;
  * Skripte", the pipeline, folders, recently opened scripts and the footer
  * with the writing counter, trash and settings. Always dark (`--side-*`).
  */
-export function Sidebar(props: SidebarProps) {
+export function Sidebar() {
   const route = () => navStore.route();
 
   const isAllOn = () => {
@@ -83,26 +77,7 @@ export function Sidebar(props: SidebarProps) {
     !!e.dataTransfer && Array.from(e.dataTransfer.types).includes(SCRIPT_DRAG_MIME);
 
   return (
-    <aside class="side" aria-label={t("shell.sidebar.aria")}>
-      <div class="side-top" data-tauri-drag-region>
-        <span class="side-traffic" data-tauri-drag-region aria-hidden="true" />
-        <span class="side-sp" data-tauri-drag-region />
-        <button
-          type="button"
-          class="ic-btn"
-          title={t("shell.sidebar.toggle", { hotkey: K("Mod+\\") })}
-          aria-label={t("shell.sidebar.toggleAria")}
-          onClick={() => uiStore.toggleSidebar()}
-        >
-          <Icon name="sidebar" />
-        </button>
-      </div>
-
-      <div class="side-app">
-        <AppMark logo="scriptz" appName="ScriptZ" size={28} />
-        <span class="side-app-name">ScriptZ</span>
-      </div>
-
+    <>
       <div class="side-actions">
         <button type="button" class="side-search" onClick={() => uiStore.openPalette()}>
           <Icon name="search" size={14} />
@@ -243,8 +218,16 @@ export function Sidebar(props: SidebarProps) {
         </Show>
       </nav>
 
-      {props.footerSlot}
+      <Show when={menu()}>
+        {(m) => <ContextMenu x={m().x} y={m().y} items={m().items} width={220} onClose={() => setMenu(null)} />}
+      </Show>
+    </>
+  );
+}
 
+export function SidebarFooter() {
+  const route = () => navStore.route();
+  return (
       <div class="side-foot">
         <div class="side-foot-counter">
           <WritingCounter />
@@ -270,10 +253,6 @@ export function Sidebar(props: SidebarProps) {
         </button>
       </div>
 
-      <Show when={menu()}>
-        {(m) => <ContextMenu x={m().x} y={m().y} items={m().items} width={220} onClose={() => setMenu(null)} />}
-      </Show>
-    </aside>
   );
 }
 
