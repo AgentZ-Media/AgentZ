@@ -1,159 +1,115 @@
 ---
 paths:
-  - "apps/scriptz/package.json"
-  - "apps/scriptz/src-tauri/tauri.conf.json"
-  - "apps/scriptz/src-tauri/Cargo.toml"
+  - "apps/*/package.json"
+  - "apps/*/src-tauri/**"
   - "Cargo.toml"
   - "Cargo.lock"
-  - "pnpm-workspace.yaml"
   - "package.json"
   - "docs/release-notes/**"
+  - "tooling/release/**"
   - ".github/workflows/release.yml"
 ---
 
-# Release / Deploy
+# Desktop releases for the AgentZ Suite
 
-Aktueller Stand: Diese Pipeline veröffentlicht nur ScriptZ aus
-`apps/scriptz/` mit Tags `vX.Y.Z`. App-Präfixe und getrennte
-Update-Kanäle entstehen erst in Phase 6 des Suite-Fundaments.
+Each desktop app has its own `<app-id>-v<semver>` tags and update channel.
+Historical `v0.x.y` tags stay untouched. No app release becomes GitHub's
+repository-wide “Latest”. The existing updater signing key is shared; never
+print it or commit it. Back up the private key independently of this repository.
 
-`pnpm install --frozen-lockfile` prüft ausschließlich `pnpm-lock.yaml`.
-Es schützt **nicht** `Cargo.lock`; dafür müssen Cargo-Befehle mit
-`--locked` laufen. Seit Phase 3 liegt das unverändert verschobene
-Rust-Lockfile im Repo-Root. Die PR-CI führt
-`cargo check --workspace --locked` aus. Gemeinsame Abhängigkeiten und
-Release-Profile stehen im Root-`Cargo.toml`.
+## Checklist
 
-## Deploy-Targets
+1. Back up the app database with SQLite's backup API, and export important
+   documents before storage migrations. Verify restore and migration locally.
+2. `pnpm release:bump <app> <version>` updates the app's `package.json`,
+   `src-tauri/tauri.conf.json`, `[package].version` in `Cargo.toml`, and the
+   workspace-root `Cargo.lock`. It runs a targeted offline Cargo update and
+   restores all four originals on failure. Dependencies must already be cached;
+   populate the Cargo cache first if needed, then retry. Inspect the diff.
+3. Complete `docs/release-notes/<app>/v<version>.md` in English. Explain what
+   users notice, fixes, and updating. Do not copy the installation footer: the
+   workflow appends it and replaces `{{PRODUCT_NAME}}` from Tauri metadata.
+4. Run required CI checks and desktop QA, review and merge the version/notes PR.
+5. Tag that merged commit, for example:
+   `git tag -a scriptz-v0.9.0 -m 'ScriptZ v0.9.0'`, then push that tag.
+6. Verify both platform builds, updater signatures, versioned release assets,
+   and all three unauthenticated URLs on the app pointer. Test a real update.
 
-- **Desktop**: GitHub Actions ([`.github/workflows/release.yml`](../../.github/workflows/release.yml))
-  baut beim Pushen eines `vX.Y.Z`-Tags **zwei** Bundles sequenziell:
-  zuerst auf `macos-26` (aarch64-apple-darwin → `.dmg` + Updater-
-  `.app.tar.gz`), danach auf `windows-latest` (x86_64-pc-windows-msvc
-  → NSIS-`.exe` + Updater-`.nsis.zip`). Beide landen am selben
-  GitHub-Release; `latest.json` wird vom zweiten Job in das vom ersten
-  hochgeladene Manifest gemerged (`windows-x86_64` ergänzt sich neben
-  dem bestehenden `darwin-aarch64`-Eintrag). Auto-Updater im laufenden
-  Client poll't `latest.json` plattform-spezifisch.
+`pnpm install --frozen-lockfile` protects only the JavaScript lockfile. Release
+Cargo builds use `--locked`. All apps share root `target/`; explicit targets
+produce `target/<target>/release/bundle/`. Do not look under app `src-tauri/target`.
+Tauri JS and Rust versions must be updated together.
 
-## Release-Checkliste (jedes Mal!)
+## Workflow and recovery
 
-Bei einem neuen Release `vX.Y.Z` müssen **vier Dateien** synchron
-gehalten werden:
+`prepare` validates the app ID, strict SemVer, all four versions and nonempty
+release notes. It creates a published release with `--latest=false` and passes
+the numeric REST `releaseId` to `tauri-action@v0`. Sandbox and SemVer prerelease
+tags create published prereleases. Existing releases are reused on rerun.
 
-1. `apps/scriptz/package.json` - `version`
-2. `apps/scriptz/src-tauri/tauri.conf.json` - `version`
-3. `apps/scriptz/src-tauri/Cargo.toml` - `[package].version`
-4. `Cargo.lock` - Version des Pakets `scriptz`
+macOS (`macos-26`, `aarch64-apple-darwin`) builds first; Windows
+(`windows-latest`, `x86_64-pc-windows-msvc`, NSIS) follows. The sequence is
+required because tauri-action merges `latest.json`. Each platform job checks
+its existing manifest entry and assets **immediately before building**, even
+on “rerun failed jobs”. Complete platforms are skipped: rebuilding and replacing
+signed binaries would invalidate the signatures already referenced by users.
 
-Zusätzlich `docs/release-notes/scriptz/vX.Y.Z.md` mit dem Changelog seit dem
-letzten Tag anlegen (siehe nächster Abschnitt). Der Release-Workflow
-bricht ab, wenn diese Datei fehlt.
+The serialized `pointer-<app-id>` job publishes `<app-id>-latest`, always a
+published prerelease, never “Latest”. It checks both platform signatures and
+version-bound download URLs, then copies installers under stable names:
 
-Nach Freigabe und Merge: `git tag vX.Y.Z`, dann
-`git push origin vX.Y.Z`. Der Release-Workflow baut beide Plattformen
-und veröffentlicht Installer und Updater-Manifest auf GitHub.
+- `<app-id>-macos-arm64.dmg`
+- `<app-id>-windows-x64-setup.exe`
+- `latest.json`, retaining URLs into the immutable versioned release
 
-Cargo schreibt Build-Artefakte in das gemeinsame `target/` im
-Repo-Root. Lokale Builds ohne explizites Target liegen in
-`target/release/bundle/`; die Release-Jobs verwenden
-`target/aarch64-apple-darwin/release/bundle/` beziehungsweise
-`target/x86_64-pc-windows-msvc/release/bundle/`.
+The pointer advances only to newer SemVer versions. An identical manifest at
+the same version may be retried to repair uploads; a different manifest at the
+same version is rejected. A version marker in the pointer body is reserved
+before replacing assets, preventing rollback even when a failed `--clobber`
+upload has temporarily deleted `latest.json`. Never remove this marker.
 
-## Release-Asset-Naming
+Installers upload first, manifest last. GitHub asset replacement is not atomic:
+a failed upload can leave an asset missing. Rerun failed jobs to recover. The
+version marker may then be ahead of the manifest until recovery completes;
+rerun that newest version, not an older release. Do not delete/recreate tags,
+rewrite published version assets, or enable GitHub release immutability (the
+pointer releases must remain mutable). Investigate a same-version manifest
+mismatch instead of bypassing the check.
 
-Pro Release publiziert der Workflow folgende Assets am GitHub-Release.
-Direkte Download-Links müssen dieses Namensschema berücksichtigen:
+For permission failures, inspect workflow `contents: write`, repository Actions
+settings and organization restrictions. Fix the actual permission, then rerun;
+never delete a published tag merely to retry. Versioned releases can temporarily
+contain only one platform while builds run; the pointer remains unchanged.
 
-- **macOS**: `ScriptZ_<version>_aarch64.dmg` (Direct-Install) +
-  `ScriptZ.app.tar.gz` + `ScriptZ.app.tar.gz.sig` (Auto-Updater-Bundle)
-- **Windows**: `ScriptZ_<version>_x64-setup.exe` (NSIS-Installer,
-  installiert in den User-Ordner ohne Admin) +
-  `ScriptZ_<version>_x64-setup.nsis.zip` +
-  `ScriptZ_<version>_x64-setup.nsis.zip.sig` (Auto-Updater-Bundle)
-- **Plattform-übergreifend**: `latest.json` (Auto-Updater-Manifest mit
-  beiden Plattform-Einträgen)
+## Build-only rehearsal
 
-## Release-Notes schreiben
+Run `gh workflow run release.yml --ref main -f app=scriptz` (or Actions →
+Release → Run workflow). **Every workflow_dispatch is a dry run.** It validates
+versions and builds macOS and Windows installers with updater artifacts disabled.
+It uses no signing secrets, creates no tags/releases, publishes no manifests,
+and does not alter version files. Bundles are retained as workflow artifacts for
+seven days. This checks packaging, not signing or the live updater cycle.
 
-**Release-Notes sind auf Englisch.** Sie laden im GitHub-Release-Body
-und sind dort für ein internationales Publikum sichtbar - GitHub ist
-die englischsprachige Schaufront des Projekts. Auch die README im
-Repo-Root ist auf Englisch und bleibt es. Die App-i18n bleibt davon
-unberührt (siehe `.claude/rules/i18n.md`).
+## Installation and updating
 
-Pro Release **eine** Markdown-Datei unter
-[`docs/release-notes/scriptz/vX.Y.Z.md`](../../docs/release-notes/scriptz/) anlegen. Inhalt
-**immer auf Englisch**:
+The updater endpoint is
+`https://github.com/AgentZ-Media/AgentZ/releases/download/<app-id>-latest/latest.json`.
+The desktop host checks, flushes pending saves, installs and relaunches through
+Tauri plugins. Runtime version comes from Tauri `getVersion()`, not a second
+frontend constant. The public verification key is in each app's Tauri config;
+`TAURI_SIGNING_PRIVATE_KEY` and optional `TAURI_SIGNING_PRIVATE_KEY_PASSWORD`
+exist only as GitHub secrets/local protected signing material.
 
-- **Erste Zeile:** kurzes Headline-Statement, was dieses Release
-  ausmacht. `ScriptZ vX.Y.Z - <one-sentence tagline>.`
-- **`## What's new`** mit den User-sichtbaren Features seit dem
-  vorherigen Tag. Knackig, in Bullets gruppiert nach Themen.
-  Keine Refactor-Listen. Keine internen Migration-Phasen. Was würde
-  ein User merken, der die App benutzt?
-- **`## Bug fixes`** wenn vorhanden. Kurz beschreiben, was sich für
-  den User ändert (nicht *welche Datei* gefixt wurde).
-- **`## Updating`** als letzter inhaltlicher Abschnitt mit ein bis
-  zwei Sätzen, wie die Auto-Update-Pille funktioniert.
+The first unsigned macOS installation needs the documented Gatekeeper step
+`xattr -cr "/Applications/<Product>.app"`. Windows users may see SmartScreen;
+the installation footer explains “More info” → “Run anyway”. These apps are
+updater-signed, but not Apple-notarized or Windows code-signed.
 
-Die statische **Install-Footer** ("Installation (first time only)"
-mit `xattr -cr`-Hinweis und SmartScreen-Anleitung) hängt der
-Release-Workflow automatisch dran - **niemals** in die per-Version-
-Datei kopieren. Sie liegt in `docs/release-notes/_install_footer.md`
-und ist ebenfalls auf Englisch.
+ScriptZ 0.8.4 still uses the legacy repository-wide channel. Install 0.9.0
+manually from `scriptz-latest` once, then verify the 0.9.0 → 0.9.1 updater cycle.
+Do not change the ScriptZ bundle identifier, database name or updater public key.
 
-Als Vorlage: [`docs/release-notes/scriptz/v0.6.0.md`](../../docs/release-notes/scriptz/v0.6.0.md).
-
-Workflow-Verhalten: ist die Datei vor dem Tag-Push commited, baut der
-Release-Workflow Body = Datei-Inhalt + Install-Footer. Vergisst man
-sie, **bricht der Workflow mit klarem Error ab** statt mit der
-vorherigen Beschreibung weiterzumachen.
-
-Wer einen bereits publizierten Release retroaktiv mit den richtigen
-Notes nachziehen will: Body-Datei manuell zusammensetzen
-(per-Version-Notes + `docs/release-notes/_install_footer.md`) und mit `gh release edit vX.Y.Z --notes-file <datei>`
-überschreiben.
-
-## Was bei einem Release alles automatisch passiert
-
-Sobald der Tag-Push erfolgreich gebaut hat, läuft alles weitere ohne
-manuelle Schritte:
-
-1. **Job `prepare-notes`** (ubuntu): liest
-   `docs/release-notes/scriptz/vX.Y.Z.md` + `_install_footer.md` und gibt den
-   Body als Output weiter. Bricht ab, wenn die Notes-Datei fehlt.
-2. **Job `build-macos`** (macos-26): baut `.dmg` + signiertes
-   `.app.tar.gz`. Legt das GitHub-Release-Objekt an, lädt Assets hoch
-   inkl. erstem `latest.json` (Eintrag `darwin-aarch64`).
-3. **Job `build-windows`** (windows-latest, needs build-macos): baut
-   NSIS-`.exe` + signiertes `.nsis.zip`. Findet den existierenden
-   Release per Tag, appended Windows-Assets, mergt `windows-x86_64`
-   ins `latest.json`. Sequenziell **nach** macOS, sonst race condition
-   auf das `latest.json`-Asset.
-4. Bestehende User sehen innerhalb von ~60 Min die grüne Update-Pille
-   im Fuß der Seitenleiste (stündlicher `latest.json`-Poll, plattform-
-   spezifisches Bundle wird automatisch gewählt).
-
-## Wenn der Release-Workflow fehlschlägt
-
-**Re-Run via `gh run rerun` reicht oft nicht**, weil GitHub den
-`GITHUB_TOKEN`-Kontext vom ursprünglichen Trigger cached. Wenn der
-Fehler etwas mit Permissions zu tun hatte (z.B. nach einem
-Org-Transfer oder einer geänderten Workflow-Permission-Setting),
-muss ein **frischer** Run her:
-
-```bash
-git push --delete origin vX.Y.Z   # Remote-Tag entfernen
-git tag -d vX.Y.Z                 # lokal entfernen
-git tag -a vX.Y.Z -m "ScriptZ vX.Y.Z"  # neu setzen
-git push origin vX.Y.Z            # frischer Workflow-Trigger
-```
-
-Das Release-Objekt selbst wird dabei nicht doppelt - der gefailte
-Run hatte ja noch keins erstellt. Der historische Failed-Run bleibt
-in der Actions-History stehen, das ist OK.
-
-Bei wiederholten Permission-Fehlern: prüfen, dass auf **Org- und
-Repo-Ebene** unter Settings → Actions → General → "Workflow
-permissions" jeweils "Read and write permissions" aktiv ist.
+On a fresh Windows machine use Node 24, pnpm matching root `packageManager`,
+Rust stable MSVC, Visual Studio Build Tools with Desktop C++ and Windows SDK,
+and WebView2. Run installation in the user's normal terminal. The NSIS package
+includes the WebView2 download-bootstrapper fallback.

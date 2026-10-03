@@ -3,19 +3,19 @@
 ### macOS (Apple Silicon)
 
 1. Download the `.dmg` below and open it.
-2. Drag **ScriptZ.app** into your **Applications** folder.
+2. Drag **{{PRODUCT_NAME}}.app** into your **Applications** folder.
 3. The app is **not signed** (no Apple Developer account), so macOS
    refuses to launch it. Run this command in Terminal once to remove
    the quarantine flag:
 
    ```bash
-   xattr -cr /Applications/ScriptZ.app
+   xattr -cr "/Applications/{{PRODUCT_NAME}}.app"
    ```
 
-4. Open ScriptZ from the Applications folder - it now launches
+4. Open {{PRODUCT_NAME}} from the Applications folder - it now launches
    normally.
 
-Without step 3, you'll see the message "ScriptZ is damaged and can't
+Without step 3, you'll see the message "{{PRODUCT_NAME}} is damaged and can't
 be opened" or "can't be opened because the developer cannot be
 verified". That's macOS Gatekeeper, not the app.
 
@@ -27,7 +27,7 @@ verified". That's macOS Gatekeeper, not the app.
    certificate), so SmartScreen doesn't know it yet.
 3. Click **"More info"**, then the button that appears: **"Run
    anyway"**.
-4. From there on, ScriptZ runs normally. Auto-updates work without
+4. From there on, {{PRODUCT_NAME}} runs normally. Auto-updates work without
    any further friction.
 
 Without step 3, SmartScreen aborts the launch. That's Windows

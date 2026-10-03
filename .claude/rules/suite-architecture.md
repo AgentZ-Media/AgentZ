@@ -21,7 +21,7 @@ und Prüfungen fest.
 
 ## Bestand und Ziel auseinanderhalten
 
-**Stand Phase 5:** `apps/scriptz` verdrahtet das Produktmodul
+**Stand Phase 6:** `apps/scriptz` verdrahtet das Produktmodul
 `modules/scriptz` und den gemeinsamen Desktop-Host. `packages/kit` enthält die gemeinsame
 `SuiteShell`, neutrale UI, i18n, Basis-Settings, Navigation, Plattform-
 Interfaces, KvStore, Toasts und Speicherhelfer. Das ScriptZ-Modul
@@ -182,6 +182,18 @@ Die Farbprüfung ist bewusst eine Textprüfung für CSS/TSX. `.ts` und
 HTML werden nicht erfasst; CSS-IDs wie `#add` oder `#face` können als
 Farbwerte erscheinen. Solche Fälle gezielt behandeln, nicht ganze
 UI-Dateien freistellen.
+
+## Releases pro App
+
+`pnpm release:bump <app> <version>` setzt App-`package.json`, Tauri-Config,
+App-`Cargo.toml` und Root-`Cargo.lock` gemeinsam. Releases verwenden
+`<app-id>-v<semver>`; jedes Produkt hat einen eigenen Zeiger
+`<app-id>-latest` mit Manifest und stabil benannten Installern. macOS und
+Windows bauen nacheinander, damit beide Plattformen im Manifest bleiben.
+Ein manuell gestarteter Workflow baut nur Prüfartefakte und veröffentlicht
+nichts. Vollständige Abnahme umfasst zusätzlich den echten signierten
+Update-Zyklus; ein erfolgreicher Dry-Run ersetzt ihn nicht. Details und
+Recovery stehen in [`release.md`](release.md).
 
 ## Wer verantwortet was?
 

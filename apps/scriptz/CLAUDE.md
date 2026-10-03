@@ -37,12 +37,9 @@ Details lazy-load aus [`/.claude/rules/`](../../.claude/rules/):
   Legacy-Block-Migration, Editor → DB Data-Flow. Lädt bei
   `apps/scriptz/src/**`, `apps/scriptz/src-tauri/**`, `modules/scriptz/**`
   und `packages/design/**`.
-- [`desktop-release.md`](../../.claude/rules/desktop-release.md) -
-  In-App-Updater (`tauri-plugin-updater` + minisign), Versionen in vier
-  Dateien, macOS-`xattr`/SmartScreen-Erstinstall, Windows-Toolchain-Setup.
-  Lädt bei Versionsdateien und `src-tauri/**`.
-- [`/.claude/rules/release.md`](../../.claude/rules/release.md) -
-  zentrale Release-Pipeline (3 Jobs, Asset-Naming, Recovery).
+- [`release.md`](../../.claude/rules/release.md) - gemeinsame Release-
+  Pipeline, App-Tags, Updater-Zeiger, Signing, vier Versionsdateien,
+  Installationshinweise und Recovery.
 
 ## Top-Level Layout
 
@@ -176,13 +173,13 @@ falls künftig ein anderer Port nötig wird.
   to look for if a manual UI check is needed.
 - **No `@lexical/react`.** Solid + React don't mix.
 - **No new Tauri commands for data.** Persistence runs through
-  `@tauri-apps/plugin-sql` from `src/lib/`. The Rust crate intentionally
-  has no `invoke_handler`; if you find yourself wanting one for CRUD,
-  you're probably reinventing what plugin-sql already gives you.
+  `@tauri-apps/plugin-sql` through the shared host; product SQL stays in
+  `modules/scriptz/lib/`. The shared Rust plugin has lifecycle commands,
+  not CRUD commands. Keep product persistence behind its storage interface.
 - **No localStorage for script content.** Persistence is SQLite.
 - **No telemetry.** App works fully offline. The only network call is
   the hourly updater poll to
-  `https://github.com/AgentZ-Media/AgentZ/releases/latest/download/latest.json`
+  `https://github.com/AgentZ-Media/AgentZ/releases/download/scriptz-latest/latest.json`
   (no body, no identifier) plus the manifest-driven binary download
   when the user clicks the update pill.
 - **Don't reintroduce global characters, projects, tags, aliases,

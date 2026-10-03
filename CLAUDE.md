@@ -8,7 +8,7 @@ Umbau; die nachfolgende Trennung von Bestand und Ziel ist verbindlich.
 Der [Umsetzungsstand](docs/agentz-suite-fortschritt.md) dokumentiert
 abgeschlossene Schritte, Prüfungen und offene Punkte.
 
-## Aktuelle Struktur (Phase 5)
+## Aktuelle Struktur (Phase 6)
 
 - [`apps/scriptz/`](apps/scriptz/) - `@agentz/scriptz-app`, die dünne
   Tauri-Schale für ScriptZ. Verbindet Produktmodul und Desktop-Host;
@@ -60,8 +60,9 @@ und `@agentz/vitest-preset` bündeln gemeinsame Konfiguration. Der
 Cargo-Workspace nutzt `Cargo.toml`, das verschobene `Cargo.lock` und
 `target/` im Repo-Root. App-Crates unter `apps/*/src-tauri` und
 gemeinsame Crates unter `crates/*` sind Workspace-Mitglieder. PR-CI prüft JavaScript und
-Rust. Das Release-Schema bleibt bis Phase 6 `vX.Y.Z`; der App-Name
-bleibt ScriptZ.
+Rust. Releases verwenden `<app-id>-v<semver>` und pro App den
+veränderbaren Zeiger `<app-id>-latest`. Historische `vX.Y.Z`-Tags bleiben
+unverändert. Die Live-Abnahme ist im Fortschrittsprotokoll dokumentiert.
 
 ## Konventionen während des Umbaus
 
@@ -118,10 +119,8 @@ Dateien im jeweiligen Scope:
   ScriptZ-Modul, Design und App-Schale, Datenmodell, Migration und Data-Flow.
 - [`i18n.md`](.claude/rules/i18n.md) - zweisprachige Kataloge und
   User-sichtbare Texte in ScriptZ.
-- [`desktop-release.md`](.claude/rules/desktop-release.md) -
-  ScriptZ-Updater, Signing, Versionen und Plattform-Setup.
-- [`release.md`](.claude/rules/release.md) - aktuelle Release-Pipeline,
-  Asset-Naming, Notes und Workflow-Recovery.
+- [`release.md`](.claude/rules/release.md) - gemeinsame Release-Pipeline,
+  Versionen, Signing, App-Kanäle, Installationshinweise und Recovery.
 
 ## Befehle (vom Repo-Root)
 
@@ -129,6 +128,7 @@ Dateien im jeweiligen Scope:
 pnpm install --frozen-lockfile # installiert die JS-Workspaces
 pnpm dev:scriptz               # tauri dev der ScriptZ-App
 pnpm build:scriptz             # native App und Installer bauen
+pnpm release:bump scriptz 0.9.0 # vier Versionsdateien konsistent setzen
 pnpm lint                      # Paketgrenzen und Korrektheit
 pnpm typecheck                 # TypeScript über alle Workspaces
 pnpm test                      # Tooling-Regeln und Pakettests
@@ -175,12 +175,12 @@ Zusammenfassung + Optionen geben:
    - **Trivial** (Tippfehler, Kommentar, kleines Style-Detail):
      Direkt-Commit auf `main` reicht. Kein Release nötig.
    - **Kleiner, aber wichtiger Bugfix** (User merkt's, betrifft alle):
-     Direkt-Commit auf `main` + Patch-Release `vX.Y.Z+1` empfehlen,
+     Direkt-Commit auf `main` + Patch-Release `<app>-vX.Y.Z+1` empfehlen,
      damit der Auto-Updater die Fix ausrollt. Release-Checkliste
      durchgehen.
    - **Neues Feature oder nicht-trivialer Refactor:** PR auf GitHub
      vorschlagen, damit CodeRabbit drüberschaut. Erst nach Review +
-     Merge ggf. Minor-Release `vX.Y+1.0`.
+     Merge ggf. Minor-Release `<app>-vX.Y+1.0`.
    - **Risiko-Änderung** (Migrations, Storage-Format, Build-Pipeline):
      Immer PR, nie direkt - egal wie klein.
 4. **Auf Antwort warten.** Erst handeln, wenn der User explizit sagt
@@ -199,10 +199,9 @@ Nicht alles im Repo läuft in derselben Sprache. Die Regel ist nach
 | Artefakt | Sprache | Warum |
 |---|---|---|
 | **README.md** im Repo-Root | **Englisch** | GitHub-Schaufront, internationales Publikum |
-| **docs/release-notes/scriptz/vX.Y.Z.md** | **Englisch** | Lädt in den GitHub-Release-Body, internationale User |
+| **docs/release-notes/<app>/vX.Y.Z.md** | **Englisch** | Lädt in den GitHub-Release-Body, internationale User |
 | **docs/release-notes/_install_footer.md** | **Englisch** | Ditto, wird an jeden Release-Body angehängt |
-| App-i18n `modules/scriptz/i18n/de.ts` | Deutsch | DE-Hälfte des bilingualen App-Katalogs |
-| App-i18n `modules/scriptz/i18n/en.ts` | Englisch | EN-Hälfte des bilingualen App-Katalogs |
+| Kit-/Modul-i18n `packages/kit/i18n/`, `modules/<app>/i18n/` | Deutsch und Englisch | Jeweilige Sprache des bilingualen Katalogs |
 | **Code-Kommentare** (alle Apps) | **Englisch** | Code-Kommentare laufen einheitlich auf Englisch - das gesamte Repo wurde umgestellt |
 | **Doku-Markdown** (CLAUDE.md, docs/*.md außer release-notes) | **Deutsch** | Interne Doku, deutsches Team |
 | **Commit-Messages, PR-Texte** | Deutsch | Interne Kommunikation |

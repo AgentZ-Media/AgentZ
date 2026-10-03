@@ -1,7 +1,7 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
   "productName": "ScriptZ",
-  "version": "0.8.4",
+  "version": "0.9.0",
   "identifier": "de.agent-z.scriptz",
   "build": {
     "beforeDevCommand": "pnpm dev",
@@ -32,7 +32,11 @@
   },
   "bundle": {
     "active": true,
-    "targets": ["dmg", "app", "nsis"],
+    "targets": [
+      "dmg",
+      "app",
+      "nsis"
+    ],
     "icon": [
       "icons/32x32.png",
       "icons/128x128.png",
@@ -48,7 +52,10 @@
       "nsis": {
         "installMode": "currentUser",
         "displayLanguageSelector": false,
-        "languages": ["English", "German"]
+        "languages": [
+          "English",
+          "German"
+        ]
       },
       "webviewInstallMode": {
         "type": "downloadBootstrapper"
@@ -60,7 +67,7 @@
       "active": true,
       "dialog": false,
       "endpoints": [
-        "https://github.com/AgentZ-Media/AgentZ/releases/latest/download/latest.json"
+        "https://github.com/AgentZ-Media/AgentZ/releases/download/scriptz-latest/latest.json"
       ],
       "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IEU0NjMxMEI3QUI4RTg3OTQKUldTVWg0NnJ0eEJqNUNkNGszRDhCZHl5dU9va3F2VlNrdG50NmpLZXRYQ1licXBIbHBuZXBVN2oK"
     }

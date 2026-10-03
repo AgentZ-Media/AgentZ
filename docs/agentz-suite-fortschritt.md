@@ -282,7 +282,8 @@ und Phasen; dieses Protokoll hält die konkreten Ergebnisse fest.
   Flush. Fehlschläge verhindern den Ausstieg beziehungsweise die Installation.
 - **Prüfungen:** 24 Desktop-, 74 Kit-, 302 Modul- und 17 Tooling-Tests
   sowie zwei Rust-Tests erfolgreich. Pflicht-CI in
-  [PR #26](https://github.com/AgentZ-Media/AgentZ/pull/26) grün; Merge folgt.
+  [PR #26](https://github.com/AgentZ-Media/AgentZ/pull/26) grün und auf
+  `main` gemergt (`69c0d7c`).
 - **Produktions-Build:** macOS-App und DMG mit isolierter QA-ID
   `de.agent-z.scriptz.phase5-desktop-smoke` gebaut. Ein beim Wiederöffnen
   gefundener nativer Deadlock wurde durch einen Worker und deduplizierte
@@ -300,4 +301,30 @@ und Phasen; dieses Protokoll hält die konkreten Ergebnisse fest.
   produktiven Datenbank ist per SHA identisch mit der Sicherung.
   Kein Release, keine Windows- oder signierte Update-Abnahme in Phase 5.
 - **Separat:** Gelbe PNG-/ICNS-/ICO-Icons auf Timos Wunsch neu generiert;
-  deren eigener PR folgt nach Phase 5 und ist hier noch nicht gemergt.
+  [PR #27](https://github.com/AgentZ-Media/AgentZ/pull/27) enthält diese
+  Korrektur getrennt von Phase 5 und ist in Review.
+
+### Phase 6: Releases und Update-Kanäle pro App
+
+- **Sicherung:** `~/Backups/scriptz/scriptz-20261003-210318-phase6.db`
+  über SQLite gesichert, Integritätsprüfung erfolgreich. Die 71 geprüften
+  `.scriptz`-Exporte aus der Vorbereitung bleiben zusätzlich verfügbar.
+- **Pipeline:** App-Tags `<id>-v<semver>`, Prüfung von App-ID, vier Versionen
+  und Release-Notes; macOS und Windows bauen nacheinander. Versionierte
+  Releases werden nicht als repositoryweites „Latest“ markiert. Wiederholte
+  Läufe bewahren vollständig veröffentlichte Plattform-Artefakte.
+- **Zeiger:** `<id>-latest` ist ein veröffentlichter Pre-Release mit stabilen
+  Installer-Namen und `latest.json`. Versionsvergleich und ein reservierter
+  Versionsmarker verhindern Rücksprünge; Installer werden vor dem Manifest
+  hochgeladen. Signaturen und versionsgebundene Manifest-URLs werden geprüft.
+- **Werkzeuge:** `pnpm release:bump <app> <version>` synchronisiert die vier
+  Versionsdateien und stellt sie bei Fehlschlag wieder her. ScriptZ auf 0.9.0
+  vorbereitet, Updater-Endpoint auf `scriptz-latest` umgestellt. Gemeinsame
+  Release-Regel ersetzt die frühere separate Desktop-Release-Regel.
+- **Probelauf:** Manuelles `workflow_dispatch` ist immer Build-only, ohne
+  Signing-Secrets, Tags, Release-Publikation oder Veränderung der Kanäle;
+  Installer bleiben sieben Tage als Workflow-Artefakte abrufbar.
+- **Stand:** Implementiert; Prüfungen laufen. Noch kein erfolgreicher Live-
+  Release, öffentlicher Zeiger-Download oder echter Update-Zyklus behauptet.
+  0.9.0 muss einmal manuell installiert und anschließend das signierte
+  Update auf 0.9.1 geprüft werden. Website und Generator folgen separat.
