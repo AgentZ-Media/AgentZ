@@ -5,7 +5,8 @@
   "description": "Shared Tauri host for AgentZ desktop apps.",
   "type": "module",
   "sideEffects": [
-    "*.css"
+    "*.css",
+    "./index.ts"
   ],
   "exports": {
     ".": "./index.ts",
