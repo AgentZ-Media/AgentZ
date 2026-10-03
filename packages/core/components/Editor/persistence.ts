@@ -46,8 +46,9 @@ export interface PersistenceOptions {
 }
 
 export interface PersistenceHandle {
-  /** Marks the script as dirty and (re)arms the debounced save. Called
-   *  from the editor's update listener for every content-changing tick. */
+  /** (Re)arms the debounced save. Called from the editor's update listener
+   *  for every content-changing tick; the save itself is skipped when the
+   *  serialized state equals the last persisted one. */
   scheduleSave: () => void;
   /** Tears down the save timer, auto-snapshot interval and global
    *  flusher registration. Also fires a final teardown-flagged
@@ -83,6 +84,11 @@ export function createPersistence(opts: PersistenceOptions): PersistenceHandle {
       const state = editor.getEditorState();
       contentJson = JSON.stringify(state.toJSON());
     });
+    // Nothing changed since the last write - typically the update right
+    // after loading the script, which re-serializes the stored state
+    // byte-for-byte. Writing anyway would bump updated_at, so merely
+    // opening a script would reorder "Geändert" and show "Gerade eben".
+    if (contentJson === lastPersistedContent) return;
 
     // Safety net: if the editor state is empty NOW and the last
     // successfully saved state had content, on a teardown that's a
@@ -109,6 +115,8 @@ export function createPersistence(opts: PersistenceOptions): PersistenceHandle {
     try {
       const summary = await api.updateScript({ id: scriptId, contentJson });
       lastPersistedContent = contentJson;
+      // Only real writes make an auto snapshot worthwhile.
+      dirtySinceSnapshot = true;
       saveStatusStore.markSaved();
       scriptsBus.bump();
 
@@ -127,7 +135,6 @@ export function createPersistence(opts: PersistenceOptions): PersistenceHandle {
   };
 
   const scheduleSave = () => {
-    dirtySinceSnapshot = true;
     if (saveTimer) clearTimeout(saveTimer);
     saveTimer = setTimeout(() => {
       saveTimer = null;

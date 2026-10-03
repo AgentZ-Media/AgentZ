@@ -20,7 +20,7 @@
 // Snapshots are intentionally left as they are - they are normalized when
 // restored (lib/snapshots.ts and the web adapter).
 //
-// Not wired into the apps yet - the Shell calls it once at boot, after
+// Called once at boot by the shell (components/Shell/AppShell.tsx), after
 // the storage adapter is registered and before the first script opens:
 //
 //   await migrateLegacyBlocksOnce();

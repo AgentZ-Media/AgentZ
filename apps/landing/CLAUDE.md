@@ -22,14 +22,17 @@ Details lazy-load aus [`/.claude/rules/`](../../.claude/rules/):
 ```
 src/
   components/
-    AppShell.astro       Editor-Optik-Wrapper für Landing-Routen + Blog
+    AppShell.astro       App-Demo-Chrome im Werkbank-Look für Landing-Routen
+                         + Blog (siehe "Demo-Chrome"), inkl. Inline-Script
     LegalShell.astro     Editor-Optik-Wrapper für Impressum/Datenschutz
     SiteFooter.astro     EIN Footer für alle Shells (Blog, RSS, GitHub, Recht, Über)
     MobileNav.astro      Sticky Top-Bar + Drawer für <= 768 px
     blog/
       BlogIndex.astro      Übersichts-Liste auf /blog und /en/blog
       BlogPost.astro       Detail-Seite eines einzelnen Beitrags
-    sections/...         Sektion-Markup pro Landing-Tab
+    sections/            Sektion-Markup pro Route: PageHero, HomeSection,
+                         WarumSection, IdeenSection, QuickmodusSection,
+                         VergleichSection, NoAiSection, DownloadSection
   content/
     blog/<slug>/         Ein Ordner pro Beitrag, mit de.md + en.md + Bildern
     _example/de.md       Lebende Referenz, taucht nicht öffentlich auf
@@ -44,8 +47,11 @@ src/
     index.ts               t()/tFormat()/tPlural()-Helper, Lang/Route-Typen
   layouts/Base.astro     Head, Meta, hreflang, Auto-Detect-Redirect, Reveal-Observer
   pages/
-    index.astro            `/` - DE-Default, dünner Wrapper um LandingPage
-    en/index.astro         `/en` - EN-Variante, dünner Wrapper
+    index.astro            `/` - DE-Default: Base + AppShell + PageHero + HomeSection
+    en/index.astro         `/en` - EN-Variante, gleicher Aufbau
+    warum-scriptz, ideen, quickmodus, vergleich, keine-ki, download
+                           Unterrouten (DE), EN-Pendants unter en/ mit
+                           englischen Slugs (why-scriptz, ideas, ...)
     impressum.astro        `/impressum` - DE-only (Rechts-bedingt)
     datenschutz.astro      `/datenschutz` - DE-only (Rechts-bedingt)
     blog/index.astro       `/blog` + `/blog/[slug].astro` - Blog DE
@@ -53,28 +59,55 @@ src/
     rss.xml.ts             `/rss.xml` - DE-Feed
     en/rss.xml.ts          `/en/rss.xml` - EN-Feed
   styles/
-    landing.css            Geteiltes Stylesheet der LandingPage (Brutalist-Look)
+    landing.css            Geteiltes Stylesheet von AppShell + Sektionen (`.v2-*`)
     blog.css               Blog-spezifisches Layering auf landing.css-Blocks
     tokens.css, fonts.css, global.css
-public/                  Schrift, Icons, robots
+public/                  Schrift, Icons, App-Screenshots (img/app/), robots
 ```
+
+## Demo-Chrome (`AppShell.astro`)
+
+Die Landing zeigt sich selbst als ScriptZ-Fenster im Werkbank-Look und
+muss der App optisch folgen (siehe
+[`landing-consistency.md`](../../.claude/rules/landing-consistency.md)):
+
+- **Seitenleiste** (dunkel): App-Mark, Routen als echte `<a>`-Links
+  (Home, Ideen mit Zähler, Gruppe „Skripte" mit den Unterrouten), im
+  Fuß ein Wort-Zähler, der die Wörter der aktuellen Seite zählt (Echo
+  des Schreib-Zählers der App).
+- **Kopfleiste**: Verlauf-Pfeile, Breadcrumb `ScriptZ / <Titel>`,
+  „Gespeichert", Stufen-Chip (Online), DE/EN-Toggle, Open-Source-Pille,
+  Download-Button (Mac/Windows per JS).
+- **Papier** in der Mitte mit dem Sektion-Inhalt und dem `SiteFooter`.
+- **Laufzeit-Pille** (`#runpill`, unten rechts): schätzt, wie lange die
+  Seite vorgelesen dauert, und zeigt den Scroll-Fortschritt als
+  Abspielposition (Echo der Laufzeit-Schätzung der App).
+
+Die Landing importiert weder `@scriptz/core` noch `@agentz/design`; die
+Werte in `styles/tokens.css` und `landing.css` (`--v2-*`) werden bei
+Design-Änderungen in der App von Hand angeglichen.
 
 ## Konventionen
 
 - **Hellmodus only**, monochrom. Akzent ist Tinten-Schwarz, nicht
-  Orange. Status-Indikatoren in Tabellen / Checklisten dürfen Farbe
-  tragen (grün/grau/gelb), sonst nicht.
-- **Karo-Hintergrund** über die ganze Seite - Echo des App-Icons,
-  durch Repeating-Gradient auf body in
-  [`src/styles/global.css`](src/styles/global.css). Werte in
-  [`src/styles/tokens.css`](src/styles/tokens.css) (`--grid-line`,
-  `--grid-cell`).
+  Orange. Die dunkle Seitenleiste der Demo ist App-Echo, kein
+  Dunkelmodus. Status-Indikatoren in Tabellen / Checklisten dürfen
+  Farbe tragen (grün/grau/gelb), ebenso die Charakter-Tönungen in der
+  Editor-Demo (`--v2-tint-*`, wie die Hervorhebung in der App), sonst
+  nichts.
+- **Karo-Hintergrund** - Echo des App-Icons, durch Repeating-Gradient
+  auf body in [`src/styles/global.css`](src/styles/global.css). Werte
+  in [`src/styles/tokens.css`](src/styles/tokens.css) (`--grid-line`,
+  `--grid-cell`). Die Demo-Shell (`.v2-shell`, `--v2-bg`) legt ihren
+  eigenen Hintergrund darüber; sichtbar bleibt das Karo z.B. auf den
+  Rechtsseiten (`LegalShell`).
 - **Karten verdecken das Karo**, dashed-Border-Boxen zeigen es durch.
 - **Schrift: iA Writer Quattro**, selbst gehostet (`public/fonts/`),
   kein CDN, kein Tracker.
 - **Deutsche Texte**, normale Bindestriche statt Em-Dashes,
   Umlaute statt ae/oe/ue. Gilt für die DE-Hälfte der i18n-Kataloge
-  und alle Code-Kommentare/Docs.
+  und interne Docs. Code-Kommentare laufen auf Englisch (siehe
+  Root-`CLAUDE.md`).
 
 ## Landing-spezifische i18n-Mechanik
 
@@ -99,13 +132,15 @@ nach dem ersten Wechsel niemanden mehr umbiegt.
 **Landing-spezifische "User-sichtbar"-Stellen** (ergänzt die zentrale Liste):
 
 - `data-title`, `data-label` etc., wenn JS daraus User-Text macht
-  (siehe Sprint-Pille und Toolbar-Titel)
+  (siehe Laufzeit-Pille `data-label` und Kopfleisten-Titel
+  `data-title-mac` / `data-title-win`)
 - Meta-Tags (`<title>`, `description`, OG, Twitter) - bereits via
   `t(lang, "meta.*")` in `Base.astro` parametrisiert
-- Strings, die im inline-`<script>` von LandingPage durch
+- Strings, die im inline-`<script>` von `AppShell.astro` durch
   `define:vars={{ jsStrings }}` reingegeben werden (Copy-Button,
-  Sprint-Pille-Label/Format) - **nicht** direkt aus `t()` heraus,
-  das Script läuft im Browser ohne Astro-Kontext
+  Laufzeit-Pillen-Label, Wort-Einheit + Locale des Seitenleisten-
+  Zählers) - **nicht** direkt aus `t()` heraus, das Script läuft im
+  Browser ohne Astro-Kontext
 
 **Wann eine Sprach-Differenz OK ist:** Nur wenn rechtlich oder
 kontextuell unausweichlich. Aktueller einziger Fall: **Impressum und
@@ -118,8 +153,8 @@ die Sonderfall-Logik in `src/i18n/index.ts` (Funktion `localePath` und
 `switchLangPath`) sowie in `Base.astro` (`isLegal`-Check) entfernen.
 
 **Landing-spezifisches Anti-Pattern:** Neue Page anlegen, die
-`LandingPage` direkt umgeht und eigenen Text inline einbettet, statt
-durch i18n zu gehen. DE-only-Page hinzufügen, ohne in
+`AppShell` umgeht und eigenen Text inline einbettet, statt durch i18n
+zu gehen. DE-only-Page hinzufügen, ohne in
 [`src/i18n/index.ts`](src/i18n/index.ts) (`localePath` /
 `switchLangPath`) zu spezifizieren, dass dieser Pfad vom Sprach-Routing
 ausgenommen ist.

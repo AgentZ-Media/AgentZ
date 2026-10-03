@@ -42,9 +42,10 @@ import "./Shell.css";
 
 export interface AppShellProps {
   platform: "desktop" | "web";
-  /** Full-width row above the shell (web: disclaimer banner, storage badge). */
+  /** Full-width row above the shell (web: disclaimer banner). */
   topSlot?: JSX.Element;
-  /** Rendered at the bottom of the sidebar (desktop: update indicator). */
+  /** Rendered at the bottom of the sidebar (desktop: update indicator,
+   *  web: storage-persistence badge). */
   sidebarFooterSlot?: JSX.Element;
 }
 

@@ -61,7 +61,9 @@ apps/studio   (NEU)   Solid + Vite Frontend  +  Convex Backend
   - einen **`ConvexStorageAdapter`** (`src/adapters/convex.ts`): erfüllt
     das `StorageAdapter`-Interface aus `@scriptz/core/lib/storage.ts`
     gegen Convex-Queries/Mutations.
-- Der Core-Editor (`ScriptView`/`Editor`) wird unverändert importiert.
+- Der Core-Editor (`Editor` aus `@scriptz/core/components/Editor/Editor`)
+  wird unverändert importiert, Styles aus `@agentz/design` (Studio mappt
+  seine `--s-*`-Variablen auf die Design-Tokens).
 
 ### 3.2 Backend (`apps/studio/convex`)
 
@@ -83,13 +85,13 @@ apps/studio   (NEU)   Solid + Vite Frontend  +  Convex Backend
 
 Beides ist opt-in; Desktop/Web nutzen es nicht und bleiben identisch.
 
-1. **`readOnly`-Modus** an `ScriptView`/`Editor`: ruft
+1. **`readOnly`-Modus** am `Editor` (Prop `readOnly`): ruft
    `editor.setEditable(false)` und überspringt das Autosave-/Persistence-
    Wiring. Das ist der Kunden-View - gleicher Editor, gleiche
    Formatierung und Charakter-Farben, aber nicht editierbar.
 2. **Kommentar-Overlay**: eine Kommentar-Spalte neben dem Editor (analog
-   zur bestehenden `EditorRail`). Auf Dokument-Ebene ohne jeden
-   Editor-Eingriff. Für Block-Ebene (Phase 4b) bekommt `BaseScriptzNode`
+   zum Inspector im Editor-Screen der Desktop-/Web-App). Auf
+   Dokument-Ebene ohne jeden Editor-Eingriff. Für Block-Ebene (Phase 4b) bekommt `BaseScriptzNode`
    ein zusätzliches serialisiertes `id`-Feld - additiv, `content_json`
    bleibt rückwärtskompatibel (analog zu `characterName` in
    `ScriptzCharacterNode`).

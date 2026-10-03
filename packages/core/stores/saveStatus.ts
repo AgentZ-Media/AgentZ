@@ -1,4 +1,4 @@
-// Global save-status indicator. The status-strip in the tab bar reads
+// Global save-status indicator. The "Gespeichert" label in the script top bar reads
 // this so the user always sees whether the editor's auto-save is
 // healthy. Without a visible indicator a failing save would silently
 // accumulate unsaved keystrokes — the original audit's most dangerous
@@ -31,7 +31,7 @@ export const saveStatusStore = {
     setStatus("error");
     // One toast per session: a chronically broken save would otherwise
     // bury the user in identical popups every 250 ms. The persistent
-    // red dot in the tab bar keeps the situation visible.
+    // red dot in the top bar keeps the situation visible.
     if (!toastedThisSession) {
       toastedThisSession = true;
       pushToast(

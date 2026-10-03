@@ -275,7 +275,9 @@
   color: var(--faint);
   font-size: 12px;
   white-space: nowrap;
-  font-variant-numeric: tabular-nums;
+  /* No tabular-nums: Schibsted Grotesk's tnum also widens the period
+     ("27 . Sept ."), and the right-aligned relative dates don't need it -
+     same as the date column of the script list. */
 }
 .irow.is-sel {
   background: var(--accent-soft);

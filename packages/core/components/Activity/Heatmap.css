@@ -2,8 +2,10 @@
    surface, so it reads in the light and the dark theme. Tokens only. */
 
 .hm {
-  --hm-cell: 11px;
-  --hm-gap: 3px;
+  /* 53 weeks x 12 px + day labels fit the activity dialog (~680 px), so the
+     whole year is visible without scrolling. */
+  --hm-cell: 10px;
+  --hm-gap: 2px;
   display: flex;
   flex-direction: column;
   gap: var(--sp-2);

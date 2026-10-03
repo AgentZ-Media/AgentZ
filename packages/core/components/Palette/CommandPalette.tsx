@@ -334,7 +334,11 @@ export function CommandPalette() {
       `${c.label} ${c.keywords ?? ""}`.toLowerCase().includes(q),
     );
 
-    return [...scripts, ...ideas, ...cmds];
+    // A command whose label starts with the query ("neue idee", "zeitl")
+    // is what the writer is typing out - lead with the commands so ⏎ runs
+    // it instead of a full-text hit that merely contains the word.
+    const cmdLeads = cmds.some((c) => c.label.toLowerCase().startsWith(q));
+    return cmdLeads ? [...cmds, ...scripts, ...ideas] : [...scripts, ...ideas, ...cmds];
   });
 
   const groups = createMemo(() => {

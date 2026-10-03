@@ -1,4 +1,4 @@
-import { For, Show, createMemo } from "solid-js";
+import { For, Show, createMemo, onMount } from "solid-js";
 import { t, tPlural, getCurrentLocale, language } from "../../i18n";
 import "./Heatmap.css";
 
@@ -33,8 +33,17 @@ export function Heatmap(props: HeatmapProps) {
       t("weekday.short.0"), // So
     ];
   });
+  // When the year doesn't fit (narrow dialog), the scroller starts at the
+  // newest weeks - that's where today and recent activity are.
+  let hmRef: HTMLDivElement | undefined;
+  onMount(() => {
+    requestAnimationFrame(() => {
+      if (hmRef) hmRef.scrollLeft = hmRef.scrollWidth;
+    });
+  });
   return (
     <div
+      ref={hmRef}
       class="hm"
       role="grid"
       aria-label={t("activity.heatmap.aria")}

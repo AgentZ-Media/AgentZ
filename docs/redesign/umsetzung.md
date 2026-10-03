@@ -158,3 +158,62 @@ Editor: `⌘1` Action, `⌘2` Charakter, `⌘3` Dialog, `Tab` Picker, `⏎` Smar
 4. Integration, Typecheck, Tests, Build, Sichtprüfung gegen Konzept
 5. **F Landing/README/Rules** (Konsistenz)
 6. Codex-Review (`gpt-6-astra`, high) → Fixes → PR → CodeRabbit-Schleife
+
+## 9. Stand nach Umsetzung (2026-10-03)
+
+Phasen 1-3 sind umgesetzt und auf `redesign-werkbank` committet
+(`355d888` Phase 1, `54b0b0d` Phase 2 inkl. Landing + README).
+Integration/QA (Phase 4) läuft, die internen Docs und Rules (Phase 5)
+sind nachgezogen. Offen: Codex-Review, PR, CodeRabbit (Phase 6).
+
+**Wie geplant umgesetzt:** Datenmodell inkl. Migration
+`007_werkbank.sql` (in `lib.rs` als Version 7 registriert), die neuen
+StorageAdapter-Methoden in allen drei Adaptern, die fünf neuen
+Core-Bibliotheken samt Tests, `@agentz/design` mit allen vier
+CSS-Schichten plus Icons/Logo, `stores/nav.ts` + `stores/ui.ts`, alle
+Komponenten aus §6, Tastatur laut §7.
+
+**Abweichungen und Präzisierungen gegenüber dem Plan:**
+
+- **App-Schalen**: Desktop und Web rendern nur noch
+  `<AppShell platform=... />` aus `components/Shell/AppShell.tsx`.
+  Plattform-Chrome kommt über Slots: Desktop `sidebarFooterSlot`
+  (UpdateIndicator), Web `topSlot` (Disclaimer + Storage-Badge); das
+  `DesktopOnlyGate` umschließt die Web-App in `main.tsx`.
+- **Boot-Migration**: `migrateLegacyBlocksOnce()` läuft in `AppShell`
+  nach den parallelen Boot-Schritten und vor `markLibraryReady()` -
+  vorher fragt keine Liste den Storage ab und kein Editor öffnet ein
+  Skript.
+- **Web (Dexie)**: kein Versions-Bump. `status` und die Range-Felder
+  werden optional gelesen und in JS gefiltert, ein Index war nicht
+  nötig.
+- **Studio**: `setScriptStatus` und `setFolderLengthRange` sind
+  `notSupported(...)`. Der Status wird nur lesend abgebildet (approved
+  -> `ready`, filmed -> `shot`, alles andere -> `writing`); der
+  Freigabe-Workflow bleibt die Wahrheit. Kein Convex-Schema-Change.
+- **Export-Dialog**: drei Formate (PDF, Teleprompter-Text,
+  ScriptZ-Datei) mit Live-Vorschau über `Export/pdfPreview.ts` (ohne
+  pdf-lib zu laden).
+- **Schreib-Zähler**: das Fenster „total" entspricht den 365 Tagen, die
+  `DailyStatsSummary` abdeckt (UI: „in den letzten 12 Monaten").
+- **Landing**: `AppShell.astro` zeigt die Werkbank als Demo-Chrome
+  (dunkle Seitenleiste, Kopfleiste mit Stufen-Chip, Laufzeit-Pille
+  statt Sprint-Pille).
+
+**Nachgezogene Doku (Phase 5):** Root-`CLAUDE.md` (Workspace
+`packages/design`, Hex-Regel), `apps/desktop/CLAUDE.md`,
+`apps/landing/CLAUDE.md`, `.claude/rules/desktop-architecture.md`
+(komplett neu), `feature-parity.md`, `landing-consistency.md`,
+`i18n.md` (Aufteilung `i18n/parts/*`), `release.md`,
+`docs/studio-spec.md`.
+
+**Bekannte Rest-Punkte (nicht Teil von Phase 5):**
+
+- `docs/feature-laengenziel.md` steht noch auf „geplant, nicht
+  umgesetzt" - Statuszeile aktualisieren.
+- Einige Code-Kommentare beschreiben noch die alte Welt (Tabs, Browser,
+  Status-Strip, Streak): `lib/legacyBlocksMigration.ts` („Not wired
+  into the apps yet"), `stores/saveStatus.ts`, `lib/scriptViewCache.ts`,
+  `lib/scriptsBus.ts`, `lib/saveFlush.ts`, `lib/dailyWords.ts`.
+- `legacy.css` ist eine Übergangsschicht; Aliase löschen, sobald keine
+  Komponente sie mehr nutzt.

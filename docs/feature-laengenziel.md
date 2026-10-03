@@ -1,6 +1,6 @@
 # Feature: Längenziel als Zielbereich (mit Zeitleiste)
 
-> Interne Doku. Stand: 2026-10-02. Status: **geplant, nicht umgesetzt.**
+> Interne Doku. Stand: 2026-10-03. Status: **umgesetzt** im Redesign „Werkbank" (Branch `redesign-werkbank`).
 > Entstanden im Redesign-Konzept „Werkbank". Visuelle Referenz:
 > [`docs/redesign/concept.html`](redesign/concept.html) (Screens
 > Übersicht, Editor, Zeitleiste offen, Fokus, Einstellungen, Dunkel,

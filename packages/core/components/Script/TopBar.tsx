@@ -1,4 +1,4 @@
-import { Show, createEffect, createSignal, onCleanup, type JSX } from "solid-js";
+import { Show, createEffect, createSignal, on, onCleanup, untrack, type JSX } from "solid-js";
 import { Icon, type IconName } from "../Common/Icon";
 import { navStore } from "../../stores/nav";
 import { saveStatusStore } from "../../stores/saveStatus";
@@ -222,10 +222,18 @@ function TipToggle(props: TipToggleProps) {
   onCleanup(hide);
 
   // Re-place when the state flips while the tip is visible (texts change).
-  createEffect(() => {
-    void props.on;
-    if (tip()) queueMicrotask(place);
-  });
+  // Tracks only `props.on`: place() writes a fresh tip object, so reading
+  // tip() reactively here would re-trigger this effect in an endless
+  // microtask loop (froze the renderer on hover).
+  createEffect(
+    on(
+      () => props.on,
+      () => {
+        if (untrack(tip)) queueMicrotask(place);
+      },
+      { defer: true },
+    ),
+  );
 
   const style = (): JSX.CSSProperties => {
     const p = tip();

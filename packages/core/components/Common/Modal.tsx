@@ -85,9 +85,14 @@ export function Modal(props: ModalProps) {
       previousFocus = document.activeElement as HTMLElement | null;
       requestAnimationFrame(() => {
         if (!modalRef) return;
-        const first = modalRef.querySelector<HTMLElement>(
-          'a[href], button:not([disabled]), textarea:not([disabled]), input:not([disabled]), select:not([disabled]), [tabindex]:not([tabindex="-1"])',
-        );
+        // An explicit `autofocus` child wins (e.g. the confirm button of
+        // ConfirmDialog, so ⏎ confirms). The native attribute alone is
+        // ignored for elements inserted while something else has focus.
+        const first =
+          modalRef.querySelector<HTMLElement>("[autofocus]:not([disabled])") ??
+          modalRef.querySelector<HTMLElement>(
+            'a[href], button:not([disabled]), textarea:not([disabled]), input:not([disabled]), select:not([disabled]), [tabindex]:not([tabindex="-1"])',
+          );
         first?.focus();
       });
     } else if (!isOpen && lastOpen) {

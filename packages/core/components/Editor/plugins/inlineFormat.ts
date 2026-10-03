@@ -28,14 +28,17 @@ function findScriptzAncestor(node: LexicalNode | null): BaseScriptzNode | null {
 /** Inline formatting: ⌘B (bold) and ⌘U (underline) in Action and Dialog
  *  blocks. Italic is not available in ScriptZ at all:
  *
- *  - ⌘I / Ctrl+I belongs to the global idea quick-capture. The App-level
+ *  - ⌘I / Ctrl+I belongs to the global idea quick-capture. The shell's
  *    listener sits on `window` in the bubble phase, i.e. it runs AFTER
  *    Lexical's keydown handling on the editor root. Lexical's own default
  *    (`$handleKeyDown`, editor priority) would therefore apply italic
- *    before the capture dialog opens. We claim the key here first:
- *    preventDefault() + return true stops Lexical, but the event is NOT
- *    stopped, so it still bubbles to the window listener (which does not
- *    look at `defaultPrevented`) and quick-capture opens as usual.
+ *    before the capture dialog opens. We claim the key here first with
+ *    `return true` (stops Lexical) but deliberately WITHOUT
+ *    preventDefault(): the shell shortcut handler skips events that are
+ *    already default-prevented, so preventing here would swallow the
+ *    capture. The shell calls preventDefault itself, which also stops the
+ *    browser's native italic; without a shell (e.g. Studio) a native
+ *    `formatItalic` beforeinput ends in the FORMAT_TEXT_COMMAND guard.
  *  - A FORMAT_TEXT_COMMAND guard swallows "italic" from any other source
  *    (context menus, programmatic dispatches, future toolbars). */
 export function installInlineFormat(editor: LexicalEditor): () => void {
@@ -47,10 +50,7 @@ export function installInlineFormat(editor: LexicalEditor): () => void {
         if (!mod) return false;
         const k = event.key.toLowerCase();
 
-        if (k === "i" && !event.altKey) {
-          event.preventDefault();
-          return true;
-        }
+        if (k === "i" && !event.altKey) return true;
 
         if (event.defaultPrevented) return false;
         if (k !== "b" && k !== "u") return false;

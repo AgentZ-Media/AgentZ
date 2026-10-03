@@ -7,8 +7,8 @@ import { StoragePersistedBadge } from "./components/StoragePersistedBadge";
 /**
  * Web shell: the shared Werkbank AppShell plus the browser-only glue -
  * the save flush on tab close / reload and the web chrome (disclaimer
- * banner, storage-persistence badge). The desktop-only gate (< 1024 px)
- * wraps this component in main.tsx.
+ * banner on top, storage-persistence badge in the sidebar footer). The
+ * desktop-only gate (< 1024 px) wraps this component in main.tsx.
  */
 export default function App() {
   // Counterpart to the desktop app's onCloseRequested hook. `beforeunload`
@@ -31,12 +31,10 @@ export default function App() {
   return (
     <AppShell
       platform="web"
-      topSlot={
-        <>
-          <WebDisclaimerBanner />
-          <StoragePersistedBadge />
-        </>
-      }
+      topSlot={<WebDisclaimerBanner />}
+      // Sidebar footer: same spot as the desktop update card, so the badge
+      // never covers editor chrome (runtime readout, timeline).
+      sidebarFooterSlot={<StoragePersistedBadge />}
     />
   );
 }

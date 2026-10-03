@@ -16,13 +16,23 @@ export interface GutterLabelProps {
 
 const GAP_PX = 12;
 
+/** Where the label sits: `left: null` = in the canvas margin outside the
+ *  paper; a number = inside the paper's left margin (px from the sheet). */
+interface GutterPos {
+  top: number;
+  left: number | null;
+}
+
 /**
- * Yellow block-type label in the canvas margin, left of the paper and level
- * with the caret block ("Charakter ⌘2"). Only one at a time, only while the
- * editor has focus, hidden when the margin is too narrow to hold it.
+ * Yellow block-type label level with the caret block ("Charakter ⌘2"). Sits
+ * in the canvas margin left of the paper; when that margin is too narrow
+ * (the usual case with sidebar + inspector open next to the A4 sheet) it
+ * moves into the paper's own left margin, just before the block's text.
+ * Only one at a time, only while the editor has focus, hidden when neither
+ * spot can hold it.
  */
 export function GutterLabel(props: GutterLabelProps) {
-  const [top, setTop] = createSignal<number | null>(null);
+  const [pos, setPos] = createSignal<GutterPos | null>(null);
   let labelRef: HTMLSpanElement | undefined;
   let raf = 0;
 
@@ -32,26 +42,32 @@ export function GutterLabel(props: GutterLabelProps) {
     const caret = props.caret();
     const sheet = props.sheet();
     if (!ed || !caret || !sheet || !props.focused()) {
-      setTop(null);
+      setPos(null);
       return;
     }
     const el = ed.getElementByKey(caret.key);
     if (!el) {
-      setTop(null);
+      setPos(null);
       return;
     }
     const sheetRect = sheet.getBoundingClientRect();
     const canvas = sheet.parentElement;
     const room = canvas ? sheetRect.left - canvas.getBoundingClientRect().left : 0;
-    const need = (labelRef?.offsetWidth ?? 110) + GAP_PX + 8;
-    if (room < need) {
-      setTop(null);
-      return;
-    }
+    const width = labelRef?.offsetWidth ?? 110;
     const r = el.getBoundingClientRect();
     // Centre the 20 px label on the block's first line.
     const lineH = parseFloat(getComputedStyle(el).lineHeight) || 22;
-    setTop(r.top - sheetRect.top + Math.max(0, (lineH - 20) / 2));
+    const top = r.top - sheetRect.top + Math.max(0, (lineH - 20) / 2);
+    if (room >= width + GAP_PX + 8) {
+      setPos({ top, left: null });
+      return;
+    }
+    // Inside the paper: right edge a gap before where the block's text
+    // starts (centred Character names and indented Dialog leave more room
+    // than Action, which starts at the paper margin).
+    const textLeft = textStartX(el) - sheetRect.left;
+    const left = textLeft - GAP_PX - width;
+    setPos(left >= 4 ? { top, left } : null);
   };
 
   const schedule = () => {
@@ -89,9 +105,11 @@ export function GutterLabel(props: GutterLabelProps) {
           class="ss-gut"
           aria-hidden="true"
           style={{
-            top: `${top() ?? 0}px`,
-            visibility: top() === null ? "hidden" : "visible",
-            right: `calc(100% + ${GAP_PX}px)`,
+            top: `${pos()?.top ?? 0}px`,
+            visibility: pos() === null ? "hidden" : "visible",
+            ...(pos()?.left != null
+              ? { left: `${pos()?.left}px` }
+              : { right: `calc(100% + ${GAP_PX}px)` }),
           }}
         >
           {blockLabel(c().type)}
@@ -100,6 +118,19 @@ export function GutterLabel(props: GutterLabelProps) {
       )}
     </Show>
   );
+}
+
+/** Viewport x where the block's first line of text begins. Uses the first
+ *  rendered inline box (an empty block still renders its placeholder line);
+ *  falls back to the block's content box. */
+function textStartX(el: HTMLElement): number {
+  const range = document.createRange();
+  range.selectNodeContents(el);
+  const first = Array.from(range.getClientRects()).find((rc) => rc.width > 0 || rc.height > 0);
+  range.detach();
+  if (first) return first.left;
+  const r = el.getBoundingClientRect();
+  return r.left + (parseFloat(getComputedStyle(el).paddingLeft) || 0);
 }
 
 export default GutterLabel;

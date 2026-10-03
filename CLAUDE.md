@@ -1,11 +1,20 @@
 # ScriptZ - Monorepo
 
-pnpm-Workspace mit vier Apps und einem geteilten Core:
+pnpm-Workspace mit vier Apps, einem geteilten Core und einem Designsystem:
 
 - [`packages/core/`](packages/core/) - **alle gemeinsame Logik**: Editor,
-  Lexical-Nodes, Plugins, UI-Komponenten, Stores, Business-Logik,
-  Styles/Tokens. Beide Apps importieren von hier via `@scriptz/core`.
-  Darf **nie** `@tauri-apps/*` importieren (ESLint-Rule blockt das).
+  Lexical-Nodes, Plugins, UI-Komponenten inkl. der kompletten App-Schale
+  (`components/Shell/AppShell.tsx`), Stores, Business-Logik,
+  ScriptZ-spezifische Tokens (Charakter-Palette, A4-Geometrie,
+  Papier-Schrift). Desktop, Web und Studio importieren von hier via
+  `@scriptz/core`. Darf **nie** `@tauri-apps/*` importieren
+  (ESLint-Rule blockt das).
+- [`packages/design/`](packages/design/) - **`@agentz/design`**, das
+  Designsystem der AgentZ-Suite (Redesign „Werkbank", 2026-10):
+  semantische Tokens hell/dunkel, Alias-Schicht für alte Token-Namen,
+  Komponenten-Primitive (`.btn`, `.chip`, `.menu`, `.dlg`, ...),
+  UI-Schrift, Icons, Logo. Reines CSS + Daten-Module, kein Framework.
+  Details in [`packages/design/README.md`](packages/design/README.md).
 - [`apps/desktop/`](apps/desktop/) - die Tauri-Desktop-App (Solid + Rust + Lexical).
   Dünne Schale: registriert `PlatformAdapter` (Tauri-Dialoge, Auto-Updater)
   und `StorageAdapter` (SQLite). Eigene [`CLAUDE.md`](apps/desktop/CLAUDE.md)
@@ -32,6 +41,13 @@ landet zuerst in `packages/core/` - dann profitieren beide Apps
 automatisch. Eine App-spezifische Implementierung gibt es nur, wenn
 die Plattform es erzwingt (Tauri-only-API vs. Browser-only-API).
 
+**Keine Hex- oder rgb-Farbwerte außerhalb von `packages/design/`.**
+App-Code (Core, Desktop, Web, Studio) referenziert nur `var(--token)`.
+Ausnahmen: Inhaltsfarben, die Daten sind (Charakter-Palette in
+`packages/core/styles/tokens.css`, `characterColors.ts`), und
+OS-Chrome-Nachbauten (macOS-Trafficlights). Die Landing ist davon
+ausgenommen, sie pflegt eigene Tokens.
+
 Die Landing bleibt davon getrennt - sie ist Marketing, keine App.
 Wenn die Landing eine Information aus den Apps braucht (z.B. die
 aktuelle Version), holt sie sie zur Build-Zeit von GitHub Releases,
@@ -44,13 +60,20 @@ wenn Claude Dateien im jeweiligen Scope anfasst:
 
 - [`feature-parity.md`](.claude/rules/feature-parity.md) - Desktop/Web-
   Adapter-Pattern, was in `core` vs. App lebt, wann eine Differenz OK
-  ist. Lädt bei `apps/desktop/**`, `apps/web/**`, `packages/core/**`.
+  ist. Lädt bei `apps/desktop/**`, `apps/web/**`, `packages/core/**`,
+  `packages/design/**`.
+- [`desktop-architecture.md`](.claude/rules/desktop-architecture.md) -
+  Layout von `packages/core`, `packages/design` und der Desktop-Schale,
+  Datenmodell (Stufen, Zielbereich), Legacy-Block-Migration, Data-Flow.
+  Lädt bei `apps/desktop/**`-Quellen, `packages/core/**`,
+  `packages/design/**`.
 - [`i18n.md`](.claude/rules/i18n.md) - Mehrsprachigkeit (App + Landing),
   was als User-sichtbar zählt, Anti-Pattern. Lädt bei i18n-Katalogen
   und allen `.ts/.tsx/.astro` in `apps/` und `packages/core/`.
 - [`landing-consistency.md`](.claude/rules/landing-consistency.md) -
   Wann eine App-Änderung die Landing mit-anpassen muss. Lädt bei
-  `apps/landing/**`, App-Quellcode, `packages/core/styles/**`.
+  `apps/landing/**`, App-Quellcode, `packages/core/components/**`,
+  `packages/core/styles/**`, `packages/design/**`.
 - [`release.md`](.claude/rules/release.md) - Release-Checkliste,
   Asset-Naming, Notes schreiben, Workflow-Recovery. Lädt bei
   Versionsdateien, `docs/release-notes/**`, `.github/workflows/release.yml`.

@@ -1,4 +1,4 @@
-import { For, Show, createMemo, createSignal, type JSX } from "solid-js";
+import { For, Show, createEffect, createMemo, createSignal, on, onCleanup, type JSX } from "solid-js";
 import { Icon } from "../Common/Icon";
 import { formatClock, formatRange, lengthStatus, type LengthRange } from "../../lib/lengthGoal";
 import type { TimelineSegment } from "../../lib/timing";
@@ -129,6 +129,12 @@ export function Timeline(props: TimelineProps) {
     setTip(null);
     props.onHover(null);
   };
+  // Collapsing (⌘J) or unmounting (focus mode) while a section is hovered
+  // removes it without a mouseleave - drop the tooltip and the paper link.
+  createEffect(on(() => props.open, (open) => !open && tip() && onLeave(), { defer: true }));
+  onCleanup(() => {
+    if (tip()) onLeave();
+  });
 
   // Mini track: click anywhere jumps to the section under the pointer.
   const onMiniClick = (ev: MouseEvent) => {
@@ -215,7 +221,9 @@ export function Timeline(props: TimelineProps) {
     const max = props.range?.maxSec ?? null;
     return axisTicks(w).ticks.map((sec) => ({
       sec,
-      hidden: sec !== 0 && (near(sec, min) || near(sec, max) || near(sec, props.playhead)),
+      // The 0:00 tick survives the range labels but yields to the playhead
+      // label (which then shows the same time) - otherwise the two overlap.
+      hidden: (sec !== 0 && (near(sec, min) || near(sec, max))) || near(sec, props.playhead),
     }));
   });
 
