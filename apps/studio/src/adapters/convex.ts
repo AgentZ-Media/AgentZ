@@ -338,6 +338,14 @@ class ConvexStorageAdapter implements StorageAdapter {
   async clearCharacterColor(): Promise<string[]> {
     return [];
   }
+  // The registry cleanup lives in the desktop/web settings, which Studio
+  // doesn't render; colours here are per client and shared by the agency.
+  async findUnusedCharacterNames(): Promise<string[]> {
+    return [];
+  }
+  async pruneUnusedCharacterNames(): Promise<string[]> {
+    return [];
+  }
 
   // ===== Export =====
   async exportPdf(input: ExportPdfRequest): Promise<ExportResult> {

@@ -1,21 +1,42 @@
-import { For, Show, createSignal, onMount } from "solid-js";
+import { For, Show, createEffect, createSignal, on } from "solid-js";
 import { api } from "../../../lib/api";
+import { runCharacterPrune } from "../../../lib/characterAutoPrune";
+import { characterUsageBus } from "../../../lib/characterUsage";
+import { flushAll } from "../../../lib/saveFlush";
 import { scriptsBus } from "../../../lib/scriptsBus";
+import { settingsStore } from "../../../stores/settings";
 import { pushToast } from "../../../stores/toasts";
-import { localeCompare, t } from "../../../i18n";
+import { localeCompare, t, tPlural } from "../../../i18n";
 import type { CharacterColorRecord } from "../../../lib/types";
+import { confirmDialog } from "../../Common/ConfirmDialog";
 // TODO(integration): the colour picker lives with the editor (package D);
 // follow it if it moves.
 import { ColorPickerPopover } from "../../Editor/ColorPickerPopover";
-import { SectionHead } from "./parts";
+import { Row, SectionHead, Switch } from "./parts";
+
+/** Names listed in the cleanup confirmation before "and N more". */
+const CONFIRM_NAME_LIMIT = 12;
+
+function nameList(names: string[]): string {
+  if (names.length <= CONFIRM_NAME_LIMIT) return names.join(", ");
+  return t("prefs.characters.cleanup.more", {
+    names: names.slice(0, CONFIRM_NAME_LIMIT).join(", "),
+    count: names.length - CONFIRM_NAME_LIMIT,
+  });
+}
 
 /** App-wide character colours: every known character with its effective
  *  colour. Clicking the swatch changes it, "Zurücksetzen" drops a manual
- *  override (only shown when one exists). */
+ *  override (only shown when one exists). On top: the registry cleanup -
+ *  a one-off "check now" (lists unused names, deletes after confirmation)
+ *  and the switch that keeps it clean automatically. */
 export function SettingsCharacters(props: { onClose(): void }) {
   const [records, setRecords] = createSignal<CharacterColorRecord[]>([]);
   const [loaded, setLoaded] = createSignal(false);
   const [picker, setPicker] = createSignal<{ name: string; color: string; x: number; y: number } | null>(null);
+  const [checking, setChecking] = createSignal(false);
+  // Result of the last check: names marked "nicht verwendet" in the list.
+  const [unused, setUnused] = createSignal<Set<string>>(new Set());
 
   async function reload() {
     try {
@@ -31,7 +52,63 @@ export function SettingsCharacters(props: { onClose(): void }) {
       setLoaded(true);
     }
   }
-  onMount(() => void reload());
+  // Initial load plus every registry cleanup (manual or automatic).
+  createEffect(on(characterUsageBus.registryVersion, () => void reload()));
+
+  const failed = (err: unknown) =>
+    pushToast(t("prefs.characters.cleanup.failed", { message: (err as Error)?.message ?? String(err) }), "error");
+
+  async function checkUnused() {
+    if (checking()) return;
+    setChecking(true);
+    try {
+      // Pending editor saves first, so a name typed a moment ago counts.
+      await flushAll();
+      const [names, all] = await Promise.all([api.findUnusedCharacterNames(), api.listCharacterColors()]);
+      setUnused(new Set(names));
+      if (names.length === 0) {
+        pushToast(t("prefs.characters.cleanup.allUsed"), "ok");
+        return;
+      }
+      const ok = await confirmDialog({
+        title: tPlural("prefs.characters.cleanup.title", names.length),
+        body: t("prefs.characters.cleanup.body", {
+          used: tPlural("prefs.characters.cleanup.used", Math.max(0, all.length - names.length)),
+          names: nameList(names),
+        }),
+        confirmLabel: t("prefs.characters.cleanup.confirm"),
+        danger: true,
+      });
+      if (!ok) return;
+      const removed = await api.pruneUnusedCharacterNames(names);
+      setUnused(new Set<string>());
+      pushToast(tPlural("prefs.characters.cleanup.done", removed.length), "ok");
+    } catch (err) {
+      failed(err);
+    } finally {
+      setChecking(false);
+    }
+  }
+
+  async function setAutoPrune(enabled: boolean) {
+    try {
+      await settingsStore.setPruneUnusedCharacters(enabled);
+    } catch (err) {
+      failed(err);
+      return;
+    }
+    if (!enabled) return;
+    // Switching it on cleans up right away - what "only keep names in use"
+    // promises. Later drops are handled in the background.
+    try {
+      await flushAll();
+      const removed = await runCharacterPrune();
+      setUnused(new Set<string>());
+      if (removed.length > 0) pushToast(tPlural("prefs.characters.cleanup.done", removed.length), "ok");
+    } catch (err) {
+      failed(err);
+    }
+  }
 
   const colorOf = (r: CharacterColorRecord) => r.override_color ?? r.default_color ?? "";
 
@@ -62,6 +139,24 @@ export function SettingsCharacters(props: { onClose(): void }) {
   return (
     <>
       <SectionHead title={t("prefs.characters.title")} sub={t("prefs.characters.sub")} onClose={props.onClose} />
+      <Row label={t("prefs.characters.autoPrune.label")} help={t("prefs.characters.autoPrune.help")}>
+        <Switch
+          checked={settingsStore.pruneUnusedCharacters()}
+          onChange={(v) => void setAutoPrune(v)}
+          label={t("prefs.characters.autoPrune.label")}
+        />
+      </Row>
+      <Row label={t("prefs.characters.cleanup.label")} help={t("prefs.characters.cleanup.help")}>
+        <button
+          type="button"
+          class="btn sm"
+          disabled={checking() || records().length === 0}
+          aria-busy={checking()}
+          onClick={() => void checkUnused()}
+        >
+          {checking() ? t("prefs.characters.cleanup.busy") : t("prefs.characters.cleanup.button")}
+        </button>
+      </Row>
       <Show
         when={records().length > 0}
         fallback={
@@ -89,6 +184,9 @@ export function SettingsCharacters(props: { onClose(): void }) {
                   <span class="set-char-name">{rec.name}</span>
                   <Show when={rec.override_color}>
                     <span class="set-char-tag">{t("prefs.characters.custom")}</span>
+                  </Show>
+                  <Show when={unused().has(rec.name)}>
+                    <span class="set-char-tag">{t("prefs.characters.unused")}</span>
                   </Show>
                 </div>
                 <Show when={rec.override_color}>

@@ -32,6 +32,7 @@ import {
   upsertDefaultColor,
   type ColorRecord,
 } from "./characterColors";
+import { characterUsageBus, dropsCharacterNames } from "./characterUsage";
 import { countWordsInContent, recordWordDelta } from "./dailyWords";
 import { getDb } from "./db";
 import { INBOX_FOLDER_ID } from "./folders";
@@ -393,6 +394,7 @@ export async function updateScript(input: UpdateScriptInput): Promise<ScriptSumm
     const records = await loadColorRecords();
     let delta = 0;
     let attempts = 0;
+    let droppedNames = false;
     while (true) {
       attempts++;
       const metaRows = await db.select<{
@@ -407,12 +409,9 @@ export async function updateScript(input: UpdateScriptInput): Promise<ScriptSumm
         throw new Error(`not found: script ${input.id}`);
       }
       const lastWordCount = metaRows[0]?.last_word_count ?? 0;
-      const charsJson = await reconcileCharsMeta(
-        metaRows[0]?.characters_meta ?? "[]",
-        contentJson,
-        records,
-        now,
-      );
+      const prevMeta = metaRows[0]?.characters_meta ?? "[]";
+      const charsJson = await reconcileCharsMeta(prevMeta, contentJson, records, now);
+      droppedNames = dropsCharacterNames(parseCharsMeta(prevMeta), parseCharsMeta(charsJson));
 
       // last_word_count === -1 is the sentinel from migration 003 for
       // existing scripts: the first save after the update only normalizes
@@ -474,6 +473,7 @@ export async function updateScript(input: UpdateScriptInput): Promise<ScriptSumm
       }
     }
 
+    if (droppedNames) characterUsageBus.notifyNamesDropped();
     if (delta > 0) {
       try {
         await recordWordDelta(delta);
@@ -525,12 +525,8 @@ export async function writeRestoredContent(
   if (metaRows.length === 0) {
     throw new Error(`not found: script ${id}`);
   }
-  const charsJson = await reconcileCharsMeta(
-    metaRows[0]?.characters_meta ?? "[]",
-    contentJson,
-    records,
-    now,
-  );
+  const prevMeta = metaRows[0]?.characters_meta ?? "[]";
+  const charsJson = await reconcileCharsMeta(prevMeta, contentJson, records, now);
   // Unconditional on purpose: a concurrent CAS save in updateScript sees
   // the changed last_word_count and retries against the restored baseline.
   await db.execute(
@@ -549,6 +545,9 @@ export async function writeRestoredContent(
     ],
   );
   await refreshFtsForScript(id);
+  if (dropsCharacterNames(parseCharsMeta(prevMeta), parseCharsMeta(charsJson))) {
+    characterUsageBus.notifyNamesDropped();
+  }
 }
 
 export async function archiveScript(id: string): Promise<void> {
@@ -572,8 +571,15 @@ export async function restoreScript(id: string): Promise<void> {
  *  removed explicitly because the virtual table has no FK link. */
 export async function purgeScript(id: string): Promise<void> {
   const db = await getDb();
+  const metaRows = await db.select<{ characters_meta: string }[]>(
+    "SELECT characters_meta FROM scripts WHERE id = $1",
+    [id],
+  );
   await db.execute("DELETE FROM scripts WHERE id = $1", [id]);
   await deleteScriptFts(id);
+  if (parseCharsMeta(metaRows[0]?.characters_meta ?? "[]").length > 0) {
+    characterUsageBus.notifyNamesDropped();
+  }
 }
 
 /** Backfills `dialog_word_count` and `direction_block_count` for all
@@ -620,7 +626,8 @@ export async function emptyTrash(): Promise<void> {
     "DELETE FROM scripts_fts WHERE script_id IN " +
       "(SELECT id FROM scripts WHERE archived_at IS NOT NULL)",
   );
-  await db.execute("DELETE FROM scripts WHERE archived_at IS NOT NULL");
+  const res = await db.execute("DELETE FROM scripts WHERE archived_at IS NOT NULL");
+  if (res.rowsAffected > 0) characterUsageBus.notifyNamesDropped();
 }
 
 // ---------- internal helpers ----------
