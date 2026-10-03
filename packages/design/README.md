@@ -54,7 +54,7 @@ import { LOGO_DOTS, LOGO_VIEWBOX, LOGO_DOT_R } from "@agentz/design/logo";
 ## Logo and app icon
 
 `logo.ts` is the single source of truth for the dot-matrix Z. In-app it is
-drawn by `AppMark` (`packages/core/components/Common/AppMark.tsx`, styles
+drawn by `AppMark` (`modules/scriptz/components/Common/AppMark.tsx`, styles
 `.app-mark` in `components.css`). Standalone files live in `assets/`:
 
 | File | Use |
@@ -71,7 +71,7 @@ pnpm --filter @agentz/design build:logo   # needs Node >= 22.18 + Google Chrome
 ```
 
 The script writes `assets/` and the complete Tauri icon set
-(`apps/desktop/src-tauri/icons/`, via `tauri icon`: icns, ico, Windows
+(`apps/scriptz/src-tauri/icons/`, via `tauri icon`: icns, ico, Windows
 Store tiles, iOS, Android). To change the icon, change
 `logo.ts` or the palette at the top of `scripts/build-logo.mjs` (keep it in
 sync with `.app-mark.is-light` / `.is-dark`) and rerun the script.

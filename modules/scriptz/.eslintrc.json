@@ -1,0 +1,15 @@
+{
+  "rules": {
+    "no-restricted-imports": [
+      "error",
+      {
+        "patterns": [
+          {
+            "group": ["@tauri-apps/*"],
+            "message": "@agentz/scriptz must stay platform-neutral. Tauri-specific glue belongs in apps/scriptz/src/lib/platform.ts (the host adapter). If you need a native capability here, add a method to PlatformAdapter in lib/platform.ts and call it via getPlatformAdapter()."
+          }
+        ]
+      }
+    ]
+  }
+}

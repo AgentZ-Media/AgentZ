@@ -3,17 +3,17 @@
 
 @font-face {
   font-family: "iA Writer Quattro";
-  src: url("../../packages/core/assets/fonts/iAWriterQuattroS-Regular.woff2") format("woff2");
+  src: url("../../modules/scriptz/assets/fonts/iAWriterQuattroS-Regular.woff2") format("woff2");
   font-weight: 400;
 }
 @font-face {
   font-family: "iA Writer Quattro";
-  src: url("../../packages/core/assets/fonts/iAWriterQuattroS-Bold.woff2") format("woff2");
+  src: url("../../modules/scriptz/assets/fonts/iAWriterQuattroS-Bold.woff2") format("woff2");
   font-weight: 700;
 }
 @font-face {
   font-family: "iA Writer Quattro";
-  src: url("../../packages/core/assets/fonts/iAWriterQuattroS-Italic.woff2") format("woff2");
+  src: url("../../modules/scriptz/assets/fonts/iAWriterQuattroS-Italic.woff2") format("woff2");
   font-style: italic;
 }
 

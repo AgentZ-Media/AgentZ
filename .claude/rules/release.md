@@ -1,18 +1,27 @@
 ---
 paths:
-  - "apps/desktop/package.json"
-  - "apps/desktop/src-tauri/tauri.conf.json"
-  - "apps/desktop/src-tauri/Cargo.toml"
-  - "apps/desktop/src-tauri/Cargo.lock"
+  - "apps/scriptz/package.json"
+  - "apps/scriptz/src-tauri/tauri.conf.json"
+  - "apps/scriptz/src-tauri/Cargo.toml"
+  - "apps/scriptz/src-tauri/Cargo.lock"
   - "docs/release-notes/**"
   - ".github/workflows/release.yml"
 ---
 
 # Release / Deploy
 
+Aktueller Stand: Diese Pipeline veröffentlicht nur ScriptZ aus
+`apps/scriptz/` mit Tags `vX.Y.Z`. App-Präfixe und getrennte
+Update-Kanäle entstehen erst in Phase 6 des Suite-Fundaments.
+
+`pnpm install --frozen-lockfile` prüft ausschließlich `pnpm-lock.yaml`.
+Es schützt **nicht** `Cargo.lock`; dafür müssen Cargo-Befehle mit
+`--locked` laufen. Der Cargo-Workspace und seine CI-Prüfung folgen
+in Phase 3; aktuell liegt das Rust-Lockfile in `apps/scriptz/src-tauri/`.
+
 ## Deploy-Targets
 
-- **Desktop**: GitHub Actions ([`.github/workflows/release.yml`](.github/workflows/release.yml))
+- **Desktop**: GitHub Actions ([`.github/workflows/release.yml`](../../.github/workflows/release.yml))
   baut beim Pushen eines `vX.Y.Z`-Tags **zwei** Bundles sequenziell:
   zuerst auf `macos-26` (aarch64-apple-darwin → `.dmg` + Updater-
   `.app.tar.gz`), danach auf `windows-latest` (x86_64-pc-windows-msvc
@@ -27,12 +36,12 @@ paths:
 Bei einem neuen Release `vX.Y.Z` müssen **vier Dateien** synchron
 gehalten werden:
 
-1. `apps/desktop/package.json` - `version`
-2. `apps/desktop/src-tauri/tauri.conf.json` - `version`
-3. `apps/desktop/src-tauri/Cargo.toml` - `[package].version`
-4. `apps/desktop/src-tauri/Cargo.lock` - Version des Pakets `scriptz`
+1. `apps/scriptz/package.json` - `version`
+2. `apps/scriptz/src-tauri/tauri.conf.json` - `version`
+3. `apps/scriptz/src-tauri/Cargo.toml` - `[package].version`
+4. `apps/scriptz/src-tauri/Cargo.lock` - Version des Pakets `scriptz`
 
-Zusätzlich `docs/release-notes/vX.Y.Z.md` mit dem Changelog seit dem
+Zusätzlich `docs/release-notes/scriptz/vX.Y.Z.md` mit dem Changelog seit dem
 letzten Tag anlegen (siehe nächster Abschnitt). Der Release-Workflow
 bricht ab, wenn diese Datei fehlt.
 
@@ -63,7 +72,7 @@ Repo-Root ist auf Englisch und bleibt es. Die App-i18n bleibt davon
 unberührt (siehe `.claude/rules/i18n.md`).
 
 Pro Release **eine** Markdown-Datei unter
-[`docs/release-notes/vX.Y.Z.md`](docs/release-notes/) anlegen. Inhalt
+[`docs/release-notes/scriptz/vX.Y.Z.md`](../../docs/release-notes/scriptz/) anlegen. Inhalt
 **immer auf Englisch**:
 
 - **Erste Zeile:** kurzes Headline-Statement, was dieses Release
@@ -83,7 +92,7 @@ Release-Workflow automatisch dran - **niemals** in die per-Version-
 Datei kopieren. Sie liegt in `docs/release-notes/_install_footer.md`
 und ist ebenfalls auf Englisch.
 
-Als Vorlage: [`docs/release-notes/v0.6.0.md`](docs/release-notes/v0.6.0.md).
+Als Vorlage: [`docs/release-notes/scriptz/v0.6.0.md`](../../docs/release-notes/scriptz/v0.6.0.md).
 
 Workflow-Verhalten: ist die Datei vor dem Tag-Push commited, baut der
 Release-Workflow Body = Datei-Inhalt + Install-Footer. Vergisst man
@@ -101,7 +110,7 @@ Sobald der Tag-Push erfolgreich gebaut hat, läuft alles weitere ohne
 manuelle Schritte:
 
 1. **Job `prepare-notes`** (ubuntu): liest
-   `docs/release-notes/vX.Y.Z.md` + `_install_footer.md` und gibt den
+   `docs/release-notes/scriptz/vX.Y.Z.md` + `_install_footer.md` und gibt den
    Body als Output weiter. Bricht ab, wenn die Notes-Datei fehlt.
 2. **Job `build-macos`** (macos-26): baut `.dmg` + signiertes
    `.app.tar.gz`. Legt das GitHub-Release-Objekt an, lädt Assets hoch

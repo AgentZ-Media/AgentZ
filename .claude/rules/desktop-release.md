@@ -1,7 +1,7 @@
 ---
 paths:
-  - "apps/desktop/package.json"
-  - "apps/desktop/src-tauri/**"
+  - "apps/scriptz/package.json"
+  - "apps/scriptz/src-tauri/**"
   - "README.md"
 ---
 
@@ -14,10 +14,10 @@ Details (Signing, Plattform-Setup, In-App-Updater, Versionen in vier Dateien).
 
 Auto-update is the official `tauri-plugin-updater` flow, same shape as
 NoteZ. The frontend does `check() → downloadAndInstall() → relaunch()`
-in [`src/components/Common/UpdateIndicator.tsx`](src/components/Common/UpdateIndicator.tsx);
+in [`src/components/Common/UpdateIndicator.tsx`](../../apps/scriptz/src/components/Common/UpdateIndicator.tsx);
 the manual "Jetzt prüfen" button in Settings goes through the same
 plugin. Updates are signed with a minisign keypair - the public key is
-embedded in [`src-tauri/tauri.conf.json`](src-tauri/tauri.conf.json),
+embedded in [`src-tauri/tauri.conf.json`](../../apps/scriptz/src-tauri/tauri.conf.json),
 the private key lives at `~/.tauri/scriptz_updater.key` (no password)
 and is mirrored to the GitHub repo secret
 `TAURI_SIGNING_PRIVATE_KEY`. **Lose the private key and you lose the
@@ -44,14 +44,14 @@ sequenziell - vollständige Beschreibung in
 Der Desktop-Bump hält dieselben **vier Dateien** wie die zentrale
 Release-Checkliste synchron:
 
-1. `apps/desktop/package.json` → `version`
-2. `apps/desktop/src-tauri/Cargo.toml` → `[package].version`
-3. `apps/desktop/src-tauri/Cargo.lock` → Version des Pakets `scriptz`
-4. `apps/desktop/src-tauri/tauri.conf.json` → `version`
+1. `apps/scriptz/package.json` → `version`
+2. `apps/scriptz/src-tauri/Cargo.toml` → `[package].version`
+3. `apps/scriptz/src-tauri/Cargo.lock` → Version des Pakets `scriptz`
+4. `apps/scriptz/src-tauri/tauri.conf.json` → `version`
 
 Cargo aktualisiert den Lock-Eintrag beim nächsten Lauf; die Änderung
-muss ebenfalls eingecheckt werden. Das README-Badge lädt die aktuelle
-Release-Version direkt von GitHub und braucht keinen manuellen Bump.
+muss ebenfalls eingecheckt werden. Der Download-Link in der README zeigt auf den neuesten GitHub-Release
+und braucht keinen manuellen Versions-Bump.
 
 Nach Freigabe und Merge: `git tag -a vX.Y.Z -m "ScriptZ vX.Y.Z"`,
 dann `git push origin vX.Y.Z`. Release-Notes vorher gemäß

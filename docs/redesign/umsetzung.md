@@ -1,6 +1,6 @@
 # Umsetzung Redesign „Werkbank" - Arbeitsplan & Schnittstellen
 
-> Historischer Redesign-Stand. Alte Web-/Landing-Pfade beschreiben den damaligen Bestand; den aktuellen Umbau dokumentiert [AgentZ Suite](../agentz-suite-fundament.md).
+> Historischer Redesign-Stand, keine aktuelle Arbeitsanweisung. Alte Pfade, Paketnamen und Regeln beschreiben den damaligen Bestand: `apps/desktop` heißt heute `apps/scriptz`, `packages/core` heißt `modules/scriptz` (`@agentz/scriptz`). Web-App und Landing wurden entfernt. Den aktuellen Umbau dokumentiert [AgentZ Suite](../agentz-suite-fundament.md); aktuelle Regeln stehen in [CLAUDE.md](../../CLAUDE.md).
 
 > Interne Doku. Stand: 2026-10-03. Branch: `redesign-werkbank`.
 > Verbindliche Grundlage für alle Arbeitspakete. Visuelle Referenz ist

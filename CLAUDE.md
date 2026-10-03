@@ -1,78 +1,115 @@
-# ScriptZ - Monorepo
+# AgentZ Suite - Monorepo
 
-pnpm-Workspace mit einer Desktop-App, einem Core und einem Designsystem:
+pnpm-Workspace für eigenständige lokale Desktop-Tools für Content Creator.
+Repository: `AgentZ-Media/AgentZ`, Root-Paket: `agentz`.
+ScriptZ ist derzeit die einzige App. Der
+[Fundament-Plan](docs/agentz-suite-fundament.md) beschreibt den schrittweisen
+Umbau; die nachfolgende Trennung von Bestand und Ziel ist verbindlich.
 
-- [`packages/core/`](packages/core/) - **alle gemeinsame Logik**: Editor,
-  Lexical-Nodes, Plugins, UI-Komponenten inkl. der kompletten App-Schale
-  (`components/Shell/AppShell.tsx`), Stores, Business-Logik,
-  ScriptZ-spezifische Tokens (Charakter-Palette, A4-Geometrie,
-  Papier-Schrift). Die Desktop-Schale importiert von hier via
-  `@scriptz/core`. Darf **nie** `@tauri-apps/*` importieren.
-  Die vorhandene ESLint-Regel wird erst mit dem Tooling-Ausbau in
-  Phase 3 automatisch geprüft.
-- [`packages/design/`](packages/design/) - **`@agentz/design`**, das
-  Designsystem der AgentZ-Suite (Redesign „Werkbank", 2026-10):
-  semantische Tokens hell/dunkel, Alias-Schicht für alte Token-Namen,
-  Komponenten-Primitive (`.btn`, `.chip`, `.menu`, `.dlg`, ...),
-  UI-Schrift, Icons, Logo. Reines CSS + Daten-Module, kein Framework.
-  Details in [`packages/design/README.md`](packages/design/README.md).
-- [`apps/desktop/`](apps/desktop/) - die Tauri-Desktop-App (Solid + Rust + Lexical).
-  Dünne Schale: registriert `PlatformAdapter` (Tauri-Dialoge, Auto-Updater)
-  und `StorageAdapter` (SQLite). Eigene [`CLAUDE.md`](apps/desktop/CLAUDE.md)
-  mit App-spezifischen Details.
+## Aktuelle Struktur (Phase 2)
 
-## Konvention
+- [`apps/scriptz/`](apps/scriptz/) - `@agentz/scriptz-app`, die dünne
+  Tauri-Schale für ScriptZ. Registriert Plattform- und Speicheranbindung,
+  native Dialoge, Auto-Updater und Save-Flush beim Fensterschließen.
+  Rust verdrahtet Plugins und SQL-Migrationen. App-Regeln stehen in
+  [`apps/scriptz/CLAUDE.md`](apps/scriptz/CLAUDE.md).
+- [`modules/scriptz/`](modules/scriptz/) - `@agentz/scriptz`, derzeit
+  **alle ScriptZ-Logik und UI**: Editor, Lexical-Nodes, Plugins, App-Schale,
+  Stores, Business-Logik und Export-Generatoren. Enthält noch gemeinsame
+  Kandidaten für das spätere Kit. Darf **nie** `@tauri-apps/*` importieren.
+- [`packages/design/`](packages/design/) - `@agentz/design`, das
+  Designsystem der Suite: semantische Tokens hell/dunkel, Legacy-Aliasse,
+  CSS-Primitive, UI-Schrift, Icons und Logo. Reines CSS und Daten-Module,
+  kein Framework. Details in der [Paket-README](packages/design/README.md).
+- [`docs/release-notes/scriptz/`](docs/release-notes/scriptz/) -
+  ScriptZ-Release-Notes. Der gemeinsame Install-Footer bleibt in
+  `docs/release-notes/_install_footer.md`.
 
-Produktlogik und UI leben in `packages/core/`: Editor, Lexical-Nodes,
-Plugins, App-Schale, Stores, Business-Logik und Export-Generatoren.
-`apps/desktop/` verdrahtet diese mit dem Betriebssystem. Tauri-Imports,
-native Dialoge, Dateizugriff, Update-Polling und Save-Flush beim
-Fensterschließen bleiben in der Desktop-Schale.
+Aktuelle Abhängigkeitsrichtung:
 
-Der Core greift über `PlatformAdapter` (`lib/platform.ts`) auf
+```text
+apps/scriptz -> modules/scriptz -> packages/design
+```
+
+## Zielstruktur (noch nicht umgesetzt)
+
+`@agentz/kit` entsteht in Phase 4, `@agentz/desktop` und die Rust-Crate
+`crates/agentz-desktop` in Phase 5. Website und Generator folgen später.
+Keine dieser Komponenten darf heute als vorhanden vorausgesetzt werden.
+
+```text
+apps/<app> -> modules/<app> -> packages/kit -> packages/design
+    |                              ^
+    +------> packages/desktop ------+
+```
+
+- `design` importiert nichts aus dem Repo.
+- `kit` importiert nur `design`: keine Tauri-Imports und kein Produktwissen.
+- `desktop` importiert `kit` und Tauri, keine Module.
+- Produktmodule importieren `kit` und `design`, keine Apps oder anderen Module.
+- Apps verdrahten Produktmodul und Host; `apps/site` nutzt nur `design`.
+
+ESLint-Grenzen, gemeinsames Test-Preset, TS-Basis und Cargo-Workspace
+folgen in Phase 3. Die bisherige ESLint-Regel ist noch nicht automatisiert.
+Aktuell liegt `Cargo.lock` in `apps/scriptz/src-tauri/`. Das Release-Schema
+bleibt bis Phase 6 `vX.Y.Z`; der App-Name bleibt ScriptZ.
+
+## Konventionen während des Umbaus
+
+ScriptZ behält sein Verhalten. Produktlogik und UI leben vorerst in
+`modules/scriptz/`, OS-Integration in `apps/scriptz/`. Allgemeine Bausteine
+werden erst in ihren vorgesehenen Phasen extrahiert.
+
+Das Modul greift über `PlatformAdapter` (`lib/platform.ts`) auf
 Plattformdienste zu. `StorageAdapter` (`lib/storage.ts`) beschreibt den
-Datenzugriff; `lib/api.ts` registriert den SQL-Default. Die SQLite-
-Verbindung liefert `PlatformAdapter.getDb()`. Neue Datenzugriffe
-müssen Interface und Implementierung aktualisieren. Schemaänderungen
-laufen über additive SQL-Migrationen in `apps/desktop/src-tauri/`.
-Änderungen am Datenmodell auch im `.scriptz`-Import/Export abbilden.
-Capability-Flags wie `supportsDirectoryWrite` bleiben erhalten.
+Datenzugriff; `lib/api.ts` registriert den SQL-Default. Die SQLite-Verbindung
+liefert `PlatformAdapter.getDb()`. Neue Datenzugriffe müssen Interface und
+Implementierung aktualisieren. Schemaänderungen laufen über additive
+SQL-Migrationen in `apps/scriptz/src-tauri/`. Änderungen am Datenmodell
+auch im `.scriptz`-Import/Export abbilden. Capability-Flags wie
+`supportsDirectoryWrite` bleiben erhalten.
+
+Bundle-Identifier `de.agent-z.scriptz`, `productName` ScriptZ, `scriptz.db`,
+Migrationen sowie persistierte Settings- und `app_state`-Schlüssel bleiben
+beim strukturellen Umbau unverändert. Vor riskanten Phasen gilt die
+[Datensicherung](docs/agentz-suite-fundament.md#5-datensicherung).
 
 **Keine Hex- oder rgb-Farbwerte außerhalb von `packages/design/`.**
-App-Code (Core, Desktop) referenziert nur `var(--token)`.
-Ausnahmen: Inhaltsfarben, die Daten sind (Charakter-Palette in
-`packages/core/styles/tokens.css`, `characterColors.ts`), und
+App- und Modul-Code referenzieren nur `var(--token)`. Ausnahmen:
+Inhaltsfarben als Daten (Charakter-Palette in
+`modules/scriptz/styles/tokens.css`, `characterColors.ts`) und
 OS-Chrome-Nachbauten (macOS-Trafficlights).
 
 ## Path-scoped Rules
 
-Details liegen in [`.claude/rules/`](.claude/rules/) und laden nur,
-wenn Claude Dateien im jeweiligen Scope anfasst:
+Details liegen in [`.claude/rules/`](.claude/rules/) und laden bei
+Dateien im jeweiligen Scope:
 
-- [`desktop-architecture.md`](.claude/rules/desktop-architecture.md) -
-  Layout von `packages/core`, `packages/design` und der Desktop-Schale,
-  Datenmodell (Stufen, Zielbereich), Legacy-Block-Migration, Data-Flow.
-  Lädt bei `apps/desktop/**`-Quellen, `packages/core/**`,
-  `packages/design/**`.
-- [`i18n.md`](.claude/rules/i18n.md) - Mehrsprachigkeit der App,
-  was als User-sichtbar zählt, Anti-Pattern. Lädt bei i18n-Katalogen
-  und allen `.ts/.tsx` in `apps/` und `packages/core/`.
-- [`release.md`](.claude/rules/release.md) - Release-Checkliste,
-  Asset-Naming, Notes schreiben, Workflow-Recovery. Lädt bei
-  Versionsdateien, `docs/release-notes/**`, `.github/workflows/release.yml`.
+- [`scriptz-architecture.md`](.claude/rules/scriptz-architecture.md) -
+  ScriptZ-Modul, Design und App-Schale, Datenmodell, Migration und Data-Flow.
+- [`i18n.md`](.claude/rules/i18n.md) - zweisprachige Kataloge und
+  User-sichtbare Texte in ScriptZ.
+- [`desktop-release.md`](.claude/rules/desktop-release.md) -
+  ScriptZ-Updater, Signing, Versionen und Plattform-Setup.
+- [`release.md`](.claude/rules/release.md) - aktuelle Release-Pipeline,
+  Asset-Naming, Notes und Workflow-Recovery.
 
 ## Befehle (vom Repo-Root)
 
 ```bash
-pnpm install                 # installiert alle Workspaces
-pnpm dev:desktop             # tauri dev der Desktop-App
-pnpm build:desktop           # native .app bauen
-pnpm typecheck               # TypeScript-Check über alle Workspaces
-pnpm test                    # vitest in packages/core
+pnpm install --frozen-lockfile # installiert die JS-Workspaces
+pnpm dev:scriptz               # tauri dev der ScriptZ-App
+pnpm build:scriptz             # native App und Installer bauen
+pnpm typecheck                 # TypeScript über alle Workspaces
+pnpm test                      # Tests in modules/scriptz
 ```
 
-Innerhalb eines Workspaces können auch die eigenen Skripte direkt
-benutzt werden (`cd apps/desktop && pnpm tauri:dev`).
+Workspace-Befehle sind auch direkt nutzbar, z. B.
+`pnpm --filter @agentz/scriptz-app tauri:dev` oder
+`pnpm --filter @agentz/scriptz test`. `pnpm install --frozen-lockfile`
+sichert nur `pnpm-lock.yaml`, nicht `Cargo.lock`; dafür ist Cargo mit
+`--locked` zuständig. Signierte Updater-Artefakte benötigen den privaten
+Release-Schlüssel; ein lokaler Build ohne diesen ist keine Release-Abnahme.
 
 ## Workflow nach jeder Änderung (wichtig)
 
@@ -115,10 +152,10 @@ Nicht alles im Repo läuft in derselben Sprache. Die Regel ist nach
 | Artefakt | Sprache | Warum |
 |---|---|---|
 | **README.md** im Repo-Root | **Englisch** | GitHub-Schaufront, internationales Publikum |
-| **docs/release-notes/vX.Y.Z.md** | **Englisch** | Lädt in den GitHub-Release-Body, internationale User |
+| **docs/release-notes/scriptz/vX.Y.Z.md** | **Englisch** | Lädt in den GitHub-Release-Body, internationale User |
 | **docs/release-notes/_install_footer.md** | **Englisch** | Ditto, wird an jeden Release-Body angehängt |
-| App-i18n `packages/core/i18n/de.ts` | Deutsch | DE-Hälfte des bilingualen App-Katalogs |
-| App-i18n `packages/core/i18n/en.ts` | Englisch | EN-Hälfte des bilingualen App-Katalogs |
+| App-i18n `modules/scriptz/i18n/de.ts` | Deutsch | DE-Hälfte des bilingualen App-Katalogs |
+| App-i18n `modules/scriptz/i18n/en.ts` | Englisch | EN-Hälfte des bilingualen App-Katalogs |
 | **Code-Kommentare** (alle Apps) | **Englisch** | Code-Kommentare laufen einheitlich auf Englisch - das gesamte Repo wurde umgestellt |
 | **Doku-Markdown** (CLAUDE.md, docs/*.md außer release-notes) | **Deutsch** | Interne Doku, deutsches Team |
 | **Commit-Messages, PR-Texte** | Deutsch | Interne Kommunikation |

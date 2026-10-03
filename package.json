@@ -1,14 +1,14 @@
 {
-  "name": "scriptz-monorepo",
+  "name": "agentz",
   "private": true,
   "version": "0.0.0",
-  "description": "ScriptZ desktop app and shared AgentZ design system.",
+  "description": "AgentZ Suite - local desktop tools for content creators.",
   "type": "module",
   "scripts": {
-    "dev:desktop": "pnpm --filter scriptz tauri:dev",
-    "build:desktop": "pnpm --filter scriptz tauri:build",
     "typecheck": "pnpm -r typecheck",
-    "test": "pnpm -r --if-present test"
+    "test": "pnpm -r --if-present test",
+    "dev:scriptz": "pnpm --filter @agentz/scriptz-app tauri:dev",
+    "build:scriptz": "pnpm --filter @agentz/scriptz-app tauri:build"
   },
   "license": "MIT",
   "packageManager": "pnpm@9.0.0"

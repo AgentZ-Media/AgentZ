@@ -29,7 +29,7 @@ jobs:
       - name: Build release body
         id: notes
         run: |
-          NOTES_FILE="docs/release-notes/${GITHUB_REF_NAME}.md"
+          NOTES_FILE="docs/release-notes/scriptz/${GITHUB_REF_NAME}.md"
           FOOTER_FILE="docs/release-notes/_install_footer.md"
           if [ ! -f "$NOTES_FILE" ]; then
             echo "::error::Missing $NOTES_FILE - create it before tagging (see /CLAUDE.md release-checklist)."
@@ -70,7 +70,7 @@ jobs:
       - name: Rust cache
         uses: swatinem/rust-cache@v2
         with:
-          workspaces: apps/desktop/src-tauri
+          workspaces: apps/scriptz/src-tauri
           key: macos
 
       - name: Setup pnpm
@@ -106,7 +106,7 @@ jobs:
           releaseBody: ${{ needs.prepare-notes.outputs.body }}
           releaseDraft: false
           prerelease: false
-          projectPath: apps/desktop
+          projectPath: apps/scriptz
           args: --target aarch64-apple-darwin
 
   # ============================================================
@@ -134,7 +134,7 @@ jobs:
       - name: Rust cache
         uses: swatinem/rust-cache@v2
         with:
-          workspaces: apps/desktop/src-tauri
+          workspaces: apps/scriptz/src-tauri
           key: windows
 
       - name: Setup pnpm
@@ -166,5 +166,5 @@ jobs:
           releaseBody: ${{ needs.prepare-notes.outputs.body }}
           releaseDraft: false
           prerelease: false
-          projectPath: apps/desktop
+          projectPath: apps/scriptz
           args: --target x86_64-pc-windows-msvc

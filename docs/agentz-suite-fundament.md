@@ -1,6 +1,6 @@
 # AgentZ Suite - Plan für das Fundament
 
-> Interne Doku. Stand: 2026-10-03. Status: Phase 1 umgesetzt und lokal geprüft; Review, Merge und externe Schritte offen.
+> Interne Doku. Stand: 2026-10-03. Status: Phase 1 gemergt; Phase 2 umgesetzt und lokal geprüft, Review offen; externe Altressourcen offen.
 > Gegengeprüft von GPT-6 Astra (Effort High) am 2026-10-03, Befunde
 > eingearbeitet (siehe Abschnitt 15).
 
@@ -8,11 +8,13 @@
 
 - **Phase 0, Code:** PR #19 ist gemergt; Ausgangscommit ist
   `852b20bc63e9de3d6e0ca45711dd5003d4503155`.
-- **Phase 1, lokal:** Web-App, alte Landing und überholte Regeln entfernt;
+- **Phase 1, gemergt:** Web-App, alte Landing und überholte Regeln entfernt;
   Desktop-Schale von Web-Sonderfällen bereinigt, Root-Testbefehl und
   MIT-Lizenz ergänzt, Lockfile und aktive Dokumentation aktualisiert.
   Bundle-Identifier, Datenbankname, Migrationen und persistierte Schlüssel
-  bleiben unverändert. Phase 2 bis 8 sind noch nicht begonnen.
+  bleiben unverändert. PR #20 wurde am 2026-10-03 gemergt
+  (`c189125c40a1c3a79a37d94780a11cf83fe1f630`). Phase 3 bis 8 sind
+  noch nicht begonnen.
 - **Sicherung:** Vor Phase 1 konsistenter SQLite-Snapshot der lokalen
   Arbeitsdatenbank; `PRAGMA integrity_check` meldet `ok`.
 - **Automatische Prüfung:** `pnpm install --frozen-lockfile`,
@@ -48,10 +50,55 @@
 - **Extern offen:** Vercel-Projekte, Domains, Studio-Ressourcen und das
   GitHub-Secret `VERCEL_DEPLOY_HOOK_URL` wurden nicht verändert. Das
   Entfernen ihres Codes deaktiviert bestehende Deployments nicht.
-- **Review:** Phase 1 wird separat über den Branch
-  `t3code/build-shared-software-foundation` gegen `main` geprüft.
-  Merge und Release stehen noch aus; Phase 2 beginnt nach dem Merge
-  auf einem neuen Branch vom aktualisierten `main`.
+### Phase 2: Umbenennen
+
+- **Branch:** `fundament/phase-2`, aus dem gemergten `main` erstellt.
+  Vor Beginn SQLite-Snapshot mit erfolgreichem Integritätscheck gesichert.
+- **Historie:** Commit `c2cfab3` enthält ausschließlich 326 unveränderte
+  Dateiverschiebungen (`R100`); alle Pfad- und Namensanpassungen folgen
+  separat. App: `apps/scriptz` / `@agentz/scriptz-app`, Modul:
+  `modules/scriptz` / `@agentz/scriptz`, Root-Paket: `agentz`.
+- **GitHub:** Repository in `AgentZ-Media/AgentZ` umbenannt, Remote,
+  Beschreibung, Homepage und Topics aktualisiert. Beide vorhandenen
+  Updater-Secrets sind weiterhin vorhanden. Bestehender Release `v0.8.4`
+  unverändert erreichbar und nicht unveränderlich; Immutability wurde
+  nicht aktiviert. Der neue Updater-Endpunkt liefert das bestehende
+  Manifest mit macOS-/Windows-Einträgen und Signaturen.
+- **Release-Pfade:** Versionsnotizen unter `docs/release-notes/scriptz/`,
+  gemeinsamer Install-Footer bleibt eine Ebene darüber. Workflow-Pfade
+  angepasst; Tags bleiben bis Phase 6 `vX.Y.Z`.
+- **Doku:** README und Root-CLAUDE auf Suite-Ebene aktualisiert;
+  vorhandene und geplante Pakete ausdrücklich getrennt. Aktive Regeln,
+  Links, Imports, Logo-Ausgabe und historische Font-URLs angepasst.
+- **Prüfung:** Frozen-Install, Typecheck und 261 Tests erfolgreich.
+  219 Quellcode-Dateien gegen Phase 1 verglichen: ausschließlich die
+  vorgesehenen Pfad-/Namensersetzungen. Rust-Lockfile, Migrationen und
+  Persistenz unverändert; Tauri-Konfiguration nur am Updater-Endpunkt
+  geändert. Alle 23 Versionsnotizen unverändert erhalten.
+- **Native Abnahme:** `pnpm build:scriptz` mit `--locked`, temporärer
+  QA-App-ID und `createUpdaterArtifacts=false` erfolgreich; macOS-App und
+  DMG erzeugt. Isoliert mit DB-Kopie geprüft: vorhandenes Skript öffnen,
+  neues Skript schreiben/speichern/erneut öffnen, Einstellungen samt neuem
+  Repository-Link, Ideen, Papierkorb und PDF-Export. Die PDF enthält eine
+  A4-Seite mit dem erwarteten Text und eingebetteter iA-Writer-Schrift.
+  QA-App beendet, Testinhalt dauerhaft in der Kopie gespeichert;
+  produktive DB unverändert gegenüber dem Snapshot. Windows und
+  signierter Update-Zyklus bleiben ungeprüft.
+- **Review-Stand:** Separate Phase-2-PR gegen `main`, noch kein Merge
+  oder Release. Interne Gegenprüfung abgeschlossen ohne offene Befunde.
+- **Buildcache:** Verschobene Cargo-Artefakte enthielten absolute alte
+  Plugin-Pfade. Einmaliger `cargo clean` am neuen Manifest beseitigt diese;
+  in der README als Hinweis für vorhandene Checkouts dokumentiert.
+- **Lokale Ordner:** Der physische Haupt-Checkout und die T3-Worktree-
+  Ordner bleiben während der aktiven Sessions an ihren bisherigen Orten.
+  An dem Haupt-Checkout hängen mehrere Worktrees. Ein separater,
+  koordinierter Umzug mit Reparatur ihrer Git-Verknüpfungen bleibt offen;
+  die pfadgebundene Claude-Projekterinnerung wird dabei mitgenommen.
+  Das beeinträchtigt die Suite-Struktur im Repository nicht.
+- **Externe Altressourcen:** Vercel/Studio/alte Domains weiterhin offen
+  wie bei Phase 1. Neue Domain nur als geplante Homepage eingetragen;
+  noch keine Registrierung und kein Website-Deployment.
+
 
 ## 1. Ziel
 
@@ -87,7 +134,7 @@ angefasst werden muss.
     DB-Name, Settings-Schlüssel und `app_state`-Schlüssel bleiben
     deshalb **unverändert**, und vor riskanten Phasen wird gesichert
     (Abschnitt 5).
-- [PR #19](https://github.com/AgentZ-Media/ScriptZ/pull/19) („ScriptZ
+- [PR #19](https://github.com/AgentZ-Media/AgentZ/pull/19) („ScriptZ
   Studio und Online-Synchronisierung vollständig entfernen") wird vor
   dem Start gemergt. Dieser Plan setzt den Stand **nach** PR #19 voraus:
   kein `apps/studio`, kein Handoff, kein `httpPostJson`/`httpGetJson`
