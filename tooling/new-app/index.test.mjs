@@ -159,11 +159,19 @@ test("rejects existing native Cargo package names before any mutation", (t) => {
   }
 });
 
-test("reports lockfile packages changed beyond the generated importer", () => {
-  const lock = (packages) => `lockfileVersion: '9.0'\n\nimporters:\n\n  .: {}\n\npackages:\n\n${packages.map((entry) => `  ${entry}:\n    resolution: {integrity: x}\n`).join("\n")}\nsnapshots:\n\n  x: {}\n`;
-  const before = lock(["picomatch@4.0.4", "'@babel/parser@7.29.3'", "solid-js@1.9.12"]);
-  assert.deepEqual(lockDrift(before, before), { added: [], removed: [] });
-  const after = lock(["picomatch@4.0.7", "'@babel/parser@7.29.3'", "solid-js@1.9.12"]);
-  assert.deepEqual(lockDrift(before, after), { added: ["picomatch@4.0.7"], removed: ["picomatch@4.0.4"] });
-  assert.deepEqual(lockDrift(before, lock(["picomatch@4.0.4", "solid-js@1.9.12"])).removed, ["@babel/parser@7.29.3"]);
+test("reports lockfile packages and peer resolutions changed beyond the generated importer", () => {
+  const lock = (packages, snapshots) => `lockfileVersion: '9.0'\n\nimporters:\n\n  .: {}\n\npackages:\n\n${packages.map((entry) => `  ${entry}:\n    resolution: {integrity: x}\n`).join("\n")}\nsnapshots:\n\n${snapshots.join("\n\n")}\n`;
+  const pkgs = ["picomatch@4.0.4", "picomatch@4.0.7", "'@babel/parser@7.29.3'", "solid-js@1.9.12"];
+  const snaps = ["  picomatch@4.0.4: {}", "  picomatch@4.0.7: {}", "  fdir@6.4.0(picomatch@4.0.4):\n    optionalDependencies:\n      picomatch: 4.0.4", "  '@solidjs/testing-library@0.8.10(solid-js@1.9.12)':\n    dependencies:\n      solid-js: 1.9.12"];
+  const before = lock(pkgs, snaps);
+  assert.deepEqual(lockDrift(before, before), { added: [], removed: [], changed: [] });
+  // A new package version shows up as added/removed.
+  const bumped = lock(["picomatch@4.0.7", "'@babel/parser@7.29.3'", "solid-js@1.9.12"], snaps.slice(1));
+  assert.deepEqual(lockDrift(before, bumped).removed, ["picomatch@4.0.4"]);
+  // A changed peer version changes the snapshot key.
+  const peer = lock(pkgs, [...snaps.slice(0, 2), "  fdir@6.4.0(picomatch@4.0.7):\n    optionalDependencies:\n      picomatch: 4.0.7", snaps[3]]);
+  assert.deepEqual(lockDrift(before, peer).changed.sort(), ["fdir@6.4.0(picomatch@4.0.4)", "fdir@6.4.0(picomatch@4.0.7)"]);
+  // Same peer suffix, but a dependency inside the snapshot moved.
+  const moved = lock(pkgs, [...snaps.slice(0, 3), "  '@solidjs/testing-library@0.8.10(solid-js@1.9.12)':\n    dependencies:\n      solid-js: 1.9.13"]);
+  assert.deepEqual(lockDrift(before, moved), { added: [], removed: [], changed: ["@solidjs/testing-library@0.8.10(solid-js@1.9.12)"] });
 });

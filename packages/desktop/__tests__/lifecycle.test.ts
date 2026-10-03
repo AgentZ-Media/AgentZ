@@ -67,6 +67,21 @@ describe("native lifecycle", () => {
     expect(state.ports.finishExit).toHaveBeenCalledWith(9, true);
     stop();
   });
+  it("lets a quit that arrives during the unsaved-changes dialog join the decision", async () => {
+    const failed = { ok: false, failed: ["editor"], contentFailed: ["editor"] };
+    const state = setup(vi.fn(async () => failed));
+    let answer!: (value: boolean) => void;
+    vi.mocked(state.ports.confirmUnsaved).mockImplementation(() => new Promise((resolve) => { answer = resolve; }));
+    const stop = await startDesktopLifecycle(state.ports);
+    state.close(); await tick();
+    state.close(); await tick();
+    expect(state.ports.confirmUnsaved).toHaveBeenCalledWith("close");
+    state.exit(11);
+    answer(true); await tick();
+    expect(state.ports.finishExit).toHaveBeenCalledWith(11, true);
+    expect(state.ports.destroy).not.toHaveBeenCalled();
+    stop();
+  });
   it("merges quit during close into the same saved native exit", async () => {
     let saved!: (value: FlushResult) => void;
     const state = setup(() => new Promise((resolve) => { saved = resolve; }));

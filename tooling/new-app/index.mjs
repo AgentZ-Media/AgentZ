@@ -22,24 +22,40 @@ function restoreFiles(root, snapshot) {
 }
 const registryPaths = { logo: "packages/design/logo.ts", site: "apps/site/src/apps.ts" };
 
-/** `name@version` entries of the resolved package list in pnpm-lock.yaml. */
-function lockedPackages(text) {
-  const section = text.split(/\npackages:\n/)[1]?.split(/\nsnapshots:\n/)[0] ?? "";
-  return new Set([...section.matchAll(/^ {2}'?(@?[^\s'@]+(?:\/[^\s'@]+)?@[^\s':(]+)'?:/gm)].map((match) => match[1]));
+/** Resolved entries of pnpm-lock.yaml: `packages` keys (`name@version`) and
+ *  `snapshots` blocks, whose keys carry peer suffixes and whose bodies hold
+ *  the resolved dependency versions. */
+function lockEntries(text) {
+  const section = (name, next) => text.split(new RegExp(`\\n${name}:\\n`))[1]?.split(next ? new RegExp(`\\n${next}:\\n`) : /$^/)[0] ?? "";
+  const blocks = (body) => {
+    const entries = new Map();
+    for (const block of body.split(/\n(?=  \S)/)) {
+      const key = block.match(/^\s*'?(.+?)'?:\s*(?:\{.*\})?\s*$/m)?.[1];
+      if (key) entries.set(key, block.trim());
+    }
+    return entries;
+  };
+  return { packages: blocks(section("packages", "snapshots")), snapshots: blocks(section("snapshots")) };
 }
 /** Generating or removing an app only adds or drops its own importer. A
  *  re-resolution can still move unrelated packages; report it for review. */
 export function lockDrift(before, after) {
-  const old = lockedPackages(before ?? ""), next = lockedPackages(after ?? "");
-  return { added: [...next].filter((entry) => !old.has(entry)), removed: [...old].filter((entry) => !next.has(entry)) };
+  const old = lockEntries(before ?? ""), next = lockEntries(after ?? "");
+  const added = [...next.packages.keys()].filter((key) => !old.packages.has(key));
+  const removed = [...old.packages.keys()].filter((key) => !next.packages.has(key));
+  const keys = new Set([...old.snapshots.keys(), ...next.snapshots.keys()]);
+  const changed = [...keys].filter((key) => !added.includes(key) && !removed.includes(key)
+    && old.snapshots.get(key) !== next.snapshots.get(key));
+  return { added, removed, changed };
 }
 function warnLockDrift(root, before) {
   const lockFile = join(root, "pnpm-lock.yaml");
-  if (!before || !existsSync(lockFile)) return { added: [], removed: [] };
+  if (!before || !existsSync(lockFile)) return { added: [], removed: [], changed: [] };
   const drift = lockDrift(before.toString("utf8"), readFileSync(lockFile, "utf8"));
-  if (!drift.added.length && !drift.removed.length) return drift;
+  if (!drift.added.length && !drift.removed.length && !drift.changed.length) return drift;
   console.warn(`pnpm-lock.yaml hat auch fremde Pakete verändert. Vor dem Commit prüfen (git diff pnpm-lock.yaml):\n${[
-    ...drift.added.map((entry) => `  + ${entry}`), ...drift.removed.map((entry) => `  - ${entry}`)].join("\n")}`);
+    ...drift.added.map((entry) => `  + ${entry}`), ...drift.removed.map((entry) => `  - ${entry}`),
+    ...drift.changed.map((entry) => `  ~ ${entry}`)].join("\n")}`);
   return drift;
 }
 export function validateId(id) {

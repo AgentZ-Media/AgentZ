@@ -54,7 +54,7 @@ export async function startDesktopLifecycle(ports: LifecyclePorts, signal?: Abor
     let leaving = false;
     try {
       const result = await ports.flush();
-      const exitId = pendingExit ?? requestId;
+      let exitId = pendingExit ?? requestId;
       pendingExit = undefined;
       if (disposed) {
         if (exitId !== undefined) await ports.finishExit(exitId, false);
@@ -62,8 +62,14 @@ export async function startDesktopLifecycle(ports: LifecyclePorts, signal?: Abor
       }
       let proceed = result.ok;
       if (!proceed) {
-        if (previousFailed) proceed = await ports.confirmUnsaved(exitId !== undefined ? "exit" : "close");
-        else ports.failed();
+        if (previousFailed) {
+          proceed = await ports.confirmUnsaved(exitId !== undefined ? "exit" : "close");
+          // A quit requested while the dialog was open joins this decision.
+          exitId = pendingExit ?? exitId;
+          pendingExit = undefined;
+        } else {
+          ports.failed();
+        }
         previousFailed = !proceed;
       }
       if (!proceed || disposed) {

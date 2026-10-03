@@ -54,13 +54,16 @@ zwischen Produkten. Details: [`suite-architecture.md`](.claude/rules/suite-archi
 
 ```bash
 pnpm install --frozen-lockfile
-pnpm dev:scriptz | build:scriptz      # App starten / native bauen
-pnpm dev:site | build:site            # Website
+pnpm dev:scriptz                      # App starten
+pnpm build:scriptz                    # native App und Installer bauen
+pnpm dev:site                         # Website lokal
+pnpm build:site                       # Website bauen
 pnpm lint && pnpm typecheck && pnpm test
 pnpm check:colors && pnpm check:tokens && pnpm check:astro
 pnpm build:frontends                  # Vite-Builds ohne native Bundles
 cargo check --workspace --locked
-pnpm new-app <id> "<Name>" | remove-app <id>
+pnpm new-app <id> "<Name>"            # neue App erzeugen
+pnpm remove-app <id>                  # generierte App entfernen
 pnpm release:bump <app> <version>
 ```
 
