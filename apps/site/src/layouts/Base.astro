@@ -1,0 +1,60 @@
+---
+import "@agentz/design/tokens.css";
+import "@agentz/design/fonts.css";
+import "@agentz/design/components.css";
+import "../styles/site.css";
+import suiteIcon from "@agentz/design/assets/suite-app-icon.svg?url";
+import { catalogs, type Language } from "../i18n";
+
+interface Props {
+  lang?: Language;
+  title?: string;
+  description?: string;
+  home?: boolean;
+}
+const { lang = "de", title = "AgentZ Suite", home = false } = Astro.props;
+const t = catalogs[lang];
+const description = Astro.props.description ?? t.description;
+const canonical = new URL(Astro.url.pathname, Astro.site);
+---
+<!doctype html>
+<html lang={lang} data-theme="light">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="description" content={description} />
+    <meta name="generator" content={Astro.generator} />
+    <title>{title === "AgentZ Suite" ? title : `${title} - AgentZ Suite`}</title>
+    <link rel="canonical" href={canonical} />
+    <link rel="icon" type="image/svg+xml" href={suiteIcon} />
+    {home && <><link rel="alternate" hreflang="de" href={new URL("/", Astro.site)} /><link rel="alternate" hreflang="en" href={new URL("/en/", Astro.site)} /><link rel="alternate" hreflang="x-default" href={new URL("/", Astro.site)} /></>}
+    <meta property="og:title" content={title} />
+    <meta property="og:description" content={description} />
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content={canonical} />
+  </head>
+  <body>
+    <a class="skip-link btn" href="#content">{t.skip}</a>
+    <div class="site-wrap">
+      <header class="site-header">
+        <a class="brand" href={lang === "en" ? "/en/" : "/"} aria-label={`AgentZ Suite - ${t.home}`}>
+          <img src={suiteIcon} alt="" width="44" height="44" />
+          <span>AgentZ <span class="brand-suite">Suite</span></span>
+        </a>
+        <a class="source-link" href="https://github.com/AgentZ-Media/AgentZ">{t.source}</a>
+      </header>
+      <main id="content"><slot /></main>
+      <footer class="site-footer">
+        <p>{t.footer}</p>
+        <div class="footer-links">
+          <nav class="language-links" aria-label={t.language}>
+            <a href="/" lang="de" hreflang="de" aria-current={home && lang === "de" ? "page" : undefined}>Deutsch</a>
+            <a href="/en/" lang="en" hreflang="en" aria-current={home && lang === "en" ? "page" : undefined}>English</a>
+          </nav>
+          <a href="/impressum/">{t.legal}</a>
+          <a href="/datenschutz/">{t.privacy}</a>
+        </div>
+      </footer>
+    </div>
+  </body>
+</html>

@@ -302,7 +302,7 @@ und Phasen; dieses Protokoll hält die konkreten Ergebnisse fest.
   Kein Release, keine Windows- oder signierte Update-Abnahme in Phase 5.
 - **Separat:** Gelbe PNG-/ICNS-/ICO-Icons auf Timos Wunsch neu generiert;
   [PR #27](https://github.com/AgentZ-Media/AgentZ/pull/27) enthält diese
-  Korrektur getrennt von Phase 5 und ist in Review.
+  Korrektur getrennt von Phase 5 und ist auf `main` gemergt (`3c1d0d7`).
 
 ### Phase 6: Releases und Update-Kanäle pro App
 
@@ -324,7 +324,34 @@ und Phasen; dieses Protokoll hält die konkreten Ergebnisse fest.
 - **Probelauf:** Manuelles `workflow_dispatch` ist immer Build-only, ohne
   Signing-Secrets, Tags, Release-Publikation oder Veränderung der Kanäle;
   Installer bleiben sieben Tage als Workflow-Artefakte abrufbar.
-- **Stand:** Implementiert; Prüfungen laufen. Noch kein erfolgreicher Live-
-  Release, öffentlicher Zeiger-Download oder echter Update-Zyklus behauptet.
+- **Stand:** [PR #28](https://github.com/AgentZ-Media/AgentZ/pull/28)
+  auf `main` gemergt (`1ff07139`). Der Build-Probelauf
+  [37146931858](https://github.com/AgentZ-Media/AgentZ/actions/runs/37146931858)
+  für macOS und Windows läuft. Noch kein erfolgreicher Live-Release,
+  öffentlicher Zeiger-Download oder echter Update-Zyklus behauptet.
   0.9.0 muss einmal manuell installiert und anschließend das signierte
-  Update auf 0.9.1 geprüft werden. Website und Generator folgen separat.
+  Update auf 0.9.1 geprüft werden.
+
+### Phase 7: Statische Suite-Website
+
+- **Website:** `apps/site` mit Astro 7.3.5, ausschließlich `@agentz/design`
+  als interner Abhängigkeit und gelben App-/Suite-Icons. Vier statische
+  Routen: `/`, `/en/`, `/impressum/` und `/datenschutz/`. Deutsche und
+  englische Startseite, übernommene und an den Suite-Kontext angepasste
+  deutsche Rechtstexte; keine Laufzeit-Skripte, Cookies oder Analyse.
+- **App-Liste:** Daten in `src/apps.ts`, Texte in `src/i18n.ts`. ScriptZ
+  bleibt bis zur erfolgreichen Veröffentlichung beider Installer auf
+  `soon`, daher ohne Download-Buttons. Verfügbare Apps verwenden eigene
+  Zeiger-URLs statt des repositoryweiten Latest-Links.
+- **Prüfung:** Astro-Typecheck mit zwölf Dateien ohne Fehler, Warnungen
+  oder Hinweise; statischer Build erfolgreich. Desktop, Mobilansicht,
+  beide Sprachen und Rechtstexte im Browser geprüft: kein horizontaler
+  Überlauf und keine Konsolenfehler. Keine Skripte oder Cookies geladen.
+- **Regeln:** `check:astro` ergänzt Paketgrenzen, Farb- und Tokenregeln
+  in Astro-Dateien über `@astrojs/compiler-rs` 0.5.0. Sieben zusätzliche
+  Tooling-Tests; damit 34 Tooling-Tests. Der Check läuft auch in der CI.
+  Root-Befehle `dev:site` und `build:site`; Website-Regeln in
+  `.claude/rules/site.md`.
+- **Abgrenzung:** Lokal umgesetzt und geprüft, noch nicht veröffentlicht.
+  Vercel-Projekt, Domain und DNS übernimmt Timo. Der App-Generator und
+  seine Sandbox-Abnahme gehören zur anschließenden Phase 8.

@@ -21,7 +21,7 @@ und Prüfungen fest.
 
 ## Bestand und Ziel auseinanderhalten
 
-**Stand Phase 6:** `apps/scriptz` verdrahtet das Produktmodul
+**Stand Phase 7:** `apps/scriptz` verdrahtet das Produktmodul
 `modules/scriptz` und den gemeinsamen Desktop-Host. `packages/kit` enthält die gemeinsame
 `SuiteShell`, neutrale UI, i18n, Basis-Settings, Navigation, Plattform-
 Interfaces, KvStore, Toasts und Speicherhelfer. Das ScriptZ-Modul
@@ -31,8 +31,9 @@ Icons und Logo; `tooling/vitest-preset` die Testkonfiguration.
 
 `packages/desktop` trägt Plattformadapter, Updater und den Frontend-
 Lebenszyklus; `crates/agentz-desktop` registriert Standard-Plugins,
-native Menüs, Single-Instance und den Quit-Handshake. Website und
-App-Generator folgen in Phase 7 beziehungsweise 8.
+native Menüs, Single-Instance und den Quit-Handshake. `apps/site` ist die
+statische Astro-Website mit Design-Paket, DE/EN-Katalog und App-Liste.
+Der App-Generator folgt in Phase 8.
 
 Abhängigkeitsrichtung (durch ESLint geprüft):
 
@@ -65,6 +66,8 @@ von OS-Trafficlights brauchen eine ebenso gezielte Ausnahme.
 Test-Fixtures sowie berechnete Charakter-/PDF-Farbdaten in TypeScript
 werden nicht als UI-Tokens behandelt. Neue UI-Farben sind semantische
 Design-Tokens.
+`pnpm check:astro` ergänzt Paket-, Farb- und Tokenregeln für `.astro`-Dateien
+über deren Parser; die CI prüft auch diesen Einstieg.
 `pnpm check:tokens` untersagt Legacy-Token-Namen und `legacy.css`-Imports
 im Kit einschließlich Fixtures sowie in neuen Apps/Modulen/Paketen. Nur
 der bestehende ScriptZ-Code und das Designpaket behalten die Übergangsschicht.
@@ -150,7 +153,8 @@ Das Preset stellt das Solid-Plugin, jsdom sowie die Auflösungsbedingungen
 (z. B. Sprache und Adapter) bleibt beim Produkt und wird dort ergänzt.
 
 Vom Repo-Root: `pnpm lint`, `pnpm typecheck`, `pnpm test`,
-`pnpm check:colors`, `pnpm check:tokens`, `pnpm build:frontends`.
+`pnpm check:colors`, `pnpm check:tokens`, `pnpm check:astro`,
+`pnpm build:frontends`.
 Der Frontend-Build erstellt keine nativen Installer. Die PR-CI prüft diese
 Schritte und `cargo check --workspace --locked`. `pnpm test` prüft zuerst
 die Tooling-Regeln mit dem Node-Test-Runner, danach die Pakettests.
@@ -178,8 +182,8 @@ Rust-Angabe `"2"` ist nur der erlaubte Versionsbereich; `Cargo.lock`
 fixiert den tatsächlich verwendeten Stand. Nach `cargo update` deshalb
 auch die kompatiblen JS-Versionen abgleichen und den nativen Build prüfen.
 
-Die Farbprüfung ist bewusst eine Textprüfung für CSS/TSX. `.ts` und
-HTML werden nicht erfasst; CSS-IDs wie `#add` oder `#face` können als
+Die allgemeine Farbprüfung ist bewusst eine Textprüfung für CSS/TSX.
+Astro erhält einen separaten Parser-Check. `.ts` und HTML werden nicht erfasst; CSS-IDs wie `#add` oder `#face` können als
 Farbwerte erscheinen. Solche Fälle gezielt behandeln, nicht ganze
 UI-Dateien freistellen.
 

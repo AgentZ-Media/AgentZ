@@ -8,12 +8,15 @@ Umbau; die nachfolgende Trennung von Bestand und Ziel ist verbindlich.
 Der [Umsetzungsstand](docs/agentz-suite-fortschritt.md) dokumentiert
 abgeschlossene Schritte, Prüfungen und offene Punkte.
 
-## Aktuelle Struktur (Phase 6)
+## Aktuelle Struktur (Phase 7)
 
 - [`apps/scriptz/`](apps/scriptz/) - `@agentz/scriptz-app`, die dünne
   Tauri-Schale für ScriptZ. Verbindet Produktmodul und Desktop-Host;
   App-ID, Icons, Capabilities und SQL-Migrationen bleiben app-spezifisch. App-Regeln stehen in
   [`apps/scriptz/CLAUDE.md`](apps/scriptz/CLAUDE.md).
+- [`apps/site/`](apps/site/) - statische Astro-Website der Suite in DE/EN,
+  mit App-Liste und Rechtstexten. Nutzt intern nur `@agentz/design`.
+  Veröffentlichung, Vercel und Domain übernimmt Timo.
 - [`modules/scriptz/`](modules/scriptz/) - `@agentz/scriptz`, derzeit
   **ScriptZ-Logik und Produkt-UI**: Editor, Lexical-Nodes, Plugins,
   fachliche Stores und Export-Generatoren. Exportiert `scriptzModule`
@@ -46,8 +49,9 @@ apps/<app> -> modules/<app> -> packages/kit -> packages/design
     +------> packages/desktop ------+
 ```
 
-Website und Generator folgen in späteren Phasen. Ihr Fortschritt ist
-im Umsetzungsprotokoll getrennt von der Abnahme dokumentiert.
+Die Website ist lokal umgesetzt und geprüft. Der Generator folgt in Phase 8;
+Release-/Update-Abnahme und externe Veröffentlichung stehen separat im
+Umsetzungsprotokoll.
 
 - `design` importiert nichts aus dem Repo.
 - `kit` importiert nur `design`: keine Tauri-Imports und kein Produktwissen.
@@ -119,6 +123,8 @@ Dateien im jeweiligen Scope:
   ScriptZ-Modul, Design und App-Schale, Datenmodell, Migration und Data-Flow.
 - [`i18n.md`](.claude/rules/i18n.md) - zweisprachige Kataloge und
   User-sichtbare Texte in ScriptZ.
+- [`site.md`](.claude/rules/site.md) - statische Website, DE/EN-App-Liste,
+  Download-Status und Veröffentlichung.
 - [`release.md`](.claude/rules/release.md) - gemeinsame Release-Pipeline,
   Versionen, Signing, App-Kanäle, Installationshinweise und Recovery.
 
@@ -129,6 +135,9 @@ pnpm install --frozen-lockfile # installiert die JS-Workspaces
 pnpm dev:scriptz               # tauri dev der ScriptZ-App
 pnpm build:scriptz             # native App und Installer bauen
 pnpm release:bump scriptz 0.9.0 # vier Versionsdateien konsistent setzen
+pnpm dev:site                  # lokale Suite-Website
+pnpm build:site                # statische Website bauen
+pnpm check:astro               # Paket-, Farb- und Tokenregeln in Astro
 pnpm lint                      # Paketgrenzen und Korrektheit
 pnpm typecheck                 # TypeScript über alle Workspaces
 pnpm test                      # Tooling-Regeln und Pakettests
@@ -202,6 +211,7 @@ Nicht alles im Repo läuft in derselben Sprache. Die Regel ist nach
 | **docs/release-notes/<app>/vX.Y.Z.md** | **Englisch** | Lädt in den GitHub-Release-Body, internationale User |
 | **docs/release-notes/_install_footer.md** | **Englisch** | Ditto, wird an jeden Release-Body angehängt |
 | Kit-/Modul-i18n `packages/kit/i18n/`, `modules/<app>/i18n/` | Deutsch und Englisch | Jeweilige Sprache des bilingualen Katalogs |
+| Website-Katalog `apps/site/src/i18n.ts` und App-Taglines | Deutsch und Englisch | Beide Website-Sprachen vollständig pflegen |
 | **Code-Kommentare** (alle Apps) | **Englisch** | Code-Kommentare laufen einheitlich auf Englisch - das gesamte Repo wurde umgestellt |
 | **Doku-Markdown** (CLAUDE.md, docs/*.md außer release-notes) | **Deutsch** | Interne Doku, deutsches Team |
 | **Commit-Messages, PR-Texte** | Deutsch | Interne Kommunikation |

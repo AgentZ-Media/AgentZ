@@ -1,0 +1,59 @@
+* { box-sizing: border-box; }
+html { background: var(--bg); color: var(--fg); font-family: var(--ui); }
+body { margin: 0; font-size: var(--fs-16); line-height: var(--lh-normal); }
+a { color: inherit; text-underline-offset: 0.22em; }
+a:hover { text-decoration-thickness: 2px; }
+a:focus-visible { outline: 2px solid var(--focus); outline-offset: 5px; }
+.site-wrap { max-width: 1160px; padding: 0 56px; margin: 0 auto; }
+.site-header { display: flex; justify-content: space-between; gap: var(--sp-6); align-items: center; padding: 34px 0; }
+.brand { display: inline-flex; align-items: center; gap: var(--sp-3); font-size: var(--fs-20); font-weight: 750; text-decoration: none; }
+.brand-suite { font-weight: 450; color: var(--muted); }
+.brand img { flex: none; margin: -5px; }
+.source-link { color: var(--muted); font-size: var(--fs-13); }
+.intro { padding: 76px 0 78px; }
+h1 { font-size: clamp(48px, 7.5vw, 86px); font-weight: 700; line-height: 1.04; letter-spacing: -0.058em; max-width: 9.5em; margin: 0 0 32px; text-wrap: balance; }
+.intro p { max-width: 640px; font-size: var(--fs-20); line-height: var(--lh-relaxed); color: var(--muted); margin: 0; }
+.section-heading { display: flex; justify-content: space-between; gap: var(--sp-4); align-items: baseline; margin-bottom: var(--sp-5); }
+.section-heading h2 { margin: 0; font-size: var(--fs-20); font-weight: 650; }
+.section-heading p { margin: 0; color: var(--muted); font-size: var(--fs-14); }
+.app-list { display: grid; gap: var(--sp-5); }
+.app-card { display: flex; gap: 34px; padding: 38px; background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-5); }
+.app-icon { flex: none; width: 112px; height: 112px; object-fit: contain; }
+.app-info { min-width: 0; padding-top: 2px; }
+.app-title { display: flex; align-items: center; gap: var(--sp-4); flex-wrap: wrap; }
+.app-title h3 { margin: 0; font-size: var(--fs-28); line-height: var(--lh-snug); letter-spacing: -0.035em; font-weight: 650; }
+.app-status { color: var(--muted); font-size: var(--fs-12); background: var(--fill); border-radius: var(--r-pill); padding: 4px 10px; }
+.app-tagline { color: var(--muted); margin: var(--sp-2) 0 var(--sp-5); max-width: 44ch; }
+.platform-note { color: var(--muted); font-size: var(--fs-12); margin: 0; }
+.download-buttons { display: flex; gap: var(--sp-2); flex-wrap: wrap; margin-bottom: var(--sp-3); }
+.download-buttons .btn { min-height: 40px; padding: 0 15px; }
+.site-footer { display: flex; justify-content: space-between; align-items: start; gap: var(--sp-6); border-top: 1px solid var(--line); padding: 28px 0 36px; margin-top: 74px; font-size: var(--fs-12); color: var(--muted); }
+.site-footer p { margin: 0; max-width: 27ch; }
+.footer-links { display: flex; justify-content: end; flex-wrap: wrap; column-gap: var(--sp-5); row-gap: var(--sp-3); }
+.language-links { display: flex; gap: var(--sp-3); }
+.language-links [aria-current="page"] { color: var(--fg); font-weight: 650; text-decoration: none; }
+.skip-link { position: fixed; top: 8px; left: 8px; transform: translateY(-180%); z-index: 10; }
+.skip-link:focus { transform: translateY(0); }
+.legal { max-width: 720px; margin: 58px 0 0; }
+.legal h1 { font-size: clamp(38px, 6vw, 60px); letter-spacing: -0.045em; }
+.legal h2 { margin: 36px 0 10px; font-size: var(--fs-20); font-weight: 650; line-height: var(--lh-snug); }
+.legal p, .legal li { color: var(--muted); }
+.legal address { font-style: normal; color: var(--muted); }
+.legal a { overflow-wrap: anywhere; }
+.legal-nav { display: flex; gap: var(--sp-5); margin-bottom: var(--sp-7); font-size: var(--fs-14); }
+@media (max-width: 720px) {
+  .site-wrap { padding: 0 24px; }
+  .site-header { padding: 25px 0; align-items: start; }
+  .source-link { max-width: 12ch; text-align: right; font-size: var(--fs-12); }
+  .intro { padding: 52px 0; }
+  .intro p { font-size: var(--fs-18); }
+  .section-heading { display: block; }
+  .section-heading p { margin-top: var(--sp-1); }
+  .app-card { display: block; padding: 24px; }
+  .app-icon { width: 88px; height: 88px; margin-bottom: var(--sp-4); }
+  .app-title { gap: var(--sp-3); }
+  .site-footer { flex-direction: column; margin-top: 48px; }
+  .site-footer p { max-width: none; }
+  .footer-links { justify-content: start; }
+  .legal { margin-top: 36px; }
+}
