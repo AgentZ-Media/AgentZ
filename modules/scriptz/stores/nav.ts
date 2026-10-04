@@ -24,7 +24,9 @@ export interface RecentEntry {
 
 
 const HOME: Route = { kind: "scripts" };
-const MAX_RECENT = 8;
+// Upper bound for the persisted history; the sidebar shows as many of these
+// as fit its height (see components/Shell/Sidebar.tsx).
+const MAX_RECENT = 50;
 const [recent, setRecent] = createSignal<RecentEntry[]>([]);
 function touchRecent(scriptId: string, title?: string) {
   const previous = recent();
