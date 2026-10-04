@@ -12,6 +12,8 @@ export type Route =
        *  scripts without a folder (see lib/folders.ts). */
       folderId?: string | null;
     }
+  /** Work in progress: open ideas and every script before the last stage. */
+  | { kind: "inbox" }
   | { kind: "ideas"; folderId?: string | null }
   | { kind: "script"; scriptId: string }
   | { kind: "trash" };
@@ -71,6 +73,7 @@ export const navStore = {
   isScript: () => navigation.route().kind === "script",
   isIdeas: () => navigation.route().kind === "ideas",
   isScripts: () => navigation.route().kind === "scripts",
+  isInbox: () => navigation.route().kind === "inbox",
   isTrash: () => navigation.route().kind === "trash",
   openScript(scriptId: string, title?: string): Promise<void> {
     if (title !== undefined) touchRecent(scriptId, title);
@@ -78,6 +81,9 @@ export const navStore = {
   },
   openScripts(filter: { status?: ScriptStatus | null; folderId?: string | null } = {}): Promise<void> {
     return navigation.go({ kind: "scripts", ...filter });
+  },
+  openInbox(): Promise<void> {
+    return navigation.go({ kind: "inbox" });
   },
   openIdeas(folderId?: string | null): Promise<void> {
     return navigation.go({ kind: "ideas", folderId: folderId ?? null });

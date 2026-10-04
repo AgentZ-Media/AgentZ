@@ -52,7 +52,7 @@ export const en: Record<keyof typeof de, string> = {
   "browser.rowMore": "More actions",
 
   // ---------- folders ----------
-  "folder.inbox": "Inbox",
+  "folder.inbox": "No folder",
   "folder.new": "New folder",
   "folder.newDots": "New folder…",
   "folder.none": "No folder",

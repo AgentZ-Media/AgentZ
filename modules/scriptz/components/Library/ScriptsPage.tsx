@@ -11,8 +11,8 @@ import {
   onMount,
   type JSX,
 } from "solid-js";
-import type { ScriptStatus, ScriptSummary, SearchHit } from "../../lib/types";
-import { SCRIPT_STATUSES } from "../../lib/types";
+import type { Idea, ScriptStatus, ScriptSummary, SearchHit } from "../../lib/types";
+import { FINAL_SCRIPT_STATUS, SCRIPT_STATUSES } from "../../lib/types";
 import { api } from "../../lib/api";
 import { debounce, relativeTime } from "@agentz/kit/lib";
 import { formatClock, formatRange, resolveLengthRange } from "../../lib/lengthGoal";
@@ -38,6 +38,7 @@ import {
   runtimeSecFor,
 } from "../Shell/libraryData";
 import { ContextMenu, type ContextMenuItem } from "./ContextMenu";
+import { InboxIdeas } from "./InboxIdeas";
 import { PageBar } from "./PageBar";
 import { PromptDialog } from "./PromptDialog";
 import { ScriptRow } from "./ScriptRow";
@@ -124,7 +125,7 @@ function modalOpen(): boolean {
 
 /**
  * "Übersicht" (concept screen 1): every script of the current scope
- * (all / one stage / one folder), grouped by stage, folder or not at all,
+ * (all / one stage / one folder / the inbox), grouped by stage, folder or not at all,
  * with the week line, a filter, the ideas teaser, row actions, selection
  * mode and the import / folder operations of the old browser.
  */
@@ -135,7 +136,9 @@ export function ScriptsPage() {
   };
   const status = (): ScriptStatus | null => route()?.status ?? null;
   const folderId = (): string | null => route()?.folderId ?? null;
-  const isAll = () => status() === null && folderId() === null;
+  /** Inbox: open ideas plus every script before the last stage. */
+  const isInbox = () => navStore.route().kind === "inbox";
+  const isAll = () => !isInbox() && status() === null && folderId() === null;
 
   // Normally already loaded during boot (AppShell); a no-op then.
   onMount(() => void libraryPrefs.load());
@@ -176,7 +179,7 @@ export function ScriptsPage() {
   // A new scope starts clean: no filter, no selection, first page.
   createEffect(
     on(
-      () => [status(), folderId()] as const,
+      () => [isInbox(), status(), folderId()] as const,
       () => {
         applyQuery.cancel();
         setFilter("");
@@ -198,6 +201,7 @@ export function ScriptsPage() {
 
   // ---- data ----
   const scope = createMemo(() => {
+    if (isInbox()) return library.inProgress();
     const st = status();
     const fid = folderId();
     return library.scripts().filter((s) => {
@@ -219,6 +223,19 @@ export function ScriptsPage() {
   });
 
   const sorted = createMemo(() => sortScripts(matches(), libraryPrefs.sort()));
+
+  /** Open ideas of the inbox, filtered like the rows. Ideas have no edit
+   *  time, so "updated" and "created" both list the newest first. */
+  const inboxIdeas = createMemo<Idea[]>(() => {
+    if (!isInbox()) return [];
+    const n = needle();
+    const list = library
+      .openIdeas()
+      .filter((i) => !n || i.title.toLowerCase().includes(n) || (i.notes ?? "").toLowerCase().includes(n));
+    return libraryPrefs.sort() === "title"
+      ? list.sort((a, b) => localeCompare(a.title, b.title))
+      : list.sort((a, b) => b.created_at - a.created_at);
+  });
   const visible = createMemo(() => sorted().slice(0, limit()));
   const hasMore = () => sorted().length > limit();
 
@@ -295,7 +312,11 @@ export function ScriptsPage() {
   // Collapsing only applies to the unfiltered, multi-group views.
   const canCollapse = () =>
     libraryPrefs.grouping() !== "none" && !needle() && status() === null;
-  const isClosed = (key: string) => canCollapse() && libraryPrefs.isCollapsed(key);
+  // The inbox keeps its own folded groups: "shot" is folded on "Alle
+  // Skripte" by default, but in the inbox it's work in progress.
+  const collapseKey = (key: string) => (isInbox() ? `inbox:${key}` : key);
+  const isClosed = (key: string) => canCollapse() && libraryPrefs.isCollapsed(collapseKey(key));
+  const ideasClosed = () => !needle() && libraryPrefs.isCollapsed(collapseKey("ideas"));
 
   const showTeaser = () => isAll() && !needle() && library.openIdeas().length > 0;
 
@@ -362,6 +383,7 @@ export function ScriptsPage() {
     return library.folder(fid)?.name ?? "";
   };
   const pageTitle = () => {
+    if (isInbox()) return t("shell.nav.inbox");
     const st = status();
     if (st) return t(`stage.${st}`);
     if (folderId()) return folderName() || t("shell.nav.all");
@@ -573,8 +595,9 @@ export function ScriptsPage() {
   const newScriptHere = () => void createScript(currentFolderContext());
 
   const libraryEmpty = () => library.loaded() && library.scripts().length === 0;
-  const nothingFound = () => needle() !== "" && matches().length === 0 && contentHits().length === 0;
-  const scopeEmpty = () => library.loaded() && scope().length === 0;
+  const nothingFound = () =>
+    needle() !== "" && matches().length === 0 && contentHits().length === 0 && inboxIdeas().length === 0;
+  const scopeEmpty = () => library.loaded() && scope().length === 0 && inboxIdeas().length === 0;
 
   const renderRows = (items: ScriptSummary[]) => (
     <div class="rows">
@@ -689,6 +712,26 @@ export function ScriptsPage() {
                     </div>
                   </Show>
                 </Match>
+                <Match when={isInbox()}>
+                  <div class="week">
+                    <span class="week-lbl">{t("shell.inbox.lead")}</span>
+                    <Show when={library.openIdeas().length > 0}>
+                      <span>
+                        <StageGlyph stage="idea" />
+                        {boldCount(
+                          tPlural("units.ideas", library.openIdeas().length, { count: MARK }),
+                          fmtNum(library.openIdeas().length),
+                        )}
+                      </span>
+                    </Show>
+                    <Show when={scope().length > 0}>
+                      <span>
+                        <Icon name="doc" size={13} />
+                        {boldCount(tPlural("units.scripts", scope().length, { count: MARK }), fmtNum(scope().length))}
+                      </span>
+                    </Show>
+                  </div>
+                </Match>
                 <Match when={!isAll()}>
                   <div class="week">
                     <span class="week-lbl">{tPlural("units.scripts", scope().length)}</span>
@@ -789,8 +832,7 @@ export function ScriptsPage() {
             </Match>
             <Match when={scopeEmpty() && !needle()}>
               <div class="lib-empty">
-                <Show
-                  when={status()}
+                <Switch
                   fallback={
                     <>
                       <div class="lib-empty-h">{t("browser.empty.folder.title", { folder: folderName() })}</div>
@@ -802,18 +844,38 @@ export function ScriptsPage() {
                     </>
                   }
                 >
-                  {(st) => (
-                    <>
-                      <div class="lib-empty-h">{t("shell.empty.stage.title", { stage: t(`stage.${st()}`) })}</div>
-                      <div class="lib-empty-sub">{t("shell.empty.stage.hint")}</div>
-                    </>
-                  )}
-                </Show>
+                  <Match when={isInbox()}>
+                    <div class="lib-empty-h">{t("shell.empty.inbox.title")}</div>
+                    <div class="lib-empty-sub">
+                      {t("shell.empty.inbox.hint", { stage: t(`stage.${FINAL_SCRIPT_STATUS}`) })}
+                    </div>
+                    <button type="button" class="btn" onClick={newScriptHere}>
+                      <Icon name="plus" />
+                      {t("browser.newScript")}
+                    </button>
+                  </Match>
+                  <Match when={status()}>
+                    {(st) => (
+                      <>
+                        <div class="lib-empty-h">{t("shell.empty.stage.title", { stage: t(`stage.${st()}`) })}</div>
+                        <div class="lib-empty-sub">{t("shell.empty.stage.hint")}</div>
+                      </>
+                    )}
+                  </Match>
+                </Switch>
               </div>
             </Match>
             <Match when={true}>
               <Show when={selectMode() && selectableIds().length > 0}>
                 <SelectAllLine state={allState()} count={selectableIds().length} onToggle={toggleAll} />
+              </Show>
+              <Show when={inboxIdeas().length > 0}>
+                <InboxIdeas
+                  ideas={inboxIdeas()}
+                  closed={ideasClosed()}
+                  canCollapse={!needle()}
+                  onToggle={() => libraryPrefs.toggleCollapsed(collapseKey("ideas"))}
+                />
               </Show>
               <For each={blocks()}>
                 {(block) => (
@@ -832,7 +894,7 @@ export function ScriptsPage() {
                                   class="grp-tog"
                                   aria-expanded="false"
                                   title={t("shell.group.expand")}
-                                  onClick={() => libraryPrefs.toggleCollapsed(grp.key)}
+                                  onClick={() => libraryPrefs.toggleCollapsed(collapseKey(grp.key))}
                                 >
                                   <Show when={i() === 0}>
                                     <Icon name="right" size={11} class="chev is-shown" />
@@ -862,7 +924,7 @@ export function ScriptsPage() {
                                   aria-expanded="true"
                                   disabled={!canCollapse()}
                                   title={canCollapse() ? t("shell.group.collapse") : undefined}
-                                  onClick={() => libraryPrefs.toggleCollapsed(grp().key)}
+                                  onClick={() => libraryPrefs.toggleCollapsed(collapseKey(grp().key))}
                                 >
                                   <Show when={canCollapse()}>
                                     <Icon name="down" size={11} class="chev" />

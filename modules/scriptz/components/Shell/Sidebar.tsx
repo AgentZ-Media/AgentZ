@@ -21,8 +21,8 @@ import { folderColor, library } from "./libraryData";
 const MAX_RECENT = 5;
 
 /**
- * Left navigation (concept `#tpl-side`): app row, search + new, "Alle
- * Skripte", the pipeline, folders, recently opened scripts and the footer
+ * Left navigation (concept `#tpl-side`): app row, search + new, the inbox
+ * (only while work is in progress), "Alle Skripte", the pipeline, folders, recently opened scripts and the footer
  * with the writing counter, trash and settings. Always dark (`--side-*`).
  */
 export function Sidebar() {
@@ -96,6 +96,17 @@ export function Sidebar() {
       </div>
 
       <nav class="side-scroll">
+        {/* Only while something is in progress; stays while open so the
+            active entry doesn't vanish when its last item is finished. */}
+        <Show when={library.inboxCount() > 0 || route().kind === "inbox"}>
+          <NavItem
+            on={route().kind === "inbox"}
+            icon={<Icon name="inbox" size={14} />}
+            label={t("shell.nav.inbox")}
+            count={library.inboxCount()}
+            onClick={() => navStore.openInbox()}
+          />
+        </Show>
         <NavItem
           on={isAllOn()}
           icon={<Icon name="stack" size={14} />}
