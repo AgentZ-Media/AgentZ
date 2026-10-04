@@ -107,3 +107,26 @@ export const STAGE_GLYPHS: Record<StageGlyphName, string> = {
   online:
     '<circle cx="7" cy="7" r="6.1" stroke-width="1" style="fill:var(--accent);stroke:currentColor"/><path d="M4.6 7.2l1.7 1.7 3.2-3.4" fill="none" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="stroke:var(--accent-fg)"/>',
 };
+
+const STAGE_RING =
+  '<circle cx="7" cy="7" r="5.6" fill="none" stroke="currentColor" stroke-width="1.5"/>';
+
+function glyphNum(n: number): string {
+  return String(Math.round(n * 1000) / 1000);
+}
+
+/**
+ * Stage glyph for `step` (1-based) of a pipeline with `total` steps, in the
+ * same 14x14 grid as `STAGE_GLYPHS`: the wedge fills clockwise by
+ * step/total, the last step is the filled "done" glyph and step 0 is the
+ * dashed idea ring. With four steps it reproduces writing/ready/shot/online.
+ */
+export function stageGlyph(step: number, total: number): string {
+  if (!Number.isFinite(step) || !Number.isFinite(total) || step <= 0 || total <= 0) return STAGE_GLYPHS.idea;
+  if (step >= total) return STAGE_GLYPHS.online;
+  const angle = (2 * Math.PI * step) / total;
+  const x = glyphNum(7 + 3.6 * Math.sin(angle));
+  const y = glyphNum(7 - 3.6 * Math.cos(angle));
+  const large = step / total > 0.5 ? 1 : 0;
+  return `${STAGE_RING}<path d="M7 7V3.4A3.6 3.6 0 ${large} 1 ${x} ${y}z" fill="currentColor"/>`;
+}

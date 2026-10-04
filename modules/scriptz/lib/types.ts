@@ -18,26 +18,10 @@ export interface CharacterColorRecord {
   updated_at: number;
 }
 
-/** Production stage of a script (Werkbank redesign). Lives on every
- *  script; new scripts start at "writing". */
-export type ScriptStatus = "writing" | "ready" | "shot" | "online";
-
-/** Pipeline stage as shown in the sidebar / overview: ideas are a stage
- *  before any script exists. */
-export type Stage = "idea" | ScriptStatus;
-
-/** All script statuses in pipeline order. */
-export const SCRIPT_STATUSES: readonly ScriptStatus[] = [
-  "writing",
-  "ready",
-  "shot",
-  "online",
-] as const;
-
-/** Type guard for values read from storage / files. */
-export function isScriptStatus(v: unknown): v is ScriptStatus {
-  return v === "writing" || v === "ready" || v === "shot" || v === "online";
-}
+/** Production stage of a script: the id of one of the configurable stages
+ *  in lib/stages.ts (built-in: "writing", "ready", "shot", "online"). New
+ *  scripts start at the first stage, the last one means "done". */
+export type ScriptStatus = string;
 
 export interface ScriptSummary {
   id: string;
@@ -59,7 +43,8 @@ export interface ScriptSummary {
   direction_block_count: number;
   characters: ScriptCharacter[];
   folder_id: string | null;
-  /** Production stage. Defaults to "writing" for new and pre-redesign rows. */
+  /** Production stage id. Rows whose stage no longer exists read as the
+   *  first stage (see `resolveStageId`). */
   status: ScriptStatus;
   /** Unix-millis of the last status change; null = never changed. */
   status_changed_at: number | null;

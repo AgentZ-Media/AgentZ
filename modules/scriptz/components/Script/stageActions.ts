@@ -1,5 +1,5 @@
-// Stage changes of a script (Schreiben -> Drehbereit -> Gedreht -> Online)
-// with an undo toast. Used by the stage chip in the script top bar and by
+// Stage changes of a script along the configured pipeline (default:
+// Schreiben -> Drehbereit -> Gedreht -> Online) with an undo toast. Used by the stage chip in the script top bar and by
 // the shell's ⌘⌥→ / ⌘⌥← shortcuts (via `stepStage`).
 //
 // The undo toast lives here as module state so it survives whichever
@@ -15,9 +15,10 @@
 import { createSignal } from "solid-js";
 import { api } from "../../lib/api";
 import { scriptsBus } from "../../lib/scriptsBus";
-import { SCRIPT_STATUSES, type ScriptStatus } from "../../lib/types";
+import { scriptStages, stageIndex, stageLabel as configuredStageLabel } from "../../lib/stages";
+import type { ScriptStatus } from "../../lib/types";
 import { pushToast } from "@agentz/kit/stores";
-import { t, type TranslationKey } from "../../i18n";
+import { t } from "../../i18n";
 
 const TOAST_MS = 5000;
 
@@ -38,9 +39,9 @@ const [hosts, setHosts] = createSignal<number[]>([]);
 let nextHostId = 1;
 let queue: Promise<void> = Promise.resolve();
 
-/** Localized stage name ("Drehbereit"). */
+/** Stage name ("Drehbereit", or the user's own name). */
 export function stageLabel(status: ScriptStatus): string {
-  return t(`stage.${status}` as TranslationKey);
+  return configuredStageLabel(status);
 }
 
 function serialize(task: () => Promise<void>): Promise<void> {
@@ -100,10 +101,11 @@ export async function stepStage(scriptId: string, dir: 1 | -1): Promise<void> {
   await serialize(async () => {
     try {
       const current = (await api.getScript(scriptId)).status;
-      const idx = SCRIPT_STATUSES.indexOf(current);
-      const nextIdx = Math.min(SCRIPT_STATUSES.length - 1, Math.max(0, idx + dir));
+      const stages = scriptStages();
+      const idx = stageIndex(current);
+      const nextIdx = Math.min(stages.length - 1, Math.max(0, idx + dir));
       if (nextIdx === idx) return;
-      await applyStatus(scriptId, SCRIPT_STATUSES[nextIdx]);
+      await applyStatus(scriptId, stages[nextIdx].id);
     } catch (err) {
       reportError(err);
     }

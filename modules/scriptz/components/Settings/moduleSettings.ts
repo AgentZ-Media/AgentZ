@@ -3,6 +3,7 @@ import { t } from "../../i18n";
 import { SettingsWriting } from "./sections/SettingsWriting";
 import { SettingsFolders } from "./sections/SettingsFolders";
 import { SettingsCharacters } from "./sections/SettingsCharacters";
+import { SettingsStages } from "./sections/SettingsStages";
 import { DarkPaperSetting } from "./sections/DarkPaperSetting";
 import "./SettingsDialog.css";
 
@@ -21,6 +22,7 @@ export const scriptzAbout: AboutInfo = {
 export const scriptzModuleSettings: ModuleSettings = {
   sections: [
     { id: "writing", icon: "pen", label: () => t("prefs.writing.title"), component: SettingsWriting },
+    { id: "stages", icon: "check", label: () => t("prefs.stages.title"), component: SettingsStages },
     { id: "folders", icon: "folder", label: () => t("prefs.folders.title"), component: SettingsFolders },
     { id: "characters", icon: "users", label: () => t("prefs.characters.title"), component: SettingsCharacters },
   ],

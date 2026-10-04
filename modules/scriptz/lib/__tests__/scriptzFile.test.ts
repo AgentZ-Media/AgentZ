@@ -263,12 +263,22 @@ describe("scriptzFile - status (additive field, version stays 1)", () => {
     expect(parseScriptzBytes(asBytes(old)).script.status).toBe("writing");
   });
 
-  it("falls back to writing for an unknown status value", () => {
+  it("keeps well-formed custom stage ids (the import decides whether they exist)", () => {
     const file = serializeScript({ ...baseScript, status: "ready" }) as unknown as {
       script: Record<string, unknown>;
     };
-    file.script.status = "archived-in-the-future";
-    expect(parseScriptzBytes(asBytes(file)).script.status).toBe("writing");
+    file.script.status = "3f0c6b1e-7a7d-4c1e-9d55-0d1f5e2a9b11";
+    expect(parseScriptzBytes(asBytes(file)).script.status).toBe("3f0c6b1e-7a7d-4c1e-9d55-0d1f5e2a9b11");
+  });
+
+  it("falls back to writing for a malformed status value", () => {
+    for (const bad of [42, "", "not a stage!", "idea", "x".repeat(65)]) {
+      const file = serializeScript({ ...baseScript, status: "ready" }) as unknown as {
+        script: Record<string, unknown>;
+      };
+      file.script.status = bad;
+      expect(parseScriptzBytes(asBytes(file)).script.status).toBe("writing");
+    }
   });
 });
 

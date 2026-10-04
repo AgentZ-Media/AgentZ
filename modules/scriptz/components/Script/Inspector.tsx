@@ -2,7 +2,8 @@ import { For, Show, createEffect, createMemo, createSignal, onCleanup } from "so
 import { Icon } from "@agentz/kit/ui";
 import { api } from "../../lib/api";
 import { formatClock, formatRange, lengthStatus, type LengthRange } from "../../lib/lengthGoal";
-import { SCRIPT_STATUSES, type ScriptCharacter, type ScriptStatus } from "../../lib/types";
+import { scriptStages, stageIndex } from "../../lib/stages";
+import type { ScriptCharacter, ScriptStatus } from "../../lib/types";
 import { K } from "@agentz/kit/platform";
 import { ideasStore } from "../../stores/ideas";
 import { getCurrentLocale } from "@agentz/kit/i18n";
@@ -34,7 +35,7 @@ export function Inspector(props: InspectorProps) {
   const timer = setInterval(() => setNow(Date.now()), 60_000);
   onCleanup(() => clearInterval(timer));
 
-  const stageIdx = () => SCRIPT_STATUSES.indexOf(props.status);
+  const stageIdx = () => stageIndex(props.status);
 
   const since = () => {
     const b = sinceBucket(props.statusSince, now());
@@ -99,7 +100,7 @@ export function Inspector(props: InspectorProps) {
       <section class="ss-sec">
         <div class="ss-sec-h">{t("script.insp.stage")}</div>
         <div class="ss-steps" aria-hidden="true">
-          <For each={SCRIPT_STATUSES}>{(_, i) => <span classList={{ done: i() <= stageIdx() }} />}</For>
+          <For each={scriptStages()}>{(_, i) => <span classList={{ done: i() <= stageIdx() }} />}</For>
         </div>
         <div class="ss-step-now">
           <b>{stageLabel(props.status)}</b>

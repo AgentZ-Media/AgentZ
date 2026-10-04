@@ -5,7 +5,8 @@ import { acquireIdeaDraft, releaseIdeaDraft } from "./ideaDrafts";
 import { getCurrentLocale } from "@agentz/kit/i18n";
 import { t } from "../../../i18n";
 import { K } from "@agentz/kit/platform";
-import type { Folder, Idea, ScriptStatus, ScriptSummary } from "../../../lib/types";
+import type { Folder, Idea, ScriptSummary } from "../../../lib/types";
+import { stageLabel } from "../../../lib/stages";
 import { Icon } from "@agentz/kit/ui";
 import { StageGlyph } from "../../Common/StageGlyph";
 import { FolderMenu } from "./FolderMenu";
@@ -35,10 +36,6 @@ export interface IdeaEditorProps {
   /** Collapse button, or Escape inside a field: close and hand focus back
    *  to the list. */
   onCollapse(): void;
-}
-
-function stageLabel(status: ScriptStatus): string {
-  return t(`stage.${status}` as "stage.writing" | "stage.ready" | "stage.shot" | "stage.online");
 }
 
 /** Expanded row of the ideas list: editable title + notes (autosave),

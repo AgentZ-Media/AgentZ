@@ -80,9 +80,10 @@ function createLibraryData(isActive: () => boolean) {
     (ideasStore.ideas() ?? []).filter((i) => !i.used_at),
   );
 
+  /** Live scripts per stage id. */
   const statusCounts = createMemo(() => {
-    const counts: Record<ScriptStatus, number> = { writing: 0, ready: 0, shot: 0, online: 0 };
-    for (const s of scripts() ?? []) counts[s.status] += 1;
+    const counts = new Map<ScriptStatus, number>();
+    for (const s of scripts() ?? []) counts.set(s.status, (counts.get(s.status) ?? 0) + 1);
     return counts;
   });
 
@@ -133,7 +134,7 @@ export const library = {
   folder: (id: string | null | undefined): Folder | undefined =>
     id && id !== INBOX_FOLDER_ID ? data()?.folderMap().get(id) : undefined,
   openIdeas: () => data()?.openIdeas() ?? [],
-  statusCounts: () => data()?.statusCounts() ?? { writing: 0, ready: 0, shot: 0, online: 0 },
+  statusCounts: () => data()?.statusCounts() ?? new Map<ScriptStatus, number>(),
   folderCounts: () => data()?.folderCounts() ?? new Map<string, number>(),
   ideaLine: (scriptId: string): string | undefined => data()?.ideaLineByScript().get(scriptId),
 };

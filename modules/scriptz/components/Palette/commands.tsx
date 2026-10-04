@@ -2,7 +2,8 @@ import type { JSX } from "solid-js";
 import type { Command, CommandProvider, ShellControls } from "@agentz/kit/shell";
 import { api } from "../../lib/api";
 import { K } from "@agentz/kit/platform";
-import { SCRIPT_STATUSES, type SearchHit } from "../../lib/types";
+import { scriptStages, stageLabel } from "../../lib/stages";
+import type { SearchHit } from "../../lib/types";
 import { navStore } from "../../stores/nav";
 import { uiStore } from "../../stores/ui";
 import { ideasStore } from "../../stores/ideas";
@@ -119,12 +120,12 @@ function commands(shell: ShellControls): PaletteItem[] {
         run: () => uiStore.toggleFocus(scriptId),
       },
     );
-    for (const st of SCRIPT_STATUSES) {
+    for (const { id: st } of scriptStages()) {
       if (st === current) continue;
       list.push({
         id: `cmd:stage:${st}`,
         group: "commands",
-        label: t("shell.cmd.stage", { stage: t(`stage.${st}`) }),
+        label: t("shell.cmd.stage", { stage: stageLabel(st) }),
         keywords: t("shell.menu.stage"),
         icon: () => <StageGlyph stage={st} />,
         run: () => void setStageWithUndo(scriptId, st),

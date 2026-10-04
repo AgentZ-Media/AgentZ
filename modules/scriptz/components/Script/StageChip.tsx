@@ -2,7 +2,8 @@ import { uiStore } from "../../stores/ui";
 import { For, Show, createSignal, onCleanup, createEffect } from "solid-js";
 import { Icon } from "@agentz/kit/ui";
 import { StageGlyph } from "../Common/StageGlyph";
-import { SCRIPT_STATUSES, type ScriptStatus } from "../../lib/types";
+import { scriptStages, stageIndex } from "../../lib/stages";
+import type { ScriptStatus } from "../../lib/types";
 import { K } from "@agentz/kit/platform";
 import { t } from "../../i18n";
 import { setStageWithUndo, stageLabel } from "./stageActions";
@@ -14,8 +15,8 @@ export interface StageChipProps {
 }
 
 /**
- * Stage chip in the script top bar. Opens a menu with the four stages;
- * digits 1-4 pick directly, arrows + Enter work too. The footer reminds of
+ * Stage chip in the script top bar. Opens a menu with the configured
+ * stages; digits 1-9 pick directly, arrows + Enter work too. The footer reminds of
  * ⌘⌥→ (handled by the shell via `stepStage`).
  */
 export function StageChip(props: StageChipProps) {
@@ -55,7 +56,7 @@ export function StageChip(props: StageChipProps) {
       close();
       return;
     }
-    setActive(Math.max(0, SCRIPT_STATUSES.indexOf(props.status)));
+    setActive(stageIndex(props.status));
     const active = document.activeElement;
     returnFocus = active instanceof HTMLElement && active !== document.body ? active : null;
     setOpen(true);
@@ -72,12 +73,13 @@ export function StageChip(props: StageChipProps) {
       if (ev.metaKey || ev.ctrlKey || ev.altKey) return;
       // Only while the keyboard is in the menu (it takes focus on open).
       if (!focusWithin(wrapRef)) return;
-      const n = SCRIPT_STATUSES.length;
+      const stages = scriptStages();
+      const n = stages.length;
       const digit = /^[1-9]$/.test(ev.key) ? Number(ev.key) : 0;
       if (digit >= 1 && digit <= n) {
         ev.preventDefault();
         ev.stopPropagation();
-        pick(SCRIPT_STATUSES[digit - 1]);
+        pick(stages[digit - 1].id);
       } else if (ev.key === "ArrowDown") {
         ev.preventDefault();
         ev.stopPropagation();
@@ -89,7 +91,8 @@ export function StageChip(props: StageChipProps) {
       } else if (ev.key === "Enter" || ev.key === " ") {
         ev.preventDefault();
         ev.stopPropagation();
-        pick(SCRIPT_STATUSES[active()]);
+        const target = stages[active()];
+        if (target) pick(target.id);
       } else if (ev.key === "Escape" || ev.key === "Tab") {
         ev.preventDefault();
         ev.stopPropagation();
@@ -131,7 +134,7 @@ export function StageChip(props: StageChipProps) {
           tabIndex={-1}
           aria-label={t("script.stage.menuAria")}
         >
-          <For each={SCRIPT_STATUSES}>
+          <For each={scriptStages().map((st) => st.id)}>
             {(status, i) => (
               <button
                 type="button"
@@ -145,7 +148,7 @@ export function StageChip(props: StageChipProps) {
               >
                 <StageGlyph stage={status} />
                 <span class="lbl">{stageLabel(status)}</span>
-                <Show when={status === props.status} fallback={<kbd>{i() + 1}</kbd>}>
+                <Show when={status === props.status} fallback={i() < 9 ? <kbd>{i() + 1}</kbd> : null}>
                   <Icon name="check" size={14} class="ck" />
                 </Show>
               </button>

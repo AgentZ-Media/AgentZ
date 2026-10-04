@@ -28,7 +28,7 @@ import { pushToast } from "@agentz/kit/stores";
 import { localeCompare } from "@agentz/kit/i18n";
 import { t, tPlural } from "../../i18n";
 import type { Folder, Idea, ScriptStatus, ScriptSummary } from "../../lib/types";
-import { SCRIPT_STATUSES } from "../../lib/types";
+import { scriptStages, stageLabel } from "../../lib/stages";
 import { Icon } from "@agentz/kit/ui";
 import { StageGlyph } from "../Common/StageGlyph";
 import { confirmDialog } from "@agentz/kit/ui";
@@ -550,20 +550,24 @@ export function IdeasPage() {
     const skipped = list.length - open.length;
     if (open.length === 0) return;
     let done = 0;
+    let restaged = false;
     try {
       await requireSuccessfulFlush();
       for (const idea of open) {
         const { script } = await ideasStore.convertIdeaToScript({ ideaId: idea.id });
-        if (stage !== "writing") await api.setScriptStatus(script.id, stage);
+        if (script.status !== stage) {
+          await api.setScriptStatus(script.id, stage);
+          restaged = true;
+        }
         done++;
       }
     } catch (err) {
       errorToast(err);
     } finally {
-      if (done > 0 && stage !== "writing") scriptsBus.bump();
+      if (restaged) scriptsBus.bump();
     }
     if (done > 0) {
-      pushToast(tPlural("ideasPage.toast.convertedMany", done, { stage: t(`stage.${stage}`) }), "ok");
+      pushToast(tPlural("ideasPage.toast.convertedMany", done, { stage: stageLabel(stage) }), "ok");
     }
     if (skipped > 0) pushToast(tPlural("ideasPage.toast.convertSkipped", skipped), "info");
   }
@@ -604,8 +608,8 @@ export function IdeasPage() {
   }
 
   const stageMenu = (list: Idea[]): ContextMenuItem[] =>
-    SCRIPT_STATUSES.map((st) => ({
-      label: t(`stage.${st}`),
+    scriptStages().map(({ id: st }) => ({
+      label: stageLabel(st),
       icon: <StageGlyph stage={st} />,
       onClick: () => void convertIdeas(list, st),
     }));

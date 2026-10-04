@@ -44,12 +44,14 @@ import "@agentz/design/components.css";
 TypeScript data:
 
 ```ts
-import { ICONS, type IconName, STAGE_GLYPHS } from "@agentz/design/icons";
+import { ICONS, type IconName, STAGE_GLYPHS, stageGlyph } from "@agentz/design/icons";
 import { LOGOS, createLogo, type LogoId } from "@agentz/design/logo";
 ```
 
 `ICONS[name]` is the inner markup for a `viewBox="0 0 24 24"` stroke icon;
-`STAGE_GLYPHS[stage]` is the inner markup for a `viewBox="0 0 14 14"` glyph.
+`STAGE_GLYPHS[stage]` is the inner markup for a `viewBox="0 0 14 14"` glyph;
+`stageGlyph(step, total)` draws the same ring for a pipeline of any length
+(filled by `step / total`, the last step is the "done" glyph).
 
 ## Logo and app icon
 
