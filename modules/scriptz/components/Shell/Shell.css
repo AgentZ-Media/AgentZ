@@ -1,2 +1,33 @@
 .side svg.st { color: var(--side-muted); }
 .nav.is-on svg.st { color: var(--side-strong); }
+
+/* Sidebar nav as a column: pipeline and folders keep their height, the
+   recent section fills the rest and clips; Sidebar.tsx renders only the
+   rows that fit. The section reaches into the nav's side padding so the
+   active row's accent bar (left: -10px) isn't clipped. */
+.side-scroll.side-fit {
+  display: flex;
+  flex-direction: column;
+}
+.side-scroll.side-fit > * {
+  flex: none;
+}
+.side-scroll.side-fit > .side-recent {
+  flex: 1 1 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  margin: 0 -10px;
+  padding: 0 10px;
+  overflow: hidden;
+}
+.side-recent > .side-h {
+  flex: none;
+}
+.side-recent > .side-h.is-hidden {
+  visibility: hidden;
+}
+.side-recent-list {
+  flex: 1 1 0;
+  min-height: 0;
+}
