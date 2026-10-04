@@ -43,25 +43,31 @@ export function openNewScript(folderId: string | null = currentFolderContext()):
 
 let creating = false;
 
-/** Creates a script and opens it. Resolves false if it failed (toasted).
+/** Creates a script and opens it. Resolves null if it could not be created
+ *  (toasted); otherwise `opened` tells whether the navigation went through -
+ *  unsaved content elsewhere can block it (the navigation toasts that), and
+ *  the script then exists without being open.
  *  `folderId` must be a real folder (or null): the new-script dialog may
  *  pass one it just created that the library hasn't reloaded yet. */
 export async function createScript(
   input: { title?: string; folderId?: string | null } = {},
-): Promise<boolean> {
+): Promise<{ opened: boolean } | null> {
   // Key repeat / double click guard: one script per gesture.
-  if (creating) return false;
+  if (creating) return null;
   creating = true;
   try {
-    const folderId = input.folderId === INBOX_FOLDER_ID ? null : (input.folderId ?? null);
-    const created = await api.createScript({ title: input.title, folderId });
+    let created: ScriptSummary;
+    try {
+      const folderId = input.folderId === INBOX_FOLDER_ID ? null : (input.folderId ?? null);
+      created = await api.createScript({ title: input.title, folderId });
+    } catch (e) {
+      fail(e);
+      return null;
+    }
     scriptsBus.bump();
     foldersBus.bump();
-    navStore.openScript(created.id, created.title);
-    return true;
-  } catch (e) {
-    fail(e);
-    return false;
+    await navStore.openScript(created.id, created.title);
+    return { opened: navStore.activeScriptId() === created.id };
   } finally {
     creating = false;
   }

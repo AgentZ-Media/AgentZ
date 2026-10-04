@@ -44,7 +44,11 @@ export function NewScriptDialog() {
     wasOpen = open;
   });
 
-  const close = () => uiStore.closeNewScript();
+  // Not while the script is being created: the result belongs to this
+  // dialog session (it navigates and closes the dialog itself).
+  const close = () => {
+    if (!busy()) uiStore.closeNewScript();
+  };
 
   const folderOptions = (): Folder[] => {
     const name = newFolder();
@@ -98,9 +102,12 @@ export function NewScriptDialog() {
         setFolderId(created.id);
         target = created.id;
       }
-      if (await createScript({ title: name, folderId: target })) {
-        navigated = true;
-        close();
+      const result = await createScript({ title: name, folderId: target });
+      if (result) {
+        // Created even if the navigation was blocked: closing avoids a
+        // duplicate on a second "Anlegen"; the navigation toast explains.
+        navigated = result.opened;
+        uiStore.closeNewScript();
       }
     } catch (err) {
       pushToast(t("common.errorPrefix", { message: (err as Error)?.message ?? String(err) }), "error");
@@ -167,7 +174,7 @@ export function NewScriptDialog() {
           </Show>
         </Show>
         <span class="sp" />
-        <button type="button" class="btn" onClick={close}>
+        <button type="button" class="btn" disabled={busy()} onClick={close}>
           {t("common.cancel")}
         </button>
         <button

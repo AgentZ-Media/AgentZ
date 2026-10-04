@@ -1,6 +1,7 @@
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { cleanup, fireEvent, render, screen, waitFor } from "@solidjs/testing-library";
 import { applyResolvedLanguage } from "@agentz/kit/i18n";
+import { registerFlusher } from "@agentz/kit/lib";
 import { getTestStorage, setTestStorage, type TestStorage } from "../../../test/storage";
 import "../../../lib/api";
 import type { Folder, ScriptSummary } from "../../../lib/types";
@@ -18,6 +19,8 @@ let stopLibrary: () => void;
 let folders: Folder[] = [];
 let created: { title?: string; folderId?: string | null }[] = [];
 let createdFolders: string[] = [];
+/** While set, script creation waits for it. */
+let gate: Promise<void> | null = null;
 
 function folder(id: string, name: string): Folder {
   return { id, name, created_at: 1, updated_at: 1, script_count: 0, length_min_sec: null, length_max_sec: null };
@@ -40,6 +43,7 @@ beforeAll(() => {
     globalSearch: async () => [],
     getAppState: async () => null,
     createScript: async (input) => {
+      if (gate) await gate;
       created.push({ title: input.title, folderId: input.folderId });
       return summary(`s${created.length}`, input.title ?? "", input.folderId ?? null);
     },
@@ -62,6 +66,8 @@ beforeEach(async () => {
   folders = [folder("f1", "TikTok"), folder("f2", "YouTube")];
   created = [];
   createdFolders = [];
+  gate = null;
+  await navStore.openInbox();
   foldersBus.bump();
   await waitFor(() => expect(library.folders()).toHaveLength(2));
 });
@@ -157,5 +163,40 @@ describe("new script dialog", () => {
     expect(screen.queryByRole("button", { name: "Ordner des Skripts" })).toBeNull();
     fireEvent.click(screen.getByRole("button", { name: "Neuer Ordner" }));
     expect(await screen.findByRole("textbox", { name: "Name des neuen Ordners" })).toBeTruthy();
+  });
+
+  it("cannot be closed while the script is being created", async () => {
+    let release!: () => void;
+    gate = new Promise((resolve) => { release = resolve; });
+    render(() => <NewScriptDialog />);
+    uiStore.openNewScript(null);
+    await screen.findByRole("dialog");
+    fireEvent.input(titleField(), { target: { value: "Langsam" } });
+    fireEvent.keyDown(titleField(), { key: "Enter" });
+    await waitFor(() => expect(screen.getByRole("button", { name: "Abbrechen" })).toHaveProperty("disabled", true));
+    fireEvent.keyDown(titleField(), { key: "Escape" });
+    fireEvent.click(screen.getByRole("button", { name: "Abbrechen" }));
+    expect(uiStore.newScriptOpen()).toBe(true);
+
+    release();
+    await waitFor(() => expect(uiStore.newScriptOpen()).toBe(false));
+    expect(created).toEqual([{ title: "Langsam", folderId: null }]);
+    await waitFor(() => expect(navStore.activeScriptId()).toBe("s1"));
+  });
+
+  it("closes without a duplicate when unsaved content blocks opening the script", async () => {
+    render(() => <NewScriptDialog />);
+    uiStore.openNewScript(null);
+    await screen.findByRole("dialog");
+    const unregister = registerFlusher(() => ({ ok: false }), "failed-draft");
+    try {
+      fireEvent.input(titleField(), { target: { value: "Blockiert" } });
+      fireEvent.keyDown(titleField(), { key: "Enter" });
+      await waitFor(() => expect(uiStore.newScriptOpen()).toBe(false));
+    } finally {
+      unregister();
+    }
+    expect(created).toEqual([{ title: "Blockiert", folderId: null }]);
+    expect(navStore.activeScriptId()).toBeNull();
   });
 });
