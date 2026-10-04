@@ -97,3 +97,14 @@ describe("navStore history", () => {
     expect(navStore.canForward()).toBe(true);
   });
 });
+
+describe("navStore recent", () => {
+  it("keeps enough history to fill a tall sidebar, newest first", async () => {
+    const ids = Array.from({ length: 60 }, (_, i) => `r${i}`);
+    for (const id of ids) await navStore.openScript(id, id.toUpperCase());
+    const recent = navStore.recent().map((r) => r.scriptId);
+    expect(recent).toHaveLength(50);
+    expect(recent.slice(0, 3)).toEqual(["r59", "r58", "r57"]);
+    expect(navStore.recent()[0]?.title).toBe("R59");
+  });
+});

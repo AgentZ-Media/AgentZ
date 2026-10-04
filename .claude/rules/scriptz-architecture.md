@@ -17,7 +17,7 @@ Referenz des Designs: `docs/redesign/concept.html`.
   Navigation, Layout und Bibliothekspräferenzen, seedet das Welcome-Skript,
   füllt Runtime-Statistiken nach, migriert Legacy-Blöcke und startet erst
   danach Ideen-, Statistik- und Bibliotheks-Resources. Liefert Routen
-  (Skripte, Ideen, Skript, Papierkorb), Sidebar, Overlays (QuickCapture,
+  (Inbox, Skripte, Ideen, Skript, Papierkorb), Sidebar, Overlays (QuickCapture,
   Export, Stufen-Undo), Befehle, Shortcuts, Einstellungen, Onboarding.
 - `lib/`: `api.ts` ist ein Proxy auf den registrierten `ScriptzStorage`
   (`registerSqlStorageAdapter()` installiert den SQL-Default). Fachlogik:
@@ -63,6 +63,10 @@ Kamera/Caption/SFX ist bewusst keine SQL-Migration (siehe unten).
   `api.setScriptStatus` (StageChip, Auswahl, ⌘⌥←/→ mit Undo-Toast);
   `status_changed_at` ändert sich nur bei echtem Wechsel, `updated_at` gar
   nicht.
+- Die letzte Stufe gilt als erledigt (`isFinalStage`). Die Inbox (Route
+  `inbox`, ganz oben in der Sidebar und nur sichtbar, solange etwas offen ist)
+  zeigt offene Ideen und alle Skripte davor (`library.inProgress`). Eigene
+  Stufen brauchen dort keine Anpassung.
 - Zielbereich in Sekunden je Ordner oder global
   (`length_min_default_sec`/`length_max_default_sec`, leer = aus). Auflösung:
   Ordner -> Standard -> keiner (`resolveLengthRange`).

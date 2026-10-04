@@ -77,6 +77,13 @@ function commands(shell: ShellControls): PaletteItem[] {
       run: () => navStore.openIdeas(),
     },
     {
+      id: "cmd:inbox",
+      group: "commands",
+      label: t("shell.cmd.openInbox"),
+      icon: icon("inbox"),
+      run: () => navStore.openInbox(),
+    },
+    {
       id: "cmd:all",
       group: "commands",
       label: t("shell.nav.all"),

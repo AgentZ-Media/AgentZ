@@ -8,7 +8,7 @@
  * (or `<svg class="i">` with components.css loaded).
  *
  * Source: the `#i-*` sprite in docs/redesign/concept.html, plus
- * x, trash, import, select, play and undo drawn on the same grid.
+ * x, trash, import, select, play, undo and inbox drawn on the same grid.
  */
 
 export const ICON_VIEWBOX = "0 0 24 24";
@@ -47,7 +47,8 @@ export type IconName =
   | "import"
   | "select"
   | "play"
-  | "undo";
+  | "undo"
+  | "inbox";
 
 export const ICONS: Record<IconName, string> = {
   search: '<circle cx="11" cy="11" r="6.5"/><path d="M20 20l-4.2-4.2"/>',
@@ -83,6 +84,7 @@ export const ICONS: Record<IconName, string> = {
   select: '<rect x="4" y="4" width="16" height="16" rx="3.5"/><path d="M8.5 12.2l2.4 2.4 4.6-5"/>',
   play: '<path d="M8 5.5v13l10.5-6.5z"/>',
   undo: '<path d="M9 14L4.5 9.5 9 5"/><path d="M4.5 9.5H15a4.5 4.5 0 0 1 0 9h-3"/>',
+  inbox: '<path d="M4 13.5l2.1-7a2 2 0 0 1 1.9-1.5h8a2 2 0 0 1 1.9 1.5l2.1 7"/><path d="M4 13.5V18a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-4.5h-4.5L14 16h-4l-1.5-2.5z"/>',
 };
 
 /** Every icon name, e.g. for a component sheet or tests. */
