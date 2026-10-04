@@ -17,6 +17,7 @@ import { ScriptScreen } from "./components/Script/ScriptScreen";
 import { StageUndoToast } from "./components/Script/StageToast";
 import { IdeasPage } from "./components/Ideas/IdeasPage";
 import { QuickCapture } from "./components/Ideas/QuickCapture";
+import { NewScriptDialog } from "./components/Library/NewScriptDialog";
 import { ExportDialog } from "./components/Export/ExportDialog";
 import { Onboarding, ONBOARDING_KEY } from "./components/Onboarding/Onboarding";
 import { Sidebar, SidebarFooter } from "./components/Shell/Sidebar";
@@ -91,7 +92,7 @@ async function setupScriptz(ctx: ModuleContext): Promise<ModuleRuntime> {
     // List headers (PageBar) show the reopen button; the script view uses
     // Mod+\ and the palette, so the shell adds no button of its own.
     revealsSidebar: true,
-    overlays: [QuickCapture, ExportDialog, StageUndoToast],
+    overlays: [QuickCapture, NewScriptDialog, ExportDialog, StageUndoToast],
     settings: scriptzModuleSettings,
     commands: createScriptzCommands(ctx.shell),
     commandPlaceholder: () => t("shell.palette.placeholder"),

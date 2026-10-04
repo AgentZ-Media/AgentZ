@@ -7,6 +7,7 @@ import { scriptsBus } from "../../lib/scriptsBus";
 import { foldersBus } from "../../lib/foldersBus";
 import { INBOX_FOLDER_ID } from "../../lib/folders";
 import { navStore } from "../../stores/nav";
+import { uiStore } from "../../stores/ui";
 import { pushToast } from "@agentz/kit/stores";
 import { ideasStore } from "../../stores/ideas";
 import { confirmDialog } from "@agentz/kit/ui";
@@ -34,21 +35,33 @@ export function currentFolderContext(): string | null {
   return null;
 }
 
+/** ⌘N / "Neues Skript": opens the dialog that asks for the title and the
+ *  folder, preset to the folder the user is in right now. */
+export function openNewScript(folderId: string | null = currentFolderContext()): void {
+  uiStore.openNewScript(folderId);
+}
+
 let creating = false;
 
-/** ⌘N / "+": creates an untitled script and opens it. The script screen
- *  focuses the title field of a fresh "Unbenannt" script. */
-export async function createScript(folderId: string | null = currentFolderContext()): Promise<void> {
+/** Creates a script and opens it. Resolves false if it failed (toasted).
+ *  `folderId` must be a real folder (or null): the new-script dialog may
+ *  pass one it just created that the library hasn't reloaded yet. */
+export async function createScript(
+  input: { title?: string; folderId?: string | null } = {},
+): Promise<boolean> {
   // Key repeat / double click guard: one script per gesture.
-  if (creating) return;
+  if (creating) return false;
   creating = true;
   try {
-    const created = await api.createScript({ folderId: realFolder(folderId) });
+    const folderId = input.folderId === INBOX_FOLDER_ID ? null : (input.folderId ?? null);
+    const created = await api.createScript({ title: input.title, folderId });
     scriptsBus.bump();
     foldersBus.bump();
     navStore.openScript(created.id, created.title);
+    return true;
   } catch (e) {
     fail(e);
+    return false;
   } finally {
     creating = false;
   }

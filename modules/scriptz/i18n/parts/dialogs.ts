@@ -83,6 +83,17 @@ export const dialogsDe = {
   "capture.writeNow": "Gleich schreiben",
   "capture.remember": "Merken",
 
+  // ---------- new script (⌘N) ----------
+  "newScript.aria": "Neues Skript anlegen",
+  "newScript.label": "Neues Skript",
+  "newScript.titlePlaceholder": "Wie soll das Skript heißen?",
+  "newScript.titleAria": "Titel des Skripts",
+  "newScript.folderAria": "Ordner des Skripts",
+  "newScript.newFolderAria": "Name des neuen Ordners",
+  "newScript.newFolderPlaceholder": "Name des Ordners",
+  "newScript.pendingFolder": "{name} (neu)",
+  "newScript.create": "Anlegen",
+
   // ---------- export ----------
   "exportDialog.title": "Exportieren",
   "exportDialog.fmt.aria": "Format",
@@ -332,6 +343,17 @@ export const dialogsEn: Record<keyof typeof dialogsDe, string> = {
   "capture.folderAria": "Idea folder",
   "capture.writeNow": "Write now",
   "capture.remember": "Save",
+
+  // ---------- new script (⌘N) ----------
+  "newScript.aria": "Create a new script",
+  "newScript.label": "New script",
+  "newScript.titlePlaceholder": "What should the script be called?",
+  "newScript.titleAria": "Script title",
+  "newScript.folderAria": "Folder of the script",
+  "newScript.newFolderAria": "Name of the new folder",
+  "newScript.newFolderPlaceholder": "Folder name",
+  "newScript.pendingFolder": "{name} (new)",
+  "newScript.create": "Create",
 
   // ---------- export ----------
   "exportDialog.title": "Export",

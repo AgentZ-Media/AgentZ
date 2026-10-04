@@ -45,6 +45,8 @@ const focusOverride = new Map<string, boolean>();
 
 // ---- dialogs (session only) ----
 const [captureOpen, setCaptureOpen] = createSignal(false);
+/** Open "new script" dialog: undefined = closed, else its preset folder. */
+const [newScriptFolder, setNewScriptFolder] = createSignal<string | null | undefined>(undefined);
 const [exportScriptId, setExportScriptId] = createSignal<string | null>(null);
 const [activityOpen, setActivityOpen] = createSignal(false);
 
@@ -63,7 +65,7 @@ export function startUiRuntime(kv = getKvStore()): () => void {
   const stopLayout = layout.start(kv);
   const unbind = shellUi.setSidebarPersistence((sidebar) => layout.update({ sidebar }));
   focusOverride.clear(); setFocusMode(false);
-  setCaptureOpen(false); setExportScriptId(null); setActivityOpen(false); setIdeaToReveal(null);
+  setCaptureOpen(false); setNewScriptFolder(undefined); setExportScriptId(null); setActivityOpen(false); setIdeaToReveal(null);
   const current: UiRuntime = {
     active: true, kv, focusWrites: new Map(),
     stop() {
@@ -157,6 +159,12 @@ export const uiStore = {
   openCapture: () => setCaptureOpen(true),
   closeCapture: () => setCaptureOpen(false),
 
+  newScriptOpen: () => newScriptFolder() !== undefined,
+  /** Folder the dialog starts with (null = no folder). */
+  newScriptFolder: () => newScriptFolder() ?? null,
+  openNewScript: (folderId: string | null) => setNewScriptFolder(folderId),
+  closeNewScript: () => setNewScriptFolder(undefined),
+
   settingsOpen: shellUi.settingsOpen,
   settingsSection: shellUi.settingsSection,
   openSettings: shellUi.openSettings,
@@ -190,6 +198,7 @@ export const uiStore = {
   anyDialogOpen: () =>
     shellUi.paletteOpen() ||
     captureOpen() ||
+    newScriptFolder() !== undefined ||
     shellUi.settingsOpen() ||
     exportScriptId() !== null ||
     shellUi.onboardingOpen() ||

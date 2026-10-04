@@ -11,6 +11,7 @@ vi.mock("../../Script/ScriptScreen", () => ({ ScriptScreen: () => null }));
 vi.mock("../../Script/StageToast", () => ({ StageUndoToast: () => null }));
 vi.mock("../../Ideas/IdeasPage", () => ({ IdeasPage: () => null }));
 vi.mock("../../Ideas/QuickCapture", () => ({ QuickCapture: () => null }));
+vi.mock("../../Library/NewScriptDialog", () => ({ NewScriptDialog: () => null }));
 vi.mock("../../Export/ExportDialog", () => ({ ExportDialog: () => null }));
 vi.mock("../../Onboarding/Onboarding", () => ({
   Onboarding: () => null,
