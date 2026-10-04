@@ -45,6 +45,7 @@ import {
   loadStats as dwLoadStats,
 } from "./dailyWords";
 import { globalSearch as searchGlobal } from "./search";
+import { isKnownStage } from "./stages";
 import { t } from "../i18n";
 import {
   archiveScript as scriptsArchive,
@@ -58,6 +59,8 @@ import {
   renameScript as scriptsRename,
   restoreScript as scriptsRestore,
   setScriptStatus as scriptsSetStatus,
+  countScriptsWithStatus as scriptsCountWithStatus,
+  reassignScriptStatus as scriptsReassignStatus,
   updateScript as scriptsUpdate,
 } from "./scripts";
 import {
@@ -153,6 +156,12 @@ const sqlBackedAdapter: ScriptzStorage = {
   },
   async setScriptStatus(id: string, status: ScriptStatus): Promise<ScriptSummary> {
     return scriptsSetStatus(id, status);
+  },
+  async countScriptsWithStatus(status: ScriptStatus): Promise<number> {
+    return scriptsCountWithStatus(status);
+  },
+  async reassignScriptStatus(from: ScriptStatus, to: ScriptStatus): Promise<number> {
+    return scriptsReassignStatus(from, to);
   },
   async backfillRuntimeStats(): Promise<void> {
     return scriptsBackfillRuntime();
@@ -319,8 +328,9 @@ const sqlBackedAdapter: ScriptzStorage = {
       JSON.stringify(parsed.script.contentJson),
       null,
     );
-    // Carry the production stage over (new scripts start at "writing").
-    if (parsed.script.status !== "writing") {
+    // Carry the production stage over when this install has it (new
+    // scripts start at the first stage).
+    if (isKnownStage(parsed.script.status) && parsed.script.status !== created.status) {
       await scriptsSetStatus(created.id, parsed.script.status);
     }
     return { scriptId: created.id, title: created.title };

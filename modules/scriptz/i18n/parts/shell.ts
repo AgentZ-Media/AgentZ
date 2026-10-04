@@ -24,8 +24,8 @@ export const shellDe = {
 
   // ---------- scripts page ----------
   "shell.week.label": "Diese Woche",
-  "shell.week.shot_one": "{count} gedreht",
-  "shell.week.shot_other": "{count} gedreht",
+  "shell.week.done_one": "{count} auf „{stage}“",
+  "shell.week.done_other": "{count} auf „{stage}“",
   "shell.week.words_one": "{count} Wort geschrieben",
   "shell.week.words_other": "{count} Wörter geschrieben",
   "shell.week.ideas_one": "{count} neue Idee",
@@ -39,7 +39,7 @@ export const shellDe = {
   "shell.group.expand": "Ausklappen",
   "shell.group.collapsed": "eingeklappt",
   "shell.group.material": "{time} Material",
-  "shell.group.materialTitle": "Geschätzte Laufzeit aller drehbereiten Skripte zusammen",
+  "shell.group.materialTitle": "Geschätzte Laufzeit aller Skripte dieser Stufe zusammen",
   "shell.group.contentHits": "Treffer im Text",
   "shell.teaser.waiting_one": "{count} Idee wartet",
   "shell.teaser.waiting_other": "{count} Ideen warten",
@@ -113,8 +113,8 @@ export const shellEn: Record<keyof typeof shellDe, string> = {
 
   // ---------- scripts page ----------
   "shell.week.label": "This week",
-  "shell.week.shot_one": "{count} shot",
-  "shell.week.shot_other": "{count} shot",
+  "shell.week.done_one": "{count} reached “{stage}”",
+  "shell.week.done_other": "{count} reached “{stage}”",
   "shell.week.words_one": "{count} word written",
   "shell.week.words_other": "{count} words written",
   "shell.week.ideas_one": "{count} new idea",
@@ -128,7 +128,7 @@ export const shellEn: Record<keyof typeof shellDe, string> = {
   "shell.group.expand": "Expand",
   "shell.group.collapsed": "collapsed",
   "shell.group.material": "{time} of material",
-  "shell.group.materialTitle": "Estimated runtime of all ready-to-shoot scripts combined",
+  "shell.group.materialTitle": "Estimated runtime of all scripts in this stage combined",
   "shell.group.contentHits": "Matches in the text",
   "shell.teaser.waiting_one": "{count} idea waiting",
   "shell.teaser.waiting_other": "{count} ideas waiting",

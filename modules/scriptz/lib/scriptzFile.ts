@@ -13,7 +13,8 @@
 //      not script content.
 
 import { normalizeLegacyTree } from "./legacyBlocks";
-import { isScriptStatus, type ScriptCharacter, type ScriptStatus } from "./types";
+import { isStageId } from "./stages";
+import type { ScriptCharacter, ScriptStatus } from "./types";
 import { t } from "../i18n";
 
 /** File extension without the dot. */
@@ -37,8 +38,9 @@ export interface ScriptzFileV1 {
     highlightingEnabled: number | null;
     createdAt: string; // ISO 8601
     updatedAt: string; // ISO 8601
-    /** Production stage. Additive field (no version bump): older files
-     *  don't carry it, the parser then falls back to "writing". */
+    /** Production stage id. Additive field (no version bump): older files
+     *  don't carry it, the parser then falls back to "writing". The import
+     *  only keeps ids the receiving install knows. */
     status: ScriptStatus;
   };
 }
@@ -203,7 +205,7 @@ function validateScriptzObject(raw: unknown): ScriptzFileV1 {
       highlightingEnabled,
       createdAt,
       updatedAt,
-      status: isScriptStatus(s.status) ? s.status : "writing",
+      status: isStageId(s.status) ? s.status : "writing",
     },
   };
 }

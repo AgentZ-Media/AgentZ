@@ -12,7 +12,7 @@ import {
   type JSX,
 } from "solid-js";
 import type { Idea, ScriptStatus, ScriptSummary, SearchHit } from "../../lib/types";
-import { FINAL_SCRIPT_STATUS, SCRIPT_STATUSES } from "../../lib/types";
+import { finalStageId, firstStageId, isKnownStage, scriptStages, stageIndex, stageLabel } from "../../lib/stages";
 import { api } from "../../lib/api";
 import { debounce, relativeTime } from "@agentz/kit/lib";
 import { formatClock, formatRange, resolveLengthRange } from "../../lib/lengthGoal";
@@ -134,7 +134,11 @@ export function ScriptsPage() {
     const r = navStore.route();
     return r.kind === "scripts" ? r : null;
   };
-  const status = (): ScriptStatus | null => route()?.status ?? null;
+  // A filter on a stage that was removed in the settings falls back to all.
+  const status = (): ScriptStatus | null => {
+    const st = route()?.status;
+    return st && isKnownStage(st) ? st : null;
+  };
   const folderId = (): string | null => route()?.folderId ?? null;
   /** Inbox: open ideas plus every script before the last stage. */
   const isInbox = () => navStore.route().kind === "inbox";
@@ -280,9 +284,9 @@ export function ScriptsPage() {
     const all = sorted();
     const shown = visible();
     if (g === "stage") {
-      return SCRIPT_STATUSES.map((st) => ({
+      return scriptStages().map(({ id: st }) => ({
         key: st,
-        label: t(`stage.${st}`),
+        label: stageLabel(st),
         glyph: () => <StageGlyph stage={st} />,
         status: st,
         all: all.filter((s) => s.status === st),
@@ -329,9 +333,9 @@ export function ScriptsPage() {
       teaserPlaced = true;
     }
     for (const grp of list) {
-      // Stage view: the teaser sits between the work in progress (writing,
-      // ready) and what's done (shot, online).
-      if (!teaserPlaced && (grp.status === "shot" || grp.status === "online")) {
+      // Stage view: the teaser sits between the first half of the pipeline
+      // (work in progress) and the second half (default: shot, online).
+      if (!teaserPlaced && grp.status && stageIndex(grp.status) >= Math.ceil(scriptStages().length / 2)) {
         out.push({ kind: "teaser" });
         teaserPlaced = true;
       }
@@ -385,19 +389,21 @@ export function ScriptsPage() {
   const pageTitle = () => {
     if (isInbox()) return t("shell.nav.inbox");
     const st = status();
-    if (st) return t(`stage.${st}`);
+    if (st) return stageLabel(st);
     if (folderId()) return folderName() || t("shell.nav.all");
     return t("shell.nav.all");
   };
 
   const week = createMemo(() => {
     const start = isoWeekStart();
-    const shot = library
+    // Scripts that reached the last stage ("done") this week.
+    const done = finalStageId();
+    const finished = library
       .scripts()
-      .filter((s) => s.status === "shot" && (s.status_changed_at ?? 0) >= start).length;
+      .filter((s) => s.status === done && (s.status_changed_at ?? 0) >= start).length;
     const words = dailyStatsStore.stats().wordsThisWeek;
     const ideas = (ideasStore.ideas() ?? []).filter((i) => i.created_at >= start).length;
-    return { shot, words, ideas };
+    return { finished, words, ideas };
   });
   const fmtNum = (n: number) => n.toLocaleString(getCurrentLocale());
 
@@ -454,11 +460,11 @@ export function ScriptsPage() {
   }
 
   function stageItems(ids: string[], current?: ScriptStatus): ContextMenuItem[] {
-    return SCRIPT_STATUSES.map((st, i) => ({
-      label: t(`stage.${st}`),
+    return scriptStages().map(({ id: st }, i) => ({
+      label: stageLabel(st),
       icon: <StageGlyph stage={st} />,
       checked: current === st,
-      hint: String(i + 1),
+      hint: i < 9 ? String(i + 1) : undefined,
       // One script: undo toast (shared with the script screen); several:
       // a plain confirmation.
       onClick: () => void (ids.length === 1 ? setStageWithUndo(ids[0], st) : setScriptsStage(ids, st)),
@@ -617,7 +623,7 @@ export function ScriptsPage() {
   );
 
   const groupAction = (grp: Group) => {
-    if (grp.status === "writing" && !selectMode()) {
+    if (grp.status === firstStageId() && !selectMode()) {
       return (
         <button type="button" class="grp-act" onClick={newScriptHere}>
           <Icon name="plus" size={12} />
@@ -689,13 +695,16 @@ export function ScriptsPage() {
               <h1>{pageTitle()}</h1>
               <Switch>
                 <Match when={isAll()}>
-                  <Show when={week().shot + week().words + week().ideas > 0}>
+                  <Show when={week().finished + week().words + week().ideas > 0}>
                     <div class="week">
                       <span class="week-lbl">{t("shell.week.label")}</span>
-                      <Show when={week().shot > 0}>
+                      <Show when={week().finished > 0}>
                         <span>
-                          <StageGlyph stage="shot" />
-                          {boldCount(tPlural("shell.week.shot", week().shot, { count: MARK }), fmtNum(week().shot))}
+                          <StageGlyph stage={finalStageId()} />
+                          {boldCount(
+                            tPlural("shell.week.done", week().finished, { count: MARK, stage: stageLabel(finalStageId()) }),
+                            fmtNum(week().finished),
+                          )}
                         </span>
                       </Show>
                       <Show when={week().words > 0}>
@@ -847,7 +856,7 @@ export function ScriptsPage() {
                   <Match when={isInbox()}>
                     <div class="lib-empty-h">{t("shell.empty.inbox.title")}</div>
                     <div class="lib-empty-sub">
-                      {t("shell.empty.inbox.hint", { stage: t(`stage.${FINAL_SCRIPT_STATUS}`) })}
+                      {t("shell.empty.inbox.hint", { stage: stageLabel(finalStageId()) })}
                     </div>
                     <button type="button" class="btn" onClick={newScriptHere}>
                       <Icon name="plus" />
@@ -857,7 +866,7 @@ export function ScriptsPage() {
                   <Match when={status()}>
                     {(st) => (
                       <>
-                        <div class="lib-empty-h">{t("shell.empty.stage.title", { stage: t(`stage.${st()}`) })}</div>
+                        <div class="lib-empty-h">{t("shell.empty.stage.title", { stage: stageLabel(st()) })}</div>
                         <div class="lib-empty-sub">{t("shell.empty.stage.hint")}</div>
                       </>
                     )}

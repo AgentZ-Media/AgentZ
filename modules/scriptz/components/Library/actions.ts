@@ -13,6 +13,7 @@ import { confirmDialog } from "@agentz/kit/ui";
 import { library } from "../Shell/libraryData";
 import { t, tPlural } from "../../i18n";
 import type { Folder, ScriptStatus, ScriptSummary } from "../../lib/types";
+import { stageLabel } from "../../lib/stages";
 
 function fail(e: unknown): void {
   const message = e instanceof Error ? e.message : String(e);
@@ -132,7 +133,7 @@ export async function setScriptsStage(ids: string[], status: ScriptStatus): Prom
   if (ids.length === 0) return;
   try {
     for (const id of ids) await api.setScriptStatus(id, status);
-    pushToast(t("shell.toast.stageSet", { stage: t(`stage.${status}`) }), "ok");
+    pushToast(t("shell.toast.stageSet", { stage: stageLabel(status) }), "ok");
   } catch (e) {
     fail(e);
   } finally {

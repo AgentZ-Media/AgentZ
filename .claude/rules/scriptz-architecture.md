@@ -46,14 +46,27 @@ Kamera/Caption/SFX ist bewusst keine SQL-Migration (siehe unten).
 
 ## Stufen und Zielbereich
 
-- `ScriptStatus`: `writing` -> `ready` -> `shot` -> `online`. „Idee" ist nur
-  eine UI-Stufe (Ideen-Seite). Gesetzt über `api.setScriptStatus`
-  (StageChip, Auswahl, ⌘⌥←/→ mit Undo-Toast); `status_changed_at` ändert sich
-  nur bei echtem Wechsel, `updated_at` gar nicht.
-- Die letzte Stufe (`FINAL_SCRIPT_STATUS`, abgeleitet aus `SCRIPT_STATUSES`)
-  gilt als erledigt. Die Inbox (Route `inbox`, ganz oben in der Sidebar und
-  nur sichtbar, solange etwas offen ist) zeigt offene Ideen und alle Skripte
-  davor (`isInProgress`). Neue Stufen brauchen dort keine Anpassung.
+- Stufen sind konfigurierbar (Einstellungen > Stufen, `lib/stages.ts`,
+  Settings-Schlüssel `script_stages` als JSON `[{"id","label"?}]`, leer =
+  Standard `writing` -> `ready` -> `shot` -> `online`). 2 bis 10 Stufen; neue
+  Skripte starten auf der ersten, die letzte gilt als abgeschlossen.
+  `scripts.status` speichert die Stufen-ID, Umbenennen und Umsortieren
+  ändern keine Zeile. Eingebaute IDs ohne eigenen Namen folgen der Sprache,
+  neue Stufen bekommen eine UUID. Entfernen verschiebt vorher alle Skripte
+  (inkl. Papierkorb) per `api.reassignScriptStatus` auf die vorherige Stufe.
+  Unbekannte IDs liest `lib/scripts.ts` als erste Stufe.
+- Das Stufen-Symbol (`StageGlyph`, `stageGlyph(step, total)` aus
+  `@agentz/design/icons`) füllt sich um `step / total`; die letzte Stufe ist
+  das gefüllte Abschluss-Symbol. Überall Stufen über `scriptStages()` und
+  `stageLabel()` lesen, nie feste IDs oder `stage.*`-Schlüssel.
+- „Idee" ist nur eine UI-Stufe (Ideen-Seite). Gesetzt über
+  `api.setScriptStatus` (StageChip, Auswahl, ⌘⌥←/→ mit Undo-Toast);
+  `status_changed_at` ändert sich nur bei echtem Wechsel, `updated_at` gar
+  nicht.
+- Die letzte Stufe gilt als erledigt (`isFinalStage`). Die Inbox (Route
+  `inbox`, ganz oben in der Sidebar und nur sichtbar, solange etwas offen ist)
+  zeigt offene Ideen und alle Skripte davor (`library.inProgress`). Eigene
+  Stufen brauchen dort keine Anpassung.
 - Zielbereich in Sekunden je Ordner oder global
   (`length_min_default_sec`/`length_max_default_sec`, leer = aus). Auflösung:
   Ordner -> Standard -> keiner (`resolveLengthRange`).

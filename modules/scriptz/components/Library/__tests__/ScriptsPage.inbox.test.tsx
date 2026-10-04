@@ -2,14 +2,8 @@ import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from
 import { cleanup, render, waitFor } from "@solidjs/testing-library";
 import { getTestStorage, setTestStorage, type TestStorage } from "../../../test/storage";
 import "../../../lib/api";
-import {
-  FINAL_SCRIPT_STATUS,
-  SCRIPT_STATUSES,
-  isInProgress,
-  type Idea,
-  type ScriptStatus,
-  type ScriptSummary,
-} from "../../../lib/types";
+import type { Idea, ScriptStatus, ScriptSummary } from "../../../lib/types";
+import { finalStageId, isFinalStage, resetScriptStages, setScriptStages, stageIds } from "../../../lib/stages";
 import { scriptsBus } from "../../../lib/scriptsBus";
 import { ideasBus } from "../../../lib/ideasBus";
 import { navStore, startNavRuntime } from "../../../stores/nav";
@@ -54,13 +48,17 @@ beforeAll(() => {
   stopLibrary = startLibraryData();
 });
 beforeEach(async () => {
-  scripts = SCRIPT_STATUSES.map((st) => script(st, `Script ${st}`, st));
+  resetScriptStages();
+  scripts = stageIds().map((st) => script(st, `Script ${st}`, st));
   ideas = [idea("i1", "Fresh idea"), idea("i2", "Used idea", 5)];
   scriptsBus.bump();
   ideasBus.bump();
   await navStore.openInbox();
 });
-afterEach(cleanup);
+afterEach(() => {
+  cleanup();
+  resetScriptStages();
+});
 afterAll(() => {
   stopNav();
   stopLibrary();
@@ -70,24 +68,27 @@ afterAll(() => {
 
 describe("inbox", () => {
   it("treats only the last pipeline stage as done", () => {
-    expect(FINAL_SCRIPT_STATUS).toBe(SCRIPT_STATUSES[SCRIPT_STATUSES.length - 1]);
-    for (const st of SCRIPT_STATUSES) expect(isInProgress(st)).toBe(st !== FINAL_SCRIPT_STATUS);
+    expect(finalStageId()).toBe("online");
+    for (const st of stageIds()) expect(isFinalStage(st)).toBe(st === "online");
+    setScriptStages([{ id: "writing" }, { id: "edit", label: "Schnitt" }]);
+    expect(isFinalStage("edit")).toBe(true);
+    expect(isFinalStage("writing")).toBe(false);
   });
 
   it("lists open ideas and every script before the last stage", async () => {
     const view = render(() => <ScriptsPage />);
     await view.findByRole("button", { name: "Fresh idea" });
-    for (const st of SCRIPT_STATUSES) {
-      if (st === FINAL_SCRIPT_STATUS) continue;
+    for (const st of stageIds()) {
+      if (isFinalStage(st)) continue;
       expect(view.getByRole("button", { name: `Script ${st}` })).toBeTruthy();
     }
-    expect(view.queryByRole("button", { name: `Script ${FINAL_SCRIPT_STATUS}` })).toBeNull();
+    expect(view.queryByRole("button", { name: `Script ${finalStageId()}` })).toBeNull();
     expect(view.queryByRole("button", { name: "Used idea" })).toBeNull();
     expect(view.getByRole("heading", { level: 1 }).textContent).toBe(t("shell.nav.inbox"));
   });
 
   it("shows the empty state once everything reached the last stage", async () => {
-    scripts = [script("done", "Done", FINAL_SCRIPT_STATUS)];
+    scripts = [script("done", "Done", finalStageId())];
     ideas = [];
     scriptsBus.bump();
     ideasBus.bump();
@@ -100,10 +101,10 @@ describe("inbox", () => {
     await navStore.openScripts();
     const view = render(() => <Sidebar />);
     const entry = () => view.queryByRole("button", { name: new RegExp(`^${t("shell.nav.inbox")}`) });
-    await waitFor(() => expect(library.inboxCount()).toBe(SCRIPT_STATUSES.length - 1 + 1));
+    await waitFor(() => expect(library.inboxCount()).toBe(stageIds().length - 1 + 1));
     expect(entry()).toBeTruthy();
 
-    scripts = [script("done", "Done", FINAL_SCRIPT_STATUS)];
+    scripts = [script("done", "Done", finalStageId())];
     ideas = [idea("i2", "Used idea", 5)];
     scriptsBus.bump();
     ideasBus.bump();

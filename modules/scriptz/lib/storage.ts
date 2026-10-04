@@ -113,6 +113,12 @@ export interface ScriptzStorage {
    *  `status_changed_at = Date.now()` when the status actually changes;
    *  does not touch `updated_at` (a stage change is not an edit). */
   setScriptStatus(id: string, status: ScriptStatus): Promise<ScriptSummary>;
+  /** Number of scripts (trash included) stored with this stage id. */
+  countScriptsWithStatus(status: ScriptStatus): Promise<number>;
+  /** Moves every script (trash included) from stage `from` to `to` before
+   *  `from` leaves the pipeline. Keeps `status_changed_at` and
+   *  `updated_at`; returns the number of moved scripts. */
+  reassignScriptStatus(from: ScriptStatus, to: ScriptStatus): Promise<number>;
   backfillRuntimeStats(): Promise<void>;
 
   // ===== Folders =====

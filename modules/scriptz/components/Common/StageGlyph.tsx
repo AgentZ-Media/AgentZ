@@ -1,11 +1,8 @@
-import { STAGE_GLYPHS, STAGE_VIEWBOX, type StageGlyphName } from "@agentz/design/icons";
+import { STAGE_GLYPHS, STAGE_VIEWBOX, stageGlyph } from "@agentz/design/icons";
+import { isFinalStage, resolveStageId, scriptStages, stageIndex } from "../../lib/stages";
 
-/**
- * Pipeline stage as drawn by the glyph. Structurally identical to
- * `Stage` in lib/types.ts, kept local so this component has no data-model
- * dependency.
- */
-export type StageName = StageGlyphName;
+/** "idea" (dashed ring before any script exists) or a script stage id. */
+export type StageName = string;
 
 export interface StageGlyphProps {
   stage: StageName;
@@ -15,12 +12,19 @@ export interface StageGlyphProps {
 }
 
 /**
- * Ring that fills in quarters (idea -> online). Colour follows
- * `currentColor`; "online" is filled with `--accent`. Decorative - pair it
- * with a visible stage label.
+ * Ring that fills with the stage's position in the configured pipeline
+ * (three stages: thirds, ten stages: tenths). The last stage is the filled
+ * "done" glyph with `--accent`; "idea" is the dashed ring. Colour follows
+ * `currentColor`. Decorative - pair it with a visible stage label.
  */
 export function StageGlyph(props: StageGlyphProps) {
   const size = () => props.size ?? 14;
+  const id = () => (props.stage === "idea" ? "idea" : resolveStageId(props.stage));
+  const markup = () => {
+    const stage = id();
+    if (stage === "idea") return STAGE_GLYPHS.idea;
+    return stageGlyph(stageIndex(stage) + 1, scriptStages().length);
+  };
   return (
     <svg
       class={props.class ? `st ${props.class}` : "st"}
@@ -28,9 +32,10 @@ export function StageGlyph(props: StageGlyphProps) {
       width={size()}
       height={size()}
       aria-hidden="true"
-      data-stage={props.stage}
+      data-stage={id()}
+      data-done={id() !== "idea" && isFinalStage(id()) ? "" : undefined}
       style={{ width: `${size()}px`, height: `${size()}px` }}
-      innerHTML={STAGE_GLYPHS[props.stage]}
+      innerHTML={markup()}
     />
   );
 }

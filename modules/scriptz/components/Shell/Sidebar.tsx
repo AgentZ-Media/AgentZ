@@ -2,7 +2,8 @@ import { For, Show, createMemo, createSignal, onCleanup, type JSX } from "solid-
 import { navStore } from "../../stores/nav";
 import { uiStore } from "../../stores/ui";
 import { K } from "@agentz/kit/platform";
-import { SCRIPT_STATUSES, type Folder, type ScriptStatus } from "../../lib/types";
+import { scriptStages, stageLabel } from "../../lib/stages";
+import type { Folder, ScriptStatus } from "../../lib/types";
 import { t } from "../../i18n";
 import { Icon } from "@agentz/kit/ui";
 import { StageGlyph } from "../Common/StageGlyph";
@@ -148,13 +149,13 @@ export function Sidebar() {
           count={library.openIdeas().length}
           onClick={() => navStore.openIdeas()}
         />
-        <For each={SCRIPT_STATUSES}>
+        <For each={scriptStages().map((stage) => stage.id)}>
           {(st) => (
             <NavItem
               on={isStatusOn(st)}
               icon={<StageGlyph stage={st} />}
-              label={t(`stage.${st}`)}
-              count={library.statusCounts()[st]}
+              label={stageLabel(st)}
+              count={library.statusCounts().get(st) ?? 0}
               onClick={() => navStore.openScripts({ status: st })}
             />
           )}

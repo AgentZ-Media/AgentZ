@@ -1,6 +1,16 @@
 import { createSignal, createEffect, createRoot } from "solid-js";
 import { getKvStore, type KvStore } from "@agentz/kit/platform";
 import { baseSettingsStore, createSettingsWriter } from "@agentz/kit/stores";
+import {
+  STAGES_SETTING_KEY,
+  normalizeStages,
+  parseStages,
+  resetScriptStages,
+  scriptStages,
+  serializeStages,
+  setScriptStages,
+  type StageDef,
+} from "../lib/stages";
 
 const [highlightingDefault, setHighlightingDefault] = createSignal<boolean>(false);
 // Open scripts in focus mode. Default false for fresh installs since the
@@ -130,11 +140,22 @@ export const settingsStore = {
     await persistSetting("length_max_default_sec", next === null ? "" : String(next));
   },
 
+  /** Ordered production stages (see lib/stages.ts). */
+  scriptStages,
+  /** Replaces the stage list. Scripts of a removed stage must be moved
+   *  first (`api.reassignScriptStatus`). Throws on an invalid list. */
+  setScriptStages: async (list: readonly StageDef[]) => {
+    const next = normalizeStages(list);
+    if (!next) throw new Error("invalid stage list");
+    setScriptStages(next);
+    await persistSetting(STAGES_SETTING_KEY, serializeStages(next));
+  },
+
   loaded,
   async load() {
     const generation = runtimeGeneration;
     const kv = settingsKv ?? getKvStore();
-    const [hd, qmae, wpm, fmd, sws, dp, lmin, lmax, puc] = await Promise.all([
+    const [hd, qmae, wpm, fmd, sws, dp, lmin, lmax, puc, stages] = await Promise.all([
       kv.getSetting("highlighting_default"),
       kv.getSetting("quick_mode_auto_enable"),
       kv.getSetting("dialog_wpm"),
@@ -144,6 +165,7 @@ export const settingsStore = {
       kv.getSetting("length_min_default_sec"),
       kv.getSetting("length_max_default_sec"),
       kv.getSetting("prune_unused_characters"),
+      kv.getSetting(STAGES_SETTING_KEY),
     ]);
     if (generation !== runtimeGeneration) return;
     setHighlightingDefault(hd === null ? false : hd === "1");
@@ -155,6 +177,7 @@ export const settingsStore = {
     setLengthMinDefaultSecSignal(parseLengthSetting(lmin));
     setLengthMaxDefaultSecSignal(parseLengthSetting(lmax));
     setDialogWpm(wpm === null ? DIALOG_WPM_DEFAULT : clampWpm(Number(wpm)));
+    setScriptStages(parseStages(stages));
     setLoaded(true);
   },
 };
@@ -185,6 +208,7 @@ export function startSettingsRuntime(kv: KvStore = getKvStore()): () => void {
     if (typeof document !== "undefined") delete document.documentElement.dataset.paper;
     writer = undefined;
     settingsKv = undefined;
+    resetScriptStages();
     setLoaded(false);
     stopRuntime = undefined;
   };

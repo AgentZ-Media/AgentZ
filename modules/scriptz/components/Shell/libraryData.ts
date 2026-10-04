@@ -19,7 +19,8 @@ import { runtimeSeconds } from "../../lib/runtime";
 import { INBOX_FOLDER_ID } from "../../lib/folders";
 import { ideasStore } from "../../stores/ideas";
 import { settingsStore } from "../../stores/settings";
-import { isInProgress, type Folder, type Idea, type ScriptStatus, type ScriptSummary } from "../../lib/types";
+import { isFinalStage } from "../../lib/stages";
+import type { Folder, Idea, ScriptStatus, ScriptSummary } from "../../lib/types";
 
 const [ready, setReady] = createSignal(false);
 // False while the last script fetch failed. The nav reconcile must never run
@@ -82,12 +83,13 @@ function createLibraryData(isActive: () => boolean) {
 
   /** Scripts before the last stage: the script half of the inbox. */
   const inProgress = createMemo<ScriptSummary[]>(() =>
-    (scripts() ?? []).filter((s) => isInProgress(s.status)),
+    (scripts() ?? []).filter((s) => !isFinalStage(s.status)),
   );
 
+  /** Live scripts per stage id. */
   const statusCounts = createMemo(() => {
-    const counts: Record<ScriptStatus, number> = { writing: 0, ready: 0, shot: 0, online: 0 };
-    for (const s of scripts() ?? []) counts[s.status] += 1;
+    const counts = new Map<ScriptStatus, number>();
+    for (const s of scripts() ?? []) counts.set(s.status, (counts.get(s.status) ?? 0) + 1);
     return counts;
   });
 
@@ -152,7 +154,7 @@ export const library = {
   inProgress: (): ScriptSummary[] => data()?.inProgress() ?? [],
   /** Inbox size: open ideas plus scripts in progress (0 hides the inbox). */
   inboxCount: (): number => (data()?.openIdeas().length ?? 0) + (data()?.inProgress().length ?? 0),
-  statusCounts: () => data()?.statusCounts() ?? { writing: 0, ready: 0, shot: 0, online: 0 },
+  statusCounts: () => data()?.statusCounts() ?? new Map<ScriptStatus, number>(),
   folderCounts: () => data()?.folderCounts() ?? new Map<string, number>(),
   ideaLine: (scriptId: string): string | undefined => data()?.ideaLineByScript().get(scriptId),
 };

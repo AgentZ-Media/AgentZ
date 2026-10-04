@@ -39,8 +39,8 @@ import {
   runtimeStatsFromContent,
 } from "./runtime";
 import { normalizeLegacyContent } from "./legacyBlocks";
+import { firstStageId, isKnownStage, resolveStageId } from "./stages";
 import {
-  isScriptStatus,
   type Script,
   type ScriptCharacter,
   type ScriptStatus,
@@ -85,9 +85,10 @@ function summaryRowToScript(r: SummaryRow): ScriptSummary {
     dialog_word_count: r.dialog_word_count,
     direction_block_count: r.direction_block_count,
     folder_id: r.folder_id,
-    // Defensive: an unknown value (manual DB edit, future status from a
-    // newer build) degrades to "writing" instead of breaking the UI.
-    status: isScriptStatus(r.status) ? r.status : "writing",
+    // A stage that no longer exists (manual DB edit, file from another
+    // install) reads as the first stage instead of breaking the UI. The row
+    // itself keeps its value until the stage is set again.
+    status: resolveStageId(r.status),
     status_changed_at: r.status_changed_at ?? null,
   };
 }
@@ -245,7 +246,7 @@ export async function createScript(
     `INSERT INTO scripts (id, title, highlighting_enabled, content_json, characters_meta,
                           created_at, updated_at, page_count, folder_id, last_word_count,
                           dialog_word_count, direction_block_count, status, status_changed_at)
-     VALUES ($1, $2, NULL, $3, $4, $5, $5, 1, $6, $7, $8, $9, 'writing', NULL)`,
+     VALUES ($1, $2, NULL, $3, $4, $5, $5, 1, $6, $7, $8, $9, $10, NULL)`,
     [
       id,
       finalTitle,
@@ -256,6 +257,7 @@ export async function createScript(
       initialWordCount,
       runtime.dialogWords,
       runtime.directionBlocks,
+      firstStageId(),
     ],
   );
   await refreshFtsForScript(id);
@@ -273,8 +275,8 @@ export async function duplicateScript(id: string): Promise<ScriptSummary> {
   // so a direct edit afterwards only counts the delta
   // (otherwise the first save would count the whole copied text as
   // "written today").
-  // The copy is a fresh draft: it always starts at "writing", whatever
-  // stage the source is in.
+  // The copy is a fresh draft: it always starts at the first stage,
+  // whatever stage the source is in.
   const contentJson = normalizeLegacyContent(src.content_json).json;
   const wc = countWordsInContent(contentJson);
   const runtime = runtimeStatsFromContent(contentJson);
@@ -282,7 +284,7 @@ export async function duplicateScript(id: string): Promise<ScriptSummary> {
     `INSERT INTO scripts (id, title, highlighting_enabled, content_json, characters_meta,
                           created_at, updated_at, page_count, folder_id, last_word_count,
                           dialog_word_count, direction_block_count, status, status_changed_at)
-     VALUES ($1, $2, $3, $4, $5, $6, $6, $7, $8, $9, $10, $11, 'writing', NULL)`,
+     VALUES ($1, $2, $3, $4, $5, $6, $6, $7, $8, $9, $10, $11, $12, NULL)`,
     [
       newId,
       newTitle,
@@ -295,6 +297,7 @@ export async function duplicateScript(id: string): Promise<ScriptSummary> {
       wc,
       runtime.dialogWords,
       runtime.directionBlocks,
+      firstStageId(),
     ],
   );
   await refreshFtsForScript(newId);
@@ -320,7 +323,7 @@ export async function setScriptStatus(
   id: string,
   status: ScriptStatus,
 ): Promise<ScriptSummary> {
-  if (!isScriptStatus(status)) {
+  if (!isKnownStage(status)) {
     throw new Error(`invalid script status: ${String(status)}`);
   }
   const db = await getDb();
@@ -332,6 +335,33 @@ export async function setScriptStatus(
     [status, Date.now(), id],
   );
   return rowToSummary(id);
+}
+
+/** Number of scripts (trash included) stored with this stage id. */
+export async function countScriptsWithStatus(status: ScriptStatus): Promise<number> {
+  const db = await getDb();
+  const rows = await db.select<{ n: number }[]>(
+    "SELECT COUNT(*) AS n FROM scripts WHERE status = $1",
+    [status],
+  );
+  return rows[0]?.n ?? 0;
+}
+
+/** Moves every script (trash included) from one stage to another, e.g.
+ *  before the stage `from` is removed from the pipeline. Like a merge of
+ *  two stages it keeps `status_changed_at` and `updated_at`. Returns the
+ *  number of moved scripts. */
+export async function reassignScriptStatus(
+  from: ScriptStatus,
+  to: ScriptStatus,
+): Promise<number> {
+  if (!isKnownStage(to)) {
+    throw new Error(`invalid script status: ${String(to)}`);
+  }
+  if (from === to) return 0;
+  const db = await getDb();
+  const res = await db.execute("UPDATE scripts SET status = $1 WHERE status = $2", [to, from]);
+  return res.rowsAffected;
 }
 
 export interface UpdateScriptInput {
