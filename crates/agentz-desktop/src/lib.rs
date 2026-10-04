@@ -1,9 +1,10 @@
 //! Shared native host. Product schemas and bundle identity remain app-owned.
 
+mod codex;
 mod lifecycle;
 mod menu;
 
-use tauri::{plugin::TauriPlugin, Wry};
+use tauri::{plugin::TauriPlugin, Manager, Wry};
 use tauri_plugin_sql::Migration;
 
 /// Baseline for new apps only. Existing apps must preserve migration checksums.
@@ -47,14 +48,23 @@ fn host_plugin() -> TauriPlugin<Wry> {
         .invoke_handler(tauri::generate_handler![
             lifecycle::ready,
             lifecycle::finish_exit,
-            menu::set_menu_language
+            menu::set_menu_language,
+            codex::codex_locate,
+            codex::codex_start,
+            codex::codex_send,
+            codex::codex_stop
         ])
-        .setup(|_app, _| {
+        .setup(|app, _| {
+            app.manage(codex::Codex::default());
             // Only macOS gets an app menu; Windows keeps a plain window frame.
             #[cfg(target_os = "macos")]
-            _app.set_menu(menu::build(_app, "en")?)?;
+            app.set_menu(menu::build(app, "en")?)?;
             Ok(())
         })
-        .on_event(lifecycle::on_event)
+        .on_page_load(codex::on_page_load)
+        .on_event(|app, event| {
+            lifecycle::on_event(app, event);
+            codex::on_event(app, event);
+        })
         .build()
 }

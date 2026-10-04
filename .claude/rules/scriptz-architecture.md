@@ -41,7 +41,8 @@ Modul `revealsSidebar: true` und die Shell blendet keinen eigenen Button ein.
 
 `001_baseline` bis `007_werkbank` in `apps/scriptz/src-tauri/migrations/` sind
 veröffentlicht und unveränderlich. `007` ergänzt `scripts.status`,
-`status_changed_at` und den Ordner-Zielbereich. Die Abschaffung von
+`status_changed_at` und den Ordner-Zielbereich. `008_agent` legt
+`agent_memory`, `agent_chats` und `agent_learned` an. Die Abschaffung von
 Kamera/Caption/SFX ist bewusst keine SQL-Migration (siehe unten).
 
 ## Stufen und Zielbereich
@@ -89,6 +90,46 @@ Die Node-Klassen für Kamera/Caption/SFX existieren nicht mehr. Jeder Lesepfad
 beim Boot einmal alle Skripte um (`internalRewrite`: keine Wörter ins
 Tageslog, `updated_at` bleibt). Das Flag `migration.legacy_blocks_v1` wird
 nur nach vollständigem Lauf gesetzt. Snapshots bleiben unverändert.
+
+## Agent
+
+Persönlicher Schreib-Agent mit eigenem Namen, Look und Persona. Visuelle
+Referenz: `docs/agent/screens.html`.
+
+- **Provider-neutral.** `lib/agent/types.ts` definiert `AgentProvider`,
+  `AgentThread` und `AgentEvent`. Einzige Integration heute:
+  `lib/agent/codex/` spricht JSON-RPC mit `codex app-server` über
+  `services.codexHost` (`@agentz/desktop`, Rust in
+  `crates/agentz-desktop/src/codex.rs`, Permission `agentz-desktop:codex`).
+  Weitere Provider (OpenRouter, lokal) implementieren nur dieses Interface.
+- **Codex isoliert.** Start mit `web_search="live"`, Shell, Apps, Plugins,
+  Sub-Agenten und Codex-Gedächtnis per `features.*=false` aus, MCP-Server des
+  Users pro Thread deaktiviert, Sandbox `read-only`, Freigaben werden
+  abgelehnt. Der Agent sieht nur die eigenen Tools aus `lib/agent/tools.ts`.
+  `code_mode_host` nicht abschalten.
+- **Nur Vorschläge.** `propose_options` liefert 1 bis 3 Optionen, eingefügt
+  per Klick über `components/Agent/editorBridge.ts` in die normale
+  Lexical-History (⌘Z). Ziele tragen den Text der Zielblöcke als Anker
+  (`anchorTarget`/`resolveTarget`): verschobene Zeilen werden nachgeführt,
+  geänderte oder mehrdeutige abgelehnt. Nach dem Einfügen sind die übrigen
+  Optionen gesperrt.
+- **Chats speichern** seriell und über einen `state`-Flusher
+  (`agent-chats`), damit Schließen auf eingefügte Optionen wartet. „Neuer
+  Chat" speichert einen leeren Chat als Grenze. Als gelernt markiert wird nur
+  nach einem abgeschlossenen Lern-Turn.
+- **Gedächtnis** (`lib/agent/memory.ts`, Tabelle `agent_memory`): global,
+  pro Ordner, Charakter (Grundprofil plus Ordnerversion) und Beziehung.
+  Einträge sind gedeckelt (`MEMORY_LIMITS`). Pro Thread wird ein Schnappschuss
+  in die Instruktionen eingefroren. Lernen ist immer optional: aus dem Chat
+  (abschaltbar), aus abgeschlossenen Skripten nach `agent.learn_since` und
+  90 s Ruhe, rückwirkend nur per Button. Gedächtnis ist nicht Teil des
+  `.scriptz`-Exports.
+- **Chats** pro Skript in `agent_chats` (`items_json`), Lernstand in
+  `agent_learned` (Inhalts-Hash). Rohes JSON wird nie angezeigt; Tool-Aufrufe
+  laufen über `components/Agent/labels.ts`.
+- **Settings** unter `agent.*` (siehe `stores/agentSettings.ts`), Effort
+  überall standardmäßig `medium`. `agent.enabled = false` startet keinen
+  Prozess.
 
 ## Datenfluss
 

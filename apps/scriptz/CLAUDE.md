@@ -10,7 +10,7 @@ Architektur und Datenfluss: [`scriptz-architecture.md`](../../.claude/rules/scri
 ## Daten schützen
 
 Identifier `de.agent-z.scriptz`, `scriptz.db`, die Migrationen `001` bis
-`007` sowie alle Settings- und `app_state`-Schlüssel sind fix. Neue
+`008` sowie alle Settings- und `app_state`-Schlüssel sind fix. Neue
 Schemaänderungen nur als neue Migration in `src-tauri/migrations/`, registriert
 in `src-tauri/src/lib.rs`, und im `.scriptz`-Import/Export mitdenken.
 
@@ -44,19 +44,25 @@ Kein `cp` der laufenden DB (WAL). Wiederherstellen bei beendeter App:
   Lesen sowie einmal beim Boot zu Action. Jeder neue Lesepfad für
   `content_json` läuft über `normalizeLegacyContent`/`normalizeLegacyTree`.
 - **Charaktere existieren nur im Skript** (keine globale Charakter-Tabelle);
-  Farben sind beim Speichern „klebrig".
+  Farben sind beim Speichern „klebrig". Die Charakterprofile des Agenten sind
+  Gedächtnis (`agent_memory`), keine Charakter-Tabelle.
 - **Längenziel ist ein Bereich.** „Darunter" ist Information, nur „darüber"
   nutzt `--warn`. Spec: [`docs/feature-laengenziel.md`](../../docs/feature-laengenziel.md).
 - **Inspector zeigt nur Informationen**, Einstellungen gehören in den
   Einstellungsdialog. **⌘I ist Ideen-Schnellerfassung**, es gibt kein Kursiv.
-- Einzige Netzwerkanfrage: der Updater
-  (`releases/download/scriptz-latest/latest.json`). Keine Telemetrie.
+- **Agent nur über das Provider-Interface.** Netzwerk und KI laufen über
+  `lib/agent/types.ts` (`AgentProvider`), heute nur Codex app-server. Der
+  Agent schlägt vor, schreibt nie direkt ins Skript, und Lernen bleibt
+  freiwillig. Details: Abschnitt „Agent" in `scriptz-architecture.md`.
+- Netzwerkanfragen: der Updater
+  (`releases/download/scriptz-latest/latest.json`) und, nur wenn der Agent
+  eingeschaltet ist, der lokale Codex-Prozess. Keine Telemetrie.
 
 ## Nicht wieder einführen
 
 Ohne Rücksprache mit dem User nicht zurückholen: Tabs, globale Charaktere,
-Projekte, Tags, Aliase, Serien, Vibrancy, KI-Funktionen, Wochenziel, Streak,
-Sprint-Timer, Begrüßungen, Kamera/Caption/SFX-Blöcke, Cloud-Sync, Konten.
+Projekte, Tags, Aliase, Serien, Vibrancy, Wochenziel, Streak, Sprint-Timer,
+Begrüßungen, Kamera/Caption/SFX-Blöcke, Cloud-Sync, Konten.
 
 ## Fehlerbilder
 

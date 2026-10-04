@@ -8,6 +8,7 @@ const MIGRATION_004_WORD_COUNT_SENTINEL: &str =
 const MIGRATION_005_RUNTIME_STATS: &str = include_str!("../migrations/005_runtime_stats.sql");
 const MIGRATION_006_IDEA_FOLDERS: &str = include_str!("../migrations/006_idea_folders.sql");
 const MIGRATION_007_WERKBANK: &str = include_str!("../migrations/007_werkbank.sql");
+const MIGRATION_008_AGENT: &str = include_str!("../migrations/008_agent.sql");
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
@@ -52,6 +53,12 @@ pub fn run() {
             version: 7,
             description: "werkbank: scripts.status + status_changed_at, folder length range",
             sql: MIGRATION_007_WERKBANK,
+            kind: MigrationKind::Up,
+        },
+        Migration {
+            version: 8,
+            description: "agent: memory, chats, learned state",
+            sql: MIGRATION_008_AGENT,
             kind: MigrationKind::Up,
         },
     ];
