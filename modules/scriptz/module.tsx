@@ -81,7 +81,7 @@ async function setupScriptz(ctx: ModuleContext): Promise<ModuleRuntime> {
   });
   return {
     routes: [
-      { id: "scripts", matches: () => navStore.route().kind === "scripts", component: ScriptsPage },
+      { id: "scripts", matches: () => navStore.route().kind === "scripts" || navStore.route().kind === "inbox", component: ScriptsPage },
       { id: "trash", matches: () => navStore.route().kind === "trash", component: TrashPage },
       { id: "ideas", matches: () => navStore.route().kind === "ideas", component: IdeasPage },
       { id: "script", matches: () => navStore.route().kind === "script", component: ScriptRoute },

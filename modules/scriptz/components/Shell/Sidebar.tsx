@@ -22,9 +22,10 @@ import { folderColor, library } from "./libraryData";
 const FALLBACK_ROW_PX = 30;
 
 /**
- * Left navigation (concept `#tpl-side`): app row, search + new, "Alle
- * Skripte", the pipeline, folders, recently opened scripts and the footer
- * with the writing counter, trash and settings. Always dark (`--side-*`).
+ * Left navigation (concept `#tpl-side`): app row, search + new, the inbox
+ * (only while work is in progress), "Alle Skripte", the pipeline, folders,
+ * recently opened scripts and the footer with the writing counter, trash
+ * and settings. Always dark (`--side-*`).
  *
  * The recent section takes whatever height the nav has left after the
  * pipeline and folders (flex, see Shell.css) and shows as many scripts as
@@ -120,6 +121,17 @@ export function Sidebar() {
       </div>
 
       <nav class="side-scroll side-fit">
+        {/* Only while something is in progress; stays while open so the
+            active entry doesn't vanish when its last item is finished. */}
+        <Show when={library.inboxCount() > 0 || route().kind === "inbox"}>
+          <NavItem
+            on={route().kind === "inbox"}
+            icon={<Icon name="inbox" size={14} />}
+            label={t("shell.nav.inbox")}
+            count={library.inboxCount()}
+            onClick={() => navStore.openInbox()}
+          />
+        </Show>
         <NavItem
           on={isAllOn()}
           icon={<Icon name="stack" size={14} />}

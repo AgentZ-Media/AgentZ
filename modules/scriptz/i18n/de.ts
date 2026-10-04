@@ -58,7 +58,7 @@ export const de = {
   "browser.rowMore": "Mehr Aktionen",
 
   // ---------- folder operations ----------
-  "folder.inbox": "Posteingang",
+  "folder.inbox": "Ohne Ordner",
   "folder.new": "Neuer Ordner",
   "folder.newDots": "Neuer Ordner…",
   "folder.none": "Kein Ordner",

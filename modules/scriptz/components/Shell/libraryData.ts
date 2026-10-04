@@ -19,7 +19,7 @@ import { runtimeSeconds } from "../../lib/runtime";
 import { INBOX_FOLDER_ID } from "../../lib/folders";
 import { ideasStore } from "../../stores/ideas";
 import { settingsStore } from "../../stores/settings";
-import type { Folder, Idea, ScriptStatus, ScriptSummary } from "../../lib/types";
+import { isInProgress, type Folder, type Idea, type ScriptStatus, type ScriptSummary } from "../../lib/types";
 
 const [ready, setReady] = createSignal(false);
 // False while the last script fetch failed. The nav reconcile must never run
@@ -80,6 +80,11 @@ function createLibraryData(isActive: () => boolean) {
     (ideasStore.ideas() ?? []).filter((i) => !i.used_at),
   );
 
+  /** Scripts before the last stage: the script half of the inbox. */
+  const inProgress = createMemo<ScriptSummary[]>(() =>
+    (scripts() ?? []).filter((s) => isInProgress(s.status)),
+  );
+
   const statusCounts = createMemo(() => {
     const counts: Record<ScriptStatus, number> = { writing: 0, ready: 0, shot: 0, online: 0 };
     for (const s of scripts() ?? []) counts[s.status] += 1;
@@ -112,7 +117,17 @@ function createLibraryData(isActive: () => boolean) {
     return m;
   });
 
-  return { scripts, folders, byId, folderMap, openIdeas, statusCounts, folderCounts, ideaLineByScript };
+  return {
+    scripts,
+    folders,
+    byId,
+    folderMap,
+    openIdeas,
+    inProgress,
+    statusCounts,
+    folderCounts,
+    ideaLineByScript,
+  };
 }
 
 const [data, setData] = createSignal<ReturnType<typeof createLibraryData>>();
@@ -133,6 +148,10 @@ export const library = {
   folder: (id: string | null | undefined): Folder | undefined =>
     id && id !== INBOX_FOLDER_ID ? data()?.folderMap().get(id) : undefined,
   openIdeas: () => data()?.openIdeas() ?? [],
+  /** Live scripts that have not reached the last pipeline stage. */
+  inProgress: (): ScriptSummary[] => data()?.inProgress() ?? [],
+  /** Inbox size: open ideas plus scripts in progress (0 hides the inbox). */
+  inboxCount: (): number => (data()?.openIdeas().length ?? 0) + (data()?.inProgress().length ?? 0),
   statusCounts: () => data()?.statusCounts() ?? { writing: 0, ready: 0, shot: 0, online: 0 },
   folderCounts: () => data()?.folderCounts() ?? new Map<string, number>(),
   ideaLine: (scriptId: string): string | undefined => data()?.ideaLineByScript().get(scriptId),

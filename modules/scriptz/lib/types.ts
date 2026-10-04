@@ -34,6 +34,15 @@ export const SCRIPT_STATUSES: readonly ScriptStatus[] = [
   "online",
 ] as const;
 
+/** Last pipeline stage. Scripts here are done; every earlier stage counts as
+ *  work in progress (the sidebar inbox). Derived, so new stages stay covered. */
+export const FINAL_SCRIPT_STATUS: ScriptStatus = SCRIPT_STATUSES[SCRIPT_STATUSES.length - 1];
+
+/** True while a script still sits before the last pipeline stage. */
+export function isInProgress(status: ScriptStatus): boolean {
+  return status !== FINAL_SCRIPT_STATUS;
+}
+
 /** Type guard for values read from storage / files. */
 export function isScriptStatus(v: unknown): v is ScriptStatus {
   return v === "writing" || v === "ready" || v === "shot" || v === "online";
