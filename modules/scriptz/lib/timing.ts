@@ -15,8 +15,8 @@
 //   runtimeSeconds(stats, wpm) === Math.max(MIN_RUNTIME_SEC, Math.round(sum))
 // for the same content. The 5 s minimum (MIN_RUNTIME_SEC) applies to the
 // displayed TOTAL only; segments are never scaled up to fill it. A timeline
-// UI should therefore use the total from runtime.ts for labels and its axis
-// window, and simply draw the (possibly shorter) segments.
+// UI should therefore use the total from runtime.ts for labels, but size its
+// axis window by the segments' end so they fill the available width.
 //
 // Speaker attribution follows lex.ts::dialogWordsByCharacter (the source of
 // the cast shares): a dialog belongs to the most recent character block

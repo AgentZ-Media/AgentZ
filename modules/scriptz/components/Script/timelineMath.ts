@@ -96,12 +96,13 @@ export function liveStats(blocks: TimingBlock[], wpm: number): LiveStats {
   return { words, dialogWords, actionBlocks, speakerChanges, runtimeSec, cast };
 }
 
-/** Visible time window of the timeline in seconds: the longer of runtime
- *  and the range bounds, plus a little air, rounded up to whole 10 s. */
-export function timelineWindow(runtimeSec: number, range: LengthRange | null): number {
+/** Visible time window of the timeline in seconds: where the script ends
+ *  (`contentSec`, see segmentsEnd) or the furthest range bound if the goal
+ *  still lies ahead. Without a goal ahead the segments always fill the
+ *  full width. An empty script falls back to MIN_RUNTIME_SEC. */
+export function timelineWindow(contentSec: number, range: LengthRange | null): number {
   const bounds = Math.max(range?.maxSec ?? 0, range?.minSec ?? 0);
-  const longest = Math.max(runtimeSec, bounds, 0);
-  return Math.max(10, Math.ceil((longest + 5) / 10) * 10);
+  return Math.max(contentSec, bounds, 0) || MIN_RUNTIME_SEC;
 }
 
 const TICK_STEPS = [10, 15, 20, 30, 60, 120, 300, 600];

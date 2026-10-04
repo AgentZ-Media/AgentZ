@@ -208,6 +208,9 @@
   left: 100%;
   transform: translateX(-100%);
 }
+.tl .axis > span.at-end {
+  transform: translateX(-100%);
+}
 .tl .axis > .rmin {
   color: var(--fg);
   font-weight: 700;
@@ -267,6 +270,11 @@
   font: 700 10.5px/1 var(--ui);
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
+}
+.tl .z-head.with-label.at-end::before {
+  left: auto;
+  right: 0;
+  transform: none;
 }
 
 /* ---------- tooltip ---------- */

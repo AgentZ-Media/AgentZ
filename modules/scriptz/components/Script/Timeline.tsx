@@ -11,6 +11,7 @@ import {
   laneSpeakers,
   longestDialogKey,
   pct,
+  segmentsEnd,
   textStart,
   timelineWindow,
 } from "./timelineMath";
@@ -60,7 +61,12 @@ export function Timeline(props: TimelineProps) {
   const [tip, setTip] = createSignal<TipState | null>(null);
   let areaRef: HTMLDivElement | undefined;
 
-  const win = createMemo(() => timelineWindow(props.runtimeSec, props.range));
+  const win = createMemo(() => timelineWindow(segmentsEnd(props.segments), props.range));
+  // Labels this close to each other (or to the window end) would overlap.
+  const near = (a: number, b: number | null) => b !== null && Math.abs(a - b) < win() * 0.045;
+  // Thin markers right at the window edge stay fully visible.
+  const edgeLeft = (sec: number, halfPx: number) =>
+    `clamp(${halfPx}px, ${pct(sec, win())}%, calc(100% - ${halfPx}px))`;
   const status = createMemo(() => lengthStatus(props.runtimeSec, props.range));
   const rangeText = () => formatRange(props.range);
   const longest = createMemo(() => longestDialogKey(props.segments));
@@ -203,13 +209,13 @@ export function Timeline(props: TimelineProps) {
           />
         </Show>
         <Show when={max() !== null}>
-          <span class="z-goal" style={{ left: `${pct(max() as number, w())}%` }} />
+          <span class="z-goal" style={{ left: edgeLeft(max() as number, 0.75) }} />
         </Show>
         <span
           class="z-head"
-          classList={{ "with-label": zp.withHeadLabel }}
+          classList={{ "with-label": zp.withHeadLabel, "at-end": near(props.playhead, w()) }}
           data-t={formatClock(props.playhead)}
-          style={{ left: `${pct(props.playhead, w())}%` }}
+          style={{ left: edgeLeft(props.playhead, 1) }}
         />
       </>
     );
@@ -217,16 +223,19 @@ export function Timeline(props: TimelineProps) {
 
   const ticks = createMemo(() => {
     const w = win();
-    const near = (a: number, b: number | null) => b !== null && Math.abs(a - b) < w * 0.045;
     const min = props.range?.minSec ?? null;
     const max = props.range?.maxSec ?? null;
     return axisTicks(w).ticks.map((sec) => ({
       sec,
       // The 0:00 tick survives the range labels but yields to the playhead
       // label (which then shows the same time) - otherwise the two overlap.
-      hidden: (sec !== 0 && (near(sec, min) || near(sec, max))) || near(sec, props.playhead),
+      hidden:
+        (sec !== 0 && (near(sec, min) || near(sec, max) || near(sec, w))) || near(sec, props.playhead),
     }));
   });
+  // The end label yields to a range label or the playhead label at the end.
+  const lastHidden = () =>
+    near(win(), props.range?.minSec ?? null) || near(win(), props.range?.maxSec ?? null) || near(win(), props.playhead);
 
   return (
     <section class="tl" classList={{ "is-open": props.open }} aria-label={t("script.tl.aria")}>
@@ -283,12 +292,20 @@ export function Timeline(props: TimelineProps) {
                 )}
               </For>
               <Show when={props.range?.minSec != null}>
-                <span class="rmin" style={{ left: `${pct(props.range?.minSec as number, win())}%` }}>
+                <span
+                  class="rmin"
+                  classList={{ "at-end": near(props.range?.minSec as number, win()) }}
+                  style={{ left: `${pct(props.range?.minSec as number, win())}%` }}
+                >
                   {formatClock(props.range?.minSec as number)}
                 </span>
               </Show>
               <Show when={props.range?.maxSec != null}>
-                <span class="goal" style={{ left: `${pct(props.range?.maxSec as number, win())}%` }}>
+                <span
+                  class="goal"
+                  classList={{ "at-end": near(props.range?.maxSec as number, win()) }}
+                  style={{ left: `${pct(props.range?.maxSec as number, win())}%` }}
+                >
                   {formatClock(props.range?.maxSec as number)}
                 </span>
               </Show>
@@ -301,7 +318,9 @@ export function Timeline(props: TimelineProps) {
                   }}
                 />
               </Show>
-              <span class="last">{formatClock(win())}</span>
+              <span class="last" style={{ opacity: lastHidden() ? 0 : undefined }}>
+                {formatClock(win())}
+              </span>
             </div>
             <For each={lanes()}>
               {(lane) => (

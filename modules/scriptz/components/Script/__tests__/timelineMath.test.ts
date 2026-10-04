@@ -89,16 +89,16 @@ describe("liveStats", () => {
 });
 
 describe("timelineWindow", () => {
-  it("adds air and rounds to 10 s", () => {
-    // concept: 1:15 runtime, range 0:45-1:05 -> 80 s window
-    expect(timelineWindow(75, { minSec: 45, maxSec: 65 })).toBe(80);
+  it("ends exactly where the script ends", () => {
+    expect(timelineWindow(18.4, null)).toBe(18.4);
+    expect(timelineWindow(75, { minSec: 45, maxSec: 65 })).toBe(75);
   });
   it("covers the upper bound when the script is short", () => {
-    expect(timelineWindow(20, { minSec: 45, maxSec: 65 })).toBe(70);
+    expect(timelineWindow(20, { minSec: 45, maxSec: 65 })).toBe(65);
+    expect(timelineWindow(20, { minSec: 45, maxSec: null })).toBe(45);
   });
-  it("works without a range", () => {
-    expect(timelineWindow(5, null)).toBe(10);
-    expect(timelineWindow(42, null)).toBe(50);
+  it("falls back to the minimum runtime for an empty script", () => {
+    expect(timelineWindow(0, null)).toBe(5);
   });
 });
 

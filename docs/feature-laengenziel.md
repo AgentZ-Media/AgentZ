@@ -111,8 +111,8 @@ Eine 40 px hohe Leiste unter der Schreibfläche, nie leer:
 
 - Eine Spur pro Sprecher (Name in iA Writer Quattro, Charakter-Farbe)
   plus eine Spur „Action".
-- Zeitachse mit 10-s-Schritten; Fenster = max(Laufzeit, Obergrenze)
-  plus etwas Luft. Die Grenzen sind auf der Achse beschriftet:
+- Zeitachse mit 10-s-Schritten; Fenster = max(Skriptende, Obergrenze)
+  ohne Puffer, damit die Abschnitte ohne Ziel die volle Breite füllen. Die Grenzen sind auf der Achse beschriftet:
   Minimum fett in Textfarbe, Obergrenze fett in Rotstift, dazwischen
   ein dünner Balken, der den Bereich markiert.
 - Hook-Zone, Zielbereich, Obergrenze, schraffierte „darüber"-Zone und
