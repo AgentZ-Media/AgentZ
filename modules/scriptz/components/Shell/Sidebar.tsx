@@ -18,12 +18,17 @@ import {
 import { WritingCounter } from "../Activity/WritingCounter";
 import { folderColor, library } from "./libraryData";
 
-const MAX_RECENT = 5;
+/** Row height used until a real `.nav` row can be measured. */
+const FALLBACK_ROW_PX = 30;
 
 /**
  * Left navigation (concept `#tpl-side`): app row, search + new, "Alle
  * Skripte", the pipeline, folders, recently opened scripts and the footer
  * with the writing counter, trash and settings. Always dark (`--side-*`).
+ *
+ * The recent section takes whatever height the nav has left after the
+ * pipeline and folders (flex, see Shell.css) and shows as many scripts as
+ * fit, so it grows with the window and never makes the sidebar scroll.
  */
 export function Sidebar() {
   const route = () => navStore.route();
@@ -63,10 +68,29 @@ export function Sidebar() {
     },
   ];
 
+  // Rows that fit into the recent list. Without ResizeObserver (tests) the
+  // whole history is shown.
+  const [recentRows, setRecentRows] = createSignal(0);
+  const fitRecent = (list: HTMLDivElement) => {
+    if (typeof ResizeObserver === "undefined") {
+      setRecentRows(Infinity);
+      return;
+    }
+    const ro = new ResizeObserver(([entry]) => {
+      const row =
+        list.closest(".side-scroll")?.querySelector<HTMLElement>(".nav")?.offsetHeight || FALLBACK_ROW_PX;
+      // The list's height comes from the flex layout, not from its rows, so
+      // changing the row count never feeds back into this measurement.
+      setRecentRows(Math.max(0, Math.floor((entry?.contentRect.height ?? 0) / row + 0.01)));
+    });
+    ro.observe(list);
+    onCleanup(() => ro.disconnect());
+  };
+
   const recent = createMemo(() =>
     navStore
       .recent()
-      .slice(0, MAX_RECENT)
+      .slice(0, recentRows())
       .map((r) => ({
         id: r.scriptId,
         title: library.script(r.scriptId)?.title || r.title || t("common.untitled"),
@@ -95,7 +119,7 @@ export function Sidebar() {
         </button>
       </div>
 
-      <nav class="side-scroll">
+      <nav class="side-scroll side-fit">
         <NavItem
           on={isAllOn()}
           icon={<Icon name="stack" size={14} />}
@@ -202,19 +226,27 @@ export function Sidebar() {
           </button>
         </Show>
 
-        <Show when={recent().length > 0}>
-          <div class="side-h">{t("shell.section.recent")}</div>
-          <For each={recent()}>
-            {(r) => (
-              <NavItem
-                sub
-                on={navStore.activeScriptId() === r.id}
-                icon={<Icon name="doc" size={14} />}
-                label={r.title}
-                onClick={() => navStore.openScript(r.id, r.title)}
-              />
-            )}
-          </For>
+        <Show when={navStore.recent().length > 0}>
+          <div class="side-recent">
+            {/* Hidden, not removed, when no row fits: removing it would give
+                the list room for a row and toggle back and forth. */}
+            <div class="side-h" classList={{ "is-hidden": recent().length === 0 }}>
+              {t("shell.section.recent")}
+            </div>
+            <div class="side-recent-list" ref={fitRecent}>
+              <For each={recent()}>
+                {(r) => (
+                  <NavItem
+                    sub
+                    on={navStore.activeScriptId() === r.id}
+                    icon={<Icon name="doc" size={14} />}
+                    label={r.title}
+                    onClick={() => navStore.openScript(r.id, r.title)}
+                  />
+                )}
+              </For>
+            </div>
+          </div>
         </Show>
       </nav>
 
