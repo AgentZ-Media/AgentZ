@@ -76,6 +76,7 @@ export const en: Record<keyof typeof de, string> = {
   "script.renameTitle": "Rename",
   "script.renameEmptyHint": "Title can't be empty.",
   "script.menu.open": "Open",
+  "script.menu.openPanel": "Open in side panel",
   "script.menu.openNewTab": "Open in new tab",
   "script.menu.rename": "Rename",
   "script.menu.duplicate": "Duplicate",

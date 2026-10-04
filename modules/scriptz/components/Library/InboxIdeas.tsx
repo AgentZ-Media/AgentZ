@@ -21,7 +21,7 @@ function firstLine(notes: string | null | undefined): string {
 
 /** Opens the ideas page with this idea selected (filters that hide it are
  *  cleared by the page, like the palette does). */
-function openIdea(idea: Idea): void {
+export function openIdea(idea: Idea): void {
   uiStore.revealIdea(idea.id);
   void navStore.openIdeas(idea.folder_id);
 }

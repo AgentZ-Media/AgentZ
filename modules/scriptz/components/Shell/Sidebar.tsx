@@ -1,6 +1,7 @@
-import { For, Show, createMemo, createSignal, onCleanup, type JSX } from "solid-js";
+import { For, Show, createSignal, onCleanup, type JSX } from "solid-js";
 import { navStore } from "../../stores/nav";
-import { uiStore } from "../../stores/ui";
+import { openStore } from "../../stores/open";
+import { uiStore, type SidebarSection } from "../../stores/ui";
 import { K } from "@agentz/kit/platform";
 import { scriptStages, stageLabel } from "../../lib/stages";
 import type { Folder, ScriptStatus } from "../../lib/types";
@@ -17,20 +18,18 @@ import {
   renameFolder,
 } from "../Library/actions";
 import { WritingCounter } from "../Activity/WritingCounter";
+import { closeOpenScript, closeOtherOpenScripts } from "./openActions";
 import { folderColor, library } from "./libraryData";
-
-/** Row height used until a real `.nav` row can be measured. */
-const FALLBACK_ROW_PX = 30;
 
 /**
  * Left navigation (concept `#tpl-side`): app row, search + new, the inbox
- * (only while work is in progress), "Alle Skripte", the pipeline, folders,
- * recently opened scripts and the footer with the writing counter, trash
- * and settings. Always dark (`--side-*`).
+ * (only while work is in progress), "Alle Skripte", the pipeline and the
+ * folders (both collapsible), the "Open" list and the footer with the
+ * writing counter, trash and settings. Always dark (`--side-*`).
  *
- * The recent section takes whatever height the nav has left after the
- * pipeline and folders (flex, see Shell.css) and shows as many scripts as
- * fit, so it grows with the window and never makes the sidebar scroll.
+ * The navigation keeps its natural height and scrolls only when it would
+ * squeeze the "Open" list below its minimum; the list takes the rest of
+ * the height and scrolls on its own (see Shell.css).
  */
 export function Sidebar() {
   const route = () => navStore.route();
@@ -70,34 +69,23 @@ export function Sidebar() {
     },
   ];
 
-  // Rows that fit into the recent list. Without ResizeObserver (tests) the
-  // whole history is shown.
-  const [recentRows, setRecentRows] = createSignal(0);
-  const fitRecent = (list: HTMLDivElement) => {
-    if (typeof ResizeObserver === "undefined") {
-      setRecentRows(Infinity);
-      return;
-    }
-    const ro = new ResizeObserver(([entry]) => {
-      const row =
-        list.closest(".side-scroll")?.querySelector<HTMLElement>(".nav")?.offsetHeight || FALLBACK_ROW_PX;
-      // The list's height comes from the flex layout, not from its rows, so
-      // changing the row count never feeds back into this measurement.
-      setRecentRows(Math.max(0, Math.floor((entry?.contentRect.height ?? 0) / row + 0.01)));
-    });
-    ro.observe(list);
-    onCleanup(() => ro.disconnect());
-  };
+  const openItems = (id: string): ContextMenuItem[] => [
+    { label: t("shell.open.close"), icon: "x", onClick: () => void closeOpenScript(id) },
+    {
+      label: t("shell.open.closeOthers"),
+      disabled: openStore.ids().length < 2,
+      onClick: () => void closeOtherOpenScripts(id),
+    },
+    { label: t("shell.open.closeAll"), separatorBefore: true, onClick: () => void closeOtherOpenScripts(null) },
+  ];
 
-  const recent = createMemo(() =>
-    navStore
-      .recent()
-      .slice(0, recentRows())
-      .map((r) => ({
-        id: r.scriptId,
-        title: library.script(r.scriptId)?.title || r.title || t("common.untitled"),
-      })),
-  );
+  const openTitle = (id: string) =>
+    library.script(id)?.title || navStore.recent().find((r) => r.scriptId === id)?.title || t("common.untitled");
+
+  const startFolder = () => {
+    if (uiStore.isSectionCollapsed("folders")) uiStore.toggleSection("folders");
+    setCreatingFolder(true);
+  };
 
   const acceptsScript = (e: DragEvent) =>
     !!e.dataTransfer && Array.from(e.dataTransfer.types).includes(SCRIPT_DRAG_MIME);
@@ -121,146 +109,163 @@ export function Sidebar() {
         </button>
       </div>
 
-      <nav class="side-scroll side-fit">
-        {/* Only while something is in progress; stays while open so the
-            active entry doesn't vanish when its last item is finished. */}
-        <Show when={library.inboxCount() > 0 || route().kind === "inbox"}>
-          <NavItem
-            on={route().kind === "inbox"}
-            icon={<Icon name="inbox" size={14} />}
-            label={t("shell.nav.inbox")}
-            count={library.inboxCount()}
-            onClick={() => navStore.openInbox()}
-          />
-        </Show>
-        <NavItem
-          on={isAllOn()}
-          icon={<Icon name="stack" size={14} />}
-          label={t("shell.nav.all")}
-          count={library.scripts().length}
-          onClick={() => navStore.openScripts()}
-        />
-
-        <div class="side-h">{t("shell.section.pipeline")}</div>
-        <NavItem
-          on={route().kind === "ideas"}
-          icon={<StageGlyph stage="idea" />}
-          label={t("shell.nav.ideas")}
-          count={library.openIdeas().length}
-          onClick={() => navStore.openIdeas()}
-        />
-        <For each={scriptStages().map((stage) => stage.id)}>
-          {(st) => (
+      <nav class="side-scroll side-split">
+        <div class="side-top-nav">
+          {/* Only while something is in progress; stays while open so the
+              active entry doesn't vanish when its last item is finished. */}
+          <Show when={library.inboxCount() > 0 || route().kind === "inbox"}>
             <NavItem
-              on={isStatusOn(st)}
-              icon={<StageGlyph stage={st} />}
-              label={stageLabel(st)}
-              count={library.statusCounts().get(st) ?? 0}
-              onClick={() => navStore.openScripts({ status: st })}
+              on={route().kind === "inbox"}
+              icon={<Icon name="inbox" size={14} />}
+              label={t("shell.nav.inbox")}
+              count={library.inboxCount()}
+              onClick={() => navStore.openInbox()}
             />
-          )}
-        </For>
-
-        <div class="side-h">
-          {t("shell.section.folders")}
-          <button
-            type="button"
-            class="h-add"
-            title={t("folder.new")}
-            aria-label={t("folder.new")}
-            onClick={() => setCreatingFolder(true)}
-          >
-            <Icon name="plus" size={12} />
-          </button>
-        </div>
-        <For each={library.folders()}>
-          {(f) => (
-            <Show
-              when={renamingId() !== f.id}
-              fallback={
-                <InlineInput
-                  initial={f.name}
-                  color={folderColor(f.id)}
-                  label={t("folder.renameLabel")}
-                  onCommit={(v) => {
-                    setRenamingId(null);
-                    void renameFolder(f, v);
-                  }}
-                  onCancel={() => setRenamingId(null)}
-                />
-              }
-            >
-              <NavItem
-                sub
-                on={isFolderOn(f.id)}
-                drop={dropTarget() === f.id}
-                icon={<span class="dot" style={{ background: folderColor(f.id) }} />}
-                label={f.name}
-                count={library.folderCounts().get(f.id) ?? 0}
-                onClick={() => navStore.openScripts({ folderId: f.id })}
-                onContextMenu={(e) => {
-                  e.preventDefault();
-                  setMenu({ x: e.clientX, y: e.clientY, items: folderItems(f) });
-                }}
-                onDragOver={(e) => {
-                  if (!acceptsScript(e)) return;
-                  e.preventDefault();
-                  if (e.dataTransfer) e.dataTransfer.dropEffect = "move";
-                  setDropTarget(f.id);
-                }}
-                onDragLeave={() => setDropTarget((cur) => (cur === f.id ? null : cur))}
-                onDrop={(e) => {
-                  setDropTarget(null);
-                  const id = e.dataTransfer?.getData(SCRIPT_DRAG_MIME);
-                  if (!id) return;
-                  e.preventDefault();
-                  if (library.script(id)?.folder_id !== f.id) void moveScriptsTo([id], f.id);
-                }}
-              />
-            </Show>
-          )}
-        </For>
-        <Show when={creatingFolder()}>
-          <InlineInput
-            initial=""
-            placeholder={t("folder.placeholder")}
-            label={t("folder.createTitle")}
-            onCommit={(v) => {
-              setCreatingFolder(false);
-              void createFolder(v);
-            }}
-            onCancel={() => setCreatingFolder(false)}
+          </Show>
+          <NavItem
+            on={isAllOn()}
+            icon={<Icon name="stack" size={14} />}
+            label={t("shell.nav.all")}
+            count={library.scripts().length}
+            onClick={() => navStore.openScripts()}
           />
-        </Show>
-        <Show when={library.folders().length === 0 && !creatingFolder()}>
-          <button type="button" class="nav sub side-ghost" onClick={() => setCreatingFolder(true)}>
-            <Icon name="plus" size={13} />
-            <span class="lbl">{t("folder.new")}</span>
-          </button>
-        </Show>
 
-        <Show when={navStore.recent().length > 0}>
-          <div class="side-recent">
-            {/* Hidden, not removed, when no row fits: removing it would give
-                the list room for a row and toggle back and forth. */}
-            <div class="side-h" classList={{ "is-hidden": recent().length === 0 }}>
-              {t("shell.section.recent")}
-            </div>
-            <div class="side-recent-list" ref={fitRecent}>
-              <For each={recent()}>
-                {(r) => (
+          <SectionHead section="pipeline" label={t("shell.section.pipeline")} />
+          <Show when={!uiStore.isSectionCollapsed("pipeline")}>
+            <NavItem
+              on={route().kind === "ideas"}
+              icon={<StageGlyph stage="idea" />}
+              label={t("shell.nav.ideas")}
+              count={library.openIdeas().length}
+              onClick={() => navStore.openIdeas()}
+            />
+            <For each={scriptStages().map((stage) => stage.id)}>
+              {(st) => (
+                <NavItem
+                  on={isStatusOn(st)}
+                  icon={<StageGlyph stage={st} />}
+                  label={stageLabel(st)}
+                  count={library.statusCounts().get(st) ?? 0}
+                  onClick={() => navStore.openScripts({ status: st })}
+                />
+              )}
+            </For>
+          </Show>
+
+          <SectionHead section="folders" label={t("shell.section.folders")}>
+            <button
+              type="button"
+              class="h-add"
+              title={t("folder.new")}
+              aria-label={t("folder.new")}
+              onClick={startFolder}
+            >
+              <Icon name="plus" size={12} />
+            </button>
+          </SectionHead>
+          <Show when={!uiStore.isSectionCollapsed("folders")}>
+            <For each={library.folders()}>
+              {(f) => (
+                <Show
+                  when={renamingId() !== f.id}
+                  fallback={
+                    <InlineInput
+                      initial={f.name}
+                      color={folderColor(f.id)}
+                      label={t("folder.renameLabel")}
+                      onCommit={(v) => {
+                        setRenamingId(null);
+                        void renameFolder(f, v);
+                      }}
+                      onCancel={() => setRenamingId(null)}
+                    />
+                  }
+                >
                   <NavItem
                     sub
-                    on={navStore.activeScriptId() === r.id}
-                    icon={<Icon name="doc" size={14} />}
-                    label={r.title}
-                    onClick={() => navStore.openScript(r.id, r.title)}
+                    on={isFolderOn(f.id)}
+                    drop={dropTarget() === f.id}
+                    icon={<span class="dot" style={{ background: folderColor(f.id) }} />}
+                    label={f.name}
+                    count={library.folderCounts().get(f.id) ?? 0}
+                    onClick={() => navStore.openScripts({ folderId: f.id })}
+                    onContextMenu={(e) => {
+                      e.preventDefault();
+                      setMenu({ x: e.clientX, y: e.clientY, items: folderItems(f) });
+                    }}
+                    onDragOver={(e) => {
+                      if (!acceptsScript(e)) return;
+                      e.preventDefault();
+                      if (e.dataTransfer) e.dataTransfer.dropEffect = "move";
+                      setDropTarget(f.id);
+                    }}
+                    onDragLeave={() => setDropTarget((cur) => (cur === f.id ? null : cur))}
+                    onDrop={(e) => {
+                      setDropTarget(null);
+                      const id = e.dataTransfer?.getData(SCRIPT_DRAG_MIME);
+                      if (!id) return;
+                      e.preventDefault();
+                      if (library.script(id)?.folder_id !== f.id) void moveScriptsTo([id], f.id);
+                    }}
                   />
-                )}
-              </For>
-            </div>
+                </Show>
+              )}
+            </For>
+            <Show when={creatingFolder()}>
+              <InlineInput
+                initial=""
+                placeholder={t("folder.placeholder")}
+                label={t("folder.createTitle")}
+                onCommit={(v) => {
+                  setCreatingFolder(false);
+                  void createFolder(v);
+                }}
+                onCancel={() => setCreatingFolder(false)}
+              />
+            </Show>
+            <Show when={library.folders().length === 0 && !creatingFolder()}>
+              <button type="button" class="nav sub side-ghost" onClick={startFolder}>
+                <Icon name="plus" size={13} />
+                <span class="lbl">{t("folder.new")}</span>
+              </button>
+            </Show>
+          </Show>
+        </div>
+
+        <div class="side-open">
+          <div class="side-h">
+            <span class="side-h-lbl">{t("shell.section.open")}</span>
+            <Show when={openStore.ids().length > 1}>
+              <button
+                type="button"
+                class="h-add"
+                title={t("shell.open.closeAll")}
+                aria-label={t("shell.open.closeAll")}
+                onClick={() => void closeOtherOpenScripts(null)}
+              >
+                <Icon name="x" size={12} />
+              </button>
+            </Show>
           </div>
-        </Show>
+          <div class="side-open-list">
+            <For each={openStore.ids()} fallback={<div class="side-open-empty">{t("shell.open.empty")}</div>}>
+              {(id) => (
+                <OpenItem
+                  id={id}
+                  title={openTitle(id)}
+                  status={library.script(id)?.status}
+                  on={navStore.activeScriptId() === id}
+                  onOpen={() => void navStore.openScript(id, openTitle(id))}
+                  onClose={() => void closeOpenScript(id)}
+                  onContextMenu={(e) => {
+                    e.preventDefault();
+                    setMenu({ x: e.clientX, y: e.clientY, items: openItems(id) });
+                  }}
+                />
+              )}
+            </For>
+          </div>
+        </div>
       </nav>
 
       <Show when={menu()}>
@@ -298,6 +303,88 @@ export function SidebarFooter() {
         </button>
       </div>
 
+  );
+}
+
+/** Section title of the sidebar. Click folds the section away; the
+ *  choice is remembered (`sidebar.sections`). */
+function SectionHead(props: { section: SidebarSection; label: string; children?: JSX.Element }) {
+  const collapsed = () => uiStore.isSectionCollapsed(props.section);
+  return (
+    <div class="side-h">
+      <button
+        type="button"
+        class="side-h-tog"
+        aria-expanded={!collapsed()}
+        title={collapsed() ? t("shell.group.expand") : t("shell.group.collapse")}
+        onClick={() => uiStore.toggleSection(props.section)}
+      >
+        <span class="side-h-lbl">{props.label}</span>
+        <Icon name={collapsed() ? "right" : "down"} size={11} class="side-h-chev" />
+      </button>
+      {props.children}
+    </div>
+  );
+}
+
+/** Entry of the "Open" list: stage, title, close button on hover. Middle
+ *  click closes too; it can be dragged onto a folder like a list row. */
+function OpenItem(props: {
+  id: string;
+  title: string;
+  status: ScriptStatus | undefined;
+  on: boolean;
+  onOpen: () => void;
+  onClose: () => void;
+  onContextMenu: (e: MouseEvent) => void;
+}) {
+  return (
+    <div
+      class="nav side-open-item"
+      classList={{ "is-on": props.on }}
+      role="button"
+      tabIndex={0}
+      aria-current={props.on ? "page" : undefined}
+      title={props.title}
+      draggable={true}
+      onDragStart={(e) => {
+        if (!e.dataTransfer) return;
+        e.dataTransfer.effectAllowed = "move";
+        e.dataTransfer.setData(SCRIPT_DRAG_MIME, props.id);
+        e.dataTransfer.setData("text/plain", props.title);
+      }}
+      onClick={() => props.onOpen()}
+      onAuxClick={(e) => {
+        if (e.button !== 1) return;
+        e.preventDefault();
+        props.onClose();
+      }}
+      onKeyDown={(e) => {
+        if (e.target !== e.currentTarget) return;
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          props.onOpen();
+        }
+      }}
+      onContextMenu={(e) => props.onContextMenu(e)}
+    >
+      <Show when={props.status} fallback={<Icon name="doc" size={14} />}>
+        {(st) => <StageGlyph stage={st()} />}
+      </Show>
+      <span class="lbl">{props.title}</span>
+      <button
+        type="button"
+        class="side-open-x"
+        title={t("shell.open.close")}
+        aria-label={t("shell.open.closeAria", { title: props.title })}
+        onClick={(e) => {
+          e.stopPropagation();
+          props.onClose();
+        }}
+      >
+        <Icon name="x" size={12} />
+      </button>
+    </div>
   );
 }
 

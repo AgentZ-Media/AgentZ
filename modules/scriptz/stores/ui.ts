@@ -11,11 +11,13 @@ import { settingsStore } from "./settings";
  */
 
 const LAYOUT_KEY = "ui.layout";
+const SECTIONS_KEY = "sidebar.sections";
 const FOCUS_KEY = (scriptId: string) => `script.${scriptId}.focus_mode`;
 
 export type SettingsSection =
   | "appearance"
   | "writing"
+  | "library"
   | "folders"
   | "characters"
   | "shortcuts"
@@ -39,6 +41,13 @@ const sidebarOpen = shellUi.sidebarOpen;
 const inspectorOpen = () => layout.state().inspector;
 const timelineOpen = () => layout.state().timeline;
 
+// ---- sidebar sections: collapsed flags (persisted, default expanded) ----
+export type SidebarSection = "pipeline" | "folders";
+const [collapsedSections, setCollapsedSections] = createSignal<Record<SidebarSection, boolean>>({
+  pipeline: false,
+  folders: false,
+});
+
 // ---- focus mode (per script override, like before) ----
 const [focusMode, setFocusMode] = createSignal(false);
 const focusOverride = new Map<string, boolean>();
@@ -55,6 +64,7 @@ type UiRuntime = {
   kv: KvStore;
   active: boolean;
   focusWrites: Map<string, ReturnType<typeof createStatePersistence>>;
+  sectionsWrite: ReturnType<typeof createStatePersistence>;
   stop(): void;
 };
 let runtime: UiRuntime | undefined;
@@ -64,11 +74,12 @@ export function startUiRuntime(kv = getKvStore()): () => void {
   const unbind = shellUi.setSidebarPersistence((sidebar) => layout.update({ sidebar }));
   focusOverride.clear(); setFocusMode(false);
   setCaptureOpen(false); setExportScriptId(null); setActivityOpen(false); setIdeaToReveal(null);
+  setCollapsedSections({ pipeline: false, folders: false });
   const current: UiRuntime = {
-    active: true, kv, focusWrites: new Map(),
+    active: true, kv, focusWrites: new Map(), sectionsWrite: createStatePersistence(kv, SECTIONS_KEY),
     stop() {
       if (!current.active) return;
-      current.active = false; unbind(); stopLayout();
+      current.active = false; unbind(); stopLayout(); current.sectionsWrite.dispose();
       for (const write of current.focusWrites.values()) write.dispose();
       if (runtime === current) runtime = undefined;
     },
@@ -103,6 +114,14 @@ export const uiStore = {
   },
   setTimelineOpen(v: boolean) {
     layout.update({ timeline: v });
+  },
+
+  // sidebar sections
+  isSectionCollapsed: (section: SidebarSection) => collapsedSections()[section],
+  toggleSection(section: SidebarSection) {
+    const next = { ...collapsedSections(), [section]: !collapsedSections()[section] };
+    setCollapsedSections(next);
+    activeRuntime()?.sectionsWrite.schedule(JSON.stringify(next));
   },
 
   // focus mode
@@ -199,5 +218,17 @@ export const uiStore = {
     const current = ensureRuntime();
     await layout.load(() => current.active && isActive());
     if (current.active && isActive()) shellUi.setSidebarOpenSilently(layout.state().sidebar);
+  },
+  /** Collapsed sidebar sections (own key, read once at boot). */
+  async loadSidebarSections(isActive: () => boolean = () => true) {
+    const current = ensureRuntime();
+    try {
+      const raw = await current.kv.getAppState(SECTIONS_KEY);
+      if (!raw || !current.active || !isActive()) return;
+      const parsed = JSON.parse(raw) as Record<string, unknown>;
+      setCollapsedSections({ pipeline: parsed.pipeline === true, folders: parsed.folders === true });
+    } catch {
+      /* expanded by default */
+    }
   },
 };

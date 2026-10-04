@@ -4,6 +4,7 @@ import { K, isModKey } from "@agentz/kit/platform";
 import type { ShortcutDef } from "@agentz/kit/shell";
 import { t, type TranslationKey } from "../../i18n";
 import { navStore } from "../../stores/nav";
+import { currentScriptId } from "../../stores/peek";
 import { uiStore } from "../../stores/ui";
 import { createScript } from "../Library/actions";
 import { stepStage } from "../Script/stageActions";
@@ -25,7 +26,9 @@ export function getScriptzShortcuts(): ShortcutDef[] {
   });
   const letter = (key: string, shift = false) => (event: KeyboardEvent) =>
     isModKey(event) && !event.altKey && event.shiftKey === shift && event.key.toLowerCase() === key;
+  // Script view only (inspector, focus) vs. script view or side panel.
   const hasScript = () => navStore.activeScriptId() !== null;
+  const hasEditor = () => currentScriptId() !== null;
   return [
     entry("new", "prefs.shortcuts.newScript", ["Mod+N"], "app", {
       matches: letter("n"), run: () => void createScript(),
@@ -43,20 +46,20 @@ export function getScriptzShortcuts(): ShortcutDef[] {
       enabled: hasScript, run: () => uiStore.toggleInspector(),
     }),
     entry("timeline", "prefs.shortcuts.timeline", ["Mod+J"], "app", {
-      matches: letter("j"), enabled: hasScript, run: () => uiStore.toggleTimeline(),
+      matches: letter("j"), enabled: hasEditor, run: () => uiStore.toggleTimeline(),
     }),
     entry("stage", "prefs.shortcuts.stage", ["Mod+Alt+ArrowRight", "Mod+Alt+ArrowLeft"], "app", {
       matches: (event) => isModKey(event) && event.altKey && !event.shiftKey && (event.key === "ArrowRight" || event.key === "ArrowLeft"),
-      enabled: hasScript,
-      run: (event) => { const id = navStore.activeScriptId(); if (id) void stepStage(id, event.key === "ArrowRight" ? 1 : -1); },
+      enabled: hasEditor,
+      run: (event) => { const id = currentScriptId(); if (id) void stepStage(id, event.key === "ArrowRight" ? 1 : -1); },
     }),
     entry("focus", "prefs.shortcuts.focus", ["Mod+Shift+F"], "app", {
       matches: letter("f", true), enabled: hasScript,
       run: () => { const id = navStore.activeScriptId(); if (id) uiStore.toggleFocus(id); },
     }),
     entry("export", "prefs.shortcuts.export", ["Mod+E"], "app", {
-      matches: letter("e"), enabled: hasScript,
-      run: () => { const id = navStore.activeScriptId(); if (id) uiStore.openExport(id); },
+      matches: letter("e"), enabled: hasEditor,
+      run: () => { const id = currentScriptId(); if (id) uiStore.openExport(id); },
     }),
     entry("snapshot", "prefs.shortcuts.snapshot", ["Mod+Shift+S"]),
     entry("versions", "prefs.shortcuts.versions", ["Mod+Shift+H"]),

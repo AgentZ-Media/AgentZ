@@ -1,6 +1,7 @@
 import type { AboutInfo, ModuleSettings } from "@agentz/kit/shell";
 import { t } from "../../i18n";
 import { SettingsWriting } from "./sections/SettingsWriting";
+import { SettingsLibrary } from "./sections/SettingsLibrary";
 import { SettingsFolders } from "./sections/SettingsFolders";
 import { SettingsCharacters } from "./sections/SettingsCharacters";
 import { SettingsStages } from "./sections/SettingsStages";
@@ -22,6 +23,7 @@ export const scriptzAbout: AboutInfo = {
 export const scriptzModuleSettings: ModuleSettings = {
   sections: [
     { id: "writing", icon: "pen", label: () => t("prefs.writing.title"), component: SettingsWriting },
+    { id: "library", icon: "stack", label: () => t("prefs.library.title"), component: SettingsLibrary },
     { id: "stages", icon: "check", label: () => t("prefs.stages.title"), component: SettingsStages },
     { id: "folders", icon: "folder", label: () => t("prefs.folders.title"), component: SettingsFolders },
     { id: "characters", icon: "users", label: () => t("prefs.characters.title"), component: SettingsCharacters },

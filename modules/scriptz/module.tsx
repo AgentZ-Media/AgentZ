@@ -6,6 +6,9 @@ import { ensureWelcomeContent } from "./lib/welcome";
 import { migrateLegacyBlocksOnce } from "./lib/legacyBlocksMigration";
 import { settingsStore, startSettingsRuntime } from "./stores/settings";
 import { navStore, startNavRuntime } from "./stores/nav";
+import { openStore, startOpenStore } from "./stores/open";
+import { currentScriptId } from "./stores/peek";
+import { finalStageId } from "./lib/stages";
 import { uiStore, startUiRuntime } from "./stores/ui";
 import { startIdeasStore } from "./stores/ideas";
 import { startDailyStatsStore } from "./stores/dailyStats";
@@ -46,11 +49,17 @@ async function setupScriptz(ctx: ModuleContext): Promise<ModuleRuntime> {
   ctx.onDispose(startNavRuntime(ctx.kv));
   ctx.onDispose(startUiRuntime(ctx.kv));
   ctx.onDispose(startLibraryPrefs(ctx.kv));
+  ctx.onDispose(startOpenStore(ctx.kv));
   await Promise.all([
     settingsStore.load(), ensureWelcomeContent({ kv: ctx.kv, signal: ctx.signal }), navStore.load(),
     uiStore.load(active), libraryPrefs.load(active),
+    uiStore.loadSidebarSections(active), libraryPrefs.loadViewModes(active),
     api.backfillRuntimeStats().catch((error) => console.warn("[scriptz] runtime backfill skipped", error)),
   ]);
+  ensureActive();
+  // After the navigation: an install without a stored list starts with the
+  // scripts it opened last.
+  await openStore.load(() => navStore.recent().map((recent) => recent.scriptId), active);
   ensureActive();
   // Never let an editor save race this one-time content migration.
   await migrateLegacyBlocksOnce({ kv: ctx.kv, signal: ctx.signal }).catch((error) => console.warn("[scriptz] legacy block migration skipped", error));
@@ -64,13 +73,23 @@ async function setupScriptz(ctx: ModuleContext): Promise<ModuleRuntime> {
       if (!library.scriptsReady()) return;
       const list = library.scripts();
       untrack(() => {
-        navStore.reconcile(new Set(list.map((item) => item.id)));
+        const live = new Set(list.map((item) => item.id));
+        navStore.reconcile(live);
+        openStore.reconcile(live);
+        openStore.syncStatuses(list, finalStageId(), navStore.activeScriptId(), settingsStore.closeFinishedScripts());
         for (const recent of navStore.recent()) {
           const live = library.script(recent.scriptId);
           if (live && live.title !== recent.title) navStore.setScriptTitle(recent.scriptId, live.title);
         }
       });
     });
+    // Whatever the script view shows belongs to the "Open" list (also after
+    // back/forward and a restored session); a script that finished while
+    // on screen leaves the list once the view moves on.
+    createEffect(on(navStore.activeScriptId, (id, previous) => {
+      if (id) openStore.add(id);
+      if (previous !== id) openStore.leave(previous ?? null);
+    }));
     createEffect(on(navStore.activeScriptId, (id, previous) => {
       if (!id) { if (previous) uiStore.clearFocus(); return; }
       const title = library.script(id)?.title ?? navStore.recent().find((recent) => recent.scriptId === id)?.title ?? "";
@@ -96,7 +115,7 @@ async function setupScriptz(ctx: ModuleContext): Promise<ModuleRuntime> {
     commands: createScriptzCommands(ctx.shell),
     commandPlaceholder: () => t("shell.palette.placeholder"),
     shortcuts: getScriptzShortcuts(),
-    shortcutContext: () => navStore.activeScriptId() ? "editor" : "list",
+    shortcutContext: () => currentScriptId() ? "editor" : "list",
     onboarding: { key: ONBOARDING_KEY, component: Onboarding },
   };
 }

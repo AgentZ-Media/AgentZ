@@ -82,6 +82,7 @@ export const de = {
   "script.renameTitle": "Umbenennen",
   "script.renameEmptyHint": "Titel darf nicht leer sein.",
   "script.menu.open": "Öffnen",
+  "script.menu.openPanel": "Im Seitenpanel öffnen",
   "script.menu.openNewTab": "In neuem Tab öffnen",
   "script.menu.rename": "Umbenennen",
   "script.menu.duplicate": "Duplizieren",

@@ -42,6 +42,9 @@ import "./ScriptScreen.css";
 
 export interface ScriptScreenProps {
   scriptId: string;
+  /** Rendered in the side panel of a list: no inspector and no focus
+   *  mode; the top bar offers "open full view" and "close". */
+  peek?: { onExpand(): void; onClose(): void };
 }
 
 const QUICK_MODE_KEY = (id: string) => `script.${id}.quick_mode`;
@@ -84,8 +87,11 @@ function errMessage(err: unknown): string {
  * The script screen of the Werkbank shell: top bar, endless paper, timeline
  * and the inspector to the right. The shell mounts it for `route.kind ===
  * "script"`; it may stay mounted across script switches (props change).
+ * The list pages mount it as side panel (`peek`); only one of the two
+ * exists at a time, opening the full view closes the panel.
  */
 export function ScriptScreen(props: ScriptScreenProps) {
+  const isPeek = () => props.peek !== undefined;
   // ---------- data ----------
   const [script, { mutate: setScript }] = createResource<Script | null, { id: string; v: number }>(
     () => ({ id: props.scriptId, v: scriptsBus.version() }),
@@ -274,9 +280,9 @@ export function ScriptScreen(props: ScriptScreenProps) {
   // Any inspector toggle (also ⌘⇧\ from the shell) arms the overlay.
   createEffect(on(uiStore.inspectorOpen, () => setOverlayArmed(true), { defer: true }));
 
-  const focus = () => uiStore.focusMode();
+  const focus = () => !isPeek() && uiStore.focusMode();
   const inspectorVisible = () =>
-    !focus() && !parseError() && uiStore.inspectorOpen() && (!narrow() || overlayArmed());
+    !isPeek() && !focus() && !parseError() && uiStore.inspectorOpen() && (!narrow() || overlayArmed());
   const toggleInspector = () => {
     if (!narrow()) {
       uiStore.toggleInspector();
@@ -451,7 +457,7 @@ export function ScriptScreen(props: ScriptScreenProps) {
       } else if (ev.shiftKey && key === "h") {
         ev.preventDefault();
         setSnapshotsOpen(true);
-      } else if (ev.key === "|" || (ev.shiftKey && ev.key === "\\")) {
+      } else if (!isPeek() && (ev.key === "|" || (ev.shiftKey && ev.key === "\\"))) {
         ev.preventDefault();
         toggleInspector();
       } else if (!ev.shiftKey && key === "j") {
@@ -466,7 +472,7 @@ export function ScriptScreen(props: ScriptScreenProps) {
     // `inspectorOpen` is still true. Claim ⌘⇧\ before the shell so the
     // first press shows it instead of silently flipping the stored flag.
     const onKeyCapture = (ev: KeyboardEvent) => {
-      if (!narrow() || ev.defaultPrevented || !isModKey(ev) || ev.altKey) return;
+      if (isPeek() || !narrow() || ev.defaultPrevented || !isModKey(ev) || ev.altKey) return;
       if (!(ev.key === "|" || (ev.shiftKey && ev.key === "\\"))) return;
       if (uiStore.anyDialogOpen() || snapshotsOpen()) return;
       ev.preventDefault();
@@ -518,6 +524,7 @@ export function ScriptScreen(props: ScriptScreenProps) {
       class="ss"
       classList={{
         "is-focus": focus(),
+        "is-peek": isPeek(),
         "is-narrow": narrow(),
         "has-insp": inspectorVisible(),
       }}
@@ -546,6 +553,7 @@ export function ScriptScreen(props: ScriptScreenProps) {
                   inspectorVisible={inspectorVisible()}
                   onToggleInspector={toggleInspector}
                   onExport={() => uiStore.openExport(s().id)}
+                  peek={props.peek}
                 />
               </Show>
               <Show when={focus()}>

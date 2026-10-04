@@ -38,6 +38,14 @@ const [darkPaper, setDarkPaper] = createSignal<boolean>(false);
 // name also forgets its colour.
 const [pruneUnusedCharacters, setPruneUnusedCharacters] = createSignal<boolean>(false);
 
+// A click on a script in a list or on the board opens it in the side panel
+// next to the list instead of the full script view. Default on; Alt-click
+// does the other one.
+const [openInPanel, setOpenInPanel] = createSignal<boolean>(true);
+// Scripts that reach the last stage leave the sidebar's "Open" list (the
+// script on screen stays until the writer switches away). Default on.
+const [closeFinishedScripts, setCloseFinishedScripts] = createSignal<boolean>(true);
+
 // Words per minute for the runtime estimate (inspector, list, timeline).
 // Default 210 is calibrated for TikTok / sketch pace.
 // Classic screenplay pace is around 150, fast speech around ~250.
@@ -116,6 +124,16 @@ export const settingsStore = {
     setPruneUnusedCharacters(v);
     await persistSetting("prune_unused_characters", v ? "1" : "0");
   },
+  openInPanel,
+  setOpenInPanel: async (v: boolean) => {
+    setOpenInPanel(v);
+    await persistSetting("open_scripts_in_panel", v ? "1" : "0");
+  },
+  closeFinishedScripts,
+  setCloseFinishedScripts: async (v: boolean) => {
+    setCloseFinishedScripts(v);
+    await persistSetting("close_finished_scripts", v ? "1" : "0");
+  },
   dialogWpm,
   setDialogWpm: async (v: number) => {
     const next = clampWpm(v);
@@ -155,7 +173,7 @@ export const settingsStore = {
   async load() {
     const generation = runtimeGeneration;
     const kv = settingsKv ?? getKvStore();
-    const [hd, qmae, wpm, fmd, sws, dp, lmin, lmax, puc, stages] = await Promise.all([
+    const [hd, qmae, wpm, fmd, sws, dp, lmin, lmax, puc, stages, oip, cfs] = await Promise.all([
       kv.getSetting("highlighting_default"),
       kv.getSetting("quick_mode_auto_enable"),
       kv.getSetting("dialog_wpm"),
@@ -166,6 +184,8 @@ export const settingsStore = {
       kv.getSetting("length_max_default_sec"),
       kv.getSetting("prune_unused_characters"),
       kv.getSetting(STAGES_SETTING_KEY),
+      kv.getSetting("open_scripts_in_panel"),
+      kv.getSetting("close_finished_scripts"),
     ]);
     if (generation !== runtimeGeneration) return;
     setHighlightingDefault(hd === null ? false : hd === "1");
@@ -174,6 +194,8 @@ export const settingsStore = {
     setShowWritingStats(sws === null ? true : sws === "1");
     setDarkPaper(dp === null ? false : dp === "1");
     setPruneUnusedCharacters(puc === null ? false : puc === "1");
+    setOpenInPanel(oip === null ? true : oip === "1");
+    setCloseFinishedScripts(cfs === null ? true : cfs === "1");
     setLengthMinDefaultSecSignal(parseLengthSetting(lmin));
     setLengthMaxDefaultSecSignal(parseLengthSetting(lmax));
     setDialogWpm(wpm === null ? DIALOG_WPM_DEFAULT : clampWpm(Number(wpm)));

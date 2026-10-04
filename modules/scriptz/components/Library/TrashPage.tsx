@@ -102,16 +102,7 @@ export function TrashPage() {
 
   return (
     <div class="lib-page">
-      <PageBar title={t("browser.trash")}>
-        <button type="button" class="btn ghost" disabled={list().length === 0} onClick={() => void restoreAll()}>
-          <Icon name="undo" />
-          {t("trash.restoreAll")}
-        </button>
-        <button type="button" class="btn danger" disabled={list().length === 0} onClick={() => void emptyAll()}>
-          <Icon name="trash" />
-          {t("trash.emptyAll")}
-        </button>
-      </PageBar>
+      <PageBar />
       <div class="lib-scroll">
         <div class="lib">
           <div class="lib-head">
@@ -120,6 +111,16 @@ export function TrashPage() {
               <div class="week">
                 <span class="week-lbl">{tPlural("units.scripts", list().length)}</span>
               </div>
+            </div>
+            <div class="lib-head-acts">
+              <button type="button" class="btn ghost" disabled={list().length === 0} onClick={() => void restoreAll()}>
+                <Icon name="undo" />
+                {t("trash.restoreAll")}
+              </button>
+              <button type="button" class="btn danger" disabled={list().length === 0} onClick={() => void emptyAll()}>
+                <Icon name="trash" />
+                {t("trash.emptyAll")}
+              </button>
             </div>
           </div>
           <Show
