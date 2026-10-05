@@ -1,3 +1,8 @@
 [default]
 description = "Allows the main desktop host to announce readiness and acknowledge a requested exit."
 permissions = ["allow-ready", "allow-finish-exit", "allow-set-menu-language"]
+
+[[set]]
+identifier = "codex"
+description = "Allows locating and running the Codex CLI as `codex app-server` with allowlisted config overrides."
+permissions = ["allow-codex-locate", "allow-codex-start", "allow-codex-send", "allow-codex-stop"]

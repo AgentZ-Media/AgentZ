@@ -20,6 +20,7 @@ import { ScriptScreen } from "./components/Script/ScriptScreen";
 import { StageUndoToast } from "./components/Script/StageToast";
 import { IdeasPage } from "./components/Ideas/IdeasPage";
 import { QuickCapture } from "./components/Ideas/QuickCapture";
+import { NewScriptDialog } from "./components/Library/NewScriptDialog";
 import { ExportDialog } from "./components/Export/ExportDialog";
 import { Onboarding, ONBOARDING_KEY } from "./components/Onboarding/Onboarding";
 import { Sidebar, SidebarFooter } from "./components/Shell/Sidebar";
@@ -27,6 +28,11 @@ import { library, startLibraryData } from "./components/Shell/libraryData";
 import { getScriptzShortcuts } from "./components/Shell/shortcuts";
 import { scriptzAbout, scriptzModuleSettings } from "./components/Settings/moduleSettings";
 import { createScriptzCommands } from "./components/Palette/commands";
+import { agentSettings, startAgentSettingsRuntime } from "./stores/agentSettings";
+import { startAgentUiRuntime } from "./stores/agentUi";
+import { agentStore, startAgentRuntime } from "./stores/agent";
+import { AgentOnboarding } from "./components/Agent/AgentOnboarding";
+import { MemoryDialog } from "./components/Agent/MemoryDialog";
 import "./components/Shell/Shell.css";
 
 /** Plain product description. Stores, timers and storage start only in setup. */
@@ -50,8 +56,10 @@ async function setupScriptz(ctx: ModuleContext): Promise<ModuleRuntime> {
   ctx.onDispose(startUiRuntime(ctx.kv));
   ctx.onDispose(startLibraryPrefs(ctx.kv));
   ctx.onDispose(startOpenStore(ctx.kv));
+  ctx.onDispose(startAgentSettingsRuntime(ctx.kv));
+  ctx.onDispose(startAgentUiRuntime(ctx.kv));
   await Promise.all([
-    settingsStore.load(), ensureWelcomeContent({ kv: ctx.kv, signal: ctx.signal }), navStore.load(),
+    settingsStore.load(), agentSettings.load(), ensureWelcomeContent({ kv: ctx.kv, signal: ctx.signal }), navStore.load(),
     uiStore.load(active), libraryPrefs.load(active),
     uiStore.loadSidebarSections(active), libraryPrefs.loadViewModes(active),
     api.backfillRuntimeStats().catch((error) => console.warn("[scriptz] runtime backfill skipped", error)),
@@ -69,6 +77,7 @@ async function setupScriptz(ctx: ModuleContext): Promise<ModuleRuntime> {
     ctx.onDispose(startDailyStatsStore());
     ctx.onDispose(startLibraryData());
     ctx.onDispose(startCharacterAutoPrune(() => settingsStore.pruneUnusedCharacters()));
+    ctx.onDispose(startAgentRuntime(ctx.services));
     createEffect(() => {
       if (!library.scriptsReady()) return;
       const list = library.scripts();
@@ -97,6 +106,16 @@ async function setupScriptz(ctx: ModuleContext): Promise<ModuleRuntime> {
       void uiStore.applyFocusForScript(id, () => active() && navStore.activeScriptId() === id);
     }));
     createEffect(() => ctx.shell.setFocused(navStore.route().kind === "script" && uiStore.focusMode()));
+    // Connect the agent in the background when it is on (learning needs it).
+    createEffect(() => {
+      if (agentStore.available() && agentSettings.enabled() && agentSettings.onboarded() && agentStore.status().state === "checking") {
+        void agentStore.refreshStatus().then((status) => {
+          if (status.state !== "ready") return;
+          void agentStore.refreshModels().catch(() => {});
+          agentStore.scheduleLearning(8000);
+        });
+      }
+    });
   });
   return {
     routes: [
@@ -110,7 +129,7 @@ async function setupScriptz(ctx: ModuleContext): Promise<ModuleRuntime> {
     // List headers (PageBar) show the reopen button; the script view uses
     // Mod+\ and the palette, so the shell adds no button of its own.
     revealsSidebar: true,
-    overlays: [QuickCapture, ExportDialog, StageUndoToast],
+    overlays: [QuickCapture, NewScriptDialog, ExportDialog, StageUndoToast, AgentOnboarding, MemoryDialog],
     settings: scriptzModuleSettings,
     commands: createScriptzCommands(ctx.shell),
     commandPlaceholder: () => t("shell.palette.placeholder"),

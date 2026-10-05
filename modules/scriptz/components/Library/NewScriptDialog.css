@@ -1,0 +1,40 @@
+/* New-script dialog (⌘N). Frame, title field and footer come from the
+   quick capture (`.cap*`, QuickCapture.css); only the inline folder name
+   field is its own: a chip that holds an input. */
+
+.ns-folder {
+  height: 28px;
+  width: 220px;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 0 10px;
+  border: 1px solid var(--fg);
+  border-radius: var(--r-pill);
+  background: var(--surface);
+  box-shadow: 0 0 0 3px var(--fill);
+}
+.ns-folder svg.i {
+  width: 12px;
+  height: 12px;
+  color: var(--faint);
+}
+.ns .ns-folder input,
+.ns .ns-folder input:hover,
+.ns .ns-folder input:focus {
+  flex: 1;
+  min-width: 0;
+  height: 100%;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  outline: none;
+  color: var(--fg);
+  font: 600 13px/1 var(--ui);
+}
+.ns .ns-folder input::placeholder {
+  color: var(--faint);
+  font-weight: 500;
+}

@@ -4,7 +4,7 @@ import { applyResolvedLanguage } from "@agentz/kit/i18n";
 import { getScriptzShortcuts } from "../shortcuts";
 import { navStore } from "../../../stores/nav";
 import { uiStore } from "../../../stores/ui";
-import { createScript } from "../../Library/actions";
+import { openNewScript } from "../../Library/actions";
 import { stepStage } from "../../Script/stageActions";
 
 vi.mock("../../../stores/nav", () => ({ navStore: {
@@ -14,7 +14,7 @@ vi.mock("../../../stores/ui", () => ({ uiStore: {
   openPalette: vi.fn(), openSettings: vi.fn(), openCapture: vi.fn(), toggleInspector: vi.fn(),
   toggleSidebar: vi.fn(), toggleTimeline: vi.fn(), toggleFocus: vi.fn(), openExport: vi.fn(), anyDialogOpen: vi.fn(() => false),
 } }));
-vi.mock("../../Library/actions", () => ({ createScript: vi.fn() }));
+vi.mock("../../Library/actions", () => ({ openNewScript: vi.fn() }));
 vi.mock("../../Script/stageActions", () => ({ stepStage: vi.fn() }));
 
 beforeEach(() => {
@@ -53,7 +53,7 @@ describe("ScriptZ shortcut contribution", () => {
     press("e");
     press("ArrowRight", { altKey: true });
     press("ArrowLeft", { altKey: true });
-    expect(createScript).toHaveBeenCalledOnce();
+    expect(openNewScript).toHaveBeenCalledOnce();
     expect(uiStore.openCapture).toHaveBeenCalledOnce();
     expect(uiStore.toggleTimeline).toHaveBeenCalledOnce();
     expect(uiStore.toggleFocus).toHaveBeenCalledWith("open-document");
@@ -72,10 +72,10 @@ describe("ScriptZ shortcut contribution", () => {
     expect(stepStage).not.toHaveBeenCalled();
   });
 
-  it("retains all 29 documentation rows, translated dynamically", () => {
+  it("retains all 30 documentation rows, translated dynamically", () => {
     const entries = [...createShellShortcuts(uiStore), ...getScriptzShortcuts()];
-    expect(entries).toHaveLength(29);
-    expect(new Set(entries.map((entry) => entry.id)).size).toBe(29);
+    expect(entries).toHaveLength(30);
+    expect(new Set(entries.map((entry) => entry.id)).size).toBe(30);
     expect(new Set(entries.map((entry) => entry.group.id))).toEqual(new Set(["app", "editor", "ideas", "lists"]));
     const capture = entries.find((entry) => entry.id === "scriptz.capture")!;
     expect(capture.label()).toBe("Idee erfassen, auch im Fokus");

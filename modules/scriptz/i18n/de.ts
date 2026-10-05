@@ -12,6 +12,7 @@
 import { shellDe } from "./parts/shell";
 import { scriptDe } from "./parts/script";
 import { dialogsDe } from "./parts/dialogs";
+import { agentDe } from "./parts/agent";
 
 export const de = {
   // ---------- units (with plurals) ----------
@@ -261,4 +262,5 @@ export const de = {
   ...shellDe,
   ...scriptDe,
   ...dialogsDe,
+  ...agentDe,
 } as const;

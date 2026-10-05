@@ -7,6 +7,9 @@ import type { Folder, ScriptStatus } from "../../lib/types";
 import { K } from "@agentz/kit/platform";
 import { t } from "../../i18n";
 import { StageChip } from "./StageChip";
+import { AgentAvatar } from "../Agent/AgentAvatar";
+import { avatarStateFor } from "../Agent/ChatPanel";
+import { agentSettings } from "../../stores/agentSettings";
 import { TitleInput } from "./TitleInput";
 
 export interface TopBarProps {
@@ -31,8 +34,11 @@ export interface TopBarProps {
   onToggleInspector(): void;
   onExport(): void;
 
-  /** Side panel next to a list: no inspector toggle, but "open full view"
-   *  and "close" instead. */
+  agentAvailable: boolean;
+  agentOn: boolean;
+  onToggleAgent(): void;
+  /** Side panel next to a list: no inspector or agent toggle, but "open full
+   *  view" and "close" instead. */
   peek?: { onExpand(): void; onClose(): void };
 }
 
@@ -119,6 +125,23 @@ export function TopBar(props: TopBarProps) {
         {t("script.bar.export")}
         <kbd>{K("Mod+E")}</kbd>
       </button>
+
+      <Show when={props.agentAvailable && !props.peek}>
+        <button
+          type="button"
+          class="btn ss-agent-btn"
+          classList={{ "is-on": props.agentOn }}
+          aria-pressed={props.agentOn}
+          title={t("agent.bar.toggle", { name: agentSettings.displayName(), hotkey: K("Mod+L") })}
+          aria-label={t("agent.bar.toggle", { name: agentSettings.displayName(), hotkey: K("Mod+L") })}
+          onMouseDown={(e) => e.preventDefault()}
+          onClick={props.onToggleAgent}
+        >
+          <AgentAvatar look={agentSettings.look()} size={20} state={avatarStateFor(false)} />
+          <span class="ss-agent-name">{agentSettings.displayName()}</span>
+          <kbd>{K("Mod+L")}</kbd>
+        </button>
+      </Show>
 
       <Show
         when={props.peek}

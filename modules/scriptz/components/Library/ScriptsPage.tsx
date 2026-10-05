@@ -53,11 +53,11 @@ import { setStageWithUndo } from "../Script/stageActions";
 import {
   archiveScripts,
   createFolder,
-  createScript,
   currentFolderContext,
   duplicateScript,
   importScriptzFile,
   moveScriptsTo,
+  openNewScript,
   renameScript,
   setScriptsStage,
 } from "./actions";
@@ -632,7 +632,7 @@ export function ScriptsPage() {
     }
   });
 
-  const newScriptHere = () => void createScript(currentFolderContext());
+  const newScriptHere = () => openNewScript(currentFolderContext());
 
   const libraryEmpty = () => library.loaded() && library.scripts().length === 0;
   const pageIdeas = () => (isBoard() ? scopeIdeas() : inboxIdeas());

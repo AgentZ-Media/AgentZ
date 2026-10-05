@@ -9,6 +9,7 @@
     "core:window:allow-destroy",
     "core:webview:default",
     "agentz-desktop:default",
+    "agentz-desktop:codex",
     "os:default",
     "updater:default",
     "process:default",

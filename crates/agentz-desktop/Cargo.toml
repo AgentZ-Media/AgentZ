@@ -19,4 +19,5 @@ tauri-plugin-opener = { workspace = true }
 tauri-plugin-dialog = { workspace = true }
 tauri-plugin-fs = { workspace = true }
 tauri-plugin-sql = { workspace = true }
+serde = { workspace = true }
 serde_json = { workspace = true }

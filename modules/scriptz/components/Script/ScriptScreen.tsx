@@ -36,6 +36,11 @@ import { FocusPill } from "./FocusChrome";
 import { TitleInput } from "./TitleInput";
 import { StageUndoToast } from "./StageToast";
 import { createLiveEditorModel } from "./liveEditor";
+import { ChatPanel } from "../Agent/ChatPanel";
+import { AgentContextMenu } from "../Agent/AgentContextMenu";
+import { registerAgentEditor } from "../Agent/editorBridge";
+import { agentUi } from "../../stores/agentUi";
+import { agentStore } from "../../stores/agent";
 import { liveStats, playheadSec } from "./timelineMath";
 import "../Editor/PaperLayout.css";
 import "./ScriptScreen.css";
@@ -140,6 +145,13 @@ export function ScriptScreen(props: ScriptScreenProps) {
   // ---------- editor + live model ----------
   const live = createLiveEditorModel();
   const [editor, setEditor] = createSignal<LexicalEditor | null>(null);
+  // The agent reads and edits the mounted editor of this script.
+  createEffect(() => {
+    const ed = editor();
+    const id = props.scriptId;
+    if (!ed) return;
+    onCleanup(registerAgentEditor(id, ed));
+  });
   const [epoch, setEpoch] = createSignal(0);
   const [parseError, setParseError] = createSignal<string | null>(null);
   const [recovering, setRecovering] = createSignal(false);
@@ -281,9 +293,18 @@ export function ScriptScreen(props: ScriptScreenProps) {
   createEffect(on(uiStore.inspectorOpen, () => setOverlayArmed(true), { defer: true }));
 
   const focus = () => !isPeek() && uiStore.focusMode();
+  /** The agent chat takes the inspector's place while it is open. Never in
+   *  the peek panel: the agent belongs to the full-size editor. */
+  const agentVisible = () => !isPeek() && agentStore.available() && !focus() && agentUi.chatOpen();
   const inspectorVisible = () =>
-    !isPeek() && !focus() && !parseError() && uiStore.inspectorOpen() && (!narrow() || overlayArmed());
+    !isPeek() && !focus() && !parseError() && !agentVisible() && uiStore.inspectorOpen() && (!narrow() || overlayArmed());
   const toggleInspector = () => {
+    if (agentVisible()) {
+      agentUi.setChatOpen(false);
+      if (!uiStore.inspectorOpen()) uiStore.toggleInspector();
+      setOverlayArmed(true);
+      return;
+    }
     if (!narrow()) {
       uiStore.toggleInspector();
       return;
@@ -526,7 +547,7 @@ export function ScriptScreen(props: ScriptScreenProps) {
         "is-focus": focus(),
         "is-peek": isPeek(),
         "is-narrow": narrow(),
-        "has-insp": inspectorVisible(),
+        "has-insp": inspectorVisible() || agentVisible(),
       }}
     >
       <div class="ss-main">
@@ -552,6 +573,9 @@ export function ScriptScreen(props: ScriptScreenProps) {
                   onToggleColors={() => void toggleHighlight()}
                   inspectorVisible={inspectorVisible()}
                   onToggleInspector={toggleInspector}
+                  agentAvailable={agentStore.available()}
+                  agentOn={agentVisible()}
+                  onToggleAgent={() => agentUi.toggleChat()}
                   onExport={() => uiStore.openExport(s().id)}
                   peek={props.peek}
                 />
@@ -659,6 +683,16 @@ export function ScriptScreen(props: ScriptScreenProps) {
             onOpenVersions={() => setSnapshotsOpen(true)}
           />
         </div>
+      </Show>
+
+      <Show when={current() && agentVisible()}>
+        <div class="ss-agent-wrap">
+          <ChatPanel scriptId={props.scriptId} colorOf={colorOf} onClose={() => agentUi.setChatOpen(false)} />
+        </div>
+      </Show>
+
+      <Show when={current() && !isPeek() && agentStore.available()}>
+        <AgentContextMenu scriptId={props.scriptId} canvas={() => canvasRef} />
       </Show>
 
       {/* Own Suspense boundary: the dialog's resources must not suspend

@@ -6,8 +6,10 @@ import { t, type TranslationKey } from "../../i18n";
 import { navStore } from "../../stores/nav";
 import { currentScriptId } from "../../stores/peek";
 import { uiStore } from "../../stores/ui";
-import { createScript } from "../Library/actions";
+import { openNewScript } from "../Library/actions";
 import { stepStage } from "../Script/stageActions";
+import { agentUi } from "../../stores/agentUi";
+import { agentStore } from "../../stores/agent";
 
 export function getScriptzShortcuts(): ShortcutDef[] {
   const group = (id: "app" | "editor" | "ideas" | "lists") => ({
@@ -31,7 +33,7 @@ export function getScriptzShortcuts(): ShortcutDef[] {
   const hasEditor = () => currentScriptId() !== null;
   return [
     entry("new", "prefs.shortcuts.newScript", ["Mod+N"], "app", {
-      matches: letter("n"), run: () => void createScript(),
+      matches: letter("n"), run: () => openNewScript(),
     }),
     entry("capture", "prefs.shortcuts.capture", ["Mod+I"], "app", {
       matches: letter("i"), run: () => uiStore.openCapture(),
@@ -44,6 +46,9 @@ export function getScriptzShortcuts(): ShortcutDef[] {
     entry("inspector", "prefs.shortcuts.inspector", ["Mod+Shift+\\"], "app", {
       matches: (event) => isModKey(event) && (event.key === "|" || (event.key === "\\" && event.shiftKey)),
       enabled: hasScript, run: () => uiStore.toggleInspector(),
+    }),
+    entry("agent", "agent.shortcut", ["Mod+L"], "app", {
+      matches: letter("l"), enabled: () => hasScript() && agentStore.available(), run: () => agentUi.toggleChat(),
     }),
     entry("timeline", "prefs.shortcuts.timeline", ["Mod+J"], "app", {
       matches: letter("j"), enabled: hasEditor, run: () => uiStore.toggleTimeline(),

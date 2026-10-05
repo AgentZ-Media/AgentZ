@@ -83,6 +83,17 @@ export const dialogsDe = {
   "capture.writeNow": "Gleich schreiben",
   "capture.remember": "Merken",
 
+  // ---------- new script (⌘N) ----------
+  "newScript.aria": "Neues Skript anlegen",
+  "newScript.label": "Neues Skript",
+  "newScript.titlePlaceholder": "Wie soll das Skript heißen?",
+  "newScript.titleAria": "Titel des Skripts",
+  "newScript.folderAria": "Ordner des Skripts",
+  "newScript.newFolderAria": "Name des neuen Ordners",
+  "newScript.newFolderPlaceholder": "Name des Ordners",
+  "newScript.pendingFolder": "{name} (neu)",
+  "newScript.create": "Anlegen",
+
   // ---------- export ----------
   "exportDialog.title": "Exportieren",
   "exportDialog.fmt.aria": "Format",
@@ -130,7 +141,7 @@ export const dialogsDe = {
   "prefs.library.title": "Bibliothek",
   "prefs.library.sub": "Wie Skripte aus Listen und dem Board aufgehen.",
   "prefs.openInPanel.label": "Im Seitenpanel öffnen",
-  "prefs.openInPanel.help": "Ein Klick in Liste oder Board öffnet das Skript rechts daneben, die Liste bleibt sichtbar. Mit {key} gedrückt öffnet es jeweils anders.",
+  "prefs.openInPanel.help": "Ein Klick in Liste oder Board öffnet das Skript rechts daneben, die Liste bleibt sichtbar. Mit {key} gedrückt öffnet es jeweils anders. Der Agent steht nur in der großen Ansicht zur Verfügung.",
   "prefs.closeFinished.label": "Fertige Skripte aus „Offen“ entfernen",
   "prefs.closeFinished.help": "Erreicht ein Skript die letzte Stufe, verschwindet es aus „Offen“. Das gerade angezeigte Skript bleibt, bis du wechselst.",
   "prefs.folders.title": "Ordner",
@@ -339,6 +350,17 @@ export const dialogsEn: Record<keyof typeof dialogsDe, string> = {
   "capture.writeNow": "Write now",
   "capture.remember": "Save",
 
+  // ---------- new script (⌘N) ----------
+  "newScript.aria": "Create a new script",
+  "newScript.label": "New script",
+  "newScript.titlePlaceholder": "What should the script be called?",
+  "newScript.titleAria": "Script title",
+  "newScript.folderAria": "Folder of the script",
+  "newScript.newFolderAria": "Name of the new folder",
+  "newScript.newFolderPlaceholder": "Folder name",
+  "newScript.pendingFolder": "{name} (new)",
+  "newScript.create": "Create",
+
   // ---------- export ----------
   "exportDialog.title": "Export",
   "exportDialog.fmt.aria": "Format",
@@ -386,7 +408,7 @@ export const dialogsEn: Record<keyof typeof dialogsDe, string> = {
   "prefs.library.title": "Library",
   "prefs.library.sub": "How scripts open from lists and the board.",
   "prefs.openInPanel.label": "Open in side panel",
-  "prefs.openInPanel.help": "A click in the list or on the board opens the script next to it, the list stays visible. Hold {key} to open it the other way.",
+  "prefs.openInPanel.help": "A click in the list or on the board opens the script next to it, the list stays visible. Hold {key} to open it the other way. The agent is only available in the full view.",
   "prefs.closeFinished.label": "Remove finished scripts from “Open”",
   "prefs.closeFinished.help": "When a script reaches the last stage it leaves “Open”. The script on screen stays until you switch.",
   "prefs.folders.title": "Folders",

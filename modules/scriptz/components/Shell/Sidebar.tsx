@@ -6,15 +6,19 @@ import { K } from "@agentz/kit/platform";
 import { scriptStages, stageLabel } from "../../lib/stages";
 import type { Folder, ScriptStatus } from "../../lib/types";
 import { t } from "../../i18n";
+import { AgentAvatar } from "../Agent/AgentAvatar";
+import { agentSettings } from "../../stores/agentSettings";
+import { agentUi } from "../../stores/agentUi";
+import { agentStore } from "../../stores/agent";
 import { Icon } from "@agentz/kit/ui";
 import { StageGlyph } from "../Common/StageGlyph";
 import { ContextMenu, type ContextMenuItem } from "../Library/ContextMenu";
 import { SCRIPT_DRAG_MIME } from "../Library/dnd";
 import {
   createFolder,
-  createScript,
   deleteFolder,
   moveScriptsTo,
+  openNewScript,
   renameFolder,
 } from "../Library/actions";
 import { WritingCounter } from "../Activity/WritingCounter";
@@ -22,7 +26,7 @@ import { closeOpenScript, closeOtherOpenScripts } from "./openActions";
 import { folderColor, library } from "./libraryData";
 
 /**
- * Left navigation (concept `#tpl-side`): app row, search + new, the inbox
+ * Left navigation (concept `#tpl-side`): app row, "Neues Skript", the inbox
  * (only while work is in progress), "Alle Skripte", the pipeline and the
  * folders (both collapsible), the "Open" list and the footer with the
  * writing counter, trash and settings. Always dark (`--side-*`).
@@ -93,19 +97,15 @@ export function Sidebar() {
   return (
     <>
       <div class="side-actions">
-        <button type="button" class="side-search" onClick={() => uiStore.openPalette()}>
-          <Icon name="search" size={14} />
-          <span class="side-search-lbl">{t("shell.search")}</span>
-          <kbd>{K("Mod+K")}</kbd>
-        </button>
         <button
           type="button"
-          class="side-new"
+          class="side-primary"
           title={t("shell.newScript.title", { hotkey: K("Mod+N") })}
-          aria-label={t("browser.newScript")}
-          onClick={() => void createScript()}
+          onClick={() => openNewScript()}
         >
           <Icon name="plus" />
+          <span class="side-primary-lbl">{t("browser.newScript")}</span>
+          <kbd>{K("Mod+N")}</kbd>
         </button>
       </div>
 
@@ -278,6 +278,8 @@ export function Sidebar() {
 export function SidebarFooter() {
   const route = () => navStore.route();
   return (
+    <>
+      <SidebarAgent />
       <div class="side-foot">
         <div class="side-foot-counter">
           <WritingCounter />
@@ -302,7 +304,44 @@ export function SidebarFooter() {
           <Icon name="gear" />
         </button>
       </div>
+    </>
+  );
+}
 
+/** Agent row above the footer: face, name and what it is doing. */
+function SidebarAgent() {
+  const status = () => {
+    const boot = agentStore.bootstrap();
+    if (boot.running) return t("agent.prefs.relearn.running", { done: boot.done, total: boot.total });
+    if (!agentSettings.onboarded()) return t("agent.state.setup.action");
+    if (!agentSettings.enabled()) return t("agent.status.off");
+    const learning = agentStore.learning();
+    if (learning) return t("agent.status.learning", { title: learning.title });
+    const state = agentStore.status().state;
+    if (state === "ready") return t("agent.status.ready");
+    if (state === "checking") return t("agent.status.checking");
+    return t("agent.status.offline");
+  };
+  const busy = () => agentStore.bootstrap().running || agentStore.learning() !== null;
+  return (
+    <Show when={agentStore.available()}>
+      <button
+        type="button"
+        class="side-agent"
+        classList={{ "is-learning": busy() }}
+        title={agentSettings.onboarded() ? t("agent.panel.memory") : t("agent.state.setup.action")}
+        onClick={() => (agentSettings.onboarded() ? agentUi.openMemory() : agentUi.openOnboarding())}
+      >
+        <AgentAvatar look={agentSettings.look()} size={28} state={busy() ? "learn" : agentSettings.enabled() ? "idle" : "still"} onDark />
+        <span class="side-agent-t">
+          <b>{agentSettings.displayName()}</b>
+          <small>{status()}</small>
+        </span>
+        <Show when={navStore.activeScriptId()}>
+          <kbd>{K("Mod+L")}</kbd>
+        </Show>
+      </button>
+    </Show>
   );
 }
 

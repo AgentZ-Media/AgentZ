@@ -100,7 +100,6 @@ export const kitDe = {
   "shell.sidebar.aria": "Navigation",
   "shell.sidebar.toggle": "Seitenleiste ein/aus ({hotkey})",
   "shell.sidebar.toggleAria": "Seitenleiste ein- oder ausblenden",
-  "shell.search": "Suchen & Befehle",
   "shell.settings.title": "Einstellungen ({hotkey})",
   "shell.history.back": "Zurück ({hotkey})",
   "shell.history.backAria": "Zurück",
