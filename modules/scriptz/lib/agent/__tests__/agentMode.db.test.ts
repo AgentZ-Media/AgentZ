@@ -15,6 +15,9 @@ import { archiveScript, createScript, emptyTrash, purgeScript } from "../../scri
 import { createFolder, deleteFolder } from "../../folders";
 import { foldersBus } from "../../foldersBus";
 import { agentStore, startAgentRuntime } from "../../../stores/agent";
+import { getStorageAdapter, setStorageAdapter } from "../../storage";
+import { createChatTools, createMemoryTools, type ToolHost } from "../tools";
+import { listMemory } from "../memory";
 
 // Loaded at run time: Vite 5 does not know `node:sqlite` as a builtin yet.
 const { DatabaseSync } = createRequire(join(process.cwd(), "package.json"))("node:sqlite") as typeof import("node:sqlite");
@@ -211,6 +214,98 @@ describe("agent store registry", () => {
     const after = chat.items.find((i) => i.id === receipt.id) as Extract<typeof chat.items[number], { kind: "ideas-saved" }>;
     expect(after.undone).toBeFalsy();
     expect(after.saved.map((r) => r.ideaId)).toEqual([keptId]);
+  });
+
+  it("locks a session whose saved chat could not be read instead of overwriting it", async () => {
+    await saveChat(session("unreadable", null, "Wichtiger Verlauf"));
+    const original = getStorageAdapter();
+    setStorageAdapter({ ...original, agent: { ...original.agent, getChat: async () => { throw new Error("disk busy"); } } });
+    const chat = agentStore.chat("unreadable");
+    await new Promise((r) => setTimeout(r, 0));
+    setStorageAdapter(original);
+    expect(chat.ready()).toBe(true);
+    expect(chat.items.map((i) => i.kind)).toEqual(["error"]);
+    await chat.send("Weiter");
+    chat.append([{ kind: "interrupted", id: "late" }]);
+    await new Promise((r) => setTimeout(r, 450));
+    await chat.flush();
+    expect((await getChat("unreadable"))?.items.map((i) => i.id)).toEqual(["u-unreadable"]);
+    // Opening it again loads anew and works once the database answers.
+    const again = agentStore.chat("unreadable");
+    expect(again).not.toBe(chat);
+    await new Promise((r) => setTimeout(r, 0));
+    expect(again.items.map((i) => i.id)).toEqual(["u-unreadable"]);
+    expect(agentStore.chat("unreadable")).toBe(again);
+  });
+
+  it("drops a failed session also where the script panel picked it up", async () => {
+    const script = await createScript("Panel und Modus", null, null);
+    await saveChat(session("both-views", script.id, "Verlauf"));
+    const original = getStorageAdapter();
+    let release!: () => void;
+    const gate = new Promise<void>((resolve) => { release = resolve; });
+    setStorageAdapter({ ...original, agent: { ...original.agent, getChat: async () => { await gate; throw new Error("disk busy"); } } });
+    const fromMode = agentStore.chat("both-views");
+    const fromPanel = await agentStore.sessionFor(script.id);
+    expect(fromPanel).toBe(fromMode);
+    release();
+    await new Promise((r) => setTimeout(r, 0));
+    setStorageAdapter(original);
+    expect(agentStore.liveSession(script.id)).toBeNull();
+    const reopened = agentStore.chat("both-views");
+    expect(reopened).not.toBe(fromMode);
+    await new Promise((r) => setTimeout(r, 0));
+    expect(reopened.items.map((i) => i.id)).toEqual(["u-both-views"]);
+    expect(await agentStore.sessionFor(script.id)).toBe(reopened);
+  });
+
+  it("starts a usable new chat after a failed load", async () => {
+    await saveChat(session("unreadable-reset", null, "Alt"));
+    const original = getStorageAdapter();
+    setStorageAdapter({ ...original, agent: { ...original.agent, getChat: async () => { throw new Error("disk busy"); } } });
+    const chat = agentStore.chat("unreadable-reset");
+    await new Promise((r) => setTimeout(r, 0));
+    setStorageAdapter(original);
+    await chat.reset();
+    expect(chat.chatId()).not.toBe("unreadable-reset");
+    chat.append([{ kind: "user", id: "u-fresh", text: "Neu" }]);
+    await new Promise((r) => setTimeout(r, 450));
+    await chat.flush();
+    expect((await getChat(chat.chatId()))?.items.map((i) => i.id)).toEqual(["u-fresh"]);
+    expect((await getChat("unreadable-reset"))?.items.map((i) => i.id)).toEqual(["u-unreadable-reset"]);
+  });
+
+  it("takes over the script's folder when a session is handed to it", async () => {
+    const start = await createFolder("Start-Ordner");
+    const target = await createFolder("Ziel-Ordner");
+    const chat = agentStore.chat("handover", { folderId: start.id });
+    await new Promise((r) => setTimeout(r, 0));
+    chat.append([{ kind: "user", id: "u-handover", text: "Schreib Nummer 1" }]);
+    const script = await createScript("Übergabe", null, target.id);
+    await chat.attachToScript(script.id, target.id);
+    expect(chat.folderId()).toBe(target.id);
+    await chat.flush();
+    expect(await getChat("handover")).toMatchObject({ scriptId: script.id, folderId: target.id });
+  });
+
+  it("resolves the folder 'current' to the session folder when no script is open", async () => {
+    const folder = await createFolder("Sitzungsordner");
+    const inside = await createScript("Im Sitzungsordner", null, folder.id);
+    await createScript("Ohne Ordner", null, null);
+    const host: ToolHost = {
+      scriptId: null, folderId: () => folder.id, liveBlocks: () => null, selection: () => null,
+      onProposal: () => {}, onClaims: () => {}, onMemory: () => {}, memorySource: "chat", memorySourceScriptId: null,
+    };
+    const run = (tools: ReturnType<typeof createChatTools>, name: string, args: unknown) => tools.find((t) => t.name === name)!.run(args);
+    const listed = await run(createChatTools(host), "list_scripts", { folder: "current" });
+    expect(listed.ok).toBe(true);
+    expect(listed.output).toContain(inside.id);
+    expect(listed.output).not.toContain("Ohne Ordner");
+    const remembered = await run(createMemoryTools(host), "remember", { scope: "folder", text: "Kurze Hooks" });
+    expect(remembered.ok).toBe(true);
+    expect((await listMemory()).find((m) => m.content === "Kurze Hooks")?.folderId).toBe(folder.id);
+    const withoutFolder = await run(createChatTools({ ...host, folderId: () => null }), "list_scripts", { folder: "current" });
+    expect(withoutFolder.ok).toBe(false);
   });
 
   it("does not store a deleted session again", async () => {

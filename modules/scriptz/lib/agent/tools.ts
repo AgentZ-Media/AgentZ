@@ -31,6 +31,9 @@ export type MemoryChange =
 export interface ToolHost {
   /** The script the chat belongs to (null outside a script). */
   scriptId: string | null;
+  /** Working folder without a script (agent-mode session); "current"
+   *  resolves to it when no script is open. */
+  folderId?(): string | null;
   /** Live blocks of the open editor (includes unsaved typing). */
   liveBlocks(): AgentBlock[] | null;
   /** Current selection in block indices, if any. */
@@ -54,10 +57,17 @@ async function foldersById(): Promise<Map<string, Folder>> {
   return new Map(list.map((f) => [f.id, f]));
 }
 
+/** Folder "current" stands for: the open script's folder, otherwise the
+ *  session's working folder. */
+async function hostFolder(host: Pick<ToolHost, "scriptId" | "folderId">): Promise<string | null> {
+  if (host.scriptId) return (await api.getScript(host.scriptId).catch(() => null))?.folder_id ?? null;
+  return host.folderId?.() ?? null;
+}
+
 async function resolveFolder(raw: unknown, currentFolderId: string | null): Promise<{ id: string | null; error?: string }> {
   const value = text(raw, 200);
   if (!value || value === "none") return { id: null };
-  if (value === "current") return currentFolderId ? { id: currentFolderId } : { id: null, error: "the current script has no folder" };
+  if (value === "current") return currentFolderId ? { id: currentFolderId } : { id: null, error: "there is no current folder" };
   const folders = await foldersById();
   if (folders.has(value)) return { id: value };
   const byName = [...folders.values()].find((f) => f.name.toLowerCase() === value.toLowerCase());
@@ -159,13 +169,12 @@ export function createChatTools(host: ToolHost): AgentTool[] {
       },
       async run(args) {
         const a = obj(args);
-        const current = host.scriptId ? await api.getScript(host.scriptId).catch(() => null) : null;
         let folderId: string | null | undefined;
         if (a.folder !== undefined) {
           const raw = text(a.folder, 200);
           if (raw === "none") folderId = "__inbox__";
           else {
-            const resolved = await resolveFolder(raw, current?.folder_id ?? null);
+            const resolved = await resolveFolder(raw, await hostFolder(host));
             if (resolved.error) return fail(resolved.error);
             folderId = resolved.id;
           }
@@ -315,11 +324,8 @@ export function createChatTools(host: ToolHost): AgentTool[] {
   return tools;
 }
 
-export function createMemoryTools(host: Pick<ToolHost, "scriptId" | "onMemory" | "memorySource" | "memorySourceScriptId">): AgentTool[] {
-  const currentFolder = async () => {
-    if (!host.scriptId) return null;
-    return (await api.getScript(host.scriptId).catch(() => null))?.folder_id ?? null;
-  };
+export function createMemoryTools(host: Pick<ToolHost, "scriptId" | "folderId" | "onMemory" | "memorySource" | "memorySourceScriptId">): AgentTool[] {
+  const currentFolder = () => hostFolder(host);
   return [
     {
       name: "get_memory",
