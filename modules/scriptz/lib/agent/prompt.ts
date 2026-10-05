@@ -94,6 +94,8 @@ export interface ContextInput {
   folder: string | null;
   characters: readonly string[];
   stages: readonly string[];
+  /** Length target and speaking pace (writingContext.describeTarget). */
+  target?: string;
 }
 
 export function contextBlock(c: ContextInput): string {
@@ -103,14 +105,42 @@ export function contextBlock(c: ContextInput): string {
     if (c.characters.length) lines.push(`Characters in it: ${c.characters.join(", ")}.`);
     lines.push("Call get_current_script to read it.");
   }
+  if (c.target) lines.push(c.target);
   return lines.join("\n");
 }
 
+/** Rules of the agent mode: brainstorming, idea boards and drafts that
+ *  stream into the draft panel. */
+export const SESSION_RULES = `Agent mode (this conversation is a writing session in the agent mode):
+- No script is open here: get_current_script, propose_options and report_fact_check are not available. Concrete script text goes into a draft block (below) instead.
+- Here the user brainstorms and writes new scripts with you. Each message starts with a line [Session: ...] with the session's folder, length target, pace and drafts; it is context from the app, not text the user typed.
+- Ideas: whenever you suggest ideas, call propose_ideas (numbered cards); never write idea lists as text. Save ideas only when the user asks (save_ideas). "Number 2" means card 2 of the newest board.
+- Before writing a draft, call get_writing_context and look at one to three strong scripts of the folder (list_scripts, read_script) and your memory, so characters and voice match the folder. Do not ask for permission.
+- Write a script draft as a block in your reply, exactly in this format:
+:::draft id="short-id" title="Working title" idea="<idea id, only if the draft is for a saved idea>"
+ACTION: what we see
+NAME: what the character says
+NAME (delivery cue): what the character says
+:::
+- One line per block. Character names in upper case, the same names the folder uses. No Markdown, no blank lines, no line breaks inside a line, nothing else inside the block.
+- Stay within the length target: count the dialog words against the budget; every ACTION line adds about 2 seconds. Put the strongest line first (hook) and the punchline last.
+- A revision repeats the complete script with the same id, never only the changed lines. Keep the title unless the user wants a new one. A different script gets a new id.
+- Outside the block write at most two short sentences (what you did, the runtime estimate). Never repeat the script text outside the block, never put a draft inside a code block.
+- You never create scripts. The user turns a draft into a real script with the Finish button.
+- End a turn with suggest_replies when there are obvious next steps (for example: save the ideas, write number 2, make it shorter).`;
+
+/** Rules for a session that was handed to a script: the conversation goes
+ *  on in the script's chat, where drafts are no longer written. */
+export const HANDED_OVER_RULES = "This conversation started in the agent mode and the draft is now a real script that is open in the editor. From now on use get_current_script and propose_options for changes; do not write :::draft blocks anymore.";
+
 export const NO_PROACTIVE_LEARNING = "The user has switched off learning from conversations: do not store anything on your own initiative. Only use the memory tools when the user explicitly asks you to remember, change or forget something.";
 
-export function buildInstructions(persona: PersonaInput, memory: string, context: string, learnFromChat = true): string {
+export type InstructionMode = "script" | "session" | "handed-over";
+
+export function buildInstructions(persona: PersonaInput, memory: string, context: string, learnFromChat = true, mode: InstructionMode = "script"): string {
   const rules = learnFromChat ? RULES : `${RULES}\n- ${NO_PROACTIVE_LEARNING}`;
-  return [personaBlock(persona), rules, `Your memory:\n${memory}`, `Context:\n${context}`].join("\n\n---\n\n");
+  const extra = mode === "session" ? [SESSION_RULES] : mode === "handed-over" ? [HANDED_OVER_RULES] : [];
+  return [personaBlock(persona), rules, ...extra, `Your memory:\n${memory}`, `Context:\n${context}`].join("\n\n---\n\n");
 }
 
 export const LEARN_RULES = `You are given one or more scripts. You may look at them to see whether there is anything genuinely new worth remembering. Learning is entirely optional: storing nothing is a perfectly good outcome, and once your memory already covers a folder and its characters well, it is the usual one. Never store something just to have done something.

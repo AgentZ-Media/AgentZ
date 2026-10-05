@@ -5,25 +5,15 @@ import { shellUi } from "@agentz/kit/stores";
 import { t } from "../../i18n";
 import { api } from "../../lib/api";
 import { scriptsBus } from "../../lib/scriptsBus";
-import type { ChatItem } from "../../lib/agent/chats";
 import { agentStore, type ChatSession } from "../../stores/agent";
+import { navStore } from "../../stores/nav";
 import { agentSettings } from "../../stores/agentSettings";
 import { agentUi } from "../../stores/agentUi";
 import { library } from "../Shell/libraryData";
 import { AgentAvatar, type AvatarState } from "./AgentAvatar";
-import {
-  AssistantMessage,
-  ClaimsCard,
-  ErrorRow,
-  MemoryNotice,
-  NoteRow,
-  ProposalCards,
-  TraceGroup,
-  UserMessage,
-  WorkingRow,
-  type ItemContext,
-  type TraceItem,
-} from "./ChatItems";
+import type { ItemContext } from "./ChatItems";
+import { ChatList, createDraftIndex, lastReplies } from "./ChatList";
+import { RepliesBar } from "./ModeItems";
 import { agentEditor, readSelection } from "./editorBridge";
 import { folderLookup } from "./labels";
 import "./Agent.css";
@@ -32,42 +22,6 @@ export interface ChatPanelProps {
   scriptId: string;
   colorOf(name: string): string;
   onClose(): void;
-}
-
-type Group =
-  | { kind: "trace"; key: string; items: TraceItem[] }
-  | { kind: "item"; key: string; item: ChatItem };
-
-function isTrace(item: ChatItem): item is TraceItem {
-  return item.kind === "tool" || item.kind === "search" || item.kind === "thinking" || (item.kind === "assistant" && item.commentary === true);
-}
-
-/** Groups consecutive trace items. Unchanged groups keep their previous
- *  object so <For> keeps their rows: rebuilding every row on each change
- *  (e.g. marking an option as inserted) reset the scroll position and
- *  collapsed trace groups. Rows read their item reactively. */
-function groupItems(items: readonly ChatItem[], previous: readonly Group[] = []): Group[] {
-  const out: Group[] = [];
-  for (const item of items) {
-    const last = out[out.length - 1];
-    if (isTrace(item)) {
-      if (last?.kind === "trace") last.items.push(item);
-      else out.push({ kind: "trace", key: `trace-${item.id}`, items: [item] });
-    } else {
-      out.push({ kind: "item", key: item.id, item });
-    }
-  }
-  const before = new Map(previous.map((group) => [group.key, group]));
-  return out.map((group) => {
-    const old = before.get(group.key);
-    if (!old || old.kind !== group.kind) return group;
-    if (old.kind === "item" && group.kind === "item") return old.item === group.item ? old : group;
-    if (old.kind === "trace" && group.kind === "trace") {
-      const same = old.items.length === group.items.length && old.items.every((item, i) => item === group.items[i]);
-      return same ? old : group;
-    }
-    return group;
-  });
 }
 
 export function avatarStateFor(running: boolean): AvatarState {
@@ -96,7 +50,7 @@ export function ChatPanel(props: ChatPanelProps) {
   return (
     <aside class="ag-panel" aria-label={t("agent.panel.aria", { name: agentSettings.displayName() })}>
       <Show when={gate() === "chat"} fallback={<PanelHead running={false} onClose={props.onClose} />}>
-        <ChatBody scriptId={props.scriptId} colorOf={props.colorOf} onClose={props.onClose} />
+        <ChatLoader scriptId={props.scriptId} colorOf={props.colorOf} onClose={props.onClose} />
       </Show>
       <Show when={gate() !== "chat" && (gate() as "off" | "setup" | "status")}>
         {(g) => <GateView gate={g()} />}
@@ -128,6 +82,19 @@ function PanelHead(props: { running: boolean; onClose(): void; session?: ChatSes
         </small>
       </div>
       <span class="ag-sp" />
+      <Show when={props.session?.kind() === "session" && props.session}>
+        {(session) => (
+          <button
+            type="button"
+            class="ag-ic"
+            title={t("agentMode.panel.expand", { hotkey: K("Mod+Shift+L") })}
+            aria-label={t("agentMode.panel.expand", { hotkey: K("Mod+Shift+L") })}
+            onClick={() => void navStore.openAgent(session().chatId())}
+          >
+            <Icon name="expand" size={15} />
+          </button>
+        )}
+      </Show>
       <button type="button" class="ag-ic" title={t("agent.panel.memory")} aria-label={t("agent.panel.memory")} onClick={() => agentUi.openMemory()}>
         <Icon name="bulb" size={15} />
       </button>
@@ -158,7 +125,7 @@ function PanelHead(props: { running: boolean; onClose(): void; session?: ChatSes
   );
 }
 
-function GateView(props: { gate: "off" | "setup" | "status" }) {
+export function GateView(props: { gate: "off" | "setup" | "status" }) {
   const name = () => agentSettings.displayName();
   const command = () => <code>codex login</code>;
   const splitCmd = (text: string) => {
@@ -209,8 +176,25 @@ function GateView(props: { gate: "off" | "setup" | "status" }) {
   );
 }
 
-function ChatBody(props: ChatPanelProps) {
-  const session = createMemo(() => agentStore.session(props.scriptId));
+/** Resolves the script's chat (one live object per chat row, shared with
+ *  the agent mode) before the body mounts. */
+function ChatLoader(props: ChatPanelProps) {
+  const [session, setSession] = createSignal<ChatSession | null>(agentStore.liveSession(props.scriptId));
+  createEffect(on(() => props.scriptId, (id) => {
+    let alive = true;
+    onCleanup(() => { alive = false; });
+    setSession(agentStore.liveSession(id));
+    void agentStore.sessionFor(id).then((chat) => { if (alive) setSession(chat); });
+  }));
+  return (
+    <Show when={session()} keyed fallback={<PanelHead running={false} onClose={props.onClose} />}>
+      {(chat) => <ChatBody scriptId={props.scriptId} colorOf={props.colorOf} onClose={props.onClose} session={chat} />}
+    </Show>
+  );
+}
+
+function ChatBody(props: ChatPanelProps & { session: ChatSession }) {
+  const session = () => props.session;
   // Proposals may name characters this script does not have yet (empty
   // script, new scene): fall back to the app-wide colour of that name.
   // A plain signal, not a resource: resources suspend the script screen.
@@ -241,20 +225,24 @@ function ChatBody(props: ChatPanelProps) {
   let inputRef: HTMLTextAreaElement | undefined;
   let stick = true;
 
+  const draftIndex = createDraftIndex(() => session().items);
   const ctx = (): ItemContext => ({
     session: session(),
     lookup: lookup(),
     colorOf,
     canApply: agentEditor(props.scriptId) !== null,
+    surface: "panel",
+    draftRef: (versionId) => draftIndex().get(versionId),
+    showDraft: (slug) => {
+      agentUi.selectDraft(session().chatId(), slug);
+      agentUi.setDraftPanelClosed(session().chatId(), false);
+      void navStore.openAgent(session().chatId());
+    },
+    send: (text) => void send(text, null),
   });
 
-  const groups = createMemo<Group[]>((previous) => groupItems(session().items, previous), []);
   const running = () => session().running();
-  const lastIsActivity = () => {
-    const items = session().items;
-    const last = items[items.length - 1];
-    return !!last && last.kind !== "user";
-  };
+  const replies = createMemo(() => (running() ? [] : lastReplies(session().items)));
 
   // Keep the newest message in view unless the user scrolled up.
   const onScroll = () => {
@@ -340,23 +328,14 @@ function ChatBody(props: ChatPanelProps) {
             </Show>
           }
         >
-          <For each={groups()}>
-            {(group, i) => (
-              <Switch>
-                <Match when={group.kind === "trace" && group}>
-                  {(g) => <TraceGroup items={g().items} live={running() && i() === groups().length - 1} lookup={lookup()} />}
-                </Match>
-                <Match when={group.kind === "item" && group.item}>
-                  {(item) => <ItemView item={item()} ctx={ctx()} />}
-                </Match>
-              </Switch>
-            )}
-          </For>
-          <Show when={running() && !lastIsActivity()}>
-            <WorkingRow />
-          </Show>
+          <ChatList items={session().items} running={running()} lookup={lookup()} ctx={ctx()} />
         </Show>
       </div>
+      <Show when={replies().length > 0}>
+        <div class="ag-replies">
+          <RepliesBar replies={replies()} onPick={(text) => void send(text, null)} />
+        </div>
+      </Show>
       <div class="ag-composer" classList={{ "is-running": running() }}>
         <Show when={quote()}>
           {(q) => (
@@ -399,20 +378,5 @@ function ChatBody(props: ChatPanelProps) {
         </div>
       </div>
     </>
-  );
-}
-
-function ItemView(props: { item: ChatItem; ctx: ItemContext }) {
-  return (
-    <Switch>
-      <Match when={props.item.kind === "user" && (props.item as Extract<ChatItem, { kind: "user" }>)}>{(item) => <UserMessage item={item()} />}</Match>
-      <Match when={props.item.kind === "assistant" && (props.item as Extract<ChatItem, { kind: "assistant" }>)}>{(item) => <AssistantMessage item={item()} />}</Match>
-      <Match when={props.item.kind === "proposal" && (props.item as Extract<ChatItem, { kind: "proposal" }>)}>{(item) => <ProposalCards item={item()} ctx={props.ctx} />}</Match>
-      <Match when={props.item.kind === "claims" && (props.item as Extract<ChatItem, { kind: "claims" }>)}>{(item) => <ClaimsCard item={item()} ctx={props.ctx} />}</Match>
-      <Match when={props.item.kind === "memory" && (props.item as Extract<ChatItem, { kind: "memory" }>)}>{(item) => <MemoryNotice item={item()} ctx={props.ctx} />}</Match>
-      <Match when={props.item.kind === "error" && (props.item as Extract<ChatItem, { kind: "error" }>)}>{(item) => <ErrorRow message={item().message} />}</Match>
-      <Match when={props.item.kind === "blocked"}><NoteRow text={t("agent.blocked", { name: agentSettings.displayName() })} /></Match>
-      <Match when={props.item.kind === "interrupted"}><NoteRow text={t("agent.interrupted")} /></Match>
-    </Switch>
   );
 }

@@ -62,6 +62,8 @@ export interface CreateIdeaInput {
   /** Optional target folder (shared with scripts). NULL/undefined =
    *  no folder. */
   folderId?: string | null;
+  /** Agent session the idea was saved from (agent mode). */
+  sourceChatId?: string | null;
 }
 
 export interface UpdateIdeaInput {
@@ -188,6 +190,9 @@ export interface ScriptzStorage {
   convertIdeaToScript(
     input: ConvertIdeaInput,
   ): Promise<{ idea: Idea; script: ScriptSummary }>;
+  /** Marks an open idea as used by an existing script. False when the idea
+   *  is gone or already used. */
+  markIdeaUsed(ideaId: string, scriptId: string): Promise<boolean>;
 
   // ===== Writing statistics =====
   loadDailyWords(days?: number): Promise<DailyWordEntry[]>;

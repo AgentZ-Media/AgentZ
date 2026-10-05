@@ -1719,12 +1719,13 @@
    Sidebar agent row
    --------------------------------------------------------------------- */
 .side-agent {
+  position: relative;
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 9px;
   width: 100%;
-  margin: 0 0 8px;
-  padding: 7px 8px;
+  margin: 0 0 10px;
+  padding: 7px 8px 7px 7px;
   border: 0;
   border-radius: var(--r-3);
   background: var(--side-hover);
@@ -1733,8 +1734,19 @@
   text-align: left;
   cursor: pointer;
 }
-.side-agent:hover {
+.side-agent:hover,
+.side-agent.is-on {
   background: var(--side-active);
+}
+.side-agent.is-on::before {
+  content: "";
+  position: absolute;
+  left: -10px;
+  top: 10px;
+  bottom: 10px;
+  width: 3px;
+  border-radius: 0 3px 3px 0;
+  background: var(--accent);
 }
 .side-agent:focus-visible {
   outline: 2px solid var(--accent);
@@ -1759,6 +1771,19 @@
 }
 .side-agent.is-learning small {
   color: var(--accent);
+}
+.side-agent-badge {
+  flex: none;
+  height: 18px;
+  padding: 0 6px;
+  border-radius: var(--r-pill);
+  background: color-mix(in srgb, var(--accent) 16%, transparent);
+  color: var(--accent);
+  font-size: 10.5px;
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  white-space: nowrap;
 }
 .side-agent kbd {
   flex: none;

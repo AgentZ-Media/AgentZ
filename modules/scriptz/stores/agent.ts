@@ -6,15 +6,19 @@ import { api } from "../lib/api";
 import { finalStageId } from "../lib/stages";
 import type { Folder } from "../lib/types";
 import { CodexProvider, effortOrDefault, type CodexHostLike } from "../lib/agent/codex/provider";
-import { latestChat, learnedHash, markLearned, saveChat, type ChatItem, type ChatRecord } from "../lib/agent/chats";
+import { draftStates, getChat, latestChat, learnedHash, listSessions, markLearned, saveChat, deleteChat, type ChatItem, type ChatKind, type ChatRecord, type SavedIdeaRef, type SessionSummary } from "../lib/agent/chats";
 import { listMemory, selectRelevantMemory, deleteMemory, restoreMemory, updateMemory } from "../lib/agent/memory";
-import { buildInstructions, contextBlock, LEARN_RULES, memoryBlock, personaBlock } from "../lib/agent/prompt";
+import { buildInstructions, contextBlock, LEARN_RULES, memoryBlock, personaBlock, type InstructionMode } from "../lib/agent/prompt";
 import { blocksFromContent, charactersIn, hashBlocks } from "../lib/agent/scriptText";
 import { createChatTools, createMemoryTools, stageNames, type MemoryChange, type ToolHost } from "../lib/agent/tools";
-import type { AgentEvent, AgentModel, AgentProvider, AgentThread, ProviderState } from "../lib/agent/types";
+import type { AgentEvent, AgentModel, AgentProvider, AgentThread, AgentTool, ProviderState } from "../lib/agent/types";
+import { createSessionTools, existingFolder, ideaNotes, type IdeaBoardRef, type SessionToolHost } from "../lib/agent/sessionTools";
+import { describeTarget, writingTarget, type Pace } from "../lib/agent/writingContext";
+import { settingsStore } from "./settings";
 import { agentSettings } from "./agentSettings";
 import { agentUi } from "./agentUi";
 import { scriptsBus } from "../lib/scriptsBus";
+import { foldersBus } from "../lib/foldersBus";
 import { applyBlocks, liveBlocks, readSelection, revealBlock, targetIndex } from "../components/Agent/editorBridge";
 
 // ---------------------------------------------------------------------------
@@ -107,10 +111,18 @@ async function foldersMap(): Promise<Map<string, Folder>> {
   return new Map(list.map((f) => [f.id, f]));
 }
 
-async function chatInstructions(scriptId: string | null): Promise<string> {
+/** Speaking pace and default length target from the product settings. */
+export function currentPace(): Pace {
+  return {
+    wpm: settingsStore.dialogWpm(),
+    defaults: { minSec: settingsStore.lengthMinDefaultSec(), maxSec: settingsStore.lengthMaxDefaultSec() },
+  };
+}
+
+async function chatInstructions(scriptId: string | null, mode: InstructionMode, sessionFolderId: string | null): Promise<string> {
   const [all, folders] = await Promise.all([listMemory().catch(() => []), foldersMap()]);
   let title: string | null = null;
-  let folderId: string | null = null;
+  let folderId: string | null = scriptId ? null : sessionFolderId;
   let characters: string[] = [];
   if (scriptId) {
     const script = await api.getScript(scriptId).catch(() => null);
@@ -120,25 +132,44 @@ async function chatInstructions(scriptId: string | null): Promise<string> {
       characters = charactersIn(liveBlocks(scriptId) ?? blocksFromContent(script.content_json));
     }
   }
+  const folder = folderId ? folders.get(folderId) ?? null : null;
   const relevant = selectRelevantMemory(all, folderId, characters);
   return buildInstructions(
     persona(),
     memoryBlock(relevant, folders),
-    contextBlock({ scriptTitle: title, folder: folderId ? folders.get(folderId)?.name ?? null : null, characters, stages: stageNames() }),
+    contextBlock({
+      scriptTitle: title,
+      folder: folder?.name ?? null,
+      characters,
+      stages: stageNames(),
+      // Sessions get the target with every message (the folder can change).
+      target: scriptId ? describeTarget(writingTarget(folder, currentPace())) : undefined,
+    }),
     agentSettings.learnFromChat(),
+    mode,
   );
 }
 
 // ---------------------------------------------------------------------------
-// Chat sessions (one per script, alive for the app session)
+// Chats: one per script (panel) or per session (agent mode). A session can
+// be handed to a script it created; it is then the script's chat as well
+// and the same live object serves both views.
 // ---------------------------------------------------------------------------
 
 export interface ChatSession {
-  readonly scriptId: string;
+  /** Id of the chat row (stable until "New chat" in a script panel). */
+  chatId(): string;
+  kind(): ChatKind;
+  /** The script the chat belongs to; null for a session not handed over. */
+  scriptId(): string | null;
+  title(): string | null;
+  folderId(): string | null;
+  setFolder(folderId: string | null): void;
   items: ChatItem[];
   running: Accessor<boolean>;
   ready: Accessor<boolean>;
-  send(text: string, quote?: { text: string; from: number; to: number }): Promise<void>;
+  /** `hint`: context for the model only (e.g. an idea id), not shown. */
+  send(text: string, quote?: ChatQuote, hint?: string): Promise<void>;
   stop(): Promise<void>;
   /** "New chat": ends the thread and stores an empty chat, so the old
    *  conversation does not come back after a restart. */
@@ -153,39 +184,132 @@ export interface ChatSession {
   undoMemory(itemId: string): Promise<void>;
   /** Adds items from outside a turn (e.g. background learning). */
   append(items: ChatItem[]): void;
+  /** Picks or unpicks an idea card. */
+  togglePick(itemId: string, index: number): void;
+  /** Saves idea cards of a board to the idea list (button, not the model). */
+  saveIdeas(itemId: string, indices: number[]): Promise<number>;
+  undoSavedIdeas(itemId: string): Promise<void>;
+  discardDraft(slug: string, versionId: string): void;
+  /** Records that a draft version became a script. */
+  recordHandoff(entry: Omit<Extract<ChatItem, { kind: "handoff" }>, "kind" | "id" | "at">): void;
+  /** Moves the chat to a script (it becomes that script's chat). */
+  attachToScript(scriptId: string): Promise<void>;
+  /** The script was deleted for good: a session goes on without it. */
+  detachFromScript(): void;
+  /** The session's folder was deleted. */
+  forgetFolder(): void;
+  /** Stops for good before the chat row is deleted: no turn, timer or
+   *  pending write may store it again. */
+  discard(): Promise<void>;
 }
 
-const sessions = new Map<string, ChatSession>();
+export interface ChatQuote {
+  text: string;
+  /** Block range in the open script; absent for a quote from a draft. */
+  from?: number;
+  to?: number;
+  /** Draft the quote comes from. */
+  draft?: string;
+}
+
+/** Live chats by script (panel) and by chat id (agent mode). */
+const byScript = new Map<string, ChatSession>();
+const byChat = new Map<string, ChatSession>();
+/** Bumped when a chat joins or leaves the maps: views that ask "is any
+ *  chat running?" must also see chats created after they first looked. */
+const [chatsVersion, setChatsVersion] = createSignal(0);
+const chatsChanged = () => setChatsVersion((v) => v + 1);
 let nextLocalId = 1;
 const localId = (prefix: string) => `${prefix}-${Date.now().toString(36)}-${nextLocalId++}`;
 
-function createSession(scriptId: string): ChatSession {
+/** Bumped after a session row was written; the session list follows. */
+const [sessionsVersion, setSessionsVersion] = createSignal(0);
+let sessionsBump: ReturnType<typeof setTimeout> | null = null;
+function bumpSessions(delayMs = 300): void {
+  if (sessionsBump) clearTimeout(sessionsBump);
+  sessionsBump = setTimeout(() => { sessionsBump = null; setSessionsVersion((v) => v + 1); }, delayMs);
+}
+
+const SESSION_TITLE_MAX = 80;
+
+export function sessionTitleFrom(text: string): string {
+  const line = text.replace(/\s+/g, " ").trim();
+  return line.length > SESSION_TITLE_MAX ? `${line.slice(0, SESSION_TITLE_MAX - 1).trimEnd()}…` : line;
+}
+
+type ChatSource =
+  /** `record`: the script's newest chat, already loaded (or none yet). */
+  | { kind: "script"; scriptId: string; record: ChatRecord | null }
+  | { kind: "session"; chatId: string; folderId?: string | null };
+
+function createChat(source: ChatSource): ChatSession {
   const [state, setState] = createStore<{ items: ChatItem[] }>({ items: [] });
   const [running, setRunning] = createSignal(false);
   const [ready, setReady] = createSignal(false);
+  const [chatId, setChatId] = createSignal<string>(source.kind === "session" ? source.chatId : source.record?.id ?? crypto.randomUUID());
+  const [kind, setKind] = createSignal<ChatKind>(source.kind);
+  const [scriptId, setScriptId] = createSignal<string | null>(source.kind === "script" ? source.scriptId : null);
+  const [title, setTitle] = createSignal<string | null>(null);
+  const [folderId, setFolderId] = createSignal<string | null>(source.kind === "session" ? source.folderId ?? null : null);
   let record: ChatRecord | null = null;
   let thread: AgentThread | null = null;
+  // Instructions of the open thread were built for this mode; a change
+  // (handed to a script) reopens the thread on the next message.
+  let threadMode: InstructionMode | null = null;
   let saveTimer: ReturnType<typeof setTimeout> | null = null;
   // Writes run one after another so an older snapshot never lands last.
   let writes: Promise<void> = Promise.resolve();
   let writeError: unknown = null;
   // Bumped by "New chat": a turn from before must not touch the new chat.
   let epoch = 0;
+  // Set before the row is deleted: nothing may write it again.
+  let discarded = false;
 
-  const loading = latestChat(scriptId).then((chat) => {
+  const loading = (source.kind === "script" ? Promise.resolve(source.record) : getChat(source.chatId)).then((chat) => {
+    if (!chat) return;
     record = chat;
-    if (chat) setState("items", reconcile(chat.items));
-  }).catch((error) => console.warn("[agent] loading chat failed", error)).finally(() => setReady(true));
+    setChatId(chat.id);
+    setKind(chat.kind);
+    setScriptId(chat.scriptId);
+    setTitle(chat.title);
+    // A folder chosen before the saved chat arrived wins.
+    if (source.kind !== "session" || source.folderId === undefined) setFolderId(chat.folderId);
+    setState("items", reconcile(chat.items));
+  }).catch((error) => console.warn("[agent] loading chat failed", error)).finally(() => {
+    // One live object per chat row; never replace another one.
+    if (!byChat.has(chatId())) {
+      byChat.set(chatId(), session);
+      chatsChanged();
+    }
+    setReady(true);
+  });
 
   const write = () => {
     if (saveTimer) clearTimeout(saveTimer);
     saveTimer = null;
+    if (discarded) return;
+    // An untouched session is not stored (no empty rows in the list).
+    if (kind() === "session" && state.items.length === 0 && !record) return;
     const now = Date.now();
-    if (!record) record = { id: crypto.randomUUID(), scriptId, provider: "codex", threadId: thread?.id ?? null, items: [], createdAt: now, updatedAt: now };
-    record = { ...record, threadId: thread?.id ?? record.threadId, items: JSON.parse(JSON.stringify(state.items)) as ChatItem[], updatedAt: now };
+    if (!record) {
+      record = {
+        id: chatId(), kind: kind(), scriptId: scriptId(), provider: "codex", threadId: thread?.id ?? null,
+        title: title(), folderId: folderId(), items: [], createdAt: now, updatedAt: now,
+      };
+    }
+    record = {
+      ...record,
+      kind: kind(),
+      scriptId: scriptId(),
+      title: title(),
+      folderId: folderId(),
+      threadId: thread?.id ?? record.threadId,
+      items: JSON.parse(JSON.stringify(state.items)) as ChatItem[],
+      updatedAt: now,
+    };
     const snapshot = record;
     writes = writes.then(() => saveChat(snapshot)).then(
-      () => { writeError = null; },
+      () => { writeError = null; if (snapshot.kind === "session") bumpSessions(); },
       (error: unknown) => { writeError = error; console.warn("[agent] saving chat failed", error); },
     );
   };
@@ -196,30 +320,91 @@ function createSession(scriptId: string): ChatSession {
     else saveTimer = setTimeout(write, 400);
   };
 
+  /** The chat row exists before anything points at it (ideas carry the
+   *  session as `source_chat_id`, a foreign key). */
+  const ensureStored = async () => {
+    if (saveTimer || !record) write();
+    await writes;
+    if (writeError) throw writeError;
+  };
+
   const push = (item: ChatItem) => setState("items", (items) => [...items, item]);
   const indexOf = (id: string) => state.items.findIndex((item) => item.id === id);
 
-  const host: ToolHost = {
-    scriptId,
-    liveBlocks: () => liveBlocks(scriptId),
-    selection: () => readSelection(scriptId),
+  const lastBoard = (): IdeaBoardRef | null => {
+    for (let i = state.items.length - 1; i >= 0; i--) {
+      const item = state.items[i];
+      if (item.kind === "ideas") return { itemId: item.id, folderId: item.folderId, ideas: item.ideas, savedIds: item.savedIds };
+    }
+    return null;
+  };
+
+  const markBoardSaved = (boardId: string, indices: readonly number[], saved: readonly SavedIdeaRef[]) => {
+    const i = indexOf(boardId);
+    if (i < 0) return;
+    setState("items", i, produce((draft) => {
+      if (draft.kind !== "ideas") return;
+      indices.forEach((index, k) => { draft.savedIds[index] = saved[k]?.ideaId ?? draft.savedIds[index]; });
+      draft.picked = draft.picked.filter((p) => !indices.includes(p));
+    }));
+  };
+
+  const host: ToolHost & SessionToolHost = {
+    get scriptId() { return scriptId(); },
+    liveBlocks: () => liveBlocks(scriptId()),
+    selection: () => readSelection(scriptId()),
     onProposal: (proposal) => push({ kind: "proposal", id: localId("proposal"), proposal, applied: null }),
     onClaims: (claims) => push({ kind: "claims", id: localId("claims"), claims, applied: [] }),
     onMemory: (change) => push(memoryItem(change)),
     memorySource: "chat",
     memorySourceScriptId: null,
+    chatId,
+    folderId,
+    pace: currentPace,
+    ensureStored,
+    onIdeas: (board) => push({
+      kind: "ideas", id: localId("ideas"), folderId: board.folderId, ideas: board.ideas,
+      picked: [], savedIds: board.ideas.map(() => null),
+    }),
+    onIdeasSaved: (saved, savedFolder, board) => {
+      if (board) markBoardSaved(board.itemId, board.indices, saved);
+      push({ kind: "ideas-saved", id: localId("saved"), folderId: savedFolder, saved });
+    },
+    onReplies: (replies) => push({ kind: "replies", id: localId("replies"), replies }),
+    lastBoard,
+  };
+
+  const modeNow = (): InstructionMode => (scriptId() ? (kind() === "session" ? "handed-over" : "script") : "session");
+
+  const toolsFor = (mode: InstructionMode): AgentTool[] => {
+    const chat = createChatTools(host);
+    if (mode === "script") return chat;
+    const sessionTools = createSessionTools(host);
+    // Without an open script the script-bound tools cannot work.
+    if (mode === "session") return [...chat.filter((tool) => !SCRIPT_ONLY_TOOLS.has(tool.name)), ...sessionTools];
+    return [...chat, ...sessionTools.filter((tool) => tool.name !== "propose_ideas")];
   };
 
   const ensureThread = async (): Promise<AgentThread> => {
-    if (thread) return thread;
+    const mode = modeNow();
+    if (thread && threadMode === mode) return thread;
     const p = getProvider();
     if (!p) throw new Error("agent unavailable");
     await loading;
+    const resumeFrom = thread?.id ?? record?.threadId ?? null;
+    if (thread) {
+      // Mode changed (handed to a script): unload the thread so resuming
+      // picks up the new instructions and tools; the history stays.
+      const old = thread;
+      thread = null;
+      threadMode = null;
+      await old.close().catch(() => {});
+    }
     const opening = epoch;
     const opened = await p.openThread({
-      instructions: await chatInstructions(scriptId),
-      tools: createChatTools(host),
-      resumeId: record?.threadId ?? null,
+      instructions: await chatInstructions(scriptId(), mode, folderId()),
+      tools: toolsFor(mode),
+      resumeId: resumeFrom,
     });
     // "New chat" meanwhile: this thread belongs to the old conversation.
     if (opening !== epoch) {
@@ -227,15 +412,46 @@ function createSession(scriptId: string): ChatSession {
       throw new Error("chat was reset");
     }
     thread = opened;
+    threadMode = mode;
     return thread;
   };
 
+  /** Context line in front of a session message: folder, target, pace,
+   *  drafts and saved ideas, so the model always works with what the user
+   *  sees right now. */
+  const sessionPreamble = async (): Promise<string> => {
+    const folders = await foldersMap();
+    const folder = folderId() ? folders.get(folderId()!) ?? null : null;
+    const parts = [describeTarget(writingTarget(folder, currentPace()))];
+    const drafts = draftStates(state.items);
+    if (drafts.length) {
+      parts.push(`Drafts in this session: ${drafts.map(({ draft, latest, state: s }) =>
+        `"${latest.title || draft.slug}" (id ${draft.slug}, version ${draft.versions.length}${s === "finished" ? ", already turned into a script" : s === "discarded" ? ", discarded" : ""})`).join("; ")}.`);
+    }
+    const saved: string[] = [];
+    for (const item of state.items) {
+      if (item.kind !== "ideas-saved" || item.undone) continue;
+      for (const ref of item.saved) saved.push(`"${ref.title}" (idea id ${ref.ideaId})`);
+    }
+    if (saved.length) parts.push(`Ideas saved in this session: ${saved.slice(-12).join("; ")}.`);
+    return `[Session: ${parts.join(" ")}]`;
+  };
+
   const session: ChatSession = {
+    chatId,
+    kind,
     scriptId,
+    title,
+    folderId,
+    setFolder(next) {
+      if (folderId() === next) return;
+      setFolderId(next);
+      if (record || state.items.length) persist();
+    },
     get items() { return state.items; },
     running,
     ready,
-    async send(text, quote) {
+    async send(text, quote, hint) {
       const clean = text.trim();
       if (!clean || running()) return;
       setRunning(true);
@@ -245,15 +461,26 @@ function createSession(scriptId: string): ChatSession {
       // the new message.
       await loading;
       if (!live()) return;
+      if (kind() === "session" && !title()) setTitle(sessionTitleFrom(clean));
+      // Quick replies belong to the turn before; answering ends them.
+      setState("items", (items) => items.filter((item) => item.kind !== "replies"));
       push({ kind: "user", id: localId("user"), text: clean, quote: quote?.text });
       persist();
       try {
         const list = await ensureModels();
+        // Deleted or reset while preparing: no hidden turn afterwards.
+        if (!live() || discarded) return;
         const model = resolveModel(list, agentSettings.model());
         const active = await ensureThread();
-        const input = quote
-          ? `Selected passage (blocks ${quote.from}-${quote.to} of the current script):\n"""${quote.text}"""\n\n${clean}`
-          : clean;
+        if (!live() || discarded) return;
+        let input = clean;
+        if (quote) {
+          input = quote.draft !== undefined
+            ? `Selected passage of the draft "${quote.draft}":\n"""${quote.text}"""\n\n${clean}`
+            : `Selected passage (blocks ${quote.from}-${quote.to} of the current script):\n"""${quote.text}"""\n\n${clean}`;
+        }
+        if (hint) input = `${input}\n\n(${hint})`;
+        if (modeNow() === "session") input = `${await sessionPreamble()}\n\n${input}`;
         const result = await active.run(input, {
           model: model?.id ?? "",
           effort: effortOrDefault(model, agentSettings.effort()),
@@ -286,11 +513,20 @@ function createSession(scriptId: string): ChatSession {
       epoch += 1;
       const old = thread;
       thread = null;
+      threadMode = null;
       if (running()) await old?.interrupt();
       await old?.close().catch(() => {});
       await loading;
       await writes;
+      // A handed-over session stays in the session list; the script gets a
+      // fresh chat of its own from here on.
+      if (byChat.get(chatId()) === session) byChat.delete(chatId());
       record = null;
+      setChatId(crypto.randomUUID());
+      setKind(scriptId() ? "script" : kind());
+      setTitle(null);
+      byChat.set(chatId(), session);
+      chatsChanged();
       setState("items", []);
       setRunning(false);
       write();
@@ -304,27 +540,30 @@ function createSession(scriptId: string): ChatSession {
       // Not close(): that may spawn a process just to unsubscribe. Disposing
       // the provider ends any running turn.
       thread = null;
+      threadMode = null;
     },
     applyOption(itemId, index) {
+      const id = scriptId();
       const i = indexOf(itemId);
       const item = state.items[i];
-      if (!item || item.kind !== "proposal") return false;
+      if (!id || !item || item.kind !== "proposal") return false;
       const option = item.proposal.options[index];
-      const target = option ? applyBlocks(scriptId, option.blocks, item.proposal.target) : null;
+      const target = option ? applyBlocks(id, option.blocks, item.proposal.target) : null;
       if (!option || !target) return false;
-      revealBlock(scriptId, targetIndex(scriptId, target, option.blocks.length));
+      revealBlock(id, targetIndex(id, target, option.blocks.length));
       setState("items", i, produce((draft) => { if (draft.kind === "proposal") draft.applied = index; }));
       persist(true);
       return true;
     },
     applyFix(itemId, index) {
+      const id = scriptId();
       const i = indexOf(itemId);
       const item = state.items[i];
-      if (!item || item.kind !== "claims") return false;
+      if (!id || !item || item.kind !== "claims") return false;
       const fix = item.claims[index]?.fix;
-      const target = fix ? applyBlocks(scriptId, fix.blocks, fix.target) : null;
+      const target = fix ? applyBlocks(id, fix.blocks, fix.target) : null;
       if (!fix || !target) return false;
-      revealBlock(scriptId, targetIndex(scriptId, target, fix.blocks.length));
+      revealBlock(id, targetIndex(id, target, fix.blocks.length));
       setState("items", i, produce((draft) => { if (draft.kind === "claims") draft.applied = [...draft.applied, index]; }));
       persist(true);
       return true;
@@ -344,9 +583,136 @@ function createSession(scriptId: string): ChatSession {
       setState("items", i, produce((draft) => { if (draft.kind === "memory") draft.undone = true; }));
       persist(true);
     },
+    togglePick(itemId, index) {
+      const i = indexOf(itemId);
+      const item = state.items[i];
+      if (!item || item.kind !== "ideas" || index < 0 || index >= item.ideas.length || item.savedIds[index]) return;
+      setState("items", i, produce((draft) => {
+        if (draft.kind !== "ideas") return;
+        draft.picked = draft.picked.includes(index) ? draft.picked.filter((p) => p !== index) : [...draft.picked, index].sort((a, b) => a - b);
+      }));
+      persist();
+    },
+    async saveIdeas(itemId, indices) {
+      const i = indexOf(itemId);
+      const item = state.items[i];
+      if (!item || item.kind !== "ideas") return 0;
+      const todo = [...new Set(indices)].filter((index) => index >= 0 && index < item.ideas.length && !item.savedIds[index]).sort((a, b) => a - b);
+      if (todo.length === 0) return 0;
+      // The board's folder decides (null = "no folder"); a folder deleted
+      // since then falls back to none.
+      const target = await existingFolder(item.folderId);
+      await ensureStored();
+      const saved: SavedIdeaRef[] = [];
+      const done: number[] = [];
+      try {
+        for (const index of todo) {
+          const card = item.ideas[index];
+          const idea = await api.createIdea({ title: card.title, notes: ideaNotes(card), folderId: target, sourceChatId: chatId() });
+          saved.push({ ideaId: idea.id, title: idea.title, number: index + 1 });
+          done.push(index);
+        }
+      } finally {
+        if (saved.length) {
+          markBoardSaved(itemId, done, saved);
+          push({ kind: "ideas-saved", id: localId("saved"), folderId: target, saved });
+          persist(true);
+        }
+      }
+      return saved.length;
+    },
+    async undoSavedIdeas(itemId) {
+      const i = indexOf(itemId);
+      const item = state.items[i];
+      if (!item || item.kind !== "ideas-saved" || item.undone) return;
+      // Without a reliable list nothing is changed.
+      const list = await api.listIdeas().catch(() => null);
+      if (!list) return;
+      const current = new Map(list.map((idea) => [idea.id, idea]));
+      const removed = new Set<string>();
+      try {
+        for (const ref of item.saved) {
+          const idea = current.get(ref.ideaId);
+          // An idea that meanwhile became a script stays, with its marker.
+          if (idea?.used_at) continue;
+          if (idea) await api.deleteIdea(ref.ideaId);
+          removed.add(ref.ideaId);
+        }
+      } finally {
+        // Whatever was not removed (also after a failed delete) keeps its
+        // marker and stays on the receipt.
+        const remaining = item.saved.filter((ref) => !removed.has(ref.ideaId));
+        setState("items", produce((items) => {
+          for (const entry of items) {
+            if (entry.id === itemId && entry.kind === "ideas-saved") {
+              if (remaining.length === 0) entry.undone = true;
+              else entry.saved = remaining;
+            }
+            if (entry.kind === "ideas") entry.savedIds = entry.savedIds.map((id) => (id && removed.has(id) ? null : id));
+          }
+        }));
+        persist(true);
+      }
+    },
+    discardDraft(slug, versionId) {
+      push({ kind: "draft-discarded", id: localId("discard"), slug, versionId });
+      persist(true);
+    },
+    recordHandoff(entry) {
+      push({ kind: "handoff", id: localId("handoff"), at: Date.now(), ...entry });
+      persist(true);
+    },
+    async attachToScript(target) {
+      await loading;
+      const previous = scriptId();
+      if (previous === target) return;
+      if (previous && byScript.get(previous) === session) byScript.delete(previous);
+      // The script is new, but a chat opened meanwhile must not compete.
+      const other = byScript.get(target);
+      if (other && other !== session) {
+        other.release();
+        byScript.delete(target);
+      }
+      setScriptId(target);
+      byScript.set(target, session);
+      chatsChanged();
+      // The next message reopens the provider thread with script
+      // instructions and tools (ensureThread sees the new mode).
+      persist(true);
+      await writes;
+    },
+    detachFromScript() {
+      const previous = scriptId();
+      if (!previous) return;
+      if (byScript.get(previous) === session) byScript.delete(previous);
+      setScriptId(null);
+      chatsChanged();
+      if (record) record = { ...record, scriptId: null };
+    },
+    forgetFolder() {
+      if (folderId() === null) return;
+      setFolderId(null);
+      if (record) record = { ...record, folderId: null };
+    },
+    async discard() {
+      discarded = true;
+      epoch += 1;
+      if (saveTimer) clearTimeout(saveTimer);
+      saveTimer = null;
+      const old = thread;
+      thread = null;
+      threadMode = null;
+      if (running()) await old?.interrupt().catch(() => {});
+      await old?.close().catch(() => {});
+      setRunning(false);
+      await writes.catch(() => {});
+    },
   };
   return session;
 }
+
+/** Tools that need an open script. */
+const SCRIPT_ONLY_TOOLS = new Set(["get_current_script", "propose_options", "report_fact_check"]);
 
 function memoryItem(change: MemoryChange): ChatItem {
   return change.action === "updated"
@@ -423,7 +789,7 @@ function applyEvent(setState: SetStoreFunction<{ items: ChatItem[] }>, event: Ag
 }
 
 /** Tools whose result is shown as its own card (or not at all). */
-const HIDDEN_TOOLS = new Set(["propose_options", "report_fact_check", "remember", "update_memory", "forget_memory"]);
+const HIDDEN_TOOLS = new Set(["propose_options", "report_fact_check", "remember", "update_memory", "forget_memory", "propose_ideas", "save_ideas", "suggest_replies"]);
 
 function argsOf(raw: unknown): Record<string, unknown> {
   if (typeof raw === "string") {
@@ -643,21 +1009,77 @@ function cancelBootstrap(): void {
 /** Shows what was learned in that script's chat, each entry with undo. */
 async function appendLearnedToChat(scriptId: string, changes: MemoryChange[]): Promise<void> {
   const items = changes.map(memoryItem);
-  const live = sessions.get(scriptId);
+  // The script's newest chat may be live under its chat id only (a session
+  // opened in the agent mode): append through that object, never around it.
+  const chat = await latestChat(scriptId);
+  const live = (chat ? liveChats().find((entry) => entry.chatId() === chat.id) : undefined) ?? (chat ? undefined : byScript.get(scriptId));
   if (live) {
     live.append(items);
     return;
   }
-  const chat = await latestChat(scriptId);
   const now = Date.now();
   await saveChat(chat
     ? { ...chat, items: [...chat.items, ...items], updatedAt: now }
-    : { id: crypto.randomUUID(), scriptId, provider: "codex", threadId: null, items, createdAt: now, updatedAt: now });
+    : { id: crypto.randomUUID(), kind: "script", scriptId, provider: "codex", threadId: null, title: null, folderId: null, items, createdAt: now, updatedAt: now });
 }
 
 // ---------------------------------------------------------------------------
 // Runtime
 // ---------------------------------------------------------------------------
+
+const pendingScripts = new Map<string, Promise<ChatSession>>();
+
+/** Live chats whose script or folder was deleted for good follow along:
+ *  a session goes on without them, a script chat is gone with its row. */
+async function reconcileLiveChats(): Promise<void> {
+  const chats = liveChats();
+  if (chats.length === 0) return;
+  // null = the read failed: then nothing is changed (an empty list is a
+  // real answer, e.g. the last folder was deleted).
+  const list = await api.listFolders().catch(() => null);
+  const folders = list ? new Set(list.map((f) => f.id)) : null;
+  for (const chat of chats) {
+    const folder = chat.folderId();
+    if (folder && folders && !folders.has(folder)) chat.forgetFolder();
+    const script = chat.scriptId();
+    if (!script) continue;
+    // Only a definite "not found" counts; a failed read changes nothing.
+    const gone = await api.getScript(script).then(
+      () => false,
+      (error: unknown) => error instanceof Error && error.message.startsWith("not found"),
+    );
+    if (!gone) continue;
+    if (chat.kind() === "session") {
+      chat.detachFromScript();
+    } else {
+      await chat.discard();
+      for (const [key, value] of byScript) if (value === chat) byScript.delete(key);
+      for (const [key, value] of byChat) if (value === chat) byChat.delete(key);
+      chatsChanged();
+    }
+  }
+}
+
+function liveChats(): ChatSession[] {
+  chatsVersion();
+  return [...new Set([...byScript.values(), ...byChat.values()])];
+}
+
+const [sessionList, setSessionList] = createSignal<SessionSummary[]>([]);
+const [sessionListReady, setSessionListReady] = createSignal(false);
+let sessionListGeneration = 0;
+
+async function refreshSessionList(): Promise<void> {
+  const generation = ++sessionListGeneration;
+  try {
+    const list = await listSessions(40);
+    if (generation === sessionListGeneration) setSessionList(list);
+  } catch (error) {
+    console.warn("[agent] listing sessions failed", error);
+  } finally {
+    if (generation === sessionListGeneration) setSessionListReady(true);
+  }
+}
 
 export const agentStore = {
   status,
@@ -668,13 +1090,66 @@ export const agentStore = {
   refreshStatus,
   refreshModels,
   resolveModel: () => resolveModel(models(), agentSettings.model()),
-  session(scriptId: string): ChatSession {
-    let session = sessions.get(scriptId);
+  /** The live chat of a script, if one is loaded. */
+  liveSession(scriptId: string): ChatSession | null {
+    return byScript.get(scriptId) ?? null;
+  },
+  /** The chat of a script (panel). Resolves the script's newest chat row
+   *  first, so a session already open in the agent mode is the very same
+   *  object (two objects would overwrite each other's messages). */
+  sessionFor(scriptId: string): Promise<ChatSession> {
+    const live = byScript.get(scriptId);
+    if (live) return Promise.resolve(live);
+    let pending = pendingScripts.get(scriptId);
+    if (!pending) {
+      pending = (async () => {
+        const record = await latestChat(scriptId).catch((error: unknown) => {
+          console.warn("[agent] loading chat failed", error);
+          return null;
+        });
+        const again = byScript.get(scriptId);
+        if (again) return again;
+        const session = (record ? byChat.get(record.id) : undefined) ?? createChat({ kind: "script", scriptId, record });
+        byScript.set(scriptId, session);
+        if (record && !byChat.has(record.id)) byChat.set(record.id, session);
+        chatsChanged();
+        return session;
+      })().finally(() => pendingScripts.delete(scriptId));
+      pendingScripts.set(scriptId, pending);
+    }
+    return pending;
+  },
+  /** A chat by id (agent mode). Unknown ids start a new, unsaved session. */
+  chat(chatId: string, options: { folderId?: string | null } = {}): ChatSession {
+    let session = byChat.get(chatId) ?? liveChats().find((chat) => chat.chatId() === chatId);
     if (!session) {
-      session = createSession(scriptId);
-      sessions.set(scriptId, session);
+      session = createChat({ kind: "session", chatId, folderId: options.folderId });
+      byChat.set(chatId, session);
+      chatsChanged();
     }
     return session;
+  },
+  /** Sessions for the start screen and the session menu, newest first. */
+  sessions: sessionList,
+  sessionsReady: sessionListReady,
+  refreshSessions: refreshSessionList,
+  /** Open drafts over all recent sessions (sidebar badge). */
+  openDrafts: () => sessionList().reduce((sum, s) => sum + s.openDrafts, 0),
+  /** A chat of this id is answering right now. */
+  isRunning: (chatId: string) => liveChats().some((chat) => chat.chatId() === chatId && chat.running()),
+  anyRunning: () => liveChats().some((chat) => chat.running()),
+  async deleteSession(chatId: string): Promise<void> {
+    const live = liveChats().find((chat) => chat.chatId() === chatId);
+    if (live) {
+      // Ends the turn and drains writes; a late completion cannot store
+      // the row again after it is deleted.
+      await live.discard();
+      for (const [key, chat] of byChat) if (chat === live) byChat.delete(key);
+      for (const [key, chat] of byScript) if (chat === live) byScript.delete(key);
+      chatsChanged();
+    }
+    await deleteChat(chatId);
+    await refreshSessionList();
   },
   scheduleLearning,
   bootstrap,
@@ -692,7 +1167,7 @@ function shutdownProvider(): void {
   if (learnTimer) clearTimeout(learnTimer);
   learnTimer = null;
   setLearning(null);
-  for (const session of sessions.values()) session.release();
+  for (const session of liveChats()) session.release();
   const p = provider;
   provider = null;
   statusCheck = null;
@@ -717,11 +1192,18 @@ export function startAgentRuntime(services: Readonly<Record<string, unknown>>): 
     createEffect(on(agentUi.onboardingOpen, (open) => {
       if (!open && !agentSettings.enabled() && provider) shutdownProvider();
     }, { defer: true }));
+    // The session list follows every session write (and ideas/scripts that
+    // a finished draft touched).
+    // Only where the agent exists at all (no queries in builds without it).
+    createEffect(on(sessionsVersion, () => { if (codexHost) void refreshSessionList(); }));
+    createEffect(on([scriptsBus.version, foldersBus.version], () => {
+      if (codexHost) void reconcileLiveChats().catch((error) => console.warn("[agent] reconciling chats failed", error));
+    }, { defer: true }));
     return dispose;
   });
   // Closing and quitting wait for chat writes (applied options, undos).
   const offFlush = registerFlusher(
-    () => Promise.all([...sessions.values()].map((session) => session.flush())).then(() => undefined),
+    () => Promise.all(liveChats().map((session) => session.flush())).then(() => undefined),
     "agent-chats",
     "state",
   );
@@ -735,11 +1217,19 @@ export function startAgentRuntime(services: Readonly<Record<string, unknown>>): 
     learnTimer = null;
     // Keep the chats: teardown is not "New chat". Disposing the provider below
     // ends running turns; pending writes still go out.
-    for (const session of sessions.values()) {
+    for (const session of liveChats()) {
       session.release();
       void session.flush().catch(() => {});
     }
-    sessions.clear();
+    byScript.clear();
+    byChat.clear();
+    pendingScripts.clear();
+    chatsChanged();
+    sessionListGeneration += 1;
+    setSessionList([]);
+    setSessionListReady(false);
+    if (sessionsBump) clearTimeout(sessionsBump);
+    sessionsBump = null;
     const p = provider;
     provider = null;
     codexHost = null;

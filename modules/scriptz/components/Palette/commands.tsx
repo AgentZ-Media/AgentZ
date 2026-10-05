@@ -14,6 +14,11 @@ import { library } from "../Shell/libraryData";
 import { importScriptzFile, openNewScript } from "../Library/actions";
 import { setStageWithUndo } from "../Script/stageActions";
 import { safeSnippet } from "./snippet";
+import { agentStore } from "../../stores/agent";
+import { agentSettings } from "../../stores/agentSettings";
+import { agentUi } from "../../stores/agentUi";
+import { AgentAvatar } from "../Agent/AgentAvatar";
+import { agentModeAvailable, findIdeasWithAgent, startSession, writeIdeaWithAgent } from "../AgentMode/actions";
 import "./commands.css";
 
 type GroupKey = "recent" | "scripts" | "ideas" | "commands";
@@ -139,6 +144,51 @@ function commands(shell: ShellControls): PaletteItem[] {
       });
     }
   }
+  if (agentModeAvailable()) {
+    const name = agentSettings.displayName();
+    const r = navStore.route();
+    const folderId = (r.kind === "scripts" || r.kind === "ideas") && r.folderId && library.folder(r.folderId) ? r.folderId : null;
+    const folderName = folderId ? library.folder(folderId)?.name ?? null : null;
+    list.push(
+      {
+        id: "cmd:agent",
+        group: "commands",
+        label: t("agentMode.cmd.new", { name }),
+        keywords: t("agentMode.cmd.keywords"),
+        icon: () => <AgentAvatar look={agentSettings.look()} size={16} state="still" />,
+        hint: scriptId ? K("Mod+Shift+L") : K("Mod+L"),
+        run: () => void startSession(),
+      },
+      {
+        id: "cmd:agent-ideas",
+        group: "commands",
+        label: folderName ? t("agentMode.cmd.ideasFolder", { folder: folderName }) : t("agentMode.cmd.ideas", { name }),
+        keywords: t("agentMode.cmd.keywords"),
+        icon: icon("spark"),
+        run: () => void findIdeasWithAgent(folderId),
+      },
+    );
+    for (const session of agentStore.sessions().slice(0, 3)) {
+      list.push({
+        id: `cmd:agent-session:${session.id}`,
+        group: "commands",
+        label: t("agentMode.cmd.resume", { title: session.title || t("agentMode.bar.newSession") }),
+        keywords: t("agentMode.cmd.keywords"),
+        icon: icon("history"),
+        run: () => void navStore.openAgent(session.id),
+      });
+    }
+    if (agentSettings.onboarded()) {
+      list.push({
+        id: "cmd:agent-memory",
+        group: "commands",
+        label: t("agentMode.cmd.memory", { name }),
+        keywords: t("agentMode.cmd.keywords"),
+        icon: icon("bulb"),
+        run: () => agentUi.openMemory(),
+      });
+    }
+  }
   list.push(
     {
       id: "cmd:sidebar",
@@ -184,6 +234,7 @@ function commands(shell: ShellControls): PaletteItem[] {
 /** Commands shown with an empty query, in this order. */
 const EMPTY_COMMANDS = new Set([
   "cmd:new-script",
+  "cmd:agent",
   "cmd:new-idea",
   "cmd:ideas",
   "cmd:all",
@@ -268,7 +319,21 @@ function rankedItems(query: string, hits: SearchHit[], shell: ShellControls): Pa
       },
     }));
 
-  const cmds = commands(shell).filter((c) =>
+  const agentIdeas: PaletteItem[] = agentModeAvailable()
+    ? ideas.slice(0, 3).map((item) => {
+        const idea = (ideasStore.ideas() ?? []).find((i) => `idea:${i.id}` === item.id)!;
+        return {
+          id: `agent-idea:${idea.id}`,
+          group: "commands" as const,
+          label: t("agentMode.cmd.writeIdea", { title: idea.title, name: agentSettings.displayName() }),
+          keywords: `${idea.notes ?? ""} ${t("agentMode.cmd.keywords")}`,
+          icon: icon("pen"),
+          run: () => void writeIdeaWithAgent(idea),
+        };
+      })
+    : [];
+
+  const cmds = [...commands(shell), ...agentIdeas].filter((c) =>
     `${c.label} ${c.keywords ?? ""}`.toLowerCase().includes(q),
   );
 

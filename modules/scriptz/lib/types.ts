@@ -110,6 +110,8 @@ export interface Idea {
   used_at: number | null;
   script_id: string | null;
   folder_id: string | null;
+  /** Agent session the idea was saved from; absent/null = written by hand. */
+  source_chat_id?: string | null;
 }
 
 /** An entry in the daily word log. `date` is in local

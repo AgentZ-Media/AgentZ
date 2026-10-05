@@ -31,6 +31,9 @@ import type { Folder, Idea, ScriptStatus, ScriptSummary } from "../../lib/types"
 import { scriptStages, stageLabel } from "../../lib/stages";
 import { Icon } from "@agentz/kit/ui";
 import { StageGlyph } from "../Common/StageGlyph";
+import { AgentAvatar } from "../Agent/AgentAvatar";
+import { agentSettings } from "../../stores/agentSettings";
+import { agentModeAvailable, findIdeasWithAgent, writeIdeaWithAgent } from "../AgentMode/actions";
 import { confirmDialog } from "@agentz/kit/ui";
 import { PageBar } from "../Library/PageBar";
 import { ContextMenu, type ContextMenuItem } from "../Library/ContextMenu";
@@ -761,7 +764,14 @@ export function IdeasPage() {
           <StageGlyph stage="idea" />
         </Match>
       </Switch>
-      <div class="ti">{idea().title}</div>
+      <div class="ti">
+        <Show when={idea().source_chat_id}>
+          <span class="i-by-agent" title={t("agentMode.ideas.byAgent", { name: agentSettings.displayName() })}>
+            <AgentAvatar look={agentSettings.look()} size={14} state="still" />
+          </span>
+        </Show>
+        {idea().title}
+      </div>
       <div class="nt">
         <Show when={idea().used_at} fallback={idea().notes.split("\n")[0]}>
           <Show
@@ -990,6 +1000,17 @@ export function IdeasPage() {
                 {t("ideasPage.chips.none")} <em>{counts().inbox}</em>
               </button>
             </Show>
+            <Show when={agentModeAvailable()}>
+              <button
+                type="button"
+                class="fchip i-agent"
+                title={t("agentMode.ideas.findTitle", { name: agentSettings.displayName() })}
+                onClick={() => void findIdeasWithAgent(activeFolder() === INBOX_FOLDER_ID ? null : activeFolder())}
+              >
+                <AgentAvatar look={agentSettings.look()} size={16} state="idle" />
+                {t("agentMode.ideas.find", { name: agentSettings.displayName() })}
+              </button>
+            </Show>
             <span class="sp" />
             <label class="field-box i-filter">
               <Icon name="search" size={13} />
@@ -1078,6 +1099,16 @@ export function IdeasPage() {
                           ? t("ideasPage.empty.folderSub")
                           : t("ideasPage.empty.allUsedSub")}
                   </span>
+                  <Show when={agentModeAvailable() && !filtering()}>
+                    <button
+                      type="button"
+                      class="btn i-empty-agent"
+                      onClick={() => void findIdeasWithAgent(activeFolder() === INBOX_FOLDER_ID ? null : activeFolder())}
+                    >
+                      <AgentAvatar look={agentSettings.look()} size={18} state="idle" />
+                      {t("agentMode.ideas.find", { name: agentSettings.displayName() })}
+                    </button>
+                  </Show>
                 </div>
               }
             >
@@ -1145,6 +1176,8 @@ export function IdeasPage() {
                                             if (editor === h) editor = null;
                                           }}
                                           onConvert={(i) => void convert(i)}
+                                          onWriteWithAgent={agentModeAvailable() ? (i) => void writeIdeaWithAgent(i) : undefined}
+                                          onOpenSession={(chatId) => void navStore.openAgent(chatId)}
                                           onDelete={(i) => void removeIdeas([i])}
                                           onMove={(i, fid) => void moveIdeas([i], fid)}
                                           onOpenScript={(sid, title) => navStore.openScript(sid, title)}

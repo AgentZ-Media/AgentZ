@@ -10,6 +10,7 @@ import { openNewScript } from "../Library/actions";
 import { stepStage } from "../Script/stageActions";
 import { agentUi } from "../../stores/agentUi";
 import { agentStore } from "../../stores/agent";
+import { openAgentMode } from "../AgentMode/actions";
 
 export function getScriptzShortcuts(): ShortcutDef[] {
   const group = (id: "app" | "editor" | "ideas" | "lists") => ({
@@ -48,7 +49,29 @@ export function getScriptzShortcuts(): ShortcutDef[] {
       enabled: hasScript, run: () => uiStore.toggleInspector(),
     }),
     entry("agent", "agent.shortcut", ["Mod+L"], "app", {
-      matches: letter("l"), enabled: () => hasScript() && agentStore.available(), run: () => { const id = navStore.activeScriptId(); if (id) agentUi.toggleChat(id); },
+      matches: letter("l"),
+      enabled: () => agentStore.available(),
+      run: () => {
+        // In a script: the chat next to the paper. Elsewhere: the agent mode.
+        const id = navStore.activeScriptId();
+        if (id) agentUi.toggleChat(id);
+        else if (navStore.isAgent()) agentUi.focusMode();
+        else void openAgentMode();
+      },
+    }),
+    entry("agentMode", "agentMode.shortcut", ["Mod+Shift+L"], "app", {
+      matches: letter("l", true),
+      enabled: () => agentStore.available(),
+      run: () => {
+        // From a script whose chat is a session: that session, big.
+        const id = navStore.activeScriptId();
+        if (id && agentUi.chatOpen(id)) {
+          const chat = agentStore.liveSession(id);
+          if (chat?.kind() === "session") { void navStore.openAgent(chat.chatId()); return; }
+        }
+        if (navStore.isAgent()) agentUi.focusMode();
+        else void openAgentMode();
+      },
     }),
     entry("timeline", "prefs.shortcuts.timeline", ["Mod+J"], "app", {
       matches: letter("j"), enabled: hasEditor, run: () => uiStore.toggleTimeline(),

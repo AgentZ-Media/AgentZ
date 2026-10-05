@@ -24,6 +24,25 @@ export interface ChatRequest {
 }
 const [request, setRequest] = createSignal<ChatRequest | null>(null);
 
+/** A message the agent mode sends (or prefills) once its chat is on screen:
+ *  "Ideen mit Ida finden", "Mit Ida ausschreiben", palette commands. */
+export interface ModeRequest {
+  chatId: string;
+  text: string;
+  /** Hidden context for the model (e.g. the idea id), not shown as text. */
+  hint?: string;
+  send: boolean;
+}
+const [modeRequest, setModeRequest] = createSignal<ModeRequest | null>(null);
+/** Draft tab chosen per session (chat id -> draft slug). */
+const [selectedDrafts, setSelectedDrafts] = createSignal<ReadonlyMap<string, string>>(new Map());
+/** Sessions whose draft panel the user closed. */
+const [closedPanels, setClosedPanels] = createSignal<ReadonlySet<string>>(new Set());
+/** The agent chat shown last, so the sidebar entry leads back to it. */
+const [lastAgentChat, setLastAgentChat] = createSignal<string | null>(null);
+/** Bumped to focus the agent mode's input (Mod+L while it is on screen). */
+const [modeFocus, setModeFocus] = createSignal(0);
+
 export const agentUi = {
   chatOpen: (scriptId: string) => openChats().has(scriptId),
   setChatOpen(scriptId: string, open: boolean) {
@@ -56,6 +75,35 @@ export const agentUi = {
     return current;
   },
   anyDialogOpen: () => onboardingOpen() || memoryOpen(),
+  modeRequest,
+  requestMode(next: ModeRequest) {
+    setModeRequest(next);
+  },
+  takeModeRequest(chatId: string): ModeRequest | null {
+    const current = modeRequest();
+    if (!current || current.chatId !== chatId) return null;
+    setModeRequest(null);
+    return current;
+  },
+  selectedDraft: (chatId: string) => selectedDrafts().get(chatId) ?? null,
+  selectDraft(chatId: string, slug: string) {
+    if (selectedDrafts().get(chatId) === slug) return;
+    const next = new Map(selectedDrafts());
+    next.set(chatId, slug);
+    setSelectedDrafts(next);
+  },
+  draftPanelClosed: (chatId: string) => closedPanels().has(chatId),
+  setDraftPanelClosed(chatId: string, closed: boolean) {
+    if (closedPanels().has(chatId) === closed) return;
+    const next = new Set(closedPanels());
+    if (closed) next.add(chatId);
+    else next.delete(chatId);
+    setClosedPanels(next);
+  },
+  lastAgentChat,
+  setLastAgentChat,
+  modeFocus,
+  focusMode: () => setModeFocus((n) => n + 1),
 };
 
 export function startAgentUiRuntime(): () => void {
@@ -63,5 +111,13 @@ export function startAgentUiRuntime(): () => void {
   setOnboardingOpen(false);
   setMemoryOpen(false);
   setRequest(null);
-  return () => setOpenChats(new Set<string>());
+  setModeRequest(null);
+  setSelectedDrafts(new Map());
+  setClosedPanels(new Set<string>());
+  setLastAgentChat(null);
+  return () => {
+    setOpenChats(new Set<string>());
+    setModeRequest(null);
+    setLastAgentChat(null);
+  };
 }

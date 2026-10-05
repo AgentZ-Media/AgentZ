@@ -72,10 +72,10 @@ describe("ScriptZ shortcut contribution", () => {
     expect(stepStage).not.toHaveBeenCalled();
   });
 
-  it("retains all 30 documentation rows, translated dynamically", () => {
+  it("retains all 31 documentation rows, translated dynamically", () => {
     const entries = [...createShellShortcuts(uiStore), ...getScriptzShortcuts()];
-    expect(entries).toHaveLength(30);
-    expect(new Set(entries.map((entry) => entry.id)).size).toBe(30);
+    expect(entries).toHaveLength(31);
+    expect(new Set(entries.map((entry) => entry.id)).size).toBe(31);
     expect(new Set(entries.map((entry) => entry.group.id))).toEqual(new Set(["app", "editor", "ideas", "lists"]));
     const capture = entries.find((entry) => entry.id === "scriptz.capture")!;
     expect(capture.label()).toBe("Idee erfassen, auch im Fokus");
