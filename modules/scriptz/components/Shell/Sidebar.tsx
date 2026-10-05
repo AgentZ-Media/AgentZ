@@ -28,7 +28,7 @@ import { closeOpenScript, closeOtherOpenScripts } from "./openActions";
 import { folderColor, library } from "./libraryData";
 
 /**
- * Left navigation (concept `#tpl-side`): app row, "Neues Skript", the inbox
+ * Left navigation: app row, "Neues Skript", the inbox
  * (only while work is in progress), "Alle Skripte", the pipeline and the
  * folders (both collapsible), the "Open" list and the footer with the
  * writing counter, trash and settings. Always dark (`--side-*`).

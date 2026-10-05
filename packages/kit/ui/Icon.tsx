@@ -4,7 +4,7 @@ export type { IconName };
 
 export interface IconProps {
   name: IconName;
-  /** Rendered width and height in px. Default 15 (the concept's `svg.i`). */
+  /** Rendered width and height in px. Default 15 (matches `svg.i`). */
   size?: number;
   class?: string;
   /** Accessible label. Without it the icon is decorative (aria-hidden). */

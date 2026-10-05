@@ -96,7 +96,7 @@ describe("restoreSnapshot (SQL)", () => {
       ["scriptz-action", "Rain falls."],
       ["scriptz-character", "Max"],
       ["scriptz-dialog", "Hello there my friend"],
-      // Retired block type from before the redesign.
+      // Retired block type that stored content may contain.
       ["scriptz-caption", "Old caption"],
     ]);
     const row: Row = {

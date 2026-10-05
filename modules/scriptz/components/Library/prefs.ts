@@ -15,8 +15,7 @@ export type ViewScope = "inbox" | "all" | "folder";
 const PREFS_KEY = "library.view";
 // Separate key: "library.view" keeps its stored shape.
 const MODE_KEY = "library.mode";
-// Done stages are folded away by default (concept: "Liste klappt, was
-// erledigt ist").
+// Done stages are folded away by default.
 const DEFAULT_COLLAPSED = ["shot", "online"];
 
 const [grouping, setGroupingSignal] = createSignal<Grouping>("stage");

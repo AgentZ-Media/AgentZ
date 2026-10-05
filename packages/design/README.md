@@ -4,8 +4,6 @@ The design system of the AgentZ suite (all apps and the website).
 Plain CSS + a few typed data modules - no framework code, so any app
 (Solid, Astro, React, static HTML) can use it.
 
-Visual reference: `docs/redesign/concept.html` (the "Werkbank" concept).
-
 ## Layers
 
 1. **Primitives + semantic tokens** - `tokens.css`
@@ -25,10 +23,10 @@ Visual reference: `docs/redesign/concept.html` (the "Werkbank" concept).
    `.field` / `.field-box`, `.num-f`, `.rng-f`, `.srow`, `.app-mark`,
    `svg.i` / `svg.st`.
 
-`legacy.css` is a temporary alias layer that maps pre-redesign token names
-(`--fg-muted`, `--bg-elev-1`, `--brand-500`, ...) onto the semantic tokens,
-so old components get the new look without being touched. New code must not
-use those names; delete aliases once nothing references them.
+`legacy.css` is an alias layer that maps older token names (`--fg-muted`,
+`--bg-elev-1`, `--brand-500`, ...) onto the semantic tokens for ScriptZ
+components that reference them. New code must not use those names; delete
+aliases once nothing references them.
 
 ## Usage
 
@@ -37,7 +35,7 @@ Import in this order, before any app CSS:
 ```ts
 import "@agentz/design/fonts.css";      // Schibsted Grotesk, bundled offline
 import "@agentz/design/tokens.css";
-// legacy.css: only ScriptZ still loads it; never in new apps or the Kit.
+// legacy.css: only ScriptZ loads it; never in new apps or the Kit.
 import "@agentz/design/components.css";
 ```
 
@@ -56,8 +54,8 @@ import { LOGOS, createLogo, type LogoId } from "@agentz/design/logo";
 ## Logo and app icon
 
 `logo.ts` is the registry of product marks (`LOGOS[id]`), including the
-independent `suite` entry for AgentZ and `scriptz` with its unchanged
-original dot geometry. New apps receive `createLogo(initial, accent?)`,
+independent `suite` entry for AgentZ and `scriptz` with its own dot
+geometry. New apps receive `createLogo(initial, accent?)`,
 a letter in the same dot-matrix family. The shared Kit `AppMark` selects a
 registry entry and exposes the supplied app name as its accessible label.
 

@@ -48,7 +48,7 @@ function chipStyle(color: string): Record<string, string> | undefined {
   };
 }
 
-/** Row of the scripts overview (concept `.row`): stage glyph, title +
+/** Row of the scripts overview: stage glyph, title +
  *  subtitle, folder, cast, runtime vs. target range, last edit. Hovering
  *  swaps the date for "open" and "⋯". */
 export function ScriptRow(props: ScriptRowProps) {

@@ -14,9 +14,9 @@ import {
 
 const [highlightingDefault, setHighlightingDefault] = createSignal<boolean>(false);
 const [exportTitlePageDefault, setExportTitlePageDefault] = createSignal<boolean>(true);
-// Open scripts in focus mode. Default false for fresh installs since the
-// Werkbank redesign (head bar + inspector are the normal writing view);
-// a value stored by an existing install still wins (see load()).
+// Open scripts in focus mode. Default false for fresh installs (head bar
+// + inspector are the normal writing view); a value stored by an existing
+// install wins (see load()).
 const [focusModeDefault, setFocusModeDefault] = createSignal<boolean>(false);
 // Typewriter in focus mode: the caret line stays in the middle of the
 // screen and the other lines step back. Default off.
@@ -26,9 +26,9 @@ const [focusTypewriter, setFocusTypewriter] = createSignal<boolean>(false);
 // script, that decision sticks across character-count changes.
 const [quickModeAutoEnable, setQuickModeAutoEnable] = createSignal<boolean>(false);
 // Show the adaptive writing counter (sidebar footer: words this week /
-// month / year / total, see lib/writingCounter.ts). Key kept from the old
-// "writing stats" switch; default ON since the redesign - the counter has
-// no goal and no streak, so it informs without creating pressure.
+// month / year / total, see lib/writingCounter.ts). The stored key keeps
+// its "writing stats" name. Default ON - the counter has no goal and no
+// streak, so it informs without creating pressure.
 const [showWritingStats, setShowWritingStats] = createSignal<boolean>(true);
 // Full dark immersion: script sheet also dark in dark mode instead of light.
 // Default off — most users like the "illuminated paper" look, but
@@ -58,7 +58,7 @@ const DIALOG_WPM_MIN = 80;
 const DIALOG_WPM_MAX = 400;
 const [dialogWpm, setDialogWpm] = createSignal<number>(DIALOG_WPM_DEFAULT);
 
-// Default target runtime range in whole seconds (docs/feature-laengenziel.md).
+// Default target runtime range in whole seconds.
 // Applies when a script's folder has no own range. null = bound unset;
 // both null = no range at all. Persisted as "" when unset.
 const LENGTH_SEC_MAX = 24 * 60 * 60;

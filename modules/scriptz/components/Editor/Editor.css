@@ -11,7 +11,7 @@
      PARENTHETICAL  indented ~22% from both sides, italic, muted
 
    Popovers (character autocomplete, block picker, colour picker) follow
-   the concept's `.ac` / `.menu` look. Design tokens only; character
+   the `.menu` look of the design package. Design tokens only; character
    colours arrive inline (user data).
    ========================================================================= */
 
@@ -115,7 +115,7 @@
 }
 
 /* ---------------------------------------------------------------------- */
-/* Highlighting (concept `.m`): per-line pills that hug the text. Dialog,
+/* Highlighting: per-line pills that hug the text. Dialog,
    character and parenthetical nodes wrap their children in one inline
    `<span class="tint-host">` (BaseScriptzNode.hasTintHost), so background,
    padding, radius and box-decoration-break apply to a single host that
@@ -152,7 +152,7 @@
 }
 
 /* ---------------------------------------------------------------------- */
-/* Character autocomplete (concept `.ac`). Positioned fixed by
+/* Character autocomplete. Positioned fixed by
    plugins/characterDropdown.tsx, centered under the character line. */
 .scriptz-character-dropdown {
   width: 236px;
@@ -220,7 +220,7 @@
   font-size: 11.5px;
 }
 
-/* Block-type picker (Tab) - concept `.menu`. */
+/* Block-type picker (Tab), `.menu` look. */
 .scriptz-block-dropdown {
   width: 200px;
   padding: 5px;

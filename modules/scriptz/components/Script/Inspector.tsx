@@ -28,7 +28,7 @@ export interface InspectorProps {
 
 const NEUTRAL_DOT = "var(--faint)";
 
-/** Right-hand inspector (concept `#tpl-insp`). Information only - no
+/** Right-hand inspector. Information only - no
  *  settings live here. */
 export function Inspector(props: InspectorProps) {
   // Ticks once a minute so "seit 5 Minuten" stays honest.

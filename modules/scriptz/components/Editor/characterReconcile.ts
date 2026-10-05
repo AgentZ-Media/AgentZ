@@ -10,10 +10,10 @@ import { DEFAULT_PALETTE } from "../../lib/characterColors";
 import type { ScriptCharacter } from "../../lib/types";
 
 /** Neutral placeholder color for character pills the user JUST typed —
- *  the next debounced save canonicalizes it via the save result. We
- *  no longer rest on this color in the live reconcile path (would have
- *  caused grey dots while typing fast), but legacy reads still need the
- *  sentinel to detect "not yet resolved". */
+ *  the next debounced save canonicalizes it via the save result. The
+ *  live reconcile path does not rely on this color (it would cause grey
+ *  dots while typing fast), but other reads need the sentinel to detect
+ *  "not yet resolved". */
 export const PENDING_CHAR_COLOR = "#9aa0a6";
 
 export interface CharacterReconcileOptions {

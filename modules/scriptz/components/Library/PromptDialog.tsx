@@ -18,7 +18,7 @@ export interface PromptDialogProps {
 }
 
 /** Single-field text dialog: script rename and "new folder" from the move
- *  menu (replaces the old BrowserDialogs). Empty values never submit. */
+ *  menu. Empty values never submit. */
 export function PromptDialog(props: PromptDialogProps) {
   const [value, setValue] = createSignal("");
   const [busy, setBusy] = createSignal(false);

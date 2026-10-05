@@ -324,7 +324,7 @@ function StepBlocks() {
   );
 }
 
-/** The mini script from the concept: Enter walks through the blocks, "("
+/** The onboarding mini script: Enter walks through the blocks, "("
  *  in the dialog line opens a parenthetical and ")" leads back into the
  *  dialog; rows appear one after another (static under reduced motion). */
 function PreviewBlocks() {

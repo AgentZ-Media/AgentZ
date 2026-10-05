@@ -1,4 +1,4 @@
-/* Update card in the sidebar footer (concept `.upd`). Sits on the dark
+/* Update card in the sidebar footer (`.upd`). Sits on the dark
    sidebar, so it reads the --side-* tokens. */
 .upd {
   width: 100%;

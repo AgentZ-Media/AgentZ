@@ -15,7 +15,7 @@ paths:
 
 Jede App hat Tags `<app-id>-v<semver>` und einen eigenen Update-Kanal, den
 Zeiger-Release `<app-id>-latest`. Kein App-Release wird GitHubs „Latest"
-(dort steht historisch noch `v0.8.4`). Alle Apps teilen den Updater-Schlüssel
+(dort steht `v0.8.4` und bleibt stehen). Alle Apps teilen den Updater-Schlüssel
 (GitHub-Secrets `TAURI_SIGNING_PRIVATE_KEY`, optional `..._PASSWORD`); nie
 ausgeben oder committen, außerhalb des Repos gesichert halten.
 
@@ -105,8 +105,9 @@ für Nightlies zusätzlich `.../<app>-nightly/latest.json` (abgeleitet in
 `crates/agentz-desktop/src/updates.rs`).
 Die Apps sind nicht notarisiert bzw. codesigniert: macOS braucht beim ersten
 Start `xattr -cr "/Applications/<Produkt>.app"`, Windows zeigt SmartScreen.
-Der Install-Footer erklärt beides. ScriptZ 0.8.4 und älter nutzen noch den
-alten Kanal und brauchen einmal den aktuellen Installer aus `scriptz-latest`.
+Der Install-Footer erklärt beides. Installationen von ScriptZ 0.8.4 und älter
+prüfen einen anderen Update-Kanal und brauchen einmal den aktuellen Installer
+aus `scriptz-latest`.
 
 Neuer Windows-Rechner: Node 24, pnpm laut `packageManager`, Rust Stable MSVC,
 Visual Studio Build Tools (Desktop-C++, Windows SDK), WebView2.

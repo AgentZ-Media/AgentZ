@@ -7,7 +7,7 @@ import "./UpdateIndicator.css";
 const MARK = "\u0000";
 
 /**
- * Update card at the bottom of the sidebar (concept `.upd`):
+ * Update card at the bottom of the sidebar (`.upd`):
  * "v0.9.0 ist bereit · Neu starten". Hidden while nothing is pending.
  * Background polling is started by the desktop host, not here, so hiding the
  * sidebar doesn't stop the update check.

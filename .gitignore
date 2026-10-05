@@ -32,3 +32,10 @@ pnpm-debug.log*
 # Exception: project rules are shared and belong in the repo
 !.claude/rules/
 !.claude/rules/**
+
+# Plans, concepts, mockups and variant showcases stay local, never committed
+docs/plans/
+docs/redesign/
+docs/agent/
+*.plan.md
+PLAN*.md

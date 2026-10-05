@@ -43,7 +43,7 @@ export interface TopBarProps {
   peek?: { onExpand(): void; onClose(): void };
 }
 
-/** Top bar of the script screen (concept `#tpl-bar`). Back and forward
+/** Top bar of the script screen. Back and forward
  *  are ⌘[ / ⌘] only; the folder crumb leads back to the list. */
 export function TopBar(props: TopBarProps) {
   const openFolder = () => {
@@ -221,8 +221,8 @@ interface TipToggleProps {
 const TIP_WIDTH = 232;
 const TIP_DELAY_MS = 350;
 
-/** Icon toggle with the dark explanatory tooltip from the concept
- *  (`.tg-tip`): bold state line + one sentence on what it does. */
+/** Icon toggle with a dark explanatory tooltip (`.tg-tip`): bold state
+ *  line + one sentence on what it does. */
 function TipToggle(props: TipToggleProps) {
   const [tip, setTip] = createSignal<{ left: number; arrow: number } | null>(null);
   let btnRef: HTMLButtonElement | undefined;

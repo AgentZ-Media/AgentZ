@@ -1,5 +1,5 @@
 /* =========================================================================
-   Script screen - timeline under the paper (concept `.tl*`, `.mini`,
+   Script screen - timeline under the paper (`.tl*`, `.mini`,
    `.lane`, `.z-*`, `.axis`, `.legend`, `.tip`). All positions are
    percentages of the visible time window, set inline by Timeline.tsx.
    Design tokens only; character colours arrive inline (user data).

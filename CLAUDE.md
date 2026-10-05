@@ -52,6 +52,11 @@ zwischen Produkten. Details: [`suite-architecture.md`](.claude/rules/suite-archi
   Nightly-Builds baut der Workflow `nightly.yml` selbst aus `main`.
 - **Regel der Zwei:** Ins Kit kommt nur, was heute produktneutral ist oder ein
   zweites Produkt wirklich braucht.
+- **Keine Pläne im Repo.** Pläne, Konzepte, Mockups und Varianten-Showcases
+  werden nicht committet; sie liegen lokal unter `docs/plans/` (gitignored).
+  Doku, Regeln und Kommentare beschreiben den aktuellen Stand, keine Historie
+  (kein „früher“, „seit“, „nicht mehr“). Release-Historie steht nur in
+  `docs/release-notes/`.
 
 ## Befehle (Repo-Root)
 

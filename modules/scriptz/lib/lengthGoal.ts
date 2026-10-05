@@ -1,4 +1,4 @@
-// Length goal as a target range (docs/feature-laengenziel.md).
+// Length goal as a target range.
 //
 // Resolution order: folder range -> global default range -> none. Both
 // bounds are optional; comparisons run in whole seconds and the delta is

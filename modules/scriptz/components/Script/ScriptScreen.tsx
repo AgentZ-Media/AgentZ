@@ -95,7 +95,7 @@ function errMessage(err: unknown): string {
 }
 
 /**
- * The script screen of the Werkbank shell: top bar, endless paper, timeline
+ * The script screen: top bar, endless paper, timeline
  * and the inspector to the right. The shell mounts it for `route.kind ===
  * "script"`; it may stay mounted across script switches (props change).
  * The list pages mount it as side panel (`peek`); only one of the two

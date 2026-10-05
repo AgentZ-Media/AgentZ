@@ -1,4 +1,4 @@
-/* Onboarding - concept screen "Onboarding" (`.onb*`, `.dl`).
+/* Onboarding (`.onb*`, `.dl`).
    Full-window dark grid (sidebar colour) with the 960x560 split card.
    Demo character colours arrive as --c (data colour); tints are mixed onto
    the paper at 28 % like highlight.ts. */
@@ -28,7 +28,7 @@
 
 .onb-card {
   width: 960px;
-  /* Grows past the concept's 560 px when a step needs more room instead of
+  /* Grows past 560 px when a step needs more room instead of
      clipping the footer; clamps to the window and lets the left column
      scroll only when the window is really small. */
   min-height: min(560px, calc(100vh - 72px));

@@ -5,9 +5,8 @@ export interface ScriptCharacter {
   color: string;
   /** Share of this character's dialog words in the script, 0..1.
    *  Filled in during save in `scripts.ts` via `dialogWordsByCharacter`
-   *  (in `lib/lex.ts`). Optional, because older database
-   *  entries didn't have the field before the upgrade - it's
-   *  backfilled on the next save. */
+   *  (in `lib/lex.ts`). Optional, because stored entries may lack
+   *  the field - it's backfilled on the next save. */
   share?: number;
 }
 
@@ -60,7 +59,7 @@ export interface Folder {
   created_at: number;
   updated_at: number;
   script_count: number;
-  /** Target runtime range in whole seconds (see docs/feature-laengenziel.md).
+  /** Target runtime range in whole seconds.
    *  null = bound not set. When both are set, min < max. */
   length_min_sec: number | null;
   length_max_sec: number | null;

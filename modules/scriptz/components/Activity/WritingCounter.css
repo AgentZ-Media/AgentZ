@@ -1,6 +1,5 @@
-/* Writing counter in the (always dark) sidebar footer - concept
-   `.goal-txt` / Bausteine `.wc`. Uses the --side-* tokens so it stays
-   readable on the sidebar in both themes. */
+/* Writing counter in the (always dark) sidebar footer. Uses the
+   --side-* tokens so it stays readable on the sidebar in both themes. */
 
 .wcount {
   flex: 1;

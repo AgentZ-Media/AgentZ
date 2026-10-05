@@ -7,8 +7,7 @@ import { dismissOnDialog } from "@agentz/kit/ui";
 /**
  * Floating menu in the design-system look (`.menu` / `.menu-it`). Used for
  * row context menus, the "⋯" buttons, the sort / grouping pickers and the
- * sidebar folder menu. Moved here from `Browser/ScriptContextMenu` with the
- * same item shape plus a few presentational extras.
+ * sidebar folder menu.
  */
 export interface ContextMenuItem {
   label: string;
@@ -17,7 +16,7 @@ export interface ContextMenuItem {
   disabled?: boolean;
   /** Presence of `children` turns the row into a submenu trigger. */
   children?: ContextMenuItem[];
-  /** Kept for API compatibility with the old browser menu. */
+  /** Optional; `children` alone already makes the row a submenu trigger. */
   hasSubmenu?: boolean;
   /** Leading icon from the design set, or any element (e.g. a stage glyph). */
   icon?: IconName | JSX.Element;
@@ -142,7 +141,7 @@ export function ContextMenu(props: ContextMenuProps) {
   );
 }
 
-/** Back-compat name of the old browser component. */
+/** Alias of `ContextMenu`. */
 export const ScriptContextMenu = ContextMenu;
 
 function ItemIcon(props: { icon: IconName | JSX.Element | undefined }) {

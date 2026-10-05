@@ -1,5 +1,4 @@
-/* Settings dialog - concept screen "Einstellungen" (`.set*`, `.srow`,
-   `.num-f`, `.rng-f`, `.goals`). Rows, switches, segmented controls and
+/* Settings dialog (`.set*`). Rows, switches, segmented controls and
    number fields come from @agentz/design/components.css. */
 
 .dlg.set {

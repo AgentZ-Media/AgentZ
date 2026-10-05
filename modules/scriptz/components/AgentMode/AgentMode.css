@@ -1,7 +1,7 @@
 /* =========================================================================
    Agent mode: top bar, start screen, conversation, draft panel (paper)
-   and the finish dialog. Visual reference: docs/agent/agent-modus.html.
-   Design tokens only; character colours arrive inline as --char.
+   and the finish dialog. Design tokens only; character colours arrive
+   inline as --char.
    ========================================================================= */
 
 .am-page {

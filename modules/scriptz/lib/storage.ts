@@ -78,8 +78,8 @@ export interface ConvertIdeaInput {
   ideaId: string;
   folderId?: string | null;
   /** If true, the idea's notes are seeded as the first action block of the
-   *  new script. Default FALSE since the Werkbank redesign: the notes stay
-   *  on the idea and the inspector shows them under "Aus der Idee". */
+   *  new script. Default FALSE: the notes stay on the idea and the
+   *  inspector shows them under "Aus der Idee". */
   notesAsAction?: boolean;
 }
 

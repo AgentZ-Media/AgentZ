@@ -6,7 +6,7 @@ import { ScriptzDialogNode } from "./ScriptzDialogNode";
 import { ScriptzParentheticalNode } from "./ScriptzParentheticalNode";
 
 // Four block types: Action, Character, Dialog, Parenthetical. The retired
-// types (camera, caption, sfx) have no node class anymore - stored content
+// types (camera, caption, sfx) have no node class - stored content
 // is converted to action by lib/legacyBlocks.ts before Lexical parses it.
 
 export {

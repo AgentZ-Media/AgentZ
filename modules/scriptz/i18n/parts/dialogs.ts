@@ -1,8 +1,7 @@
-// i18n strings for the redesign area "dialogs" (package E: ideas page,
-// quick capture, export, settings, onboarding, writing counter + activity).
-// Kept in its own file so the redesign work streams can extend the catalog
-// without touching the same file. German is canonical; the English map is
-// type-checked against it.
+// i18n strings for the area "dialogs" (ideas page, quick capture, export,
+// settings, onboarding, writing counter + activity). Kept in its own file
+// so areas can extend the catalog without touching the same file. German
+// is canonical; the English map is type-checked against it.
 
 export const dialogsDe = {
   // ---------- ideas page ----------

@@ -1,4 +1,4 @@
-// Shared, reactive library data for the Werkbank shell.
+// Shared, reactive library data for the shell.
 //
 // The sidebar (counts), the scripts page (groups, week line), the command
 // palette (title matches) and the shell itself (nav reconcile) all need the

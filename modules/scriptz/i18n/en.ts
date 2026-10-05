@@ -27,7 +27,7 @@ export const en: Record<keyof typeof de, string> = {
   "block.dialog": "Dialog",
   "block.parenthetical": "Paren.",
 
-  // ---------- script stages (Werkbank pipeline) ----------
+  // ---------- script stages (pipeline) ----------
   "stage.idea": "Idea",
   "stage.writing": "Writing",
   "stage.ready": "Ready to shoot",
@@ -256,7 +256,7 @@ export const en: Record<keyof typeof de, string> = {
   "error.scriptz.missingCharacters": "Field `script.characters` is missing or not an array.",
   "error.scriptz.invalidCharacter": "script.characters[{index}] has invalid name/color fields.",
 
-  // ---------- redesign parts ----------
+  // ---------- area catalogs (parts/) ----------
   ...shellEn,
   ...scriptEn,
   ...dialogsEn,

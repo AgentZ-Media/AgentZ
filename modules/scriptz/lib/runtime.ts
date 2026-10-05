@@ -1,12 +1,10 @@
-// Runtime estimate - one source for the editor rail and the browser overview.
+// Runtime estimate - one source for every display of a script's runtime.
 //
-// Previously there were two places that calculated differently:
-// the rail summed only dialog words and added 2s per action block; the
-// overview divided the TOTAL word count (incl. character names,
-// parentheticals, captions, SFX) by the same WPM and therefore
-// systematically overestimated the runtime. This file defines the formula
-// once, scripts.ts persists the two input values on save, and
-// both displays call `runtimeSeconds` / `formatRuntime`.
+// Only dialog words count against the WPM, plus 2 s per action block;
+// dividing the TOTAL word count (incl. character names, parentheticals)
+// would systematically overestimate the runtime. This file defines the
+// formula once, scripts.ts persists the two input values on save, and
+// every display calls `runtimeSeconds` / `formatRuntime`.
 //
 // WPM stays a live setting - it is NOT persisted, so a setting change takes
 // effect everywhere immediately without re-saving every script.

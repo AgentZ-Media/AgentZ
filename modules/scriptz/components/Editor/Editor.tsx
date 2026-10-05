@@ -147,9 +147,9 @@ export function Editor(props: EditorProps) {
     let loaded = false;
     if (props.initialContentJson) {
       try {
-        // Retired block types (camera, caption, sfx) have no
-        // node class anymore - convert them to action before parsing, or
-        // Lexical would reject the whole state.
+        // Retired block types (camera, caption, sfx) have no node
+        // class - convert them to action before parsing, or Lexical would
+        // reject the whole state.
         const { json } = normalizeLegacyContent(props.initialContentJson);
         const state = editor.parseEditorState(json);
         editor.setEditorState(state);
@@ -171,8 +171,8 @@ export function Editor(props: EditorProps) {
           props.onParseError(props.initialContentJson);
           return;
         }
-        // No parent handler? Fall through to the historical behaviour
-        // (seed empty) so the editor at least functions — but log loudly.
+        // No parent handler? Fall back to seeding an empty state so the
+        // editor at least functions — but log loudly.
       }
     }
     if (!loaded) {
