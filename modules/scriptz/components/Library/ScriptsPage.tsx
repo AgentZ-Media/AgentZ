@@ -256,7 +256,7 @@ export function ScriptsPage() {
       ? list.sort((a, b) => localeCompare(a.title, b.title))
       : list.sort((a, b) => b.created_at - a.created_at);
   });
-  /** The inbox list shows its ideas as the first group. */
+  /** The inbox list shows its ideas below the stage groups. */
   const inboxIdeas = () => (isInbox() ? scopeIdeas() : []);
 
   /** Board: the ideas, then every stage in pipeline order (the inbox
@@ -955,14 +955,6 @@ export function ScriptsPage() {
               <Show when={selectMode() && selectableIds().length > 0}>
                 <SelectAllLine state={allState()} count={selectableIds().length} onToggle={toggleAll} />
               </Show>
-              <Show when={inboxIdeas().length > 0}>
-                <InboxIdeas
-                  ideas={inboxIdeas()}
-                  closed={ideasClosed()}
-                  canCollapse={!needle()}
-                  onToggle={() => libraryPrefs.toggleCollapsed(collapseKey("ideas"))}
-                />
-              </Show>
               <For each={blocks()}>
                 {(block) => (
                   <Switch>
@@ -1031,13 +1023,22 @@ export function ScriptsPage() {
                   </Switch>
                 )}
               </For>
-
               <Show when={hasMore()}>
                 <div class="lib-more">
                   <button type="button" class="btn ghost" onClick={() => setLimit((n) => n + PAGE_SIZE)}>
                     {t("browser.loadMore", { n: Math.min(PAGE_SIZE, sorted().length - limit()) })}
                   </button>
                 </div>
+              </Show>
+
+              {/* Work in progress first, the (often long) idea list below it. */}
+              <Show when={inboxIdeas().length > 0}>
+                <InboxIdeas
+                  ideas={inboxIdeas()}
+                  closed={ideasClosed()}
+                  canCollapse={!needle()}
+                  onToggle={() => libraryPrefs.toggleCollapsed(collapseKey("ideas"))}
+                />
               </Show>
 
               <Show when={contentHits().length > 0}>

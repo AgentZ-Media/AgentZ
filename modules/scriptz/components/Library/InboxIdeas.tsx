@@ -26,7 +26,7 @@ export function openIdea(idea: Idea): void {
   void navStore.openIdeas(idea.folder_id);
 }
 
-/** "Ideen" group of the inbox: every open idea as a list row, above the
+/** "Ideen" group of the inbox: every open idea as a list row, below the
  *  scripts that are still in progress. */
 export function InboxIdeas(props: {
   ideas: Idea[];

@@ -295,12 +295,12 @@ export function ScriptScreen(props: ScriptScreenProps) {
   const focus = () => !isPeek() && uiStore.focusMode();
   /** The agent chat takes the inspector's place while it is open. Never in
    *  the peek panel: the agent belongs to the full-size editor. */
-  const agentVisible = () => !isPeek() && agentStore.available() && !focus() && agentUi.chatOpen();
+  const agentVisible = () => !isPeek() && agentStore.available() && !focus() && agentUi.chatOpen(props.scriptId);
   const inspectorVisible = () =>
     !isPeek() && !focus() && !parseError() && !agentVisible() && uiStore.inspectorOpen() && (!narrow() || overlayArmed());
   const toggleInspector = () => {
     if (agentVisible()) {
-      agentUi.setChatOpen(false);
+      agentUi.setChatOpen(props.scriptId, false);
       if (!uiStore.inspectorOpen()) uiStore.toggleInspector();
       setOverlayArmed(true);
       return;
@@ -575,7 +575,7 @@ export function ScriptScreen(props: ScriptScreenProps) {
                   onToggleInspector={toggleInspector}
                   agentAvailable={agentStore.available()}
                   agentOn={agentVisible()}
-                  onToggleAgent={() => agentUi.toggleChat()}
+                  onToggleAgent={() => agentUi.toggleChat(props.scriptId)}
                   onExport={() => uiStore.openExport(s().id)}
                   peek={props.peek}
                 />
@@ -687,7 +687,7 @@ export function ScriptScreen(props: ScriptScreenProps) {
 
       <Show when={current() && agentVisible()}>
         <div class="ss-agent-wrap">
-          <ChatPanel scriptId={props.scriptId} colorOf={colorOf} onClose={() => agentUi.setChatOpen(false)} />
+          <ChatPanel scriptId={props.scriptId} colorOf={colorOf} onClose={() => agentUi.setChatOpen(props.scriptId, false)} />
         </div>
       </Show>
 

@@ -48,7 +48,7 @@ export function getScriptzShortcuts(): ShortcutDef[] {
       enabled: hasScript, run: () => uiStore.toggleInspector(),
     }),
     entry("agent", "agent.shortcut", ["Mod+L"], "app", {
-      matches: letter("l"), enabled: () => hasScript() && agentStore.available(), run: () => agentUi.toggleChat(),
+      matches: letter("l"), enabled: () => hasScript() && agentStore.available(), run: () => { const id = navStore.activeScriptId(); if (id) agentUi.toggleChat(id); },
     }),
     entry("timeline", "prefs.shortcuts.timeline", ["Mod+J"], "app", {
       matches: letter("j"), enabled: hasEditor, run: () => uiStore.toggleTimeline(),

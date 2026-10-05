@@ -1,16 +1,15 @@
 import { createSignal } from "solid-js";
-import { getKvStore, type KvStore } from "@agentz/kit/platform";
-import { createStatePersistence } from "@agentz/kit/stores";
 
 /**
- * UI state of the agent: chat panel visibility (persisted in its own
- * app_state key, so `ui.layout` keeps its published JSON form), the agent
+ * UI state of the agent: which scripts have the chat open, the agent
  * onboarding, the memory dialog and requests from the editor's context menu.
+ *
+ * The chat starts closed in every script and only opens on request. It is
+ * remembered per script for the session, so switching scripts closes it and
+ * coming back restores it. Nothing is persisted.
  */
 
-const PANEL_KEY = "agent.chat_open";
-
-const [chatOpen, setChatOpen] = createSignal(false);
+const [openChats, setOpenChats] = createSignal<ReadonlySet<string>>(new Set());
 const [onboardingOpen, setOnboardingOpen] = createSignal(false);
 /** First step shown when the onboarding opens (2 = personality only). */
 const [onboardingStep, setOnboardingStep] = createSignal(0);
@@ -25,16 +24,17 @@ export interface ChatRequest {
 }
 const [request, setRequest] = createSignal<ChatRequest | null>(null);
 
-let persistence: ReturnType<typeof createStatePersistence> | undefined;
-
 export const agentUi = {
-  chatOpen,
-  setChatOpen(open: boolean) {
-    setChatOpen(open);
-    persistence?.schedule(open ? "1" : "0");
+  chatOpen: (scriptId: string) => openChats().has(scriptId),
+  setChatOpen(scriptId: string, open: boolean) {
+    if (openChats().has(scriptId) === open) return;
+    const next = new Set(openChats());
+    if (open) next.add(scriptId);
+    else next.delete(scriptId);
+    setOpenChats(next);
   },
-  toggleChat() {
-    agentUi.setChatOpen(!chatOpen());
+  toggleChat(scriptId: string) {
+    agentUi.setChatOpen(scriptId, !agentUi.chatOpen(scriptId));
   },
   onboardingOpen,
   onboardingStep,
@@ -46,7 +46,7 @@ export const agentUi = {
   request,
   /** Opens the chat and hands it a message (context menu). */
   ask(next: ChatRequest) {
-    agentUi.setChatOpen(true);
+    agentUi.setChatOpen(next.scriptId, true);
     setRequest(next);
   },
   takeRequest(scriptId: string): ChatRequest | null {
@@ -58,19 +58,10 @@ export const agentUi = {
   anyDialogOpen: () => onboardingOpen() || memoryOpen(),
 };
 
-export function startAgentUiRuntime(kv: KvStore = getKvStore()): () => void {
-  const own = createStatePersistence(kv, PANEL_KEY);
-  persistence = own;
+export function startAgentUiRuntime(): () => void {
+  setOpenChats(new Set<string>());
   setOnboardingOpen(false);
   setMemoryOpen(false);
   setRequest(null);
-  let active = true;
-  void kv.getAppState(PANEL_KEY).then((raw) => {
-    if (active) setChatOpen(raw === "1");
-  }).catch(() => {});
-  return () => {
-    active = false;
-    own.dispose();
-    if (persistence === own) persistence = undefined;
-  };
+  return () => setOpenChats(new Set<string>());
 }

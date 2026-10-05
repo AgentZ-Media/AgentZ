@@ -57,7 +57,7 @@ async function setupScriptz(ctx: ModuleContext): Promise<ModuleRuntime> {
   ctx.onDispose(startLibraryPrefs(ctx.kv));
   ctx.onDispose(startOpenStore(ctx.kv));
   ctx.onDispose(startAgentSettingsRuntime(ctx.kv));
-  ctx.onDispose(startAgentUiRuntime(ctx.kv));
+  ctx.onDispose(startAgentUiRuntime());
   await Promise.all([
     settingsStore.load(), agentSettings.load(), ensureWelcomeContent({ kv: ctx.kv, signal: ctx.signal }), navStore.load(),
     uiStore.load(active), libraryPrefs.load(active),

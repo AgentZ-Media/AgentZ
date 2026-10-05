@@ -135,6 +135,8 @@ Referenz: `docs/agent/screens.html`.
 - **Nur in der großen Skriptansicht.** Im Seitenpanel gibt es weder Chat
   noch Agent-Button noch Rechtsklick-Menü; `Mod+L` hängt an
   `navStore.activeScriptId()`, das nur die große Ansicht setzt.
+  Der Chat startet in jedem Skript geschlossen und merkt sich nur für die
+  Sitzung, in welchen Skripten er offen ist (`agentUi.chatOpen(scriptId)`).
 - **Nur Vorschläge.** `propose_options` liefert 1 bis 3 Optionen, eingefügt
   per Klick über `components/Agent/editorBridge.ts` in die normale
   Lexical-History (⌘Z). Ziele tragen den Text der Zielblöcke als Anker
