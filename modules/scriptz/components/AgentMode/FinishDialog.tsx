@@ -94,7 +94,7 @@ function FinishForm(props: { session: ChatSession; target: FinishTarget; onClose
         folderId: folderId(),
       });
       const chatAlong = takeChat() && !attachedElsewhere();
-      if (chatAlong) await props.session.attachToScript(script.id);
+      if (chatAlong) await props.session.attachToScript(script.id, folderId());
       props.onClose();
       if (open) {
         await navStore.openScript(script.id, name);

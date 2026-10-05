@@ -170,6 +170,7 @@ export const agentModeDe = {
   "agentMode.finish.createOpen": "Anlegen und öffnen",
   "agentMode.finish.created": "„{title}“ angelegt",
   "agentMode.finish.failed": "Das Skript konnte nicht angelegt werden.",
+  "agentMode.loadFailed": "Diese Sitzung konnte nicht geladen werden. Damit nichts überschrieben wird, ist sie gesperrt. Öffne sie später erneut.",
   "agentMode.handoff.created": "Als Skript angelegt: „{title}“",
   "agentMode.handoff.open": "Öffnen",
 
@@ -352,6 +353,7 @@ export const agentModeEn: Record<keyof typeof agentModeDe, string> = {
   "agentMode.finish.createOpen": "Create and open",
   "agentMode.finish.created": "“{title}” created",
   "agentMode.finish.failed": "The script could not be created.",
+  "agentMode.loadFailed": "This session could not be loaded. It is locked so nothing gets overwritten. Open it again later.",
   "agentMode.handoff.created": "Created as a script: “{title}”",
   "agentMode.handoff.open": "Open",
 

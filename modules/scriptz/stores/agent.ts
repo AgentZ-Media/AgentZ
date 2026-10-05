@@ -2,6 +2,7 @@ import { createEffect, createRoot, createSignal, on, type Accessor } from "solid
 import { createStore, produce, reconcile, type SetStoreFunction } from "solid-js/store";
 import { language } from "@agentz/kit/i18n";
 import { registerFlusher } from "@agentz/kit/lib";
+import { t } from "../i18n";
 import { api } from "../lib/api";
 import { scriptStages } from "../lib/stages";
 import type { Folder } from "../lib/types";
@@ -195,8 +196,9 @@ export interface ChatSession {
   discardDraft(slug: string, versionId: string): void;
   /** Records that a draft version became a script. */
   recordHandoff(entry: Omit<Extract<ChatItem, { kind: "handoff" }>, "kind" | "id" | "at">): void;
-  /** Moves the chat to a script (it becomes that script's chat). */
-  attachToScript(scriptId: string): Promise<void>;
+  /** Moves the chat to a script (it becomes that script's chat) and takes
+   *  over the script's folder. */
+  attachToScript(scriptId: string, folderId: string | null): Promise<void>;
   /** The script was deleted for good: a session goes on without it. */
   detachFromScript(): void;
   /** The session's folder was deleted. */
@@ -276,6 +278,9 @@ function createChat(source: ChatSource): ChatSession {
   let epoch = 0;
   // Set before the row is deleted: nothing may write it again.
   let discarded = false;
+  // The saved chat could not be read: writing would replace it with what
+  // little is in memory, so the session stays read-only until reopened.
+  let loadFailed = false;
 
   const loading = (source.kind === "script" ? Promise.resolve(source.record) : getChat(source.chatId)).then((chat) => {
     if (!chat) return;
@@ -287,7 +292,11 @@ function createChat(source: ChatSource): ChatSession {
     // A folder chosen before the saved chat arrived wins.
     if (source.kind !== "session" || source.folderId === undefined) setFolderId(chat.folderId);
     setState("items", reconcile(chat.items));
-  }).catch((error) => console.warn("[agent] loading chat failed", error)).finally(() => {
+  }).catch((error) => {
+    console.warn("[agent] loading chat failed", error);
+    loadFailed = true;
+    push({ kind: "error", id: localId("err"), message: t("agentMode.loadFailed") });
+  }).finally(() => {
     // One live object per chat row; never replace another one.
     if (!byChat.has(chatId())) {
       byChat.set(chatId(), session);
@@ -299,7 +308,7 @@ function createChat(source: ChatSource): ChatSession {
   const write = () => {
     if (saveTimer) clearTimeout(saveTimer);
     saveTimer = null;
-    if (discarded) return;
+    if (discarded || loadFailed) return;
     // An untouched session is not stored (no empty rows in the list).
     if (kind() === "session" && state.items.length === 0 && !record) return;
     const now = Date.now();
@@ -335,6 +344,7 @@ function createChat(source: ChatSource): ChatSession {
   /** The chat row exists before anything points at it (ideas carry the
    *  session as `source_chat_id`, a foreign key). */
   const ensureStored = async () => {
+    if (loadFailed) throw new Error("chat could not be loaded");
     if (saveTimer || !record) write();
     await writes;
     if (writeError) throw writeError;
@@ -473,6 +483,10 @@ function createChat(source: ChatSource): ChatSession {
       // the new message.
       await loading;
       if (!live()) return;
+      if (loadFailed) {
+        setRunning(false);
+        return;
+      }
       if (kind() === "session" && !title()) setTitle(sessionTitleFrom(clean));
       // Quick replies belong to the turn before; answering ends them.
       setState("items", (items) => items.filter((item) => item.kind !== "replies"));
@@ -674,10 +688,12 @@ function createChat(source: ChatSource): ChatSession {
       push({ kind: "handoff", id: localId("handoff"), at: Date.now(), ...entry });
       persist(true);
     },
-    async attachToScript(target) {
+    async attachToScript(target, targetFolder) {
       await loading;
       const previous = scriptId();
       if (previous === target) return;
+      // Session tools and the writing context follow the script's folder.
+      setFolderId(targetFolder);
       if (previous && byScript.get(previous) === session) byScript.delete(previous);
       // The script is new, but a chat opened meanwhile must not compete.
       const other = byScript.get(target);
