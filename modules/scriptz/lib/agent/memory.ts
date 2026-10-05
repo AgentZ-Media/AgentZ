@@ -37,8 +37,10 @@ export const MEMORY_LIMITS = {
 /** Bumps on every write so views (memory page, chat notices) reload. */
 const [memoryVersion, setMemoryVersion] = createSignal(0);
 export { memoryVersion };
+/** Notifies memory consumers after a successful persistence operation. */
 const bump = () => setMemoryVersion((v) => v + 1);
 
+/** Collapses whitespace and normalizes character names for memory scope matching. */
 export function normalizeCharacter(name: string): string {
   return name.trim().replace(/\s+/g, " ").toUpperCase();
 }
@@ -48,14 +50,17 @@ export function relationSubject(a: string, b: string): string {
   return [normalizeCharacter(a), normalizeCharacter(b)].sort().join("|");
 }
 
+/** Normalizes whitespace and caps a fact at the memory context character limit. */
 export function cleanMemoryText(text: string): string {
   return text.replace(/\s+/g, " ").trim().slice(0, MEMORY_LIMITS.entryChars);
 }
 
+/** Lists stored facts through the active adapter for later context selection. */
 export async function listMemory(): Promise<MemoryEntry[]> {
   return getStorageAdapter().agent.listMemory();
 }
 
+/** Loads a single fact by ID, returning null if it no longer exists. */
 export async function getMemoryEntry(id: string): Promise<MemoryEntry | null> {
   return getStorageAdapter().agent.getMemoryEntry(id);
 }
@@ -66,6 +71,7 @@ export interface MemoryScope {
   subject: string | null;
 }
 
+/** Formats the scope included in memory-capacity error messages. */
 function scopeKey(scope: MemoryScope): string {
   return `${scope.kind}:${scope.folderId ?? ""}:${scope.subject ?? ""}`;
 }
@@ -82,6 +88,7 @@ export interface AddMemoryInput extends MemoryScope {
   sourceScriptId?: string | null;
 }
 
+/** Validates a fact and its scope capacity, persists it, then notifies memory consumers. */
 export async function addMemory(input: AddMemoryInput): Promise<MemoryEntry> {
   const content = cleanMemoryText(input.content);
   if (!content) throw new Error("empty memory entry");
@@ -104,6 +111,7 @@ export async function addMemory(input: AddMemoryInput): Promise<MemoryEntry> {
   return entry;
 }
 
+/** Validates and updates an existing fact; rejects empty text and missing records. */
 export async function updateMemory(id: string, content: string): Promise<MemoryEntry> {
   const clean = cleanMemoryText(content);
   if (!clean) throw new Error("empty memory entry");
@@ -115,6 +123,7 @@ export async function updateMemory(id: string, content: string): Promise<MemoryE
   return entry;
 }
 
+/** Deletes a fact by ID and notifies consumers after the adapter succeeds. */
 export async function deleteMemory(id: string): Promise<void> {
   await getStorageAdapter().agent.deleteMemory(id);
   bump();
@@ -126,6 +135,7 @@ export async function restoreMemory(entry: MemoryEntry): Promise<void> {
   bump();
 }
 
+/** Clears facts and learned-script markers, preserves chats, then notifies consumers. */
 export async function clearMemory(): Promise<void> {
   await getStorageAdapter().agent.clearMemory();
   bump();

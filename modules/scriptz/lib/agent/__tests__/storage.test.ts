@@ -49,6 +49,7 @@ afterEach(() => {
   database.close();
 });
 
+/** Builds a persisted-chat fixture with explicit overrides for recovery and scope cases. */
 const chat = (overrides: Partial<ChatRecord> = {}): ChatRecord => ({
   id: "chat", scriptId: "script", provider: "codex", threadId: "thread", createdAt: 10, updatedAt: 10,
   items: [{ kind: "user", id: "user", text: "Remember this" }], ...overrides,

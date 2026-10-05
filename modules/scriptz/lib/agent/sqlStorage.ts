@@ -16,6 +16,7 @@ interface ChatRow {
 
 const KNOWN_KINDS = new Set(["user", "assistant", "thinking", "tool", "search", "proposal", "claims", "memory", "blocked", "error", "interrupted"]);
 
+/** Recovers known chat item kinds and clears transient running states after a restart. */
 function parseItems(raw: string): ChatItem[] {
   try {
     const parsed: unknown = JSON.parse(raw);
@@ -34,6 +35,7 @@ function parseItems(raw: string): ChatItem[] {
   }
 }
 
+/** Maps a persisted chat row to rendered history with recovered transient UI state. */
 function rowToChat(row: ChatRow): ChatRecord {
   return {
     id: row.id,
@@ -46,6 +48,7 @@ function rowToChat(row: ChatRow): ChatRecord {
   };
 }
 
+/** Loads the newest chat in a script scope, including the null scope for unassigned chats. */
 async function latestChat(scriptId: string | null): Promise<ChatRecord | null> {
   const db = await getDb();
   const rows = await db.select<ChatRow[]>(
@@ -55,6 +58,7 @@ async function latestChat(scriptId: string | null): Promise<ChatRecord | null> {
   return rows[0] ? rowToChat(rows[0]) : null;
 }
 
+/** Upserts chat content while retaining the original script, provider and creation time. */
 async function saveChat(chat: ChatRecord): Promise<void> {
   const db = await getDb();
   await db.execute(
@@ -65,12 +69,14 @@ async function saveChat(chat: ChatRecord): Promise<void> {
   );
 }
 
+/** Reads the content fingerprint last learned for this script, or null when absent. */
 async function learnedHash(scriptId: string): Promise<string | null> {
   const db = await getDb();
   const rows = await db.select<{ content_hash: string }[]>("SELECT content_hash FROM agent_learned WHERE script_id = $1", [scriptId]);
   return rows[0]?.content_hash ?? null;
 }
 
+/** Upserts the learned fingerprint and records the current local completion time. */
 async function markLearned(scriptId: string, hash: string): Promise<void> {
   const db = await getDb();
   await db.execute(
@@ -95,6 +101,7 @@ interface MemoryRow {
 const KINDS: readonly MemoryKind[] = ["global", "folder", "character", "relation"];
 const SOURCES: readonly MemorySource[] = ["chat", "script", "user"];
 
+/** Maps a stored fact to the public shape, retaining legacy fallbacks for unknown enum values. */
 function rowToEntry(row: MemoryRow): MemoryEntry {
   return {
     id: row.id,
@@ -109,6 +116,7 @@ function rowToEntry(row: MemoryRow): MemoryEntry {
   };
 }
 
+/** Lists all facts in scope and creation order for deterministic context assembly. */
 async function listMemory(): Promise<MemoryEntry[]> {
   const db = await getDb();
   const rows = await db.select<MemoryRow[]>(
@@ -117,12 +125,14 @@ async function listMemory(): Promise<MemoryEntry[]> {
   return rows.map(rowToEntry);
 }
 
+/** Loads a fact by its stable ID without creating a replacement for missing records. */
 async function getMemoryEntry(id: string): Promise<MemoryEntry | null> {
   const db = await getDb();
   const rows = await db.select<MemoryRow[]>("SELECT * FROM agent_memory WHERE id = $1", [id]);
   return rows[0] ? rowToEntry(rows[0]) : null;
 }
 
+/** Counts an exact scope using null-safe folder and subject comparisons. */
 async function countMemoryScope(scope: MemoryScope): Promise<number> {
   const db = await getDb();
   const rows = await db.select<{ n: number }[]>(
@@ -133,6 +143,7 @@ async function countMemoryScope(scope: MemoryScope): Promise<number> {
   return rows[0]?.n ?? 0;
 }
 
+/** Inserts a prevalidated fact with its caller-supplied identity and timestamps. */
 async function insertMemory(entry: MemoryEntry): Promise<void> {
   const db = await getDb();
   await db.execute(
@@ -142,6 +153,7 @@ async function insertMemory(entry: MemoryEntry): Promise<void> {
   );
 }
 
+/** Updates only text and modification time; reports whether a matching row existed. */
 async function updateMemory(id: string, content: string, updatedAt: number): Promise<boolean> {
   const db = await getDb();
   const result = await db.execute(
@@ -151,11 +163,13 @@ async function updateMemory(id: string, content: string, updatedAt: number): Pro
   return result.rowsAffected > 0;
 }
 
+/** Deletes a fact if present; deleting a missing ID is a no-op. */
 async function deleteMemory(id: string): Promise<void> {
   const db = await getDb();
   await db.execute("DELETE FROM agent_memory WHERE id = $1", [id]);
 }
 
+/** Replaces a fact with its exact prior fields and timestamps for undo. */
 async function restoreMemory(entry: MemoryEntry): Promise<void> {
   const db = await getDb();
   await db.execute(
@@ -165,6 +179,7 @@ async function restoreMemory(entry: MemoryEntry): Promise<void> {
   );
 }
 
+/** Clears facts, then learned markers in separate statements; chat history is retained. */
 async function clearMemory(): Promise<void> {
   const db = await getDb();
   await db.execute("DELETE FROM agent_memory");

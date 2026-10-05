@@ -18,6 +18,7 @@ let db: SQLiteDatabase;
 let tempDir: string;
 let dbPath: string;
 
+/** Builds the published pre-tracking schema with foreign-key behavior enabled. */
 function migrateLegacy() {
   db.exec("PRAGMA foreign_keys = ON");
   for (const file of readdirSync(migrations).filter((name) => /^00[1-8]_.*\.sql$/.test(name)).sort()) {
@@ -25,6 +26,7 @@ function migrateLegacy() {
   }
 }
 
+/** Seeds each tracked content type plus settings and UI state excluded from the feed. */
 function seedContent() {
   db.exec(`
     INSERT INTO folders VALUES ('folder', 'Ideas', 1, 2, 15, 60);
@@ -42,6 +44,7 @@ function seedContent() {
   `);
 }
 
+/** Captures all durable content rows to detect unintended migration rewrites. */
 function contentSnapshot() {
   return Object.keys(CONTENT_ENTITIES).map((table) => db.prepare(`SELECT * FROM ${table}`).all());
 }

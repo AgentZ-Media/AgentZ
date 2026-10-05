@@ -19,6 +19,7 @@ interface ChangeRow {
 }
 
 export const sqlLocalChanges: LocalChangeStore = {
+  /** Reads the persisted database identity; fails if migration 009 has not completed. */
   async getReplicaId() {
     const db = await getDb();
     const rows = await db.select<{ replica_id: string }[]>(
@@ -28,6 +29,8 @@ export const sqlLocalChanges: LocalChangeStore = {
     return rows[0].replica_id;
   },
 
+  /** Reads a bounded page of markers and current payloads from one SQLite snapshot.
+   * Rejects invalid paging arguments or inconsistent tracking data; never advances a checkpoint. */
   async readChanges({ afterSequence = 0, limit = 100 } = {}) {
     if (!Number.isSafeInteger(afterSequence) || afterSequence < 0) {
       throw new Error("Invalid local change cursor");

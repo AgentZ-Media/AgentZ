@@ -135,6 +135,34 @@ importierte Skripte werden über ihre normalen Schreibwege erfasst.
 
 ## Prüfung
 
+### Ausführung und Wiederanlauf der Migration
+
+Die in `Cargo.lock` gebundenen Versionen sind `tauri-plugin-sql 2.4.0` und
+`sqlx-sqlite 0.8.6`. Der SQLite-Migrator (`sqlx-sqlite/src/migrate.rs`,
+`Migrate::apply`) führt das gesamte Migrationsskript und den erfolgreichen
+Versionsvermerk in `_sqlx_migrations` in **derselben Transaktion** aus. Erst
+danach wird committed. Ein Fehler oder Prozessabbruch vor dem Commit lässt
+somit keinen erfolgreich verbuchten Teilstand der Migration zurück. Beim
+nächsten App-Start kann die noch nicht verbuchte Migration erneut laufen;
+nach erfolgreichem Commit wird sie anhand von Version und Prüfsumme erkannt.
+Die anschließend separat geschriebene Ausführungsdauer ist nur Diagnosemetadatum.
+
+Das SQL-Plugin veröffentlicht den Pool sowohl beim Vorladen als auch im
+`load`-Command erst nach erfolgreichem `migrator.run`. Reguläre App-Zugriffe
+erhalten daher keinen Pool mitten in der Installation. SQLite serialisiert
+Schreibtransaktionen; zusätzlich verwendet der Desktop-Host das
+Single-Instance-Plugin. Das ist keine Freigabe für parallele externe
+Datenbankwerkzeuge während eines Upgrades. Nach einem fehlgeschlagenen Laden
+ist ein App-Neustart der vorgesehene Wiederanlauf, kein erneutes `load` im
+selben Prozess: Das Plugin entnimmt die Migrationen vor ihrer Ausführung aus
+seiner internen Registrierung.
+
+Diese Einordnung beruht auf der Prüfung des gebundenen Abhängigkeitscodes.
+Die unten genannten SQLite-Tests prüfen Daten und Trigger; sie simulieren
+keinen Prozessabbruch des Tauri-Hosts.
+
+### Automatisierte Abdeckung
+
 Integrationstests führen die echten Migrationen in isolierten SQLite-Datenbanken
 aus. Sie prüfen die Übernahme bestehender Inhalte, vollständige Tabellen- und
 Spaltenabdeckung, Änderungsseiten, Neustarts, wiederholtes Speichern, Undo,

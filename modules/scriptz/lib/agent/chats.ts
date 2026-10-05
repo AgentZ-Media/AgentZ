@@ -31,18 +31,22 @@ export interface ChatRecord {
   updatedAt: number;
 }
 
+/** Loads the most recently updated chat for a script, or the unassigned scope when null. */
 export async function latestChat(scriptId: string | null): Promise<ChatRecord | null> {
   return getStorageAdapter().agent.latestChat(scriptId);
 }
 
+/** Persists rendered chat state through the active adapter; callers coordinate flush ordering. */
 export async function saveChat(chat: ChatRecord): Promise<void> {
   return getStorageAdapter().agent.saveChat(chat);
 }
 
+/** Returns the last learned content hash, or null when the script has not been learned. */
 export async function learnedHash(scriptId: string): Promise<string | null> {
   return getStorageAdapter().agent.learnedHash(scriptId);
 }
 
+/** Records the content hash only after the caller has completed a learning turn. */
 export async function markLearned(scriptId: string, hash: string): Promise<void> {
   return getStorageAdapter().agent.markLearned(scriptId, hash);
 }

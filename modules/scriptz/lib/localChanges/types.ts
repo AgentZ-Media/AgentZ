@@ -28,6 +28,8 @@ export interface LocalChangePage {
  * uploads data, marks it synchronized, removes tombstones or rewrites content.
  * Settings/UI state never enter this feed. */
 export interface LocalChangeStore {
+  /** Returns the persistent identity of this local database, not an account identity. */
   getReplicaId(): Promise<string>;
+  /** Reads changes after a local cursor; defaults to 100 records, with a maximum of 1000. */
   readChanges(options?: { afterSequence?: number; limit?: number }): Promise<LocalChangePage>;
 }
