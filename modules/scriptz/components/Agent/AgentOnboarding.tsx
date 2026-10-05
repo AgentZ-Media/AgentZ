@@ -1,5 +1,6 @@
 import { For, Match, Show, Switch, createEffect, createMemo, createSignal, onCleanup, type JSX } from "solid-js";
 import { AppMark, DialogFrame, Icon } from "@agentz/kit/ui";
+import { CodexSetupInstructions } from "./CodexSetupInstructions";
 import { t, tPlural, type TranslationKey } from "../../i18n";
 import type { AgentEffort } from "../../lib/agent/types";
 import { agentStore } from "../../stores/agent";
@@ -116,7 +117,7 @@ export function AgentOnboarding() {
   const onKey = (e: KeyboardEvent) => {
     const target = e.target as HTMLElement | null;
     if (target instanceof HTMLInputElement || target instanceof HTMLTextAreaElement || target instanceof HTMLSelectElement) return;
-    if (target instanceof HTMLButtonElement && e.key === "Enter") return;
+    if (target?.closest("button, a") && e.key === "Enter") return;
     if (e.key === "Enter") { e.preventDefault(); next(); }
   };
 
@@ -155,6 +156,9 @@ export function AgentOnboarding() {
             <div class="onb-eyebrow">{t("agent.onb.step", { n: 2, total: steps() })} · {t("agent.onb.codex.eyebrow")}</div>
             <h2 class="onb-h ag-onb-h2">{t("agent.onb.codex.title")}</h2>
             <p class="onb-p">{t("agent.onb.codex.body")}</p>
+            <Show when={agentStore.status().state === "missing" || agentStore.status().state === "logged-out"}>
+              <CodexSetupInstructions install={agentStore.status().state === "missing"} />
+            </Show>
             <Show when={agentStore.status().state === "ready" && agentStore.models().length > 0}>
               <div class="ag-onb-models">
                 <div class="ag-f-lbl">{t("agent.onb.codex.model")}</div>
@@ -328,7 +332,7 @@ function StageCodex() {
             <ChkRow icon="check" title={t("agent.onb.codex.locked")} body={t("agent.onb.codex.lockedBody")} />
           </Match>
           <Match when={status().state === "missing"}>
-            <ChkRow icon="x" bad title={t("agent.state.missing.title")} bodyEl={split(t("agent.state.missing.body", { name: agentSettings.displayName() }))} />
+            <ChkRow icon="x" bad title={t("agent.state.missing.title")} body={t("agent.state.missing.body", { name: agentSettings.displayName() })} />
           </Match>
           <Match when={status().state === "logged-out"}>
             <ChkRow icon="check" title={t("agent.onb.codex.found")} />
