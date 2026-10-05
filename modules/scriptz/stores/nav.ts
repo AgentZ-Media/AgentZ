@@ -16,7 +16,10 @@ export type Route =
   | { kind: "inbox" }
   | { kind: "ideas"; folderId?: string | null }
   | { kind: "script"; scriptId: string }
-  | { kind: "trash" };
+  | { kind: "trash" }
+  /** Agent mode: one conversation (session) by its chat id. A new id is an
+   *  empty session that is stored with its first message. */
+  | { kind: "agent"; chatId: string };
 
 export interface RecentEntry {
   scriptId: string;
@@ -46,7 +49,10 @@ const navigation = createNavStore<Route>({
     if (raw) {
       const parsed = JSON.parse(raw) as { route?: Route; recent?: RecentEntry[] };
       setRecent(Array.isArray(parsed.recent) ? parsed.recent.slice(0, MAX_RECENT) : []);
-      return parsed.route && typeof parsed.route === "object" ? parsed.route : HOME;
+      if (!parsed.route || typeof parsed.route !== "object") return HOME;
+      // An agent route needs its chat id; anything else falls back home.
+      if (parsed.route.kind === "agent" && typeof parsed.route.chatId !== "string") return HOME;
+      return parsed.route;
     }
     const legacy = await kv.getAppState("open_tabs");
     if (!active()) return;
@@ -77,6 +83,15 @@ export const navStore = {
   isScripts: () => navigation.route().kind === "scripts",
   isInbox: () => navigation.route().kind === "inbox",
   isTrash: () => navigation.route().kind === "trash",
+  isAgent: () => navigation.route().kind === "agent",
+  /** Chat id of the agent mode on screen, else null. */
+  activeAgentChatId(): string | null {
+    const current = navigation.route();
+    return current.kind === "agent" ? current.chatId : null;
+  },
+  openAgent(chatId: string): Promise<void> {
+    return navigation.go({ kind: "agent", chatId });
+  },
   openScript(scriptId: string, title?: string): Promise<void> {
     if (title !== undefined) touchRecent(scriptId, title);
     return navigation.go({ kind: "script", scriptId });

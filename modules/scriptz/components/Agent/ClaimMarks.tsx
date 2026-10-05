@@ -1,7 +1,7 @@
-import { For, Show, createEffect, createMemo, createSignal, onCleanup, type Accessor } from "solid-js";
+import { For, Show, createEffect, createMemo, createSignal, on, onCleanup, type Accessor } from "solid-js";
 import type { LexicalEditor } from "lexical";
 import type { Claim, ClaimVerdict } from "../../lib/agent/proposals";
-import { agentStore } from "../../stores/agent";
+import { agentStore, type ChatSession } from "../../stores/agent";
 import { t } from "../../i18n";
 
 export interface ClaimMarksProps {
@@ -80,9 +80,19 @@ export function findQuoteRange(el: HTMLElement, quote: string): Range | null {
  */
 export function ClaimMarks(props: ClaimMarksProps) {
   const [dots, setDots] = createSignal<Dot[]>([]);
+  // The script's chat, resolved like the panel does (one live object per
+  // chat row, shared with the agent mode).
+  const [chat, setChat] = createSignal<ChatSession | null>(null);
+  createEffect(on(() => [props.scriptId, props.active()] as const, ([scriptId, active]) => {
+    if (!active) { setChat(null); return; }
+    let alive = true;
+    onCleanup(() => { alive = false; });
+    setChat(agentStore.liveSession(scriptId));
+    void agentStore.sessionFor(scriptId).then((session) => { if (alive) setChat(session); });
+  }));
   const claims = createMemo<Claim[]>(() => {
     if (!props.active()) return [];
-    const items = agentStore.session(props.scriptId).items;
+    const items = chat()?.items ?? [];
     for (let i = items.length - 1; i >= 0; i--) {
       const item = items[i];
       if (item.kind === "claims") return item.claims;

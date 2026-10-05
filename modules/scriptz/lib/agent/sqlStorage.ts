@@ -1,47 +1,32 @@
 // Local SQL implementation of agent persistence. No I/O runs on import.
 import { getDb } from "../db";
-import type { ChatItem, ChatRecord } from "./chats";
+import { parseItems, type ChatRecord } from "./chats";
 import type { MemoryEntry, MemoryKind, MemorySource, MemoryScope } from "./memory";
 import type { AgentStorage } from "./storage";
 
 interface ChatRow {
   id: string;
+  kind: string | null;
   script_id: string | null;
   provider: string;
   thread_id: string | null;
+  title: string | null;
+  folder_id: string | null;
   items_json: string;
   created_at: number;
   updated_at: number;
-}
-
-const KNOWN_KINDS = new Set(["user", "assistant", "thinking", "tool", "search", "proposal", "claims", "memory", "blocked", "error", "interrupted"]);
-
-/** Recovers known chat item kinds and clears transient running states after a restart. */
-function parseItems(raw: string): ChatItem[] {
-  try {
-    const parsed: unknown = JSON.parse(raw);
-    if (!Array.isArray(parsed)) return [];
-    return parsed.filter((item): item is ChatItem =>
-      typeof item === "object" && item !== null && KNOWN_KINDS.has((item as { kind?: string }).kind ?? ""),
-    ).map((item) => {
-      // A crash mid-turn must not leave spinners behind.
-      if (item.kind === "assistant") return { ...item, streaming: false };
-      if (item.kind === "thinking") return { ...item, done: true };
-      if ((item.kind === "tool" || item.kind === "search") && item.status === "running") return { ...item, status: "done" as const };
-      return item;
-    });
-  } catch {
-    return [];
-  }
 }
 
 /** Maps a persisted chat row to rendered history with recovered transient UI state. */
 function rowToChat(row: ChatRow): ChatRecord {
   return {
     id: row.id,
+    kind: row.kind === "session" ? "session" : "script",
     scriptId: row.script_id,
     provider: row.provider,
     threadId: row.thread_id,
+    title: row.title,
+    folderId: row.folder_id,
     items: parseItems(row.items_json),
     createdAt: row.created_at,
     updatedAt: row.updated_at,
@@ -58,15 +43,48 @@ async function latestChat(scriptId: string | null): Promise<ChatRecord | null> {
   return rows[0] ? rowToChat(rows[0]) : null;
 }
 
-/** Upserts chat content while retaining the original script, provider and creation time. */
+/** Loads one chat by id. */
+async function getChat(id: string): Promise<ChatRecord | null> {
+  const db = await getDb();
+  const rows = await db.select<ChatRow[]>(`SELECT * FROM agent_chats WHERE id = $1`, [id]);
+  return rows[0] ? rowToChat(rows[0]) : null;
+}
+
+/** Upserts a chat. Kind, provider and creation time stay as first saved; the
+ *  script link may change (a session handed to a script). */
 async function saveChat(chat: ChatRecord): Promise<void> {
   const db = await getDb();
   await db.execute(
-    `INSERT INTO agent_chats (id, script_id, provider, thread_id, items_json, created_at, updated_at)
-     VALUES ($1, $2, $3, $4, $5, $6, $7)
-     ON CONFLICT(id) DO UPDATE SET thread_id = excluded.thread_id, items_json = excluded.items_json, updated_at = excluded.updated_at`,
-    [chat.id, chat.scriptId, chat.provider, chat.threadId, JSON.stringify(chat.items), chat.createdAt, chat.updatedAt],
+    `INSERT INTO agent_chats (id, script_id, provider, thread_id, items_json, created_at, updated_at, kind, title, folder_id)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+     ON CONFLICT(id) DO UPDATE SET script_id = excluded.script_id, thread_id = excluded.thread_id,
+       items_json = excluded.items_json, updated_at = excluded.updated_at,
+       title = excluded.title, folder_id = excluded.folder_id`,
+    [
+      chat.id, chat.scriptId, chat.provider, chat.threadId, JSON.stringify(chat.items),
+      chat.createdAt, chat.updatedAt, chat.kind, chat.title, chat.folderId,
+    ],
   );
+}
+
+/** Deletes a chat; `ideas.source_chat_id` falls back to NULL (migration 010). */
+async function deleteChat(id: string): Promise<void> {
+  const db = await getDb();
+  await db.execute(`DELETE FROM agent_chats WHERE id = $1`, [id]);
+}
+
+/** Sessions with at least one item, newest first; LIKE wildcards in the
+ *  query are escaped. */
+async function listSessions({ limit, offset, query }: { limit: number; offset: number; query: string }): Promise<ChatRecord[]> {
+  const db = await getDb();
+  const pattern = `%${query.replace(/[\\%_]/g, (c) => `\\${c}`)}%`;
+  const rows = await db.select<ChatRow[]>(
+    `SELECT * FROM agent_chats WHERE kind = 'session' AND items_json != '[]'
+       AND ($3 = '' OR title LIKE $4 ESCAPE '\\' OR items_json LIKE $4 ESCAPE '\\')
+     ORDER BY updated_at DESC, id LIMIT $1 OFFSET $2`,
+    [limit, offset, query, pattern],
+  );
+  return rows.map(rowToChat);
 }
 
 /** Reads the content fingerprint last learned for this script, or null when absent. */
@@ -187,7 +205,7 @@ async function clearMemory(): Promise<void> {
 }
 
 export const sqlAgentStorage: AgentStorage = {
-  latestChat, saveChat, learnedHash, markLearned,
+  latestChat, getChat, saveChat, deleteChat, listSessions, learnedHash, markLearned,
   listMemory, getMemoryEntry, countMemoryScope, insertMemory,
   updateMemory, deleteMemory, restoreMemory, clearMemory,
 };

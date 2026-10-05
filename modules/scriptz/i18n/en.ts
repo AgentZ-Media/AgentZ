@@ -7,6 +7,7 @@ import { shellEn } from "./parts/shell";
 import { scriptEn } from "./parts/script";
 import { dialogsEn } from "./parts/dialogs";
 import { agentEn } from "./parts/agent";
+import { agentModeEn } from "./parts/agentMode";
 
 export const en: Record<keyof typeof de, string> = {
   // ---------- units ----------
@@ -260,4 +261,5 @@ export const en: Record<keyof typeof de, string> = {
   ...scriptEn,
   ...dialogsEn,
   ...agentEn,
+  ...agentModeEn,
 };

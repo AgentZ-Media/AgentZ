@@ -14,6 +14,8 @@ const { DatabaseSync } = createRequire(import.meta.url)("node:sqlite") as typeof
 
 const migrations = new URL("../../../../apps/scriptz/src-tauri/migrations/", import.meta.url);
 const migration009 = readFileSync(new URL("009_local_changes.sql", migrations), "utf8");
+const migration010 = readFileSync(new URL("010_agent_sessions.sql", migrations), "utf8");
+const migration011 = readFileSync(new URL("011_track_agent_sessions.sql", migrations), "utf8");
 let db: SQLiteDatabase;
 let tempDir: string;
 let dbPath: string;
@@ -26,6 +28,13 @@ function migrateLegacy() {
   }
 }
 
+/** Applies change tracking and every later migration, in install order. */
+function migrateTracking() {
+  db.exec(migration009);
+  db.exec(migration010);
+  db.exec(migration011);
+}
+
 /** Seeds each tracked content type plus settings and UI state excluded from the feed. */
 function seedContent() {
   db.exec(`
@@ -35,7 +44,8 @@ function seedContent() {
     INSERT INTO ideas (id, title, notes, created_at, script_id, folder_id) VALUES ('idea', 'Idea', 'Note', 1, 'script', 'folder');
     INSERT INTO snapshots VALUES ('snapshot', 'script', '{"root":{}}', 'manual', 3);
     INSERT INTO character_colors VALUES ('Timo', '#e0791f', NULL, 1);
-    INSERT INTO agent_chats VALUES ('chat', 'script', 'codex', 'local-thread', '[{"kind":"user","id":"message","text":"Hello"}]', 1, 2);
+    INSERT INTO agent_chats (id, script_id, provider, thread_id, items_json, created_at, updated_at)
+      VALUES ('chat', 'script', 'codex', 'local-thread', '[{"kind":"user","id":"message","text":"Hello"}]', 1, 2);
     INSERT INTO agent_memory VALUES ('memory', 'character', 'folder', 'TIMO', 'Profile', 'user', 'script', 1, 2);
     INSERT INTO agent_learned VALUES ('script', 'hash', 4);
     INSERT INTO daily_word_log VALUES ('2026-10-05', 42);
@@ -76,6 +86,8 @@ describe("local content change feed", () => {
     const before = contentSnapshot();
     db.exec(migration009);
     expect(contentSnapshot()).toEqual(before);
+    db.exec(migration010);
+    db.exec(migration011);
     expect(db.prepare("SELECT * FROM settings").all()).toEqual([{ key: "language", value: "de" }]);
     expect(db.prepare("SELECT * FROM app_state").all()).toEqual([{ key: "nav.state", value: '{"route":"scripts"}' }]);
     const page = await sqlLocalChanges.readChanges();
@@ -91,18 +103,80 @@ describe("local content change feed", () => {
   });
 
   it("covers every durable content table and every column in the actual schema", () => {
-    const tables = db.prepare("SELECT name FROM sqlite_master WHERE type = 'table' AND name NOT LIKE 'scripts_fts%' AND name NOT IN ('settings','app_state')").all().map((r) => r.name);
+    migrateTracking();
+    const tables = db.prepare("SELECT name FROM sqlite_master WHERE type = 'table' AND name NOT LIKE 'scripts_fts%' AND name NOT IN ('settings','app_state','local_replica','local_changes','sqlite_sequence')").all().map((r) => r.name);
     expect(tables.sort()).toEqual(Object.keys(CONTENT_ENTITIES).sort());
     for (const [table, config] of Object.entries(CONTENT_ENTITIES)) {
       expect(db.prepare(`PRAGMA table_info(${table})`).all().map((r) => r.name).sort()).toEqual([...config.columns].sort());
     }
+    // The desktop host registers every migration file under its number.
     const host = readFileSync(new URL("../src/lib.rs", migrations), "utf8");
-    expect(host).toContain('include_str!("../migrations/009_local_changes.sql")');
-    expect(host).toMatch(/version: 9,[\s\S]*?sql: MIGRATION_009_LOCAL_CHANGES/);
+    for (const file of readdirSync(migrations).filter((name) => name.endsWith(".sql"))) {
+      const version = Number(file.slice(0, 3));
+      const constant = `MIGRATION_${file.replace(/\.sql$/, "").toUpperCase()}`;
+      expect(host).toContain(`include_str!("../migrations/${file}")`);
+      expect(host).toMatch(new RegExp(`version: ${version},[\\s\\S]*?sql: ${constant},`));
+    }
+  });
+
+  it("fires an update marker for a change in any column of every content table", () => {
+    // A column missing from a trigger would silently never sync. New columns
+    // need the trigger recreated (see 011) and CONTENT_ENTITIES extended.
+    migrateTracking();
+    for (const [table, config] of Object.entries(CONTENT_ENTITIES)) {
+      const trigger = db.prepare("SELECT sql FROM sqlite_master WHERE type = 'trigger' AND name = ?").get(`track_${table}_update`);
+      expect(trigger, table).toBeDefined();
+      for (const column of config.columns) {
+        expect(String(trigger!.sql), `${table}.${column}`).toMatch(new RegExp(`OLD\\.${column}( COLLATE BINARY)? IS NOT NEW\\.${column}\\b`));
+      }
+    }
+  });
+
+  it("ends with the same tracking when a development database applied 010 before 009", async () => {
+    seedContent();
+    db.exec(migration010);
+    db.exec("UPDATE agent_chats SET kind = 'session', title = 'Session', script_id = NULL");
+    db.exec(migration009);
+    db.exec(migration011);
+    const triggers = () => db.prepare("SELECT name, sql FROM sqlite_master WHERE type = 'trigger' ORDER BY name").all();
+    const devOrder = triggers();
+    const seeded = await sqlLocalChanges.readChanges();
+    expect(seeded.changes).toHaveLength(9);
+    expect(seeded.changes.find((c) => c.entity === "agent_chats")?.record).toMatchObject({ kind: "session", title: "Session" });
+    db.close();
+    db = new DatabaseSync(join(tempDir, "fresh.db"));
+    migrateLegacy();
+    migrateTracking();
+    expect(devOrder).toEqual(triggers());
+  });
+
+  it("tracks agent-mode sessions and the origin of saved ideas", async () => {
+    seedContent();
+    migrateTracking();
+    const start = (await sqlLocalChanges.readChanges()).nextCursor;
+    const changed = async (after: number) => (await sqlLocalChanges.readChanges({ afterSequence: after })).changes;
+    db.exec("UPDATE agent_chats SET title = 'Named'");
+    expect((await changed(start)).map((c) => c.entity)).toEqual(["agent_chats"]);
+    let cursor = (await sqlLocalChanges.readChanges()).nextCursor;
+    db.exec("UPDATE agent_chats SET folder_id = 'folder'");
+    db.exec("UPDATE agent_chats SET kind = 'session'");
+    expect((await changed(cursor)).find((c) => c.entity === "agent_chats")?.record).toMatchObject({ kind: "session", folder_id: "folder", title: "Named" });
+    db.exec("UPDATE ideas SET source_chat_id = 'chat'");
+    cursor = (await sqlLocalChanges.readChanges()).nextCursor;
+    // Purging the script frees the session (010) instead of deleting it.
+    db.exec("DELETE FROM scripts WHERE id = 'script'");
+    const purge = await changed(cursor);
+    expect(purge.find((c) => c.entity === "agent_chats")).toMatchObject({ operation: "upsert", record: { script_id: null } });
+    cursor = (await sqlLocalChanges.readChanges()).nextCursor;
+    // Deleting the session keeps its ideas and records the cleared origin.
+    db.exec("DELETE FROM agent_chats WHERE id = 'chat'");
+    const removal = await changed(cursor);
+    expect(removal.find((c) => c.entity === "agent_chats")).toMatchObject({ operation: "delete", record: null });
+    expect(removal.find((c) => c.entity === "ideas")?.record).toMatchObject({ source_chat_id: null });
   });
 
   it("keeps an empty fresh install usable and tracks later inserts", async () => {
-    db.exec(migration009);
+    migrateTracking();
     const empty = await sqlLocalChanges.readChanges();
     expect(empty.changes).toEqual([]);
     expect(empty.nextCursor).toBe(0);
@@ -113,7 +187,7 @@ describe("local content change feed", () => {
 
   it("tracks each content type but never settings, UI state or the search index", async () => {
     seedContent();
-    db.exec(migration009);
+    migrateTracking();
     const initial = await sqlLocalChanges.readChanges();
     db.exec(`
       UPDATE scripts SET status = 'ready' WHERE id = 'script';
@@ -139,7 +213,7 @@ describe("local content change feed", () => {
 
   it("coalesces autosaves without copying content or counting unchanged writes", async () => {
     seedContent();
-    db.exec(migration009);
+    migrateTracking();
     const before = await sqlLocalChanges.readChanges();
     const stmt = db.prepare("UPDATE scripts SET title = ? WHERE id = 'script'");
     for (let n = 0; n < 500; n++) stmt.run(`Edit ${n}`);
@@ -153,7 +227,7 @@ describe("local content change feed", () => {
 
   it("retains pending changes, identity and deletion tombstones across restart", async () => {
     seedContent();
-    db.exec(migration009);
+    migrateTracking();
     const cursor = (await sqlLocalChanges.readChanges()).nextCursor;
     db.exec("DELETE FROM scripts WHERE id = 'script'");
     const page = await sqlLocalChanges.readChanges({ afterSequence: cursor });
@@ -169,7 +243,7 @@ describe("local content change feed", () => {
 
   it("captures cascaded memory deletion and idea folder unlinking", async () => {
     seedContent();
-    db.exec(migration009);
+    migrateTracking();
     // Matches the existing folder delete workflow (scripts have RESTRICT).
     db.exec("UPDATE scripts SET folder_id = NULL; DELETE FROM folders WHERE id = 'folder'");
     const page = await sqlLocalChanges.readChanges();
@@ -179,7 +253,7 @@ describe("local content change feed", () => {
 
   it("rolls back a content statement if its change marker cannot be written", async () => {
     seedContent();
-    db.exec(migration009);
+    migrateTracking();
     const before = await sqlLocalChanges.readChanges();
     db.exec("CREATE TRIGGER fail_marker BEFORE INSERT ON local_changes BEGIN SELECT RAISE(ABORT, 'test failure'); END");
     expect(() => db.exec("UPDATE scripts SET title = 'Must not persist'")).toThrow("test failure");
@@ -189,7 +263,7 @@ describe("local content change feed", () => {
 
   it("rolls back content, cascades and sequence changes together", async () => {
     seedContent();
-    db.exec(migration009);
+    migrateTracking();
     const before = await sqlLocalChanges.readChanges();
     db.exec("BEGIN; DELETE FROM scripts; UPDATE character_colors SET override_color = '#ffffff'; ROLLBACK");
     expect(await sqlLocalChanges.readChanges()).toEqual(before);
@@ -197,7 +271,7 @@ describe("local content change feed", () => {
 
   it("reads bounded pages and finds edits made after a page was read", async () => {
     seedContent();
-    db.exec(migration009);
+    migrateTracking();
     const first = await sqlLocalChanges.readChanges({ limit: 2 });
     expect(first.changes).toHaveLength(2);
     const changedEntity = first.changes[0].entity;
@@ -222,7 +296,7 @@ describe("local content change feed", () => {
 
   it("preserves case-insensitive color identity and tracks replace-based memory undo", async () => {
     seedContent();
-    db.exec(migration009);
+    migrateTracking();
     db.exec(`INSERT INTO character_colors (name, override_color, updated_at) VALUES ('TIMO', '#aabbcc', 3)
       ON CONFLICT(name) DO UPDATE SET override_color = excluded.override_color, updated_at = excluded.updated_at`);
     let page = await sqlLocalChanges.readChanges();
@@ -238,7 +312,7 @@ describe("local content change feed", () => {
 
   it("tracks case-only color name edits without creating a second identity", async () => {
     seedContent();
-    db.exec(migration009);
+    migrateTracking();
     const before = await sqlLocalChanges.readChanges();
     db.exec("UPDATE character_colors SET name = 'TIMO' WHERE name = 'Timo'");
     const page = await sqlLocalChanges.readChanges({ afterSequence: before.nextCursor });
@@ -252,7 +326,7 @@ describe("local content change feed", () => {
 
   it("records a changed primary key as old deletion plus new content", async () => {
     seedContent();
-    db.exec(migration009);
+    migrateTracking();
     db.exec("UPDATE ideas SET id = 'renamed' WHERE id = 'idea'");
     const page = await sqlLocalChanges.readChanges();
     expect(page.changes.filter((c) => c.entity === "ideas")).toEqual(expect.arrayContaining([
@@ -263,7 +337,7 @@ describe("local content change feed", () => {
 
   it.each(Object.keys(CONTENT_ENTITIES) as ContentEntity[])("retains tombstones for %s", async (entity) => {
     seedContent();
-    db.exec(migration009);
+    migrateTracking();
     if (entity === "folders") db.exec("UPDATE scripts SET folder_id = NULL");
     db.exec(`DELETE FROM ${entity}`);
     const changes = (await sqlLocalChanges.readChanges()).changes.filter((c) => c.entity === entity);
@@ -272,7 +346,7 @@ describe("local content change feed", () => {
   });
 
   it("rejects invalid cursors and oversized pages", async () => {
-    db.exec(migration009);
+    migrateTracking();
     for (const afterSequence of [-1, 0.1, NaN, Number.MAX_SAFE_INTEGER + 1]) {
       await expect(sqlLocalChanges.readChanges({ afterSequence })).rejects.toThrow("cursor");
     }

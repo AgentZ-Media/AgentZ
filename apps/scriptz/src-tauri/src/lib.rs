@@ -10,6 +10,9 @@ const MIGRATION_006_IDEA_FOLDERS: &str = include_str!("../migrations/006_idea_fo
 const MIGRATION_007_WERKBANK: &str = include_str!("../migrations/007_werkbank.sql");
 const MIGRATION_008_AGENT: &str = include_str!("../migrations/008_agent.sql");
 const MIGRATION_009_LOCAL_CHANGES: &str = include_str!("../migrations/009_local_changes.sql");
+const MIGRATION_010_AGENT_SESSIONS: &str = include_str!("../migrations/010_agent_sessions.sql");
+const MIGRATION_011_TRACK_AGENT_SESSIONS: &str =
+    include_str!("../migrations/011_track_agent_sessions.sql");
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
@@ -66,6 +69,18 @@ pub fn run() {
             version: 9,
             description: "local content change tracking",
             sql: MIGRATION_009_LOCAL_CHANGES,
+            kind: MigrationKind::Up,
+        },
+        Migration {
+            version: 10,
+            description: "agent mode: sessions and idea origin",
+            sql: MIGRATION_010_AGENT_SESSIONS,
+            kind: MigrationKind::Up,
+        },
+        Migration {
+            version: 11,
+            description: "track agent session columns in local changes",
+            sql: MIGRATION_011_TRACK_AGENT_SESSIONS,
             kind: MigrationKind::Up,
         },
     ];

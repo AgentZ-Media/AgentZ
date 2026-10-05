@@ -586,3 +586,41 @@
     display: none;
   }
 }
+
+/* Agent mode entries ("Ideen mit Ida finden", "Mit Ida ausschreiben",
+   ideas saved by the agent). */
+.i-by-agent {
+  display: inline-flex;
+  margin-right: 6px;
+  vertical-align: -3px;
+}
+.fchip.i-agent {
+  gap: 7px;
+  padding-left: 4px;
+  border-color: var(--fg);
+  color: var(--fg);
+}
+.ix-origin {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 22px;
+  padding: 0 8px 0 3px;
+  border: 0;
+  border-radius: var(--r-2);
+  background: var(--fill);
+  color: var(--muted);
+  font: 600 11.5px/1 var(--ui);
+  cursor: pointer;
+}
+.ix-origin:hover {
+  color: var(--fg);
+}
+.btn.ix-agent,
+.btn.i-empty-agent {
+  padding-left: 4px;
+}
+.btn.i-empty-agent {
+  margin-top: 12px;
+}
+

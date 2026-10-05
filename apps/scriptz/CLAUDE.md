@@ -10,9 +10,12 @@ Architektur und Datenfluss: [`scriptz-architecture.md`](../../.claude/rules/scri
 ## Daten schützen
 
 Identifier `de.agent-z.scriptz`, `scriptz.db`, die Migrationen `001` bis
-`008` sowie alle Settings- und `app_state`-Schlüssel sind fix. Neue
+`011` sowie alle Settings- und `app_state`-Schlüssel sind fix. Neue
 Schemaänderungen nur als neue Migration in `src-tauri/migrations/`, registriert
-in `src-tauri/src/lib.rs`, und im `.scriptz`-Import/Export mitdenken.
+in `src-tauri/src/lib.rs`, und im `.scriptz`-Import/Export mitdenken. Neue
+Spalten einer Inhaltstabelle brauchen außerdem neu angelegte Update-Trigger
+des Änderungsfeeds und einen Eintrag in `CONTENT_ENTITIES`
+([`local-storage.md`](../../docs/local-storage.md)).
 
 `pnpm dev:scriptz` nutzt dieselbe Datenbank wie die installierte App. Vor
 Arbeit an Speicher, Migrationen oder Boot sichern (App vorher beenden):

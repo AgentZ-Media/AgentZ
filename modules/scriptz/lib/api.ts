@@ -43,6 +43,7 @@ import {
 import {
   convertIdeaToScript as ideasConvert,
   createIdea as ideasCreate,
+  markIdeaUsed as ideasMarkUsed,
   deleteIdea as ideasDelete,
   restoreIdea as ideasRestore,
   listIdeas as ideasList,
@@ -354,8 +355,11 @@ const sqlBackedAdapter: ScriptzStorage = {
   async listIdeas(): Promise<Idea[]> {
     return ideasList();
   },
-  async createIdea(input: { title: string; notes?: string; folderId?: string | null }): Promise<Idea> {
+  async createIdea(input: { title: string; notes?: string; folderId?: string | null; sourceChatId?: string | null }): Promise<Idea> {
     return ideasCreate(input);
+  },
+  async markIdeaUsed(ideaId: string, scriptId: string): Promise<boolean> {
+    return ideasMarkUsed(ideaId, scriptId);
   },
   async updateIdea(input: { id: string; title?: string; notes?: string }): Promise<Idea> {
     return ideasUpdate(input);

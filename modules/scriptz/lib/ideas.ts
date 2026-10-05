@@ -25,6 +25,7 @@ interface IdeaRow {
   used_at: number | null;
   script_id: string | null;
   folder_id: string | null;
+  source_chat_id: string | null;
 }
 
 function rowToIdea(r: IdeaRow): Idea {
@@ -36,13 +37,14 @@ function rowToIdea(r: IdeaRow): Idea {
     used_at: r.used_at,
     script_id: r.script_id,
     folder_id: r.folder_id,
+    source_chat_id: r.source_chat_id ?? null,
   };
 }
 
 export async function listIdeas(): Promise<Idea[]> {
   const db = await getDb();
   const rows = await db.select<IdeaRow[]>(
-    `SELECT id, title, notes, created_at, used_at, script_id, folder_id
+    `SELECT id, title, notes, created_at, used_at, script_id, folder_id, source_chat_id
      FROM ideas
      ORDER BY created_at DESC`,
   );
@@ -53,21 +55,24 @@ export async function createIdea(input: {
   title: string;
   notes?: string;
   folderId?: string | null;
+  /** Agent session the idea was saved from (agent mode). */
+  sourceChatId?: string | null;
 }): Promise<Idea> {
   const title = input.title.trim();
   if (!title) throw new Error(t("idea.error.emptyTitle"));
   const id = crypto.randomUUID();
   const now = Date.now();
   const folderId = input.folderId ?? null;
+  const sourceChatId = input.sourceChatId ?? null;
   const db = await getDb();
   await db.execute(
-    `INSERT INTO ideas (id, title, notes, created_at, folder_id) VALUES ($1, $2, $3, $4, $5)`,
-    [id, title, input.notes ?? "", now, folderId],
+    `INSERT INTO ideas (id, title, notes, created_at, folder_id, source_chat_id) VALUES ($1, $2, $3, $4, $5, $6)`,
+    [id, title, input.notes ?? "", now, folderId, sourceChatId],
   );
   ideasBus.bump();
   return {
     id, title, notes: input.notes ?? "", created_at: now,
-    used_at: null, script_id: null, folder_id: folderId,
+    used_at: null, script_id: null, folder_id: folderId, source_chat_id: sourceChatId,
   };
 }
 
@@ -86,7 +91,7 @@ export async function updateIdea(input: {
     await db.execute(`UPDATE ideas SET notes = $1 WHERE id = $2`, [input.notes, input.id]);
   }
   const rows = await db.select<IdeaRow[]>(
-    `SELECT id, title, notes, created_at, used_at, script_id, folder_id FROM ideas WHERE id = $1`,
+    `SELECT id, title, notes, created_at, used_at, script_id, folder_id, source_chat_id FROM ideas WHERE id = $1`,
     [input.id],
   );
   if (rows.length === 0) throw new Error(`not found: idea ${input.id}`);
@@ -101,21 +106,22 @@ export async function deleteIdea(id: string): Promise<void> {
 }
 
 /** Puts a deleted idea back exactly as it was (undo of deleteIdea). A
- *  folder or script that is gone by now is dropped from the link instead
- *  of failing the restore. */
+ *  folder, script or agent session that is gone by now is dropped from the
+ *  link instead of failing the restore. */
 export async function restoreIdea(idea: Idea): Promise<void> {
   const db = await getDb();
-  const exists = async (table: "folders" | "scripts", id: string | null) => {
+  const exists = async (table: "folders" | "scripts" | "agent_chats", id: string | null | undefined) => {
     if (!id) return false;
     const rows = await db.select<{ n: number }[]>(`SELECT COUNT(*) AS n FROM ${table} WHERE id = $1`, [id]);
     return (rows[0]?.n ?? 0) > 0;
   };
   const folderId = (await exists("folders", idea.folder_id)) ? idea.folder_id : null;
   const scriptId = (await exists("scripts", idea.script_id)) ? idea.script_id : null;
+  const sourceChatId = (await exists("agent_chats", idea.source_chat_id)) ? idea.source_chat_id ?? null : null;
   await db.execute(
-    `INSERT OR IGNORE INTO ideas (id, title, notes, created_at, used_at, script_id, folder_id)
-     VALUES ($1, $2, $3, $4, $5, $6, $7)`,
-    [idea.id, idea.title, idea.notes ?? "", idea.created_at, idea.used_at, scriptId, folderId],
+    `INSERT OR IGNORE INTO ideas (id, title, notes, created_at, used_at, script_id, folder_id, source_chat_id)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
+    [idea.id, idea.title, idea.notes ?? "", idea.created_at, idea.used_at, scriptId, folderId, sourceChatId],
   );
   ideasBus.bump();
 }
@@ -146,6 +152,19 @@ export async function moveIdea(
   ideasBus.bump();
 }
 
+/** Marks an open idea as used by an existing script (agent mode: a draft
+ *  written for this idea became a script). False when the idea is gone or
+ *  was already used - the script is kept either way. */
+export async function markIdeaUsed(ideaId: string, scriptId: string): Promise<boolean> {
+  const db = await getDb();
+  const res = await db.execute(
+    `UPDATE ideas SET used_at = $1, script_id = $2 WHERE id = $3 AND used_at IS NULL`,
+    [Date.now(), scriptId, ideaId],
+  );
+  ideasBus.bump();
+  return res.rowsAffected === 1;
+}
+
 /** Converts an idea into a new script. The idea is kept
  *  and marked with `used_at` + `script_id`. The caller can optionally
  *  pass a folder. */
@@ -159,7 +178,7 @@ export async function convertIdeaToScript(input: {
 }): Promise<{ idea: Idea; script: ScriptSummary }> {
   const db = await getDb();
   const rows = await db.select<IdeaRow[]>(
-    `SELECT id, title, notes, created_at, used_at, script_id, folder_id FROM ideas WHERE id = $1`,
+    `SELECT id, title, notes, created_at, used_at, script_id, folder_id, source_chat_id FROM ideas WHERE id = $1`,
     [input.ideaId],
   );
   if (rows.length === 0) throw new Error(`not found: idea ${input.ideaId}`);

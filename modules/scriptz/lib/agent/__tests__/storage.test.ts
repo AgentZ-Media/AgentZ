@@ -1,11 +1,11 @@
 // @vitest-environment node
 import { createRequire } from "node:module";
 import type { DatabaseSync as SQLiteDatabase, SQLInputValue } from "node:sqlite";
-import { readFileSync } from "node:fs";
+import { readFileSync, readdirSync } from "node:fs";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { getStorageAdapter, setStorageAdapter } from "../../storage";
 import { setPlatformAdapter, type DbConnection, type PlatformAdapter } from "@agentz/kit/platform";
-import { latestChat, learnedHash, markLearned, saveChat, type ChatRecord } from "../chats";
+import { deleteChat, getChat, latestChat, learnedHash, listSessions, markLearned, saveChat, type ChatRecord } from "../chats";
 import {
   addMemory, clearMemory, deleteMemory, getMemoryEntry, listMemory, memoryVersion,
   MemoryFullError, restoreMemory, updateMemory,
@@ -13,6 +13,7 @@ import {
 import { sqlAgentStorage } from "../sqlStorage";
 
 const state = { connection: null as DbConnection | null };
+const migrations = new URL("../../../../../apps/scriptz/src-tauri/migrations/", import.meta.url);
 
 // Vite 5 predates node:sqlite; resolve this test-only built-in through Node.
 const { DatabaseSync } = createRequire(import.meta.url)("node:sqlite") as typeof import("node:sqlite");
@@ -21,9 +22,15 @@ const originalAdapter = getStorageAdapter();
 
 beforeEach(() => {
   database = new DatabaseSync(":memory:");
-  database.exec("PRAGMA foreign_keys = ON; CREATE TABLE scripts (id TEXT PRIMARY KEY); CREATE TABLE folders (id TEXT PRIMARY KEY);");
-  database.exec(readFileSync(new URL("../../../../../apps/scriptz/src-tauri/migrations/008_agent.sql", import.meta.url), "utf8"));
-  database.exec("INSERT INTO scripts VALUES ('script'); INSERT INTO folders VALUES ('folder');");
+  // The exact schema of an installed app: every published migration in order.
+  database.exec("PRAGMA foreign_keys = ON");
+  for (const file of readdirSync(migrations).filter((name) => name.endsWith(".sql")).sort()) {
+    database.exec(readFileSync(new URL(file, migrations), "utf8"));
+  }
+  database.exec(`
+    INSERT INTO folders (id, name, created_at, updated_at) VALUES ('folder', 'Folder', 1, 1);
+    INSERT INTO scripts (id, title, content_json, created_at, updated_at) VALUES ('script', 'Script', '{}', 1, 1);
+  `);
   const bind = (values: unknown[] = []) => Object.fromEntries(Object.entries(values).map(([index, value]) => [`$${Number(index) + 1}`, value as SQLInputValue]));
   state.connection = {
     async select<T>(query: string, values?: unknown[]): Promise<T> {
@@ -51,7 +58,7 @@ afterEach(() => {
 
 /** Builds a persisted-chat fixture with explicit overrides for recovery and scope cases. */
 const chat = (overrides: Partial<ChatRecord> = {}): ChatRecord => ({
-  id: "chat", scriptId: "script", provider: "codex", threadId: "thread", createdAt: 10, updatedAt: 10,
+  id: "chat", kind: "script", scriptId: "script", provider: "codex", threadId: "thread", title: null, folderId: null, createdAt: 10, updatedAt: 10,
   items: [{ kind: "user", id: "user", text: "Remember this" }], ...overrides,
 });
 
@@ -116,6 +123,33 @@ describe("agent persistence boundary with SQLite", () => {
     for (let i = 0; i < 30; i++) await addMemory(memoryInput);
     await expect(addMemory(memoryInput)).rejects.toBeInstanceOf(MemoryFullError);
     await expect(addMemory({ ...memoryInput, folderId: null })).resolves.toMatchObject({ folderId: null });
+  });
+
+  it("stores agent-mode sessions behind the same boundary", async () => {
+    const session = (overrides: Partial<ChatRecord> = {}) => chat({
+      id: "session", kind: "session", scriptId: null, title: "Hooks 100%_test", folderId: "folder", ...overrides,
+    });
+    await saveChat(session());
+    await saveChat(session({ id: "empty", title: "Empty", items: [] }));
+    await saveChat(chat());
+    expect(await getChat("session")).toMatchObject({ kind: "session", title: "Hooks 100%_test", folderId: "folder", scriptId: null });
+    // Only sessions with content; LIKE wildcards in the query are literal.
+    expect((await listSessions()).map((s) => s.id)).toEqual(["session"]);
+    expect((await listSessions(40, 0, "100%_")).map((s) => s.id)).toEqual(["session"]);
+    expect(await listSessions(40, 0, "100%x")).toEqual([]);
+    expect((await listSessions(40, 0, "remember")).map((s) => s.id)).toEqual(["session"]);
+    // Handed to a script: the script link and title follow, the kind stays.
+    await saveChat(session({ scriptId: "script", title: "Renamed", updatedAt: 50 }));
+    expect(await latestChat("script")).toMatchObject({ id: "session", kind: "session", title: "Renamed" });
+    // Purging the script frees the session (migration 010) but drops script chats.
+    database.exec("DELETE FROM scripts WHERE id = 'script'");
+    expect(await getChat("session")).toMatchObject({ scriptId: null });
+    expect(await getChat("chat")).toBeNull();
+    // Ideas saved from a deleted session stay, without the link.
+    database.exec("INSERT INTO ideas (id, title, notes, created_at, source_chat_id) VALUES ('idea', 'Idea', '', 1, 'session')");
+    await deleteChat("session");
+    expect(await getChat("session")).toBeNull();
+    expect(database.prepare("SELECT source_chat_id FROM ideas WHERE id = 'idea'").get()).toEqual({ source_chat_id: null });
   });
 
   it("routes all public writes through the currently registered adapter and propagates failures", async () => {

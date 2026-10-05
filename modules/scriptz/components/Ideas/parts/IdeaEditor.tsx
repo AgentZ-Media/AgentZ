@@ -9,6 +9,8 @@ import type { Folder, Idea, ScriptSummary } from "../../../lib/types";
 import { stageLabel } from "../../../lib/stages";
 import { Icon } from "@agentz/kit/ui";
 import { StageGlyph } from "../../Common/StageGlyph";
+import { AgentAvatar } from "../../Agent/AgentAvatar";
+import { agentSettings } from "../../../stores/agentSettings";
 import { FolderMenu } from "./FolderMenu";
 import { ideaAge } from "../ideaGroups";
 import { rankScriptHits, similarIdeas, similarQueryTerms } from "../similar";
@@ -29,6 +31,10 @@ export interface IdeaEditorProps {
   /** The editor unmounts; `handle` is the one passed to `onReady`. */
   onDispose?(handle: IdeaEditorHandle): void;
   onConvert(idea: Idea): void;
+  /** "Mit Ida ausschreiben" (agent mode); absent when the agent is not offered. */
+  onWriteWithAgent?(idea: Idea): void;
+  /** Opens the agent session an idea was saved from. */
+  onOpenSession?(chatId: string): void;
   onDelete(idea: Idea): void;
   onMove(idea: Idea, folderId: string | null): void;
   onOpenScript(scriptId: string, title: string): void;
@@ -61,6 +67,15 @@ export function IdeaEditor(props: IdeaEditorProps) {
   const schedule = () => draft?.saver.schedule();
   /** Drains the latest drafts and every write still in flight. */
   const flush = () => draft?.saver.flush() ?? Promise.resolve({ ok: true });
+  /** Saves what was just typed first; the agent gets the newest text. */
+  const writeWithAgent = async () => {
+    const base = idea();
+    if (!base || !props.onWriteWithAgent) return;
+    const latest = { ...base, title: title().trim() || base.title, notes: notes() };
+    const saved = await flush();
+    if (!saved.ok) return;
+    props.onWriteWithAgent(latest);
+  };
 
   const handle: IdeaEditorHandle = {
     flush,
@@ -212,6 +227,19 @@ export function IdeaEditor(props: IdeaEditorProps) {
               ariaLabel={t("ideasPage.detail.folder")}
             />
             <span class="ix-meta">{t("ideasPage.detail.created", { date: created() })}</span>
+            <Show when={cur().source_chat_id}>
+              {(chatId) => (
+                <button
+                  type="button"
+                  class="ix-origin"
+                  title={t("agentMode.ideas.openSession")}
+                  onClick={() => props.onOpenSession?.(chatId())}
+                >
+                  <AgentAvatar look={agentSettings.look()} size={14} state="still" />
+                  {t("agentMode.ideas.fromAgent", { name: agentSettings.displayName() })}
+                </button>
+              )}
+            </Show>
             <Show when={similarScripts().length > 0 || otherIdeas().length > 0}>
               <div class="i-sim">
                 <span>{t("ideasPage.detail.similar")}</span>
@@ -253,6 +281,12 @@ export function IdeaEditor(props: IdeaEditorProps) {
               <button type="button" class="btn ghost" onClick={() => props.onDelete(cur())}>
                 {t("common.delete")}
               </button>
+              <Show when={!used() && props.onWriteWithAgent}>
+                <button type="button" class="btn ix-agent" onClick={() => void writeWithAgent()}>
+                  <AgentAvatar look={agentSettings.look()} size={16} state="idle" />
+                  {t("agentMode.ideas.writeWith", { name: agentSettings.displayName() })}
+                </button>
+              </Show>
               <Show
                 when={used()}
                 fallback={

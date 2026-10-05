@@ -12,10 +12,14 @@ spätere Synchronisierung, keine fertige Synchronisierung.
 leitet Aufrufe an den aktuell registrierten Adapter weiter. Der Desktop nutzt
 weiter den SQL-Adapter. Zwei Teilbereiche ergänzen den bestehenden Vertrag:
 
-- `agent: AgentStorage`: Chat-Verläufe, Gedächtnis einschließlich Charakterprofilen
-  und Beziehungen sowie Lernmarkierungen. Die bestehenden Agenten-Funktionen
-  behalten Validierung, Normalisierung und UI-Benachrichtigungen. Nur die
-  Datenbankzugriffe sind in `agent/sqlStorage.ts` gekapselt.
+- `agent: AgentStorage`: Chat-Verläufe einschließlich der Sitzungen des
+  Agent-Modus (`getChat`, `deleteChat`, `listSessions`), Gedächtnis
+  einschließlich Charakterprofilen und Beziehungen sowie Lernmarkierungen. Die
+  bestehenden Agenten-Funktionen behalten Validierung, Normalisierung und
+  UI-Benachrichtigungen. Nur die Datenbankzugriffe sind in
+  `agent/sqlStorage.ts` gekapselt. Adapterneutral in `agent/chats.ts` bleiben
+  das Wiederherstellen gespeicherter Einträge (`parseItems`) sowie Entwurfs- und
+  Sitzungszusammenfassungen; ein weiterer Adapter liefert nur Datensätze.
 - `localChanges: LocalChangeStore`: liest die lokale Datenbankidentität und
   seitenweise Änderungen. Dieser Vertrag setzt kein bestimmtes Cloud-System
   voraus. Er verändert weder Inhalte noch einen Synchronisierungsstatus.
@@ -30,10 +34,10 @@ Es gibt keinen versteckten Rückfall auf die Desktop-Datenbank.
 |---|---|
 | Skripte einschließlich Papierkorb, Stufe, Charakteren und zugeordneten Farben | `scripts` |
 | Ordner und deren Zielbereiche | `folders` |
-| Ideen einschließlich Notizen und Verknüpfungen | `ideas` |
+| Ideen einschließlich Notizen, Verknüpfungen und Herkunft aus einer Agenten-Sitzung | `ideas` |
 | Automatische und manuelle Skriptversionen | `snapshots` |
 | App-weite Charakterfarben | `character_colors` |
-| Alle gespeicherten Agenten-Chats, auch frühere Chats | `agent_chats` |
+| Alle gespeicherten Agenten-Chats, auch frühere Chats, und Sitzungen des Agent-Modus mit Titel, Ordner und Entwürfen | `agent_chats` |
 | Agenten-Gedächtnis, Charakterprofile und Beziehungen | `agent_memory` |
 | Lernstand des Agenten | `agent_learned` |
 | Bestehende tägliche Schreibstatistik | `daily_word_log` |
@@ -49,6 +53,16 @@ Migration `009_local_changes.sql` ergänzt zwei Tabellen und SQLite-Trigger.
 Alle veröffentlichten Migrationen und bisherigen Inhaltstabellen bleiben
 unverändert. Bereits vorhandene Datensätze erhalten initial einen Marker;
 ihr Inhalt, ihre IDs und Zeitstempel werden dabei nicht umgeschrieben.
+
+Die Update-Trigger nennen ihre Spalten einzeln, damit Speichern mit
+identischen Werten keinen Marker erzeugt. `010_agent_sessions.sql` ergänzt
+Spalten an `agent_chats` und `ideas`; `011_track_agent_sessions.sql` legt die
+beiden Update-Trigger mit diesen Spalten neu an. **Jede künftige Spalte einer
+Inhaltstabelle braucht dasselbe:** Trigger in einer neuen Migration neu anlegen
+und `CONTENT_ENTITIES` (`lib/localChanges/entities.ts`) ergänzen. Die Tests
+gleichen Tabellen, Spalten und Trigger mit dem vollständigen Schema ab und
+schlagen sonst fehl. Entwicklungsdatenbanken, die `010` vor `009` erhalten
+haben, enden nach `011` mit denselben Triggern.
 
 `local_replica` enthält eine dauerhaft gespeicherte UUID für diese lokale
 Datenbank. `local_changes` enthält je Inhaltstyp und Datensatz höchstens einen
@@ -119,6 +133,15 @@ Die folgenden Aufgaben gehören ausdrücklich zur anschließenden Anbindung:
 - Löschkonflikte, Aufbewahrung und sichere Bereinigung von Tombstones.
 - Gerätebezogene Interpretation der Schreibstatistik, damit Werte verschiedener
   Geräte nicht überschrieben oder doppelt gezählt werden.
+- Sitzungen des Agent-Modus speichern Entwürfe und Versionen als Text in
+  `items_json`, nicht in eigenen Tabellen. Ein Chat ist damit eine Einheit; ein
+  Konflikt zwischen zwei Geräten betrifft den ganzen Verlauf und braucht eine
+  eigene Zusammenführung, etwa nach Eintrags-IDs.
+- Endgültiges Löschen eines Skripts löst Sitzungen per Trigger davon
+  (`script_id` wird NULL), Skript-Chats, Snapshots und Lernstand gehen per
+  Kaskade mit. Der Feed liefert dafür einzelne Marker; ein Empfänger muss
+  Löschungen und Entknüpfungen in Abhängigkeitsreihenfolge anwenden. Gleiches
+  gilt für `ideas.source_chat_id`, das beim Löschen einer Sitzung NULL wird.
 - Provider-Thread-IDs in Chats sind lokale Fortsetzungsinformationen; kopierter
   Chatinhalt macht einen lokalen Provider-Thread nicht auf anderen Geräten
   verfügbar.
@@ -165,7 +188,8 @@ keinen Prozessabbruch des Tauri-Hosts.
 
 Integrationstests führen die echten Migrationen in isolierten SQLite-Datenbanken
 aus. Sie prüfen die Übernahme bestehender Inhalte, vollständige Tabellen- und
-Spaltenabdeckung, Änderungsseiten, Neustarts, wiederholtes Speichern, Undo,
+Spaltenabdeckung samt Update-Triggern, beide Migrationsreihenfolgen,
+Sitzungen und Ideen-Herkunft, Änderungsseiten, Neustarts, wiederholtes Speichern, Undo,
 Löschungen und Kaskaden sowie Rollback bei Fehlern. Separate Agenten-Tests prüfen
 Chat-Wiederherstellung, frühere Chats, Gedächtnisgrenzen und Adapterwechsel.
 Die regulären Editor-, Export- und Flush-Tests bleiben unverändert.

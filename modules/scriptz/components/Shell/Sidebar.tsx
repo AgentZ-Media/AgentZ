@@ -5,7 +5,7 @@ import { uiStore, type SidebarSection } from "../../stores/ui";
 import { K } from "@agentz/kit/platform";
 import { scriptStages, stageLabel } from "../../lib/stages";
 import type { Folder, ScriptStatus } from "../../lib/types";
-import { t } from "../../i18n";
+import { t, tPlural } from "../../i18n";
 import { AgentAvatar } from "../Agent/AgentAvatar";
 import { agentSettings } from "../../stores/agentSettings";
 import { agentUi } from "../../stores/agentUi";
@@ -23,6 +23,7 @@ import {
   renameFolder,
 } from "../Library/actions";
 import { WritingCounter } from "../Activity/WritingCounter";
+import { openAgentMode } from "../AgentMode/actions";
 import { closeOpenScript, closeOtherOpenScripts } from "./openActions";
 import { folderColor, library } from "./libraryData";
 
@@ -120,6 +121,7 @@ export function Sidebar() {
           <kbd>{K("Mod+N")}</kbd>
         </button>
       </div>
+      <SidebarAgent />
 
       <nav class="side-scroll side-split">
         <div class="side-top-nav">
@@ -292,7 +294,6 @@ export function SidebarFooter() {
   const route = () => navStore.route();
   return (
     <>
-      <SidebarAgent />
       <div class="side-foot">
         <div class="side-foot-counter">
           <WritingCounter />
@@ -321,37 +322,53 @@ export function SidebarFooter() {
   );
 }
 
-/** Agent row above the footer: face, name and what it is doing. */
+/** Entry into the agent mode (top of the sidebar): face, name, what the
+ *  agent is doing and how many drafts wait. */
 function SidebarAgent() {
+  const working = () => agentStore.anyRunning();
   const status = () => {
     const boot = agentStore.bootstrap();
     if (boot.running) return t("agent.prefs.relearn.running", { done: boot.done, total: boot.total });
     if (!agentSettings.onboarded()) return t("agent.state.setup.action");
     if (!agentSettings.enabled()) return t("agent.status.off");
+    if (working()) return t("agent.status.working");
     const learning = agentStore.learning();
     if (learning) return t("agent.status.learning", { title: learning.title });
     const state = agentStore.status().state;
-    if (state === "ready") return t("agent.status.ready");
+    if (state === "ready") return t("agentMode.side.ready");
     if (state === "checking") return t("agent.status.checking");
     return t("agent.status.offline");
   };
   const busy = () => agentStore.bootstrap().running || agentStore.learning() !== null;
+  const drafts = () => (agentSettings.enabled() ? agentStore.openDrafts() : 0);
+  const on = () => navStore.route().kind === "agent";
+  const hotkey = () => K(navStore.activeScriptId() ? "Mod+Shift+L" : "Mod+L");
   return (
     <Show when={agentStore.available()}>
       <button
         type="button"
         class="side-agent"
-        classList={{ "is-learning": busy() }}
-        title={agentSettings.onboarded() ? t("agent.panel.memory") : t("agent.state.setup.action")}
-        onClick={() => (agentSettings.onboarded() ? agentUi.openMemory() : agentUi.openOnboarding())}
+        classList={{ "is-learning": busy() || working(), "is-on": on() }}
+        aria-current={on() ? "page" : undefined}
+        title={agentSettings.onboarded() ? t("agentMode.side.title", { name: agentSettings.displayName(), hotkey: hotkey() }) : t("agent.state.setup.action")}
+        onClick={() => {
+          if (!agentSettings.onboarded()) agentUi.openOnboarding();
+          else if (on()) agentUi.focusMode();
+          else void openAgentMode();
+        }}
       >
-        <AgentAvatar look={agentSettings.look()} size={28} state={busy() ? "learn" : agentSettings.enabled() ? "idle" : "still"} onDark />
+        <AgentAvatar
+          look={agentSettings.look()}
+          size={26}
+          state={working() ? "talk" : busy() ? "learn" : agentSettings.enabled() ? "idle" : "still"}
+          onDark
+        />
         <span class="side-agent-t">
           <b>{agentSettings.displayName()}</b>
           <small>{status()}</small>
         </span>
-        <Show when={navStore.activeScriptId()}>
-          <kbd>{K("Mod+L")}</kbd>
+        <Show when={drafts() > 0} fallback={<kbd>{hotkey()}</kbd>}>
+          <span class="side-agent-badge">{tPlural("agentMode.side.drafts", drafts())}</span>
         </Show>
       </button>
     </Show>

@@ -6,6 +6,7 @@ import { t, tPlural } from "../../i18n";
 import type { ChatItem } from "../../lib/agent/chats";
 import { markdownToPlain } from "../../lib/agent/markdown";
 import { AGENT_PROCESS_EXITED } from "../../lib/agent/types";
+import { hasDraft, splitDraftSegments } from "../../lib/agent/drafts";
 import { sourceHost, type ClaimVerdict, type ProposalTarget } from "../../lib/agent/proposals";
 import { isAgentJob, type AgentJobId } from "../../lib/agent/jobs";
 import { formatClock, lengthStatus, type LengthRange } from "../../lib/lengthGoal";
@@ -22,12 +23,38 @@ import { scopeLabel, searchLabel, toolLabel, type Lookup } from "./labels";
 type Item<K extends ChatItem["kind"]> = Extract<ChatItem, { kind: K }>;
 export type TraceItem = Item<"tool"> | Item<"search"> | Item<"thinking"> | (Item<"assistant"> & { commentary: true });
 
+/** A draft version as a chat card sees it. */
+export interface DraftRef {
+  slug: string;
+  versionId: string;
+  /** 1-based version number. */
+  number: number;
+  title: string;
+  state: "open" | "finished" | "discarded";
+  /** This is the newest version of its draft. */
+  latest: boolean;
+  complete: boolean;
+  /** Estimated runtime in seconds (0 = empty). */
+  seconds: number;
+  blockCount: number;
+}
+
 export interface ItemContext {
   session: ChatSession;
   lookup: Lookup;
   colorOf(name: string): string;
   canApply: boolean;
-  scriptId: string;
+  /** Script panel or agent mode: cards adapt their actions. */
+  surface: "panel" | "agent";
+  draftRef(versionId: string): DraftRef | undefined;
+  /** Shows a draft in the draft panel (agent mode: right side; panel:
+   *  opens the agent mode). */
+  showDraft(slug: string): void;
+  /** Sends a message as the user (idea board actions). */
+  send(text: string): void;
+  /** Script the chat works on; null in the agent mode (no paper there, so
+   *  no metrics or previews against it). */
+  scriptId: string | null;
   range: LengthRange | null;
   wpm: number;
   /** Bumps on every editor update. */
@@ -54,11 +81,78 @@ export function UserMessage(props: { item: Item<"user"> }) {
 
 // ---------------------------------------------------------------- assistant
 
-export function AssistantMessage(props: { item: Item<"assistant"> }) {
+export function AssistantMessage(props: { item: Item<"assistant">; ctx?: ItemContext }) {
+  const segments = createMemo(() => (hasDraft(props.item.text) ? splitDraftSegments(props.item.text) : null));
   return (
-    <div class="ag-ai" classList={{ "is-streaming": !!props.item.streaming }}>
-      <Markdown text={props.item.text} />
-    </div>
+    <Show
+      when={segments()}
+      fallback={
+        <div class="ag-ai" classList={{ "is-streaming": !!props.item.streaming }}>
+          <Markdown text={props.item.text} />
+        </div>
+      }
+    >
+      {(list) => {
+        // Drafts get their version ids in order of appearance in the message.
+        const indexed = createMemo(() => {
+          let n = 0;
+          return list().map((segment) => (segment.kind === "draft" ? { segment, versionId: `${props.item.id}#${n++}` } : { segment, versionId: "" }));
+        });
+        return (
+          <div class="ag-ai ag-ai-drafts" classList={{ "is-streaming": !!props.item.streaming }}>
+            <For each={indexed()}>
+              {(entry, i) => (
+                <Show
+                  when={entry.segment.kind === "draft" && props.ctx}
+                  fallback={
+                    <Show when={entry.segment.kind === "text"}>
+                      <Markdown text={(entry.segment as { text: string }).text} class={i() === indexed().length - 1 ? "is-last" : undefined} />
+                    </Show>
+                  }
+                >
+                  {(ctx) => <DraftLink versionId={entry.versionId} ctx={ctx()} streaming={!!props.item.streaming} />}
+                </Show>
+              )}
+            </For>
+          </div>
+        );
+      }}
+    </Show>
+  );
+}
+
+/** Card in the chat for a draft (version) the message wrote. */
+export function DraftLink(props: { versionId: string; ctx: ItemContext; streaming: boolean }) {
+  const ref = () => props.ctx.draftRef(props.versionId);
+  const live = () => props.streaming && ref()?.complete === false;
+  return (
+    <Show when={ref()}>
+      {(r) => (
+        <div class="ag-dlink" classList={{ "is-live": live(), "is-old": !r().latest, [`is-${r().state}`]: true }}>
+          <span class="ag-dlink-pg" aria-hidden="true"><i /><i /><i /><i /><i /></span>
+          <span class="ag-dlink-t">
+            <b>{r().title || t("agentMode.draft.untitled")}</b>
+            <small>
+              <Show
+                when={!live()}
+                fallback={<>{tPlural("agentMode.draft.writingBlocks", r().blockCount)}</>}
+              >
+                {t("agentMode.draft.version", { n: r().number })}
+                <Show when={r().seconds > 0}> · {formatClock(r().seconds)}</Show>
+                <Show when={r().latest && r().state === "finished"}> · {t("agentMode.draft.stateFinished")}</Show>
+                <Show when={r().latest && r().state === "discarded"}> · {t("agentMode.draft.stateDiscarded")}</Show>
+                <Show when={!r().latest}> · {t("agentMode.draft.older")}</Show>
+              </Show>
+            </small>
+          </span>
+          <Show when={!(r().latest && r().state === "discarded")} fallback={<span />}>
+            <button type="button" class="btn sm" onClick={() => props.ctx.showDraft(r().slug)}>
+              {props.ctx.surface === "agent" ? t("agentMode.draft.show") : t("agentMode.draft.showInMode")}
+            </button>
+          </Show>
+        </div>
+      )}
+    </Show>
   );
 }
 
@@ -241,7 +335,8 @@ export function ProposalCards(props: { item: Item<"proposal">; ctx: ItemContext 
   const preview = (index: number) => {
     if (!props.ctx.canApply || props.item.applied !== null) return;
     const option = props.item.proposal.options[index];
-    if (option) showProposalPreview(props.ctx.scriptId, props.item.proposal.target, option.blocks, t("agent.preview.tag"));
+    const scriptId = props.ctx.scriptId;
+    if (option && scriptId) showProposalPreview(scriptId, props.item.proposal.target, option.blocks, t("agent.preview.tag"));
   };
   const apply = (index: number) => {
     clearProposalPreview();
@@ -389,7 +484,8 @@ export function ClaimsCard(props: { item: Item<"claims">; ctx: ItemContext }) {
                 <div
                   class="ag-claim-fix"
                   onMouseEnter={() => {
-                    if (props.ctx.canApply && !props.item.applied.includes(i())) showProposalPreview(props.ctx.scriptId, fix().target, fix().blocks, t("agent.preview.tag"));
+                    const scriptId = props.ctx.scriptId;
+                    if (scriptId && props.ctx.canApply && !props.item.applied.includes(i())) showProposalPreview(scriptId, fix().target, fix().blocks, t("agent.preview.tag"));
                   }}
                   onMouseLeave={clearProposalPreview}
                 >

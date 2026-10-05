@@ -50,6 +50,12 @@ export function toolLabel(item: Extract<ChatItem, { kind: "tool" }>, lookup: Loo
     case "get_memory":
       label = t("agent.tool.memory.done");
       break;
+    case "get_writing_context":
+      label = running ? t("agentMode.tool.context.running") : t("agentMode.tool.context.done");
+      break;
+    case "list_ideas":
+      label = running ? t("agentMode.tool.ideas.running") : t("agentMode.tool.ideas.done");
+      break;
     default:
       label = running ? t("agent.tool.running") : t("agent.tool.done");
   }

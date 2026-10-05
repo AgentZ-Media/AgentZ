@@ -33,6 +33,7 @@ import { startAgentUiRuntime } from "./stores/agentUi";
 import { agentStore, startAgentRuntime } from "./stores/agent";
 import { AgentOnboarding } from "./components/Agent/AgentOnboarding";
 import { MemoryDialog } from "./components/Agent/MemoryDialog";
+import { AgentPage } from "./components/AgentMode/AgentPage";
 import { ActivityModal } from "./components/Activity/ActivityModal";
 import "./components/Shell/Shell.css";
 
@@ -124,6 +125,7 @@ async function setupScriptz(ctx: ModuleContext): Promise<ModuleRuntime> {
       { id: "trash", matches: () => navStore.route().kind === "trash", component: TrashPage },
       { id: "ideas", matches: () => navStore.route().kind === "ideas", component: IdeasPage },
       { id: "script", matches: () => navStore.route().kind === "script", component: ScriptRoute },
+      { id: "agent", matches: () => navStore.route().kind === "agent", component: AgentPage },
     ],
     sidebar: Sidebar,
     sidebarFooter: SidebarFooter,

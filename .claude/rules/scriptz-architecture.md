@@ -17,7 +17,7 @@ Referenz des Designs: `docs/redesign/concept.html`.
   Navigation, Layout und Bibliothekspräferenzen, seedet das Welcome-Skript,
   füllt Runtime-Statistiken nach, migriert Legacy-Blöcke und startet erst
   danach Ideen-, Statistik- und Bibliotheks-Resources. Liefert Routen
-  (Inbox, Skripte, Ideen, Skript, Papierkorb), Sidebar, Overlays
+  (Inbox, Skripte, Ideen, Skript, Papierkorb, Agent-Modus), Sidebar, Overlays
   (QuickCapture, Neues Skript, Export, Stufen-Undo), Befehle, Shortcuts,
   Einstellungen, Onboarding.
 - `lib/`: `api.ts` ist ein Proxy auf den registrierten `ScriptzStorage`
@@ -66,15 +66,22 @@ die Befehlspalette, deshalb setzt das Modul `revealsSidebar: true`.
 
 ## Migrationen
 
-`001_baseline` bis `007_werkbank` in `apps/scriptz/src-tauri/migrations/` sind
-veröffentlicht und unveränderlich. `007` ergänzt `scripts.status`,
+`001_baseline` bis `011_track_agent_sessions` in
+`apps/scriptz/src-tauri/migrations/` sind veröffentlicht und unveränderlich. `007` ergänzt `scripts.status`,
 `status_changed_at` und den Ordner-Zielbereich. `008_agent` legt
 `agent_memory`, `agent_chats` und `agent_learned` an. `009_local_changes`
 ergänzt eine lokale Replikat-ID und kompakte Änderungsmarker mit Triggern für
 alle Inhaltstabellen, einschließlich Agentendaten; keine Cloud-Anbindung.
 Vertrag und Grenzen: [`local-storage.md`](../../docs/local-storage.md).
-Die Abschaffung von
-Kamera/Caption/SFX ist bewusst keine SQL-Migration (siehe unten).
+`010_agent_sessions` ergänzt `agent_chats.kind`/`title`/`folder_id`
+(Sitzungen des Agent-Modus) und `ideas.source_chat_id` (Idee von Ida
+gespeichert), rein additiv, plus den Trigger `agent_sessions_outlive_script`:
+endgültiges Löschen eines Skripts löst Sitzungen atomar davon, statt sie per
+Kaskade mitzulöschen. `011_track_agent_sessions` nimmt diese Spalten in die
+Update-Trigger des Änderungsfeeds auf. Jede neue Spalte einer Inhaltstabelle
+braucht dasselbe: Trigger neu anlegen und `CONTENT_ENTITIES` ergänzen (Tests
+in `lib/__tests__/localChanges.test.ts` schlagen sonst fehl). Die
+Abschaffung von Kamera/Caption/SFX ist bewusst keine SQL-Migration (siehe unten).
 
 ## Stufen und Zielbereich
 
@@ -161,8 +168,9 @@ Referenz: `docs/agent/screens.html`.
   abgelehnt. Der Agent sieht nur die eigenen Tools aus `lib/agent/tools.ts`.
   `code_mode_host` nicht abschalten.
 - **Nur in der großen Skriptansicht.** Im Seitenpanel gibt es weder Chat
-  noch Agent-Button noch Rechtsklick-Menü; `Mod+L` hängt an
-  `navStore.activeScriptId()`, das nur die große Ansicht setzt.
+  noch Agent-Button noch Rechtsklick-Menü; `Mod+L` öffnet den Chat nur, wenn
+  `navStore.activeScriptId()` gesetzt ist (große Ansicht), sonst den
+  Agent-Modus.
   Der Chat startet in jedem Skript geschlossen und merkt sich nur für die
   Sitzung, in welchen Skripten er offen ist (`agentUi.chatOpen(scriptId)`).
 - **Nur Vorschläge.** `propose_options` liefert 1 bis 3 Optionen, eingefügt
@@ -210,6 +218,40 @@ Referenz: `docs/agent/screens.html`.
 - **Faktencheck im Text** (`Agent/ClaimMarks.tsx`): die Behauptungen des
   letzten Checks werden per CSS Custom Highlight API unterstrichen und
   nummeriert, solange der Chat offen ist.
+- **Kontext Länge.** Der Skript-Chat bekommt Längenziel und Sprechtempo in
+  den Instruktionen, Sitzungen vor jeder Nachricht eine Zeile `[Session: ...]`
+  mit Ordner, Ziel, Wortbudget, Entwürfen und gespeicherten Ideen
+  (`lib/agent/writingContext.ts`, gleiche Formel wie die Zeitleiste).
+
+## Agent-Modus
+
+Eigene Route `agent` (`components/AgentMode/`), visuelle Referenz
+`docs/agent/agent-modus.html`. Einstieg oben in der Sidebar, `Mod+L`
+außerhalb eines Skripts, `Mod+Shift+L` überall, ⌘K, Ideen-Seite
+(„Ideen mit Ida finden“, „Mit Ida ausschreiben“).
+
+- **Sitzungen** sind Zeilen in `agent_chats` mit `kind = 'session'`; eine neue
+  Sitzung wird erst mit der ersten Nachricht gespeichert. `stores/agent.ts`
+  hält jeden Chat genau einmal (`byScript`/`byChat`): das Panel löst seinen
+  Chat über `sessionFor(scriptId)` (neueste Zeile zuerst) auf, damit Panel,
+  Agent-Modus und Lernen dasselbe Objekt und dieselbe Schreibwarteschlange
+  nutzen. Gelöschte Skripte und Ordner gleicht `reconcileLiveChats` nach;
+  Löschen einer Sitzung läuft über `discard()`.
+- **Ideen-Karten** über `propose_ideas`, Speichern nur auf Wunsch (Button oder
+  `save_ideas`) mit Quittung und Rückgängig; gespeicherte Ideen tragen
+  `source_chat_id`. Antwortvorschläge über `suggest_replies`.
+- **Entwürfe** brauchen kein Tool und keine Tabelle: der Agent schreibt einen
+  Block `:::draft id="…" title="…" idea="…"` in seine Antwort, der live ins
+  Entwurfs-Panel gestreamt wird (`lib/agent/drafts.ts`). Gleiche `id` = neue
+  Version, Änderungen gegenüber der Vorversion sind markiert. Verworfen und
+  übernommen stehen als Chat-Einträge (`draft-discarded`, `handoff`) im
+  Verlauf.
+- **Fertig** legt über den Dialog ein normales Skript an (Ordner, Stufe, Idee
+  als umgesetzt, `api.markIdeaUsed`). „Gespräch mitnehmen“ hängt die Sitzung
+  an das Skript (`attachToScript`): ab dann ist sie dessen Chat, der
+  Codex-Thread wird mit Skript-Instruktionen und -Tools neu geladen
+  (`thread/unsubscribe`, dann `thread/resume`). Der Agent legt nie selbst
+  Skripte an.
 
 ## Datenfluss
 
