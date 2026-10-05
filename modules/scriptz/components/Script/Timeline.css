@@ -121,9 +121,16 @@
   pointer-events: none;
 }
 .tl .z-hook {
-  left: 0;
   background: color-mix(in srgb, var(--accent) 55%, transparent);
   mix-blend-mode: multiply;
+}
+/* 3 s strongest, then 5 s and 10 s quieter (from the first line of
+   dialog, see timelineMath.ts HOOK_MARKS). */
+.tl .z-hook.z1 {
+  opacity: 0.55;
+}
+.tl .z-hook.z2 {
+  opacity: 0.25;
 }
 [data-theme="dark"] .tl .z-hook {
   background: color-mix(in srgb, var(--accent) 22%, transparent);
@@ -354,4 +361,60 @@
 }
 .tl .legend .lg-hint {
   margin-left: auto;
+}
+
+/* ---------- opening (⌘J) ---------- */
+.tl.is-opening .tl-body,
+.tl.is-opening .legend {
+  animation: tl-open var(--t-med) var(--ease) both;
+}
+@keyframes tl-open {
+  from { opacity: 0; transform: translateY(8px); }
+}
+.tl.is-opening .lane > i {
+  transform-origin: left center;
+  animation: tl-seg 0.45s var(--ease) both;
+  animation-delay: calc(90ms + var(--i, 0) * 30ms);
+}
+@keyframes tl-seg {
+  from { transform: scaleX(0); }
+}
+
+/* ---------- agent jobs at the length (hover, only when too long) ---------- */
+.tl .tl-len-wrap {
+  justify-self: end;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+.tl .tl-jobs {
+  display: flex;
+  gap: 4px;
+  opacity: 0;
+  transform: translateX(6px);
+  transition: opacity var(--t-fast), transform var(--t-fast) var(--ease);
+}
+.tl .tl-bar:hover .tl-jobs,
+.tl .tl-jobs:focus-within {
+  opacity: 1;
+  transform: none;
+}
+.tl .tl-job {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  height: 24px;
+  padding: 0 8px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-pill);
+  background: var(--surface);
+  color: var(--fg);
+  font: 600 11.5px/1 var(--ui);
+  white-space: nowrap;
+  cursor: pointer;
+}
+.tl .tl-job:hover {
+  background: var(--accent-soft);
+  border-color: color-mix(in srgb, var(--accent) 70%, var(--line));
 }

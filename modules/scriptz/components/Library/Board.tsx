@@ -1,4 +1,4 @@
-import { For, Show, createMemo, createSignal } from "solid-js";
+import { For, Show, createMemo, createSignal, onCleanup } from "solid-js";
 import { relativeTime, requireSuccessfulFlush } from "@agentz/kit/lib";
 import { pushToast } from "@agentz/kit/stores";
 import { Icon } from "@agentz/kit/ui";
@@ -11,6 +11,7 @@ import type { Idea, ScriptStatus, ScriptSummary } from "../../lib/types";
 import { ideasStore } from "../../stores/ideas";
 import { t } from "../../i18n";
 import { StageGlyph } from "../Common/StageGlyph";
+import { BumpNumber, rememberOpenSource } from "../Common/motion";
 import { setStageWithUndo } from "../Script/stageActions";
 import { folderColor, lengthRangeFor, library, runtimeSecFor } from "../Shell/libraryData";
 import { IDEA_DRAG_MIME, SCRIPT_DRAG_MIME } from "./dnd";
@@ -69,6 +70,16 @@ async function ideaToStage(idea: Idea, stage: ScriptStatus): Promise<void> {
 export function Board(props: BoardProps) {
   const [dropOn, setDropOn] = createSignal<string | null>(null);
   const [dragKind, setDragKind] = createSignal<"script" | "idea" | null>(null);
+  // The card just dropped into another column settles in with a little
+  // spring when it shows up there (after the list reloads).
+  const [dropped, setDropped] = createSignal<string | null>(null);
+  let droppedTimer: ReturnType<typeof setTimeout> | undefined;
+  onCleanup(() => clearTimeout(droppedTimer));
+  const markDropped = (id: string) => {
+    clearTimeout(droppedTimer);
+    setDropped(id);
+    droppedTimer = setTimeout(() => setDropped(null), 900);
+  };
 
   const accepts = (col: BoardColumn, e: DragEvent) => {
     if (col.stage === null || !e.dataTransfer) return false;
@@ -84,7 +95,10 @@ export function Board(props: BoardProps) {
     const ideaId = e.dataTransfer.getData(IDEA_DRAG_MIME);
     if (scriptId) {
       e.preventDefault();
-      if (library.script(scriptId)?.status !== stage) void setStageWithUndo(scriptId, stage);
+      if (library.script(scriptId)?.status !== stage) {
+        markDropped(scriptId);
+        void setStageWithUndo(scriptId, stage);
+      }
     } else if (ideaId) {
       e.preventDefault();
       const idea = library.openIdeas().find((i) => i.id === ideaId);
@@ -123,7 +137,7 @@ export function Board(props: BoardProps) {
               <header class="bcol-h">
                 <StageGlyph stage={col.stage ?? "idea"} />
                 <span class="bcol-t">{col.label}</span>
-                <span class="bcol-n num">{count()}</span>
+                <BumpNumber class="bcol-n num" value={count()} />
                 <Show when={isFirst()}>
                   <button
                     type="button"
@@ -153,6 +167,7 @@ export function Board(props: BoardProps) {
                   {(s) => (
                     <ScriptCard
                       script={s}
+                      dropped={dropped() === s.id}
                       peek={props.peekId === s.id}
                       showFolder={props.showFolder}
                       onOpen={(inverse) => props.onOpen(s, inverse)}
@@ -203,6 +218,7 @@ function FolderTag(props: { folderId: string | null }) {
 
 function ScriptCard(props: {
   script: ScriptSummary;
+  dropped: boolean;
   peek: boolean;
   showFolder: boolean;
   onOpen: (inverse: boolean) => void;
@@ -220,7 +236,7 @@ function ScriptCard(props: {
   return (
     <div
       class="bcard"
-      classList={{ "is-peek": props.peek, "is-dragging": dragging() }}
+      classList={{ "is-peek": props.peek, "is-dragging": dragging(), "is-dropped": props.dropped }}
       role="button"
       tabIndex={0}
       aria-label={title()}
@@ -237,11 +253,15 @@ function ScriptCard(props: {
         setDragging(false);
         props.onDragState(false);
       }}
-      onClick={(e) => props.onOpen(e.altKey)}
+      onClick={(e) => {
+        rememberOpenSource(e.currentTarget);
+        props.onOpen(e.altKey);
+      }}
       onKeyDown={(e) => {
         if (e.target !== e.currentTarget) return;
         if (e.key === "Enter" || e.key === " ") {
           e.preventDefault();
+          rememberOpenSource(e.currentTarget);
           props.onOpen(e.altKey);
         }
       }}
@@ -251,7 +271,9 @@ function ScriptCard(props: {
       }}
     >
       <div class="bcard-top">
-        <b class="bcard-title">{title()}</b>
+        <b class="bcard-title">
+          <span classList={{ "mo-marker": library.justFinished(s().id) }}>{title()}</span>
+        </b>
         <button
           type="button"
           class="bcard-more"

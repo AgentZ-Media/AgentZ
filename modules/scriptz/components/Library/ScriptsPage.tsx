@@ -21,6 +21,18 @@ import { K, isModKey } from "@agentz/kit/platform";
 import { exportScriptsToPdf } from "../../lib/exportSelection";
 import { navStore } from "../../stores/nav";
 import { openScriptFromList, peekStore } from "../../stores/peek";
+import { openScriptAnimated } from "../Common/motion";
+
+/** Full script view, growing out of the clicked row (motion.tsx). */
+function openFull(id: string, title?: string): void {
+  openScriptAnimated(() => navStore.openScript(id, title));
+}
+
+/** Click in a list: side panel or full view, as the setting says. */
+function openFromList(id: string, title: string | undefined, inverse: boolean): void {
+  if (settingsStore.openInPanel() !== inverse) openScriptFromList(id, title, inverse);
+  else openFull(id, title);
+}
 import { uiStore } from "../../stores/ui";
 import { settingsStore } from "../../stores/settings";
 import { dailyStatsStore } from "../../stores/dailyStats";
@@ -505,7 +517,7 @@ export function ScriptsPage() {
 
   function rowItems(s: ScriptSummary): ContextMenuItem[] {
     return [
-      { label: t("script.menu.open"), icon: "return", onClick: () => navStore.openScript(s.id, s.title) },
+      { label: t("script.menu.open"), icon: "return", onClick: () => openFull(s.id, s.title) },
       { label: t("script.menu.openPanel"), icon: "inspector", onClick: () => peekStore.open(s.id) },
       { label: t("script.menu.rename"), icon: "pen", onClick: () => setRenameTarget(s) },
       { label: t("script.menu.duplicate"), icon: "doc", onClick: () => void duplicateScript(s) },
@@ -581,7 +593,7 @@ export function ScriptsPage() {
       return;
     }
     try {
-      const res = await exportScriptsToPdf(ids, { includeHighlighting: false, includeTitlePage: true });
+      const res = await exportScriptsToPdf(ids, { includeHighlighting: false, includeTitlePage: true, wpm: settingsStore.dialogWpm() });
       if (res.cancelled) return;
       pushToast(tPlural("select.pdf.toast", res.count), "ok");
     } catch (e) {
@@ -649,8 +661,8 @@ export function ScriptsPage() {
             selectMode={selectMode()}
             selected={selected().has(s.id)}
             peek={peekStore.scriptId() === s.id}
-            onOpen={(inverse) => openScriptFromList(s.id, s.title, inverse)}
-            onOpenFull={() => navStore.openScript(s.id, s.title)}
+            onOpen={(inverse) => openFromList(s.id, s.title, inverse)}
+            onOpenFull={() => openFull(s.id, s.title)}
             onToggleSelect={(e) => toggleSelect(s.id, e)}
             onMenu={(e, anchor) => openRowMenu(s, e, anchor)}
           />
@@ -945,7 +957,7 @@ export function ScriptsPage() {
                 columns={boardColumns()}
                 peekId={peekStore.scriptId()}
                 showFolder={folderId() === null}
-                onOpen={(s, inverse) => openScriptFromList(s.id, s.title, inverse)}
+                onOpen={(s, inverse) => openFromList(s.id, s.title, inverse)}
                 onOpenIdea={openIdea}
                 onMenu={(s, e, anchor) => openRowMenu(s, e, anchor)}
                 onNewScript={newScriptHere}
@@ -1060,8 +1072,8 @@ export function ScriptsPage() {
                           selectMode={selectMode()}
                           selected={selected().has(hit.script.id)}
                           peek={peekStore.scriptId() === hit.script.id}
-                          onOpen={(inverse) => openScriptFromList(hit.script.id, hit.script.title, inverse)}
-                          onOpenFull={() => navStore.openScript(hit.script.id, hit.script.title)}
+                          onOpen={(inverse) => openFromList(hit.script.id, hit.script.title, inverse)}
+                          onOpenFull={() => openFull(hit.script.id, hit.script.title)}
                           onToggleSelect={(e) => toggleSelect(hit.script.id, e)}
                           onMenu={(e, anchor) => openRowMenu(hit.script, e, anchor)}
                         />

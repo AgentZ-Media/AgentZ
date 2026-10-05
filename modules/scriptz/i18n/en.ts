@@ -40,6 +40,7 @@ export const en: Record<keyof typeof de, string> = {
 
   // ---------- browser ----------
   "browser.import.title": "Import ScriptZ file",
+  "browser.fileType": "ScriptZ file",
   "browser.trash": "Trash",
   "browser.newScript": "New script",
   "browser.empty.search.title": "No results for \"{query}\"",
@@ -186,6 +187,8 @@ export const en: Record<keyof typeof de, string> = {
   "export.toast.downloaded": "File downloaded",
   "export.toast.failed": "Export failed: {message}",
   "export.pdf.characters": "Characters: {names}",
+  "export.pdf.runtime": "Runtime {time}",
+  "export.pdf.page": "Page {page} of {total}",
 
   // ---------- selection mode ----------
   "select.enter": "Select",

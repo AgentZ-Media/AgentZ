@@ -1,4 +1,5 @@
 import { createSignal } from "solid-js";
+import type { AgentJobId } from "../lib/agent/jobs";
 
 /**
  * UI state of the agent: which scripts have the chat open, the agent
@@ -17,10 +18,16 @@ const [memoryOpen, setMemoryOpen] = createSignal(false);
 
 export interface ChatRequest {
   scriptId: string;
+  /** What the chat shows as the user's message (or prefills). */
   text: string;
   quote?: { text: string; from: number; to: number };
   /** Send immediately (context-menu action) or just prefill the composer. */
   send: boolean;
+  /** A fixed job (lib/agent/jobs.ts): the chat builds its instruction. */
+  job?: AgentJobId;
+  /** Model-facing instruction sent instead of `text` (e.g. a voice
+   *  rewrite); the chat still shows `text`. */
+  instruction?: string;
 }
 const [request, setRequest] = createSignal<ChatRequest | null>(null);
 

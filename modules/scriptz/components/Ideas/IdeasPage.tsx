@@ -519,13 +519,30 @@ export function IdeasPage() {
           },
     );
     if (!ok) return;
+    const deleted: Idea[] = [];
     try {
-      for (const idea of list) await ideasStore.deleteIdea(idea.id);
+      for (const idea of list) {
+        await ideasStore.deleteIdea(idea.id);
+        deleted.push(idea);
+      }
       pushToast(
         list.length === 1
           ? t("ideas.toast.deleted", { title: list[0].title })
           : tPlural("ideasPage.toast.deletedMany", list.length),
         "ok",
+        undefined,
+        {
+          action: {
+            label: t("shell.toast.undo"),
+            run: async () => {
+              try {
+                for (const idea of deleted) await ideasStore.restoreIdea(idea);
+              } catch (err) {
+                errorToast(err);
+              }
+            },
+          },
+        },
       );
     } catch (err) {
       errorToast(err);
@@ -537,7 +554,18 @@ export function IdeasPage() {
     if (todo.length === 0) return;
     try {
       for (const idea of todo) await ideasStore.moveIdea(idea.id, folderId);
-      pushToast(t("folder.toast.movedTo", { name }), "ok");
+      pushToast(t("folder.toast.movedTo", { name }), "ok", undefined, {
+        action: {
+          label: t("shell.toast.undo"),
+          run: async () => {
+            try {
+              for (const idea of todo) await ideasStore.moveIdea(idea.id, idea.folder_id);
+            } catch (err) {
+              errorToast(err);
+            }
+          },
+        },
+      });
     } catch (err) {
       errorToast(err);
     }

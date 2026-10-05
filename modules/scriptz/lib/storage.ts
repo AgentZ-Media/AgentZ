@@ -83,6 +83,8 @@ export interface ExportPdfRequest {
   scriptId: string;
   includeHighlighting: boolean;
   includeTitlePage: boolean;
+  /** Detail line of the title page (folder, runtime, date). */
+  titleDetails?: string | null;
 }
 
 export interface ExportPlaintextRequest {
@@ -182,6 +184,8 @@ export interface ScriptzStorage {
   createIdea(input: CreateIdeaInput): Promise<Idea>;
   updateIdea(input: UpdateIdeaInput): Promise<Idea>;
   deleteIdea(id: string): Promise<void>;
+  /** Puts a deleted idea back (undo); missing folder/script links drop. */
+  restoreIdea(idea: Idea): Promise<void>;
   /** Moves an idea into a folder (or out of any folder when null).
    *  Shares the same folders as scripts. */
   moveIdea(ideaId: string, folderId: string | null): Promise<void>;

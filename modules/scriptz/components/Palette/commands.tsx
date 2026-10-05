@@ -14,6 +14,11 @@ import { library } from "../Shell/libraryData";
 import { importScriptzFile, openNewScript } from "../Library/actions";
 import { setStageWithUndo } from "../Script/stageActions";
 import { safeSnippet } from "./snippet";
+import { agentStore } from "../../stores/agent";
+import { agentSettings } from "../../stores/agentSettings";
+import { agentUi } from "../../stores/agentUi";
+import { AGENT_JOBS } from "../../lib/agent/jobs";
+import { JOB_HINT, JOB_ICON, JOB_LABEL } from "../Agent/jobLabels";
 import "./commands.css";
 
 type GroupKey = "recent" | "scripts" | "ideas" | "commands";
@@ -127,6 +132,19 @@ function commands(shell: ShellControls): PaletteItem[] {
         run: () => uiStore.toggleFocus(scriptId),
       },
     );
+    // Ida's jobs (only in the full script view, with the agent set up).
+    if (agentStore.available() && agentSettings.enabled() && agentSettings.onboarded()) {
+      for (const job of AGENT_JOBS) {
+        list.push({
+          id: `cmd:agent:${job}`,
+          group: "commands",
+          label: t("agent.job.palette", { name: agentSettings.displayName(), job: t(JOB_LABEL[job]) }),
+          keywords: `${t(JOB_HINT[job])} ${t("agent.jobs.title")}`,
+          icon: icon(JOB_ICON[job]),
+          run: () => agentUi.ask({ scriptId, text: t(JOB_LABEL[job]), send: true, job }),
+        });
+      }
+    }
     for (const { id: st } of scriptStages()) {
       if (st === current) continue;
       list.push({
@@ -147,6 +165,14 @@ function commands(shell: ShellControls): PaletteItem[] {
       icon: icon("sidebar"),
       hint: K("Mod+\\"),
       run: () => shell.toggleSidebar(),
+    },
+    {
+      id: "cmd:activity",
+      group: "commands",
+      label: t("shell.cmd.activity"),
+      keywords: t("shell.cmd.activityKeywords"),
+      icon: icon("history"),
+      run: () => uiStore.openActivity(),
     },
     {
       id: "cmd:trash",

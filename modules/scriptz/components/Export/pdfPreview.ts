@@ -9,6 +9,7 @@
 
 import type { ExtractedBlock } from "../../lib/lex";
 import type { ScriptCharacter } from "../../lib/types";
+import { tintKindOf, tintSpeakers } from "../../lib/tint";
 
 export const A4_W_MM = 210;
 export const A4_H_MM = 297;
@@ -40,6 +41,8 @@ export interface PreviewLine {
 
 export interface PreviewPage {
   lines: PreviewLine[];
+  /** Page number line ("Seite 1 von 3"); null on the title page. */
+  footer: string | null;
 }
 
 export interface PreviewInput {
@@ -50,6 +53,11 @@ export interface PreviewInput {
   includeTitlePage: boolean;
   /** Pre-translated cast line for the title page ("Charaktere: A, B"). */
   castLine: string | null;
+  /** Pre-translated detail line for the title page (folder, runtime,
+   *  date - lib/pdfDetails.ts). */
+  titleDetails?: string | null;
+  /** Page footer text for content page `page` of `total`. */
+  pageLabel?: (page: number, total: number) => string;
 }
 
 function countChars(s: string): number {
@@ -81,39 +89,13 @@ export function wrapText(text: string, width: number): string[] {
   return out;
 }
 
-function tintFor(
-  blocks: ExtractedBlock[],
-  idx: number,
-  colors: Map<string, string>,
-): string | null {
-  const b = blocks[idx];
-  if (
-    b.kind !== "scriptz-character" &&
-    b.kind !== "scriptz-dialog" &&
-    b.kind !== "scriptz-parenthetical"
-  ) {
-    return null;
-  }
-  let name: string | null = b.kind === "scriptz-character" ? b.text.trim().toUpperCase() : null;
-  if (name === null) {
-    for (let j = idx - 1; j >= 0; j--) {
-      if (blocks[j].kind === "scriptz-character") {
-        name = blocks[j].text.trim().toUpperCase();
-        break;
-      }
-    }
-  }
-  if (name === null) return null;
-  return colors.get(name) ?? null;
-}
-
 export function layoutPdfPreview(input: PreviewInput): PreviewPage[] {
-  const pages: PreviewPage[] = [{ lines: [] }];
+  const pages: PreviewPage[] = [{ lines: [], footer: null }];
   // y measured from the bottom edge, like the PDF generator.
   let y = A4_H_MM - MARGIN_TOP_MM;
   const page = () => pages[pages.length - 1];
   const newPage = () => {
-    pages.push({ lines: [] });
+    pages.push({ lines: [], footer: null });
     y = A4_H_MM - MARGIN_TOP_MM;
   };
   const ensureSpace = (needed: number) => {
@@ -152,6 +134,7 @@ export function layoutPdfPreview(input: PreviewInput): PreviewPage[] {
     y = A4_H_MM * 0.6;
     writeLine(input.title, MARGIN_LEFT_MM, contentW, "center", true, false, null);
     if (input.castLine) writeLine(input.castLine, MARGIN_LEFT_MM, contentW, "center", false, true, null);
+    if (input.titleDetails) writeLine(input.titleDetails, MARGIN_LEFT_MM, contentW, "center", false, false, null);
     newPage();
   }
 
@@ -160,9 +143,11 @@ export function layoutPdfPreview(input: PreviewInput): PreviewPage[] {
     for (const c of input.characters) colors.set(c.name.toUpperCase(), c.color);
   }
 
+  const speakers = tintSpeakers(input.blocks.map((block) => ({ kind: tintKindOf(block.kind), text: block.text })));
   input.blocks.forEach((b, idx) => {
     if (b.kind === "scriptz-character") ensureSpace(LINE_HEIGHT_MM * 4 + PARA_GAP_MM * 2);
-    const tint = input.includeHighlighting ? tintFor(input.blocks, idx, colors) : null;
+    const speaker = speakers[idx];
+    const tint = input.includeHighlighting && speaker ? colors.get(speaker) ?? null : null;
     if (b.kind === "scriptz-character") {
       writeLine(b.text.toUpperCase(), MARGIN_LEFT_MM, contentW, "center", true, false, tint);
     } else if (b.kind === "scriptz-dialog") {
@@ -175,5 +160,11 @@ export function layoutPdfPreview(input: PreviewInput): PreviewPage[] {
     }
   });
 
+  // Same numbering as the PDF: content pages only.
+  const first = input.includeTitlePage ? 1 : 0;
+  const total = pages.length - first;
+  if (input.pageLabel) {
+    for (let i = first; i < pages.length; i++) pages[i].footer = input.pageLabel(i - first + 1, total);
+  }
   return pages;
 }

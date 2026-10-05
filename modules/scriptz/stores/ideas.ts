@@ -57,6 +57,9 @@ export const ideasStore = {
   deleteIdea(id: string): Promise<void> {
     return api.deleteIdea(id);
   },
+  restoreIdea(idea: Idea): Promise<void> {
+    return api.restoreIdea(idea);
+  },
   moveIdea(ideaId: string, folderId: string | null): Promise<void> {
     return api.moveIdea(ideaId, folderId);
   },

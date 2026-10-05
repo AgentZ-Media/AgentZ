@@ -9,7 +9,7 @@
 // The shell starts and disposes this cache explicitly after boot. No
 // resources exist before adapters, settings and legacy migration are ready.
 
-import { createMemo, createResource, createRoot, createSignal } from "solid-js";
+import { createEffect, createMemo, createResource, createRoot, createSignal, onCleanup } from "solid-js";
 import { api } from "../../lib/api";
 import { scriptsBus } from "../../lib/scriptsBus";
 import { foldersBus } from "../../lib/foldersBus";
@@ -123,7 +123,37 @@ function createLibraryData(isActive: () => boolean) {
     return m;
   });
 
+  // Scripts that just reached the last stage (from anywhere: chip, board,
+  // shortcut, selection). Rows, cards and the top bar play the short
+  // "done" moment for them (components/Common/motion.css).
+  const [finishing, setFinishing] = createSignal<ReadonlySet<string>>(new Set());
+  const finishTimers = new Set<ReturnType<typeof setTimeout>>();
+  let lastStatus: Map<string, ScriptStatus> | null = null;
+  createEffect(() => {
+    const list = scripts() ?? [];
+    const before = lastStatus;
+    lastStatus = new Map(list.map((s) => [s.id, s.status]));
+    if (!before) return;
+    const done = list
+      .filter((s) => {
+        const previous = before.get(s.id);
+        return previous !== undefined && previous !== s.status && !isFinalStage(previous) && isFinalStage(s.status);
+      })
+      .map((s) => s.id);
+    if (done.length === 0) return;
+    setFinishing((cur) => new Set([...cur, ...done]));
+    const timer = setTimeout(() => {
+      finishTimers.delete(timer);
+      setFinishing((cur) => new Set([...cur].filter((id) => !done.includes(id))));
+    }, 3000);
+    finishTimers.add(timer);
+  });
+  onCleanup(() => {
+    for (const timer of finishTimers) clearTimeout(timer);
+  });
+
   return {
+    finishing,
     scripts,
     folders,
     folderList,
@@ -166,6 +196,8 @@ export const library = {
   statusCounts: () => data()?.statusCounts() ?? new Map<ScriptStatus, number>(),
   folderCounts: () => data()?.folderCounts() ?? new Map<string, number>(),
   ideaLine: (scriptId: string): string | undefined => data()?.ideaLineByScript().get(scriptId),
+  /** True for a few seconds after the script reached the last stage. */
+  justFinished: (scriptId: string): boolean => data()?.finishing().has(scriptId) ?? false,
 };
 
 /** Start only after boot; the returned disposer owns all shared resources. */

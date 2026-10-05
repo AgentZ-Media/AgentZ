@@ -31,6 +31,11 @@ import { TopBar } from "./TopBar";
 import { Inspector } from "./Inspector";
 import { Timeline, type RangeSource } from "./Timeline";
 import { GutterLabel } from "./GutterLabel";
+import { HookMarks } from "./HookMarks";
+import { ClaimMarks } from "../Agent/ClaimMarks";
+import { agentSettings } from "../../stores/agentSettings";
+import type { AgentJobId } from "../../lib/agent/jobs";
+import { JOB_LABEL } from "../Agent/jobLabels";
 import { RecoveryPanel } from "./RecoveryPanel";
 import { FocusPill } from "./FocusChrome";
 import { TitleInput } from "./TitleInput";
@@ -41,7 +46,8 @@ import { AgentContextMenu } from "../Agent/AgentContextMenu";
 import { registerAgentEditor } from "../Agent/editorBridge";
 import { agentUi } from "../../stores/agentUi";
 import { agentStore } from "../../stores/agent";
-import { liveStats, playheadSec } from "./timelineMath";
+import { liveStats, playheadSec, speechGroupKeys } from "./timelineMath";
+import { prefersReducedMotion } from "../Common/motion";
 import "../Editor/PaperLayout.css";
 import "./ScriptScreen.css";
 
@@ -293,6 +299,13 @@ export function ScriptScreen(props: ScriptScreenProps) {
   createEffect(on(uiStore.inspectorOpen, () => setOverlayArmed(true), { defer: true }));
 
   const focus = () => !isPeek() && uiStore.focusMode();
+  /** Typewriter focus (setting, default off): the caret line stays in the
+   *  middle of the screen, every other speech run steps back. */
+  const typewriter = () => focus() && settingsStore.focusTypewriter();
+  /** Ida's jobs from the paper and the timeline: only in the full view and
+   *  with the agent switched on and set up. */
+  const agentReady = () => !isPeek() && agentStore.available() && agentSettings.enabled() && agentSettings.onboarded();
+  const askJob = (job: AgentJobId) => agentUi.ask({ scriptId: props.scriptId, text: t(JOB_LABEL[job]), send: true, job });
   /** The agent chat takes the inspector's place while it is open. Never in
    *  the peek panel: the agent belongs to the full-size editor. */
   const agentVisible = () => !isPeek() && agentStore.available() && !focus() && agentUi.chatOpen(props.scriptId);
@@ -507,6 +520,45 @@ export function ScriptScreen(props: ScriptScreenProps) {
     });
   });
 
+  // ---------- typewriter focus ----------
+  // Marks the caret's speech run on the rendered elements (attribute only,
+  // never editor state) and scrolls the caret line to the screen's middle.
+  let twMarked: HTMLElement[] = [];
+  const clearTypewriter = () => {
+    for (const el of twMarked) el.removeAttribute("data-tw-current");
+    twMarked = [];
+  };
+  onCleanup(clearTypewriter);
+  createEffect(() => {
+    if (!typewriter()) {
+      clearTypewriter();
+      return;
+    }
+    const ed = editor();
+    const caret = live.caret();
+    live.tick();
+    const blocks = live.blocks();
+    if (!ed || !caret) return;
+    clearTypewriter();
+    for (const key of speechGroupKeys(blocks, caret.key)) {
+      const el = ed.getElementByKey(key);
+      if (!el) continue;
+      el.setAttribute("data-tw-current", "");
+      twMarked.push(el);
+    }
+    const canvas = canvasRef;
+    if (!canvas) return;
+    requestAnimationFrame(() => {
+      const selection = window.getSelection();
+      let rect = selection && selection.rangeCount > 0 ? selection.getRangeAt(0).getBoundingClientRect() : null;
+      if (!rect || rect.height === 0) rect = ed.getElementByKey(caret.key)?.getBoundingClientRect() ?? null;
+      if (!rect) return;
+      const box = canvas.getBoundingClientRect();
+      const delta = rect.top + rect.height / 2 - (box.top + box.height * 0.45);
+      if (Math.abs(delta) > 6) canvas.scrollBy({ top: delta, behavior: prefersReducedMotion() ? "auto" : "smooth" });
+    });
+  });
+
   // ---------- timeline <-> paper ----------
   let linked: HTMLElement | null = null;
   const unlink = () => {
@@ -545,6 +597,7 @@ export function ScriptScreen(props: ScriptScreenProps) {
       class="ss"
       classList={{
         "is-focus": focus(),
+        "is-typewriter": typewriter(),
         "is-peek": isPeek(),
         "is-narrow": narrow(),
         "has-insp": inspectorVisible() || agentVisible(),
@@ -642,6 +695,23 @@ export function ScriptScreen(props: ScriptScreenProps) {
                     tick={live.tick}
                     sheet={sheetEl}
                   />
+                  <HookMarks
+                    editor={editor}
+                    blocks={live.blocks}
+                    segments={segments}
+                    tick={live.tick}
+                    sheet={sheetEl}
+                    onCheck={agentReady() ? () => askJob("hook") : null}
+                  />
+                  <Show when={!isPeek() && agentStore.available()}>
+                    <ClaimMarks
+                      scriptId={s().id}
+                      editor={editor}
+                      sheet={sheetEl}
+                      tick={live.tick}
+                      active={agentVisible}
+                    />
+                  </Show>
                 </Show>
               </div>
             )}
@@ -661,6 +731,7 @@ export function ScriptScreen(props: ScriptScreenProps) {
             onToggle={() => uiStore.toggleTimeline()}
             onHover={onTimelineHover}
             onJump={onTimelineJump}
+            onJob={agentReady() ? (job) => askJob(job) : null}
           />
         </Show>
 
@@ -687,7 +758,13 @@ export function ScriptScreen(props: ScriptScreenProps) {
 
       <Show when={current() && agentVisible()}>
         <div class="ss-agent-wrap">
-          <ChatPanel scriptId={props.scriptId} colorOf={colorOf} onClose={() => agentUi.setChatOpen(props.scriptId, false)} />
+          <ChatPanel
+            scriptId={props.scriptId}
+            colorOf={colorOf}
+            onClose={() => agentUi.setChatOpen(props.scriptId, false)}
+            range={range()}
+            wpm={wpm()}
+          />
         </div>
       </Show>
 

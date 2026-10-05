@@ -13,6 +13,9 @@ import {
   playheadSec,
   segmentsEnd,
   sinceBucket,
+  speechGroupKeys,
+  firstDialogStart,
+  hookMarks,
   textStart,
   timelineWindow,
 } from "../timelineMath";
@@ -180,5 +183,51 @@ describe("sinceBucket", () => {
     expect(sinceBucket(now - 5 * 60_000, now)).toEqual({ unit: "minutes", count: 5 });
     expect(sinceBucket(now - 3 * 3_600_000, now)).toEqual({ unit: "hours", count: 3 });
     expect(sinceBucket(now - 2 * 86_400_000 - 1000, now)).toEqual({ unit: "days", count: 2 });
+  });
+});
+
+describe("speechGroupKeys", () => {
+  const blocks = [
+    { key: "a", kind: "action" as const, text: "Timo sitzt." },
+    { key: "c1", kind: "character" as const, text: "TIMO" },
+    { key: "p1", kind: "paren" as const, text: "(leise)" },
+    { key: "d1", kind: "dialog" as const, text: "Fertig." },
+    { key: "c2", kind: "character" as const, text: "AXEL" },
+    { key: "d2", kind: "dialog" as const, text: "Nein." },
+  ];
+  it("keeps a character line with its parenthetical and dialog together", () => {
+    expect(speechGroupKeys(blocks, "d1")).toEqual(["c1", "p1", "d1"]);
+    expect(speechGroupKeys(blocks, "c1")).toEqual(["c1", "p1", "d1"]);
+    expect(speechGroupKeys(blocks, "d2")).toEqual(["c2", "d2"]);
+  });
+  it("leaves an action block and unknown keys on their own", () => {
+    expect(speechGroupKeys(blocks, "a")).toEqual(["a"]);
+    expect(speechGroupKeys(blocks, "new")).toEqual(["new"]);
+  });
+});
+
+describe("hook marks", () => {
+  const hookBlocks = [
+    { key: "a", kind: "action" as const, text: "Timo tippt." },
+    { key: "c1", kind: "character" as const, text: "AXEL" },
+    { key: "d1", kind: "dialog" as const, text: "eins zwei drei vier" },
+    { key: "c2", kind: "character" as const, text: "TIMO" },
+    { key: "d2", kind: "dialog" as const, text: "eins zwei drei vier fünf sechs sieben acht neun zehn elf zwölf" },
+  ];
+  const segs = computeTimeline(hookBlocks, 120);
+
+  it("starts the clock at the first line of dialog, not at stage directions", () => {
+    expect(firstDialogStart(segs)).toBe(2);
+    expect(firstDialogStart([])).toBeNull();
+  });
+
+  it("assigns zones to speech runs and places the 3 / 5 / 10 s ticks", () => {
+    const marks = hookMarks(hookBlocks, segs);
+    expect(marks.zones.get("a")).toBeUndefined();
+    expect(marks.zones.get("c1")).toBe(0);
+    expect(marks.zones.get("d1")).toBe(0);
+    expect(marks.zones.get("d2")).toBe(0);
+    expect(marks.ticks.map((t) => [t.key, t.sec])).toEqual([["d2", 3], ["d2", 5]]);
+    expect(marks.ticks[0].frac).toBeCloseTo(1 / 6);
   });
 });

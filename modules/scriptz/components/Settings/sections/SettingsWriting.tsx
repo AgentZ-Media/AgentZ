@@ -135,6 +135,13 @@ export function SettingsWriting(props: { onClose(): void }) {
           label={t("prefs.focus.label")}
         />
       </Row>
+      <Row label={t("prefs.typewriter.label")} help={t("prefs.typewriter.help")}>
+        <Switch
+          checked={settingsStore.focusTypewriter()}
+          onChange={(v) => void settingsStore.setFocusTypewriter(v)}
+          label={t("prefs.typewriter.label")}
+        />
+      </Row>
       <Row label={t("prefs.counter.label")} help={t("prefs.counter.help")}>
         <Switch
           checked={settingsStore.showWritingStats()}

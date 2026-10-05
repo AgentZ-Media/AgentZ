@@ -205,3 +205,12 @@
   color: var(--warn);
   font-weight: 600;
 }
+
+/* A card dropped into this column settles with a small spring. */
+.bcard.is-dropped {
+  animation: bcard-settle 0.55s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+@keyframes bcard-settle {
+  0% { transform: translateY(-6px) scale(1.04); box-shadow: var(--shadow-pop); }
+  100% { transform: none; }
+}

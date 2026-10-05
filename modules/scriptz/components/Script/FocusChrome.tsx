@@ -1,5 +1,6 @@
 import { Show } from "solid-js";
 import { formatClock, formatRange, lengthStatus, type LengthRange } from "../../lib/lengthGoal";
+import { createTween } from "../Common/motion";
 import { K } from "@agentz/kit/platform";
 import { getCurrentLocale } from "@agentz/kit/i18n";
 import { t, tPlural } from "../../i18n";
@@ -15,11 +16,12 @@ export interface FocusPillProps {
  *  +214 Wörter · ⌘⇧F beenden". */
 export function FocusPill(props: FocusPillProps) {
   const over = () => lengthStatus(props.runtimeSec, props.range).state === "over";
+  const shownSec = createTween(() => props.runtimeSec);
   const rangeText = () => formatRange(props.range);
   return (
     <div class="ss-focus-pill" role="status">
       <span>
-        {t("script.focus.length")} <b classList={{ over: over() }}>{formatClock(props.runtimeSec)}</b>
+        {t("script.focus.length")} <b classList={{ over: over() }}>{formatClock(shownSec())}</b>
         <Show when={rangeText()}> / {rangeText()}</Show>
       </span>
       <span class="div" aria-hidden="true" />

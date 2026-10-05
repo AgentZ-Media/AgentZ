@@ -9,7 +9,7 @@ import type { MemoryEntry } from "./memory";
 export type ToolStatus = "running" | "done" | "failed";
 
 export type ChatItem =
-  | { kind: "user"; id: string; text: string; quote?: string }
+  | { kind: "user"; id: string; text: string; quote?: string; job?: string }
   | { kind: "assistant"; id: string; text: string; streaming?: boolean; commentary?: boolean }
   | { kind: "thinking"; id: string; text: string; done: boolean }
   | { kind: "tool"; id: string; tool: string; args: Record<string, unknown>; status: ToolStatus }

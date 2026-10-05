@@ -11,6 +11,7 @@ import { AgentAvatar } from "../Agent/AgentAvatar";
 import { avatarStateFor } from "../Agent/ChatPanel";
 import { agentSettings } from "../../stores/agentSettings";
 import { TitleInput } from "./TitleInput";
+import { library } from "../Shell/libraryData";
 
 export interface TopBarProps {
   scriptId: string;
@@ -67,7 +68,7 @@ export function TopBar(props: TopBarProps) {
         </button>
         <span class="ss-crumb-sep" aria-hidden="true">/</span>
         <TitleInput
-          class="ss-crumb-title"
+          class={library.justFinished(props.scriptId) ? "ss-crumb-title mo-marker" : "ss-crumb-title"}
           title={props.title}
           focusFor={props.focusTitleFor}
           onAutoFocused={props.onTitleAutoFocused}
