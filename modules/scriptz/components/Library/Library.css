@@ -26,6 +26,7 @@
   align-items: center;
   gap: 6px;
   padding: 0 14px 0 calc(12px + var(--shell-inset-left, 0px));
+  transition: padding-left var(--t-med);
   background: var(--bg);
   user-select: none;
 }

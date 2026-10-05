@@ -1,4 +1,4 @@
-import { For, Show, createSignal, onCleanup, type JSX } from "solid-js";
+import { For, Show, createEffect, createSignal, onCleanup, type JSX } from "solid-js";
 import { navStore } from "../../stores/nav";
 import { openStore } from "../../stores/open";
 import { uiStore, type SidebarSection } from "../../stores/ui";
@@ -56,6 +56,17 @@ export function Sidebar() {
   const [renamingId, setRenamingId] = createSignal<string | null>(null);
   const [dropTarget, setDropTarget] = createSignal<string | null>(null);
   const [menu, setMenu] = createSignal<{ x: number; y: number; items: ContextMenuItem[] } | null>(null);
+
+  createEffect(() => {
+    if (!uiStore.sidebarOpen() || uiStore.focusMode()) {
+      // The shell now keeps the sidebar mounted for its slide transition.
+      // Clear transient controls (including portalled menus); inline cleanup saves edits.
+      setCreatingFolder(false);
+      setRenamingId(null);
+      setDropTarget(null);
+      setMenu(null);
+    }
+  });
 
   const folderItems = (f: Folder): ContextMenuItem[] => [
     { label: t("folder.menu.rename"), icon: "pen", onClick: () => setRenamingId(f.id) },
