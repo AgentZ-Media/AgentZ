@@ -141,6 +141,7 @@ export const openStore = {
         if (before === finalId && closed && now - closed.at <= REOPEN_WINDOW_MS && !next.includes(s.id)) {
           next = [...next];
           next.splice(Math.min(closed.index, next.length), 0, s.id);
+          next = next.slice(0, MAX_OPEN);
         }
         autoClosed.delete(s.id);
       }

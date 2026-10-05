@@ -121,4 +121,21 @@ describe("openStore", () => {
     openStore.leave("a");
     expect(openStore.ids()).toEqual(["a"]);
   });
+
+  it("keeps the cap when undo reopens a script after another one was added", async () => {
+    const kv = await start();
+    const initial = Array.from({ length: 50 }, (_, i) => `script-${49 - i}`);
+    for (const id of [...initial].reverse()) openStore.add(id);
+    const entries = Object.fromEntries(initial.map((id) => [id, "writing"]));
+    openStore.syncStatuses(scripts(entries), "online", null, true);
+    openStore.syncStatuses(scripts({ ...entries, "script-49": "online" }), "online", null, true);
+    openStore.add("new-script");
+    openStore.syncStatuses(scripts(entries), "online", null, true);
+
+    const expected = ["script-49", "new-script", ...initial.slice(1, -1)];
+    expect(openStore.ids()).toEqual(expected);
+    expect(openStore.ids()).toHaveLength(50);
+    await flushAll();
+    expect(JSON.parse(kv.state.get("nav.open")!)).toEqual({ ids: expected });
+  });
 });
