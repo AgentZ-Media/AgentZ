@@ -5,7 +5,7 @@ import type { ShortcutDef } from "@agentz/kit/shell";
 import { t, type TranslationKey } from "../../i18n";
 import { navStore } from "../../stores/nav";
 import { uiStore } from "../../stores/ui";
-import { createScript } from "../Library/actions";
+import { openNewScript } from "../Library/actions";
 import { stepStage } from "../Script/stageActions";
 import { agentUi } from "../../stores/agentUi";
 import { agentStore } from "../../stores/agent";
@@ -30,7 +30,7 @@ export function getScriptzShortcuts(): ShortcutDef[] {
   const hasScript = () => navStore.activeScriptId() !== null;
   return [
     entry("new", "prefs.shortcuts.newScript", ["Mod+N"], "app", {
-      matches: letter("n"), run: () => void createScript(),
+      matches: letter("n"), run: () => openNewScript(),
     }),
     entry("capture", "prefs.shortcuts.capture", ["Mod+I"], "app", {
       matches: letter("i"), run: () => uiStore.openCapture(),

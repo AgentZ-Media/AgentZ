@@ -17,8 +17,9 @@ Referenz des Designs: `docs/redesign/concept.html`.
   Navigation, Layout und Bibliothekspräferenzen, seedet das Welcome-Skript,
   füllt Runtime-Statistiken nach, migriert Legacy-Blöcke und startet erst
   danach Ideen-, Statistik- und Bibliotheks-Resources. Liefert Routen
-  (Inbox, Skripte, Ideen, Skript, Papierkorb), Sidebar, Overlays (QuickCapture,
-  Export, Stufen-Undo), Befehle, Shortcuts, Einstellungen, Onboarding.
+  (Inbox, Skripte, Ideen, Skript, Papierkorb), Sidebar, Overlays
+  (QuickCapture, Neues Skript, Export, Stufen-Undo), Befehle, Shortcuts,
+  Einstellungen, Onboarding.
 - `lib/`: `api.ts` ist ein Proxy auf den registrierten `ScriptzStorage`
   (`registerSqlStorageAdapter()` installiert den SQL-Default). Fachlogik:
   `scripts.ts`, `folders.ts`, `snapshots.ts`, `search.ts`/`fts.ts` (FTS5),

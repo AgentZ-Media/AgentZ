@@ -102,7 +102,6 @@ export const kitEn: Record<keyof typeof kitDe, string> = {
   "shell.sidebar.aria": "Navigation",
   "shell.sidebar.toggle": "Toggle sidebar ({hotkey})",
   "shell.sidebar.toggleAria": "Show or hide the sidebar",
-  "shell.search": "Search & commands",
   "shell.settings.title": "Settings ({hotkey})",
   "shell.history.back": "Back ({hotkey})",
   "shell.history.backAria": "Back",

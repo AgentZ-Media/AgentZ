@@ -9,9 +9,9 @@ import { folderColor } from "../folderColor";
 import "./FolderMenu.css";
 
 // Folder picker: a trigger (chip or ghost button) plus a `.menu` popover
-// with "Kein Ordner" and every folder (colour dot + check). Used by the
-// open idea row, the capture field, the selection bar and the quick-capture
-// footer.
+// with "Kein Ordner", every folder (colour dot + check) and optionally
+// "Neuer Ordner…". Used by the open idea row, the capture field, the
+// selection bar, the quick-capture footer and the new-script dialog.
 // Keyboard: ↑/↓ move, ⏎ picks, esc closes (and marks the event handled so
 // a surrounding dialog stays open).
 
@@ -27,6 +27,14 @@ export interface FolderMenuProps {
   disabled?: boolean;
   /** Accessible name of the trigger. */
   ariaLabel?: string;
+  /** Adds a "Neuer Ordner…" entry at the end; the caller asks for the name. */
+  onCreate?: () => void;
+}
+
+interface Option {
+  id: string | null;
+  name: string;
+  create?: boolean;
 }
 
 export function FolderMenu(props: FolderMenuProps) {
@@ -36,16 +44,17 @@ export function FolderMenu(props: FolderMenuProps) {
   let trigger: HTMLButtonElement | undefined;
   let menu: HTMLDivElement | undefined;
 
-  const options = () => [
-    { id: null as string | null, name: t("ideasPage.folder.none") },
-    ...props.folders.map((f) => ({ id: f.id as string | null, name: f.name })),
+  const options = (): Option[] => [
+    { id: null, name: t("ideasPage.folder.none") },
+    ...props.folders.map((f) => ({ id: f.id, name: f.name })),
+    ...(props.onCreate ? [{ id: null, name: t("folder.newDots"), create: true }] : []),
   ];
   const current = () => props.folders.find((f) => f.id === props.value) ?? null;
 
   function place() {
     if (!trigger) return;
     const r = trigger.getBoundingClientRect();
-    const estHeight = Math.min(320, options().length * 32 + 12);
+    const estHeight = Math.min(320, options().length * 32 + 20);
     const left = Math.min(r.left, window.innerWidth - 256);
     if (r.bottom + 6 + estHeight > window.innerHeight - 8) {
       setPos({ left, bottom: window.innerHeight - r.top + 6 });
@@ -57,7 +66,7 @@ export function FolderMenu(props: FolderMenuProps) {
   function openMenu() {
     if (props.disabled) return;
     place();
-    const idx = options().findIndex((o) => o.id === props.value);
+    const idx = options().findIndex((o) => !o.create && o.id === props.value);
     setActive(Math.max(0, idx));
     setOpen(true);
     queueMicrotask(() => menu?.focus());
@@ -68,6 +77,12 @@ export function FolderMenu(props: FolderMenuProps) {
   }
   function pick(idx: number) {
     const opt = options()[idx];
+    if (opt?.create) {
+      // The caller replaces the trigger with a name field and focuses it.
+      close(false);
+      props.onCreate?.();
+      return;
+    }
     close();
     if (opt && opt.id !== props.value) props.onChange(opt.id);
   }
@@ -171,27 +186,32 @@ export function FolderMenu(props: FolderMenuProps) {
           >
             <For each={options()}>
               {(opt, i) => (
-                <div
-                  class="menu-it"
-                  classList={{ on: i() === active() }}
-                  role="option"
-                  aria-selected={opt.id === props.value}
-                  onMouseEnter={() => setActive(i())}
-                  onMouseDown={(e) => {
-                    e.preventDefault();
-                    pick(i());
-                  }}
-                >
-                  <Show when={opt.id} fallback={<Icon name="folder" />}>
-                    {(id) => <i class="fdot" style={{ "--dot": folderColor(id()) }} />}
+                <>
+                  <Show when={opt.create}>
+                    <div class="menu-sep" role="separator" />
                   </Show>
-                  <span class="lbl">{opt.name}</span>
-                  <Show when={opt.id === props.value}>
-                    <span class="ck">
-                      <Icon name="check" size={13} />
-                    </span>
-                  </Show>
-                </div>
+                  <div
+                    class="menu-it"
+                    classList={{ on: i() === active() }}
+                    role="option"
+                    aria-selected={!opt.create && opt.id === props.value}
+                    onMouseEnter={() => setActive(i())}
+                    onMouseDown={(e) => {
+                      e.preventDefault();
+                      pick(i());
+                    }}
+                  >
+                    <Show when={opt.id} fallback={<Icon name={opt.create ? "plus" : "folder"} />}>
+                      {(id) => <i class="fdot" style={{ "--dot": folderColor(id()) }} />}
+                    </Show>
+                    <span class="lbl">{opt.name}</span>
+                    <Show when={!opt.create && opt.id === props.value}>
+                      <span class="ck">
+                        <Icon name="check" size={13} />
+                      </span>
+                    </Show>
+                  </div>
+                </>
               )}
             </For>
           </div>

@@ -11,7 +11,7 @@ import { t } from "../../i18n";
 import { Icon, type IconName } from "@agentz/kit/ui";
 import { StageGlyph } from "../Common/StageGlyph";
 import { library } from "../Shell/libraryData";
-import { createScript, importScriptzFile } from "../Library/actions";
+import { importScriptzFile, openNewScript } from "../Library/actions";
 import { setStageWithUndo } from "../Script/stageActions";
 import { safeSnippet } from "./snippet";
 import "./commands.css";
@@ -59,7 +59,7 @@ function commands(shell: ShellControls): PaletteItem[] {
       label: t("browser.newScript"),
       icon: icon("plus"),
       hint: K("Mod+N"),
-      run: () => void createScript(),
+      run: () => openNewScript(),
     },
     {
       id: "cmd:new-idea",

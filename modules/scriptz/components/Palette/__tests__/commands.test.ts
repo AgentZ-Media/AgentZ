@@ -22,7 +22,7 @@ vi.mock("../../Shell/libraryData", () => ({ library: {
   script: (id: string) => data.scripts.find((entry) => entry.id === id),
   folder: () => undefined,
 } }));
-vi.mock("../../Library/actions", () => ({ createScript: vi.fn(), importScriptzFile: vi.fn() }));
+vi.mock("../../Library/actions", () => ({ openNewScript: vi.fn(), importScriptzFile: vi.fn() }));
 vi.mock("../../Script/stageActions", () => ({ setStageWithUndo: vi.fn() }));
 
 const entry = (id: string, title: string, updated_at = 0) => ({ id, title, updated_at, folder_id: null, status: "writing" as const });

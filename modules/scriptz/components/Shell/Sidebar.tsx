@@ -15,9 +15,9 @@ import { ContextMenu, type ContextMenuItem } from "../Library/ContextMenu";
 import { SCRIPT_DRAG_MIME } from "../Library/dnd";
 import {
   createFolder,
-  createScript,
   deleteFolder,
   moveScriptsTo,
+  openNewScript,
   renameFolder,
 } from "../Library/actions";
 import { WritingCounter } from "../Activity/WritingCounter";
@@ -27,7 +27,7 @@ import { folderColor, library } from "./libraryData";
 const FALLBACK_ROW_PX = 30;
 
 /**
- * Left navigation (concept `#tpl-side`): app row, search + new, the inbox
+ * Left navigation (concept `#tpl-side`): app row, "Neues Skript", the inbox
  * (only while work is in progress), "Alle Skripte", the pipeline, folders,
  * recently opened scripts and the footer with the writing counter, trash
  * and settings. Always dark (`--side-*`).
@@ -109,19 +109,15 @@ export function Sidebar() {
   return (
     <>
       <div class="side-actions">
-        <button type="button" class="side-search" onClick={() => uiStore.openPalette()}>
-          <Icon name="search" size={14} />
-          <span class="side-search-lbl">{t("shell.search")}</span>
-          <kbd>{K("Mod+K")}</kbd>
-        </button>
         <button
           type="button"
-          class="side-new"
+          class="side-primary"
           title={t("shell.newScript.title", { hotkey: K("Mod+N") })}
-          aria-label={t("browser.newScript")}
-          onClick={() => void createScript()}
+          onClick={() => openNewScript()}
         >
           <Icon name="plus" />
+          <span class="side-primary-lbl">{t("browser.newScript")}</span>
+          <kbd>{K("Mod+N")}</kbd>
         </button>
       </div>
 
