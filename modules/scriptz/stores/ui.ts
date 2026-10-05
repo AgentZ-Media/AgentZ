@@ -2,6 +2,7 @@ import { createSignal } from "solid-js";
 import { getKvStore, type KvStore } from "@agentz/kit/platform";
 import { createLayoutStore, createStatePersistence, shellUi } from "@agentz/kit/stores";
 import { settingsStore } from "./settings";
+import { agentUi } from "./agentUi";
 
 /**
  * UI state of the Werkbank shell: which panels are visible and which
@@ -193,7 +194,8 @@ export const uiStore = {
     shellUi.settingsOpen() ||
     exportScriptId() !== null ||
     shellUi.onboardingOpen() ||
-    activityOpen(),
+    activityOpen() ||
+    agentUi.anyDialogOpen(),
 
   async load(isActive: () => boolean = () => true) {
     const current = ensureRuntime();
