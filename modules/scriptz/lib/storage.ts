@@ -22,6 +22,8 @@ import type {
   SnapshotMeta,
 } from "./types";
 import { t } from "../i18n";
+import type { AgentStorage } from "./agent/storage";
+import type { LocalChangeStore } from "./localChanges/types";
 
 export interface CreateScriptInput {
   title?: string;
@@ -100,6 +102,10 @@ export interface ExportResult {
 }
 
 export interface ScriptzStorage {
+  /** User-authored agent content uses the same storage boundary as scripts. */
+  agent: AgentStorage;
+  /** Local change feed only; no cloud provider or network is installed. */
+  localChanges: LocalChangeStore;
   // ===== Scripts =====
   createScript(input: CreateScriptInput): Promise<ScriptSummary>;
   getScript(id: string): Promise<Script>;

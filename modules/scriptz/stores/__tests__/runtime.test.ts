@@ -139,9 +139,26 @@ describe("explicit singleton runtimes", () => {
       settingsStore.focusModeDefault(), settingsStore.darkPaper(), settingsStore.pruneUnusedCharacters(),
     ]).toEqual([false, false, false, false, false]);
     expect(settingsStore.showWritingStats()).toBe(true);
+    expect(settingsStore.exportTitlePageDefault()).toBe(true);
     expect(settingsStore.dialogWpm()).toBe(210);
     expect(settingsStore.lengthMinDefaultSec()).toBeNull();
     expect(settingsStore.lengthMaxDefaultSec()).toBeNull();
+  });
+
+  it("restores a disabled PDF title page after restarting the settings runtime", async () => {
+    const settings = new Map<string, string>();
+    install({
+      getSetting: async (key) => settings.get(key) ?? null,
+      setSetting: async (key, value) => { settings.set(key, value); },
+    });
+    const stop = startSettingsRuntime();
+    await settingsStore.load();
+    expect(settingsStore.exportTitlePageDefault()).toBe(true);
+    await settingsStore.setExportTitlePageDefault(false);
+    stop();
+    cleanups.push(startSettingsRuntime());
+    await settingsStore.load();
+    expect(settingsStore.exportTitlePageDefault()).toBe(false);
   });
 
   it("drains buffered navigation when disposed and prevents late route changes", async () => {

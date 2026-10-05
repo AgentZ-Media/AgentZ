@@ -3,9 +3,10 @@ import { createStore, produce, reconcile, type SetStoreFunction } from "solid-js
 import { language } from "@agentz/kit/i18n";
 import { registerFlusher } from "@agentz/kit/lib";
 import { api } from "../lib/api";
-import { finalStageId } from "../lib/stages";
+import { scriptStages } from "../lib/stages";
 import type { Folder } from "../lib/types";
 import { CodexProvider, effortOrDefault, type CodexHostLike } from "../lib/agent/codex/provider";
+import { learnStageIds } from "../lib/agent/learnStage";
 import { latestChat, learnedHash, markLearned, saveChat, type ChatItem, type ChatRecord } from "../lib/agent/chats";
 import { listMemory, selectRelevantMemory, deleteMemory, restoreMemory, updateMemory } from "../lib/agent/memory";
 import { buildInstructions, contextBlock, LEARN_RULES, memoryBlock, personaBlock } from "../lib/agent/prompt";
@@ -447,7 +448,8 @@ function finishStreaming(setState: SetStoreFunction<{ items: ChatItem[] }>): voi
 
 // ---------------------------------------------------------------------------
 // Learning (always optional for the agent; it may store nothing)
-//  - after a script reaches the last stage (background, sequential)
+//  - after a script reaches the learn stage, by default the last one
+//    (background, sequential)
 //  - once over all existing scripts (onboarding / settings, with progress)
 // ---------------------------------------------------------------------------
 
@@ -480,6 +482,12 @@ const BATCH_SIZE = 4;
 /** Quiet time after the last edit before a finished script is learned. */
 const SETTLE_MS = 90_000;
 
+/** Stages whose scripts count as finished for learning: the configured
+ *  learn stage and every later one. */
+function finishedStageIds(): string[] {
+  return learnStageIds(agentSettings.learnStage(), scriptStages());
+}
+
 function scheduleLearning(delayMs = 6000): void {
   if (learnTimer) clearTimeout(learnTimer);
   learnTimer = setTimeout(() => { learnTimer = null; void runLearning(); }, delayMs);
@@ -507,8 +515,10 @@ async function runLearning(): Promise<void> {
   const generation = learnGeneration;
   try {
     const now = Date.now();
-    const finished = (await api.listScripts({ status: finalStageId(), sort: "updated", limit: 500 }))
-      .filter((s) => Math.max(s.status_changed_at ?? 0, s.updated_at) > since);
+    const lists = await Promise.all(finishedStageIds().map((status) => api.listScripts({ status, sort: "updated", limit: 500 })));
+    const finished = lists.flat()
+      .filter((s) => Math.max(s.status_changed_at ?? 0, s.updated_at) > since)
+      .sort((a, b) => b.updated_at - a.updated_at);
     // A finished script that is still being edited is learned once it has
     // been quiet for a while, not after every keystroke.
     const settling = finished.filter((s) => s.updated_at > now - SETTLE_MS);
@@ -605,9 +615,9 @@ async function startBootstrap(): Promise<void> {
     if (status().state !== "ready") await refreshStatus();
     if (status().state !== "ready") throw new Error("agent not ready");
     const summaries = await api.listScripts({ sort: "updated", limit: 2000 });
-    const final = finalStageId();
+    const finished = new Set(finishedStageIds());
     // Finished scripts first: they show the writer's intended result.
-    summaries.sort((a, b) => Number(b.status === final) - Number(a.status === final));
+    summaries.sort((a, b) => Number(finished.has(b.status)) - Number(finished.has(a.status)));
     const targets: LearnTarget[] = [];
     for (const summary of summaries) {
       if (generation !== bootstrapGeneration) return;
@@ -709,8 +719,11 @@ export function startAgentRuntime(services: Readonly<Record<string, unknown>>): 
   // Any script change (stage, content, import) may finish a script.
   const disposeWatch = createRoot((dispose) => {
     createEffect(on(scriptsBus.version, () => scheduleLearning(), { defer: true }));
-    createEffect(on(() => agentSettings.enabled() && agentSettings.onboarded() && agentSettings.learnFromScripts(), (on) => {
-      if (on) scheduleLearning(3000);
+    // Switching learning on or moving the learn stage may make scripts due.
+    createEffect(on(() => (agentSettings.enabled() && agentSettings.onboarded() && agentSettings.learnFromScripts()
+      ? finishedStageIds().join(",")
+      : ""), (key) => {
+      if (key) scheduleLearning(3000);
     }));
     createEffect(on(agentSettings.enabled, (enabled) => {
       if (!enabled) shutdownProvider();

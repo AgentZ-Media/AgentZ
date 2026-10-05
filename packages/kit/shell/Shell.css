@@ -16,10 +16,13 @@
 }
 
 .shell {
+  --sidebar-width: 248px;
   flex: 1 1 0;
   min-height: 0;
   display: grid;
-  grid-template-columns: 248px minmax(0, 1fr);
+  grid-template-columns: var(--sidebar-width) minmax(0, 1fr);
+  overflow: hidden;
+  transition: grid-template-columns var(--t-med);
   background: var(--bg);
   /* Left inset for top bars in the main column. Zero next to the sidebar;
      with the sidebar hidden the macOS traffic lights float over the main
@@ -28,7 +31,7 @@
   --shell-inset-left: 0px;
 }
 .shell.is-bare {
-  grid-template-columns: minmax(0, 1fr);
+  grid-template-columns: 0px minmax(0, 1fr);
   --shell-inset-left: var(--titlebar-traffic-width);
 }
 
@@ -49,6 +52,8 @@
 /* ---------------- Sidebar ---------------- */
 .side {
   position: relative;
+  width: var(--sidebar-width);
+  min-width: 0;
   min-height: 0;
   display: flex;
   flex-direction: column;
@@ -57,6 +62,11 @@
   color: var(--side-fg);
   overflow: hidden;
   font: 13px/1.45 var(--ui);
+  transform: translateX(0);
+  transition: transform var(--t-med);
+}
+.shell.is-bare > .side {
+  transform: translateX(-100%);
 }
 .side::after {
   content: "";

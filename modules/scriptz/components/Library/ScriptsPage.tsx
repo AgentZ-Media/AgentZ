@@ -593,7 +593,7 @@ export function ScriptsPage() {
       return;
     }
     try {
-      const res = await exportScriptsToPdf(ids, { includeHighlighting: false, includeTitlePage: true, wpm: settingsStore.dialogWpm() });
+      const res = await exportScriptsToPdf(ids, { includeHighlighting: false, includeTitlePage: settingsStore.exportTitlePageDefault(), wpm: settingsStore.dialogWpm() });
       if (res.cancelled) return;
       pushToast(tPlural("select.pdf.toast", res.count), "ok");
     } catch (e) {

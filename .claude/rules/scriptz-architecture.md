@@ -49,6 +49,8 @@ die Befehlspalette, deshalb setzt das Modul `revealsSidebar: true`.
 - **Offen** (Sidebar, unter Pipeline und Ordnern, beide einklappbar): jedes
   Skript, das die volle Skriptansicht zeigt, kommt dazu und bleibt bis zum
   Schließen (✕, Mittelklick, Kontextmenü). Bewusst keine Tab-Leiste oben.
+  Neu geöffnete Skripte stehen oben; bereits offene behalten beim Wechseln
+  ihren Platz. Bei maximal 50 Einträgen fällt das älteste unten heraus.
   Mit `close_finished_scripts` (Standard an) verlässt ein Skript die Liste,
   wenn es in die letzte Stufe wechselt; das angezeigte erst beim Wechsel,
   Rückgängig innerhalb von 15 s holt es zurück (`openStore.syncStatuses`).
@@ -67,7 +69,11 @@ die Befehlspalette, deshalb setzt das Modul `revealsSidebar: true`.
 `001_baseline` bis `007_werkbank` in `apps/scriptz/src-tauri/migrations/` sind
 veröffentlicht und unveränderlich. `007` ergänzt `scripts.status`,
 `status_changed_at` und den Ordner-Zielbereich. `008_agent` legt
-`agent_memory`, `agent_chats` und `agent_learned` an. Die Abschaffung von
+`agent_memory`, `agent_chats` und `agent_learned` an. `009_local_changes`
+ergänzt eine lokale Replikat-ID und kompakte Änderungsmarker mit Triggern für
+alle Inhaltstabellen, einschließlich Agentendaten; keine Cloud-Anbindung.
+Vertrag und Grenzen: [`local-storage.md`](../../docs/local-storage.md).
+Die Abschaffung von
 Kamera/Caption/SFX ist bewusst keine SQL-Migration (siehe unten).
 
 ## Stufen und Zielbereich
@@ -174,8 +180,15 @@ Referenz: `docs/agent/screens.html`.
   Einträge sind gedeckelt (`MEMORY_LIMITS`). Pro Thread wird ein Schnappschuss
   in die Instruktionen eingefroren. Lernen ist immer optional: aus dem Chat
   (abschaltbar), aus abgeschlossenen Skripten nach `agent.learn_since` und
-  90 s Ruhe, rückwirkend nur per Button. Gedächtnis ist nicht Teil des
+  90 s Ruhe, rückwirkend nur per Button. Als abgeschlossen gilt ein Skript ab
+  der Lern-Stufe `agent.learn_stage` (leer = letzte Stufe, spätere Stufen
+  zählen mit, `lib/agent/learnStage.ts`). Eine gewählte Stufe liegt immer
+  zwischen erster und letzter: Wird sie gelöscht, rückt sie auf die nächste
+  vor; landet sie vorn oder hinten, gilt wieder der Standard. Unbekannte IDs
+  fallen beim Lesen auf die letzte Stufe zurück. Gedächtnis ist nicht Teil des
   `.scriptz`-Exports.
+- **Storage-Grenze:** `agent/chats.ts` und `agent/memory.ts` delegieren an
+  `ScriptzStorage.agent`; SQL liegt in `agent/sqlStorage.ts`.
 - **Chats** pro Skript in `agent_chats` (`items_json`), Lernstand in
   `agent_learned` (Inhalts-Hash). Rohes JSON wird nie angezeigt; Tool-Aufrufe
   laufen über `components/Agent/labels.ts`.

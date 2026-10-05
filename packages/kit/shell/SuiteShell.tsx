@@ -1,5 +1,5 @@
 import {
-  For, Show, createMemo, createRoot, createSignal, getOwner, onCleanup, onMount,
+  For, Show, createEffect, createMemo, createRoot, createSignal, getOwner, onCleanup, onMount,
   runWithOwner, type Owner,
 } from "solid-js";
 import { Dynamic } from "solid-js/web";
@@ -63,6 +63,14 @@ export function SuiteShell(props: SuiteShellProps) {
   const shortcuts = createMemo(() => [...createShellShortcuts(shellUi), ...(runtime()?.shortcuts ?? [])]);
   const selectedRoute = createMemo(() => runtime()?.routes.find((route) => route.matches()));
   const sidebarVisible = () => shellUi.sidebarOpen() && !shellUi.focused();
+  let sidebar: HTMLElement | undefined;
+  createEffect(() => {
+    if (!sidebarVisible()) {
+      // Commit inline edits through blur before leaving the hidden navigation inert.
+      const focused = document.activeElement;
+      if (focused instanceof HTMLElement && sidebar?.contains(focused)) focused.blur();
+    }
+  });
   // Static per process: a nightly build stays recognizable in every state.
   const nightly = () => (props.platform?.build ?? getBuildInfo()).channel === "nightly";
 
@@ -138,31 +146,30 @@ export function SuiteShell(props: SuiteShellProps) {
           {(active) => <>
             <div class="shell" classList={{ "is-bare": !sidebarVisible(), "is-focus": shellUi.focused() }}
               data-side={sidebarVisible() ? "on" : "off"}>
-              <Show when={sidebarVisible()}>
-                <aside class="side" aria-label={t("shell.sidebar.aria")}>
-                  <Show when={nightly()}><NightSky /></Show>
-                  <div class="side-top" data-tauri-drag-region>
-                    <span class="side-traffic" data-tauri-drag-region aria-hidden="true" />
-                    <span class="side-sp" data-tauri-drag-region />
-                    <button type="button" class="ic-btn" onClick={() => shellUi.toggleSidebar()}
-                      title={t("shell.sidebar.toggle", { hotkey: K("Mod+\\") })}
-                      aria-label={t("shell.sidebar.toggleAria")}><Icon name="sidebar" /></button>
-                  </div>
-                  <div class="side-app">
-                    <AppMark logo={props.module.logo} appName={props.module.name} size={28} />
-                    <span class="side-app-name">{props.module.name}</span>
-                    <Show when={nightly()}>
-                      <button type="button" class="night-badge" onClick={() => shellUi.openSettings("about")}
-                        title={t("shell.nightly.title")} aria-label={t("shell.nightly.title")}>
-                        <Icon name="moon" size={11} />{t("shell.nightly.badge")}
-                      </button>
-                    </Show>
-                  </div>
-                  <Dynamic component={active().sidebar} />
-                  {props.footer}
-                  <Show when={active().sidebarFooter}>{(Footer) => <Dynamic component={Footer()} />}</Show>
-                </aside>
-              </Show>
+              <aside ref={sidebar} class="side" aria-label={t("shell.sidebar.aria")}
+                inert={!sidebarVisible()} aria-hidden={!sidebarVisible()}>
+                <Show when={nightly()}><NightSky /></Show>
+                <div class="side-top" data-tauri-drag-region>
+                  <span class="side-traffic" data-tauri-drag-region aria-hidden="true" />
+                  <span class="side-sp" data-tauri-drag-region />
+                  <button type="button" class="ic-btn" onClick={() => shellUi.toggleSidebar()}
+                    title={t("shell.sidebar.toggle", { hotkey: K("Mod+\\") })}
+                    aria-label={t("shell.sidebar.toggleAria")}><Icon name="sidebar" /></button>
+                </div>
+                <div class="side-app">
+                  <AppMark logo={props.module.logo} appName={props.module.name} size={28} />
+                  <span class="side-app-name">{props.module.name}</span>
+                  <Show when={nightly()}>
+                    <button type="button" class="night-badge" onClick={() => shellUi.openSettings("about")}
+                      title={t("shell.nightly.title")} aria-label={t("shell.nightly.title")}>
+                      <Icon name="moon" size={11} />{t("shell.nightly.badge")}
+                    </button>
+                  </Show>
+                </div>
+                <Dynamic component={active().sidebar} />
+                {props.footer}
+                <Show when={active().sidebarFooter}>{(Footer) => <Dynamic component={Footer()} />}</Show>
+              </aside>
               <main class="shell-main">
                 <Show when={nightly() && !sidebarVisible() && !shellUi.focused()}>
                   <button type="button" class="night-badge shell-night-chip" onClick={() => shellUi.openSettings("about")}

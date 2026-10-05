@@ -135,7 +135,7 @@ export const agentDe = {
 
   // ---------- provider states ----------
   "agent.state.missing.title": "Codex ist nicht installiert",
-  "agent.state.missing.body": "{name} läuft über die Codex CLI von OpenAI. Installiere sie und melde dich einmal im Terminal mit {command} an.",
+  "agent.state.missing.body": "{name} nutzt die Codex CLI von OpenAI. Installiere sie auf deinem Computer und melde dich einmal an.",
   "agent.state.loggedOut.title": "Codex ist nicht angemeldet",
   "agent.state.loggedOut.body": "Melde dich einmal im Terminal mit {command} an. Danach hier erneut prüfen.",
   "agent.state.error.title": "Codex konnte nicht starten",
@@ -148,6 +148,23 @@ export const agentDe = {
   "agent.state.setup.title": "Lerne deinen Schreibpartner kennen",
   "agent.state.setup.body": "In drei kurzen Schritten: Codex verbinden, Namen geben, Persönlichkeit wählen.",
   "agent.state.setup.action": "Einrichten",
+
+  // ---------- Codex setup ----------
+  "agent.install.platform": "Betriebssystem",
+  "agent.install.unix": "macOS / Linux",
+  "agent.install.windows": "Windows",
+  "agent.install.unixHint": "Öffne Terminal und füge diesen Befehl ein:",
+  "agent.install.windowsHint": "Öffne ein neues PowerShell-Fenster und füge diesen Befehl ein:",
+  "agent.install.command": "Codex installieren",
+  "agent.install.login": "Bei Codex anmelden",
+  "agent.install.loginHint": "Öffne nach der Installation ein neues Terminal-Fenster bzw. PowerShell-Fenster. Führe dort den zweiten Befehl aus und melde dich mit ChatGPT an:",
+  "agent.install.loginOnlyHint": "Öffne Terminal bzw. PowerShell, führe diesen Befehl aus und melde dich mit ChatGPT an:",
+  "agent.install.retryHint": "Klicke danach auf „Erneut prüfen“. Wird Codex noch nicht gefunden, starte ScriptZ neu.",
+  "agent.install.docs": "Installationsanleitung von OpenAI",
+  "agent.install.copyLabel": "{command}: Befehl kopieren",
+  "agent.install.copied": "Kopiert",
+  "agent.install.copyFailed": "Kopieren fehlgeschlagen. Markiere den Befehl und kopiere ihn manuell.",
+  "agent.install.linkFailed": "Der Browser konnte nicht geöffnet werden. Kopiere den Link über das Kontextmenü.",
 
   // ---------- context menu ----------
   "agent.ctx.copy": "Kopieren",
@@ -195,7 +212,10 @@ export const agentDe = {
   "agent.prefs.learnModel.same": "Wie Standardmodell",
   "agent.prefs.learnEffort": "Denkaufwand beim Lernen",
   "agent.prefs.learnScripts": "Aus fertigen Skripten lernen",
-  "agent.prefs.learnScripts.help": "Erreicht ein Skript die letzte Stufe, schaut {name}, ob es etwas Neues zu merken gibt. Muss aber nichts lernen.",
+  "agent.prefs.learnScripts.help": "Erreicht ein Skript die eingestellte Stufe, schaut {name}, ob es etwas Neues zu merken gibt. Muss aber nichts lernen.",
+  "agent.prefs.learnStage": "Fertig ab Stufe",
+  "agent.prefs.learnStage.help": "Ab dieser Stufe gilt ein Skript für {name} als fertig. Spätere Stufen zählen mit.",
+  "agent.prefs.learnStage.last": "Letzte Stufe ({stage})",
   "agent.prefs.learnChat": "Im Chat lernen",
   "agent.prefs.learnChat.help": "Vorlieben und Korrekturen aus Gesprächen direkt merken, jeweils mit Rückgängig.",
   "agent.prefs.persona": "Persönlichkeit",
@@ -459,7 +479,7 @@ export const agentEn: Record<keyof typeof agentDe, string> = {
 
   // ---------- provider states ----------
   "agent.state.missing.title": "Codex is not installed",
-  "agent.state.missing.body": "{name} runs on OpenAI's Codex CLI. Install it and sign in once in the terminal with {command}.",
+  "agent.state.missing.body": "{name} uses OpenAI’s Codex CLI. Install it on your computer and sign in once.",
   "agent.state.loggedOut.title": "Codex is not signed in",
   "agent.state.loggedOut.body": "Sign in once in the terminal with {command}. Then check again here.",
   "agent.state.error.title": "Codex could not start",
@@ -472,6 +492,23 @@ export const agentEn: Record<keyof typeof agentDe, string> = {
   "agent.state.setup.title": "Meet your writing partner",
   "agent.state.setup.body": "Three short steps: connect Codex, pick a name, choose a personality.",
   "agent.state.setup.action": "Set up",
+
+  // ---------- Codex setup ----------
+  "agent.install.platform": "Operating system",
+  "agent.install.unix": "macOS / Linux",
+  "agent.install.windows": "Windows",
+  "agent.install.unixHint": "Open Terminal and paste this command:",
+  "agent.install.windowsHint": "Open a new PowerShell window and paste this command:",
+  "agent.install.command": "Install Codex",
+  "agent.install.login": "Sign in to Codex",
+  "agent.install.loginHint": "After installing, open a new Terminal or PowerShell window. Run the second command there and sign in with ChatGPT:",
+  "agent.install.loginOnlyHint": "Open Terminal or PowerShell, run this command and sign in with ChatGPT:",
+  "agent.install.retryHint": "Then click “Check again”. If Codex is still not found, restart ScriptZ.",
+  "agent.install.docs": "OpenAI installation guide",
+  "agent.install.copyLabel": "{command}: copy command",
+  "agent.install.copied": "Copied",
+  "agent.install.copyFailed": "Could not copy. Select the command and copy it manually.",
+  "agent.install.linkFailed": "Could not open the browser. Copy the link using the context menu.",
 
   // ---------- context menu ----------
   "agent.ctx.copy": "Copy",
@@ -519,7 +556,10 @@ export const agentEn: Record<keyof typeof agentDe, string> = {
   "agent.prefs.learnModel.same": "Same as default model",
   "agent.prefs.learnEffort": "Reasoning effort when learning",
   "agent.prefs.learnScripts": "Learn from finished scripts",
-  "agent.prefs.learnScripts.help": "When a script reaches the last stage, {name} checks whether there is anything new to remember. It never has to learn something.",
+  "agent.prefs.learnScripts.help": "When a script reaches the chosen stage, {name} checks whether there is anything new to remember. It never has to learn something.",
+  "agent.prefs.learnStage": "Finished from stage",
+  "agent.prefs.learnStage.help": "From this stage on, {name} treats a script as finished. Later stages count too.",
+  "agent.prefs.learnStage.last": "Last stage ({stage})",
   "agent.prefs.learnChat": "Learn in chat",
   "agent.prefs.learnChat.help": "Remember preferences and corrections from conversations right away, each with undo.",
   "agent.prefs.persona": "Personality",

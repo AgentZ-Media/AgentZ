@@ -1,8 +1,11 @@
 import { For, Show, createEffect, createMemo } from "solid-js";
 import { Icon, Row, SectionHead, Switch, confirmDialog } from "@agentz/kit/ui";
 import { pushToast } from "@agentz/kit/stores";
+import { CodexSetupInstructions } from "./CodexSetupInstructions";
 import { t } from "../../i18n";
+import { resolveLearnStage } from "../../lib/agent/learnStage";
 import { clearMemory } from "../../lib/agent/memory";
+import { finalStageId, scriptStages, stageLabel } from "../../lib/stages";
 import { EFFORT_ORDER, type AgentEffort, type AgentModel } from "../../lib/agent/types";
 import { agentStore } from "../../stores/agent";
 import { agentSettings } from "../../stores/agentSettings";
@@ -72,6 +75,29 @@ export function ModelSelect(props: { value: string; onChange(v: string): void; l
         <Icon name="refresh" size={14} />
       </button>
     </span>
+  );
+}
+
+/** Stage from which finished scripts are learned. The first option is the
+ *  default ("the last stage", stored empty) and follows the pipeline; the
+ *  first stage is not offered because every draft starts there. */
+function LearnStageSelect(props: { label: string; disabled: boolean }) {
+  const value = () => {
+    const id = resolveLearnStage(agentSettings.learnStage(), scriptStages());
+    return id === finalStageId() ? "" : id;
+  };
+  const options = () => scriptStages().slice(1, -1);
+  return (
+    <select
+      class="field ag-select"
+      aria-label={props.label}
+      value={value()}
+      disabled={props.disabled}
+      onChange={(e) => void agentSettings.setLearnStage(e.currentTarget.value)}
+    >
+      <option value="">{t("agent.prefs.learnStage.last", { stage: stageLabel(finalStageId()) })}</option>
+      <For each={options()}>{(stage) => <option value={stage.id}>{stageLabel(stage.id)}</option>}</For>
+    </select>
   );
 }
 
@@ -149,6 +175,9 @@ export function AgentSettings(props: { onClose(): void }) {
             <div><b>{t("agent.prefs.local")}</b><small>{t("agent.prefs.later")}</small></div>
           </div>
         </div>
+        <Show when={agentSettings.enabled() && (agentStore.status().state === "missing" || agentStore.status().state === "logged-out")}>
+          <CodexSetupInstructions install={agentStore.status().state === "missing"} />
+        </Show>
         <Show when={agentSettings.enabled() && !ready() && agentStore.status().state !== "checking"}>
           <div class="ag-prov-retry">
             <button type="button" class="btn" onClick={() => void agentStore.refreshStatus()}>{t("agent.state.retry")}</button>
@@ -163,6 +192,9 @@ export function AgentSettings(props: { onClose(): void }) {
       </Row>
       <Row label={t("agent.prefs.learnScripts")} help={t("agent.prefs.learnScripts.help", { name: name() })}>
         <Switch checked={agentSettings.learnFromScripts()} onChange={(v) => void agentSettings.setLearnFromScripts(v)} label={t("agent.prefs.learnScripts")} />
+      </Row>
+      <Row label={t("agent.prefs.learnStage")} help={t("agent.prefs.learnStage.help", { name: name() })}>
+        <LearnStageSelect label={t("agent.prefs.learnStage")} disabled={!agentSettings.learnFromScripts()} />
       </Row>
       <Row label={t("agent.prefs.learnChat")} help={t("agent.prefs.learnChat.help")}>
         <Switch checked={agentSettings.learnFromChat()} onChange={(v) => void agentSettings.setLearnFromChat(v)} label={t("agent.prefs.learnChat")} />

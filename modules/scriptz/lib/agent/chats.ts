@@ -2,7 +2,7 @@
 // One chat per script (the newest row); "new chat" starts a fresh row. Items
 // are stored as rendered UI state, never as raw provider frames.
 
-import { getDb } from "../db";
+import { getStorageAdapter } from "../storage";
 import type { Claim, Proposal } from "./proposals";
 import type { MemoryEntry } from "./memory";
 
@@ -31,78 +31,22 @@ export interface ChatRecord {
   updatedAt: number;
 }
 
-interface ChatRow {
-  id: string;
-  script_id: string | null;
-  provider: string;
-  thread_id: string | null;
-  items_json: string;
-  created_at: number;
-  updated_at: number;
-}
-
-const KNOWN_KINDS = new Set(["user", "assistant", "thinking", "tool", "search", "proposal", "claims", "memory", "blocked", "error", "interrupted"]);
-
-function parseItems(raw: string): ChatItem[] {
-  try {
-    const parsed: unknown = JSON.parse(raw);
-    if (!Array.isArray(parsed)) return [];
-    return parsed.filter((item): item is ChatItem =>
-      typeof item === "object" && item !== null && KNOWN_KINDS.has((item as { kind?: string }).kind ?? ""),
-    ).map((item) => {
-      // A crash mid-turn must not leave spinners behind.
-      if (item.kind === "assistant") return { ...item, streaming: false };
-      if (item.kind === "thinking") return { ...item, done: true };
-      if ((item.kind === "tool" || item.kind === "search") && item.status === "running") return { ...item, status: "done" as const };
-      return item;
-    });
-  } catch {
-    return [];
-  }
-}
-
-function rowToChat(row: ChatRow): ChatRecord {
-  return {
-    id: row.id,
-    scriptId: row.script_id,
-    provider: row.provider,
-    threadId: row.thread_id,
-    items: parseItems(row.items_json),
-    createdAt: row.created_at,
-    updatedAt: row.updated_at,
-  };
-}
-
+/** Loads the most recently updated chat for a script, or the unassigned scope when null. */
 export async function latestChat(scriptId: string | null): Promise<ChatRecord | null> {
-  const db = await getDb();
-  const rows = await db.select<ChatRow[]>(
-    `SELECT * FROM agent_chats WHERE script_id IS $1 ORDER BY updated_at DESC LIMIT 1`,
-    [scriptId],
-  );
-  return rows[0] ? rowToChat(rows[0]) : null;
+  return getStorageAdapter().agent.latestChat(scriptId);
 }
 
+/** Persists rendered chat state through the active adapter; callers coordinate flush ordering. */
 export async function saveChat(chat: ChatRecord): Promise<void> {
-  const db = await getDb();
-  await db.execute(
-    `INSERT INTO agent_chats (id, script_id, provider, thread_id, items_json, created_at, updated_at)
-     VALUES ($1, $2, $3, $4, $5, $6, $7)
-     ON CONFLICT(id) DO UPDATE SET thread_id = excluded.thread_id, items_json = excluded.items_json, updated_at = excluded.updated_at`,
-    [chat.id, chat.scriptId, chat.provider, chat.threadId, JSON.stringify(chat.items), chat.createdAt, chat.updatedAt],
-  );
+  return getStorageAdapter().agent.saveChat(chat);
 }
 
+/** Returns the last learned content hash, or null when the script has not been learned. */
 export async function learnedHash(scriptId: string): Promise<string | null> {
-  const db = await getDb();
-  const rows = await db.select<{ content_hash: string }[]>("SELECT content_hash FROM agent_learned WHERE script_id = $1", [scriptId]);
-  return rows[0]?.content_hash ?? null;
+  return getStorageAdapter().agent.learnedHash(scriptId);
 }
 
+/** Records the content hash only after the caller has completed a learning turn. */
 export async function markLearned(scriptId: string, hash: string): Promise<void> {
-  const db = await getDb();
-  await db.execute(
-    `INSERT INTO agent_learned (script_id, content_hash, learned_at) VALUES ($1, $2, $3)
-     ON CONFLICT(script_id) DO UPDATE SET content_hash = excluded.content_hash, learned_at = excluded.learned_at`,
-    [scriptId, hash, Date.now()],
-  );
+  return getStorageAdapter().agent.markLearned(scriptId, hash);
 }
