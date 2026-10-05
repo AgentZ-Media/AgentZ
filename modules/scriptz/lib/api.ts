@@ -3,6 +3,14 @@ import {
   listCharacterColors as ccList,
   setCharacterColor as ccSet,
 } from "./characterColors";
+import { sqlAgentStorage } from "./agent/sqlStorage";
+import { sqlLocalChanges } from "./localChanges/sql";
+
+// Public host contract (package export @agentz/scriptz/storage).
+export { getStorageAdapter, setStorageAdapter } from "./storage";
+export type { ScriptzStorage } from "./storage";
+export type { AgentStorage } from "./agent/storage";
+export type { LocalChange, LocalChangePage, LocalChangeStore } from "./localChanges/types";
 import {
   findUnusedCharacterNames as cuFindUnused,
   pruneUnusedCharacterNames as cuPruneUnused,
@@ -90,6 +98,8 @@ import type {
 // Registered explicitly by the host; the `api` proxy reads the active
 // adapter on every call, so hosts can replace storage without changing callers.
 const sqlBackedAdapter: ScriptzStorage = {
+  agent: sqlAgentStorage,
+  localChanges: sqlLocalChanges,
   // Scripts
   async createScript(input: {
     title?: string;
