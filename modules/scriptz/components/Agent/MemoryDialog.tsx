@@ -277,7 +277,12 @@ function EntryRow(props: { entry: MemoryEntry; onChange(): void; scope?: string 
     }
   };
   const remove = async () => {
-    await deleteMemory(props.entry.id);
+    try {
+      await deleteMemory(props.entry.id);
+    } catch (error) {
+      pushToast(t("agent.mem.deleteFailed", { message: String(error) }), "error");
+      return;
+    }
     pushToast(t("agent.mem.deleted"), "ok");
     props.onChange();
   };

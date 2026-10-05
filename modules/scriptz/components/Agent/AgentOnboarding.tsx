@@ -92,9 +92,11 @@ export function AgentOnboarding() {
         agentSettings.setEffort(effort()),
       ]);
       const first = !agentSettings.onboarded();
+      // Editing the persona later keeps the on/off choice as it is.
+      const setup = !editOnly();
       await agentSettings.markLearnSince();
       await agentSettings.setOnboarded(true);
-      await agentSettings.setEnabled(true);
+      if (setup) await agentSettings.setEnabled(true);
       agentUi.closeOnboarding();
       if (first) {
         agentUi.setChatOpen(true);

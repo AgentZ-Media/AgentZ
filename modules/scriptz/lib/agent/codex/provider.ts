@@ -289,8 +289,14 @@ export class CodexProvider implements AgentProvider {
       thread?.handle(method, params);
     });
     client.setRequestHandler((method, params) => this.serverRequest(method, params));
-    await client.request("initialize", { clientInfo: CLIENT_INFO, capabilities: { experimentalApi: true } }, 20000);
-    await client.notify("initialized");
+    try {
+      await client.request("initialize", { clientInfo: CLIENT_INFO, capabilities: { experimentalApi: true } }, 20000);
+      await client.notify("initialized");
+    } catch (error) {
+      // Do not leave a half-started app-server running.
+      await client.close().catch(() => {});
+      throw error;
+    }
     try {
       const config = obj(obj(await client.request("config/read", {}, 10000)).config);
       this.configuredModel = str(config.model);

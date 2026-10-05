@@ -119,39 +119,36 @@ export function AgentContextMenu(props: { scriptId: string; canvas: () => HTMLEl
             </div>
             <For each={ACTIONS}>
               {(action) => (
-                <button
-                  type="button"
-                  class="ag-ctx-it"
-                  classList={{ "is-on": action.sub && subOpen() }}
-                  role="menuitem"
-                  aria-haspopup={action.sub ? "menu" : undefined}
-                  aria-expanded={action.sub ? subOpen() : undefined}
-                  onMouseEnter={() => setSubOpen(!!action.sub)}
-                  onClick={() => (action.sub ? setSubOpen(!subOpen()) : ask(action.prompt))}
-                >
-                  <Icon name={action.icon} size={14} />
-                  {t(action.label)}
-                  <Show when={action.sub}>
-                    <Icon name="right" size={12} class="ag-ctx-chev" />
-                  </Show>
+                // The submenu sits next to its button (never inside it), so
+                // its entries are real, focusable buttons.
+                <div class="ag-ctx-row" onMouseEnter={() => setSubOpen(!!action.sub)}>
+                  <button
+                    type="button"
+                    class="ag-ctx-it"
+                    classList={{ "is-on": action.sub && subOpen() }}
+                    role="menuitem"
+                    aria-haspopup={action.sub ? "menu" : undefined}
+                    aria-expanded={action.sub ? subOpen() : undefined}
+                    onClick={() => (action.sub ? setSubOpen(!subOpen()) : ask(action.prompt))}
+                  >
+                    <Icon name={action.icon} size={14} />
+                    {t(action.label)}
+                    <Show when={action.sub}>
+                      <Icon name="right" size={12} class="ag-ctx-chev" />
+                    </Show>
+                  </button>
                   <Show when={action.sub && subOpen()}>
                     <div class="ag-ctx ag-ctx-sub" role="menu" style={{ left: `${subLeft()}px` }}>
                       <For each={REWRITES}>
                         {(item) => (
-                          <span
-                            class="ag-ctx-it"
-                            role="menuitem"
-                            tabindex="0"
-                            onClick={(e) => { e.stopPropagation(); ask(item.prompt); }}
-                            onKeyDown={(e) => { if (e.key === "Enter") { e.stopPropagation(); ask(item.prompt); } }}
-                          >
+                          <button type="button" class="ag-ctx-it" role="menuitem" onClick={() => ask(item.prompt)}>
                             {t(item.label)}
-                          </span>
+                          </button>
                         )}
                       </For>
                     </div>
                   </Show>
-                </button>
+                </div>
               )}
             </For>
           </div>

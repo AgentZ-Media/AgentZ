@@ -169,6 +169,8 @@ function createSession(scriptId: string): ChatSession {
   // Writes run one after another so an older snapshot never lands last.
   let writes: Promise<void> = Promise.resolve();
   let writeError: unknown = null;
+  // Bumped by "New chat": a turn from before must not touch the new chat.
+  let epoch = 0;
 
   const loading = latestChat(scriptId).then((chat) => {
     record = chat;
@@ -213,11 +215,18 @@ function createSession(scriptId: string): ChatSession {
     const p = getProvider();
     if (!p) throw new Error("agent unavailable");
     await loading;
-    thread = await p.openThread({
+    const opening = epoch;
+    const opened = await p.openThread({
       instructions: await chatInstructions(scriptId),
       tools: createChatTools(host),
       resumeId: record?.threadId ?? null,
     });
+    // "New chat" meanwhile: this thread belongs to the old conversation.
+    if (opening !== epoch) {
+      void opened.close().catch(() => {});
+      throw new Error("chat was reset");
+    }
+    thread = opened;
     return thread;
   };
 
@@ -230,6 +239,12 @@ function createSession(scriptId: string): ChatSession {
       const clean = text.trim();
       if (!clean || running()) return;
       setRunning(true);
+      const turn = epoch;
+      const live = () => turn === epoch;
+      // The saved chat must be in place first, or loading would replace
+      // the new message.
+      await loading;
+      if (!live()) return;
       push({ kind: "user", id: localId("user"), text: clean, quote: quote?.text });
       persist();
       try {
@@ -242,7 +257,8 @@ function createSession(scriptId: string): ChatSession {
         const result = await active.run(input, {
           model: model?.id ?? "",
           effort: effortOrDefault(model, agentSettings.effort()),
-        }, (event) => applyEvent(setState, event));
+        }, (event) => { if (live()) applyEvent(setState, event); });
+        if (!live()) return;
         if (result.status === "interrupted") push({ kind: "interrupted", id: localId("int") });
         if (result.status === "failed") {
           push({ kind: "error", id: localId("err"), message: result.error ?? "" });
@@ -250,26 +266,33 @@ function createSession(scriptId: string): ChatSession {
           thread = null;
         }
       } catch (error) {
+        if (!live()) return;
         push({ kind: "error", id: localId("err"), message: error instanceof Error ? error.message : String(error) });
         // A broken thread is re-opened on the next message.
         thread = null;
       } finally {
-        finishStreaming(setState);
-        setRunning(false);
-        persist(true);
+        // After "New chat" the reset owns the state; the old turn leaves it alone.
+        if (live()) {
+          finishStreaming(setState);
+          setRunning(false);
+          persist(true);
+        }
       }
     },
     async stop() {
       await thread?.interrupt();
     },
     async reset() {
-      if (running()) await thread?.interrupt();
-      await thread?.close().catch(() => {});
+      epoch += 1;
+      const old = thread;
       thread = null;
+      if (running()) await old?.interrupt();
+      await old?.close().catch(() => {});
       await loading;
       await writes;
       record = null;
       setState("items", []);
+      setRunning(false);
       write();
     },
     async flush() {
@@ -307,8 +330,11 @@ function createSession(scriptId: string): ChatSession {
       return true;
     },
     append(items) {
-      for (const item of items) push(item);
-      persist();
+      // After loading, so the restored chat does not replace these items.
+      void loading.then(() => {
+        for (const item of items) push(item);
+        persist();
+      });
     },
     async undoMemory(itemId) {
       const i = indexOf(itemId);
@@ -524,6 +550,8 @@ async function learnBatch(targets: LearnTarget[], kind: "finished" | "existing",
   const p = getProvider();
   if (!p) throw new LearnInterrupted();
   const [all, folders, list] = await Promise.all([listMemory(), foldersMap(), ensureModels()]);
+  // Switched off (or onboarding closed) while loading: do not start Codex again.
+  if (provider !== p) throw new LearnInterrupted();
   const changes: MemoryChange[] = [];
   const sourceId = targets.length === 1 ? targets[0].id : null;
   const record = (change: MemoryChange) => { changes.push(change); onChange?.(change); };

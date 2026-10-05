@@ -98,10 +98,17 @@ const TARGET_SCHEMA: JsonSchema = {
 };
 
 export function createChatTools(host: ToolHost): AgentTool[] {
+  // Block texts of the open script as the model last saw them. Its [n]
+  // indices refer to this state, so targets are anchored here, not to the
+  // live editor (the user may have typed since).
+  let shown: string[] | null = null;
+  const shownTexts = () => shown ?? (host.liveBlocks() ?? []).map((b) => b.text);
+
   const currentScript = async () => {
     if (!host.scriptId) return null;
     const script = await api.getScript(host.scriptId);
     const blocks = host.liveBlocks() ?? blocksFromContent(script.content_json);
+    shown = blocks.map((b) => b.text);
     return { script, blocks };
   };
 
@@ -193,6 +200,7 @@ export function createChatTools(host: ToolHost): AgentTool[] {
         if (!script) return fail(`unknown script: ${id}`);
         const folders = await foldersById();
         const blocks = id === host.scriptId ? host.liveBlocks() ?? blocksFromContent(script.content_json) : blocksFromContent(script.content_json);
+        if (id === host.scriptId) shown = blocks.map((b) => b.text);
         return ok({
           id: script.id,
           title: script.title,
@@ -245,9 +253,9 @@ export function createChatTools(host: ToolHost): AgentTool[] {
         additionalProperties: false,
       },
       async run(args) {
-        const texts = (host.liveBlocks() ?? []).map((b) => b.text);
+        const texts = shownTexts();
         const parsed = parseProposal(args, texts.length);
-        if (!parsed) return fail("no usable options (each option needs typed blocks)");
+        if (!parsed) return fail("no usable options: each option needs typed blocks, and block indices must exist in the script (call get_current_script again)");
         const proposal = { ...parsed, target: anchorTarget(parsed.target, texts) };
         host.onProposal(proposal);
         return ok({ shown: proposal.options.length, note: "The user sees the options and decides. Do not repeat them in your reply." });
@@ -292,7 +300,7 @@ export function createChatTools(host: ToolHost): AgentTool[] {
         additionalProperties: false,
       },
       async run(args) {
-        const texts = (host.liveBlocks() ?? []).map((b) => b.text);
+        const texts = shownTexts();
         const claims = parseClaims(args, texts.length).map((claim) => (
           claim.fix ? { ...claim, fix: { ...claim.fix, target: anchorTarget(claim.fix.target, texts) } } : claim
         ));

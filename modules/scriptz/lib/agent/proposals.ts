@@ -66,22 +66,26 @@ export function parseBlocks(raw: unknown): AgentBlock[] {
   return out;
 }
 
-export function parseTarget(raw: unknown, blockCount: number): ProposalTarget {
-  if (!isObj(raw)) return { mode: "append" };
+/** Null when the indices point past the script the model saw: that is a
+ *  stale or wrong reference, and guessing the last block would replace the
+ *  wrong lines. The model is asked to re-read instead. */
+export function parseTarget(raw: unknown, blockCount: number): ProposalTarget | null {
+  // Nothing to replace or insert after in an empty script.
+  if (!isObj(raw) || blockCount === 0) return { mode: "append" };
   const mode = str(raw.mode, 20);
-  const clamp = (n: number) => Math.max(0, Math.min(blockCount - 1, n));
-  if (mode === "replace" && blockCount > 0) {
+  const inRange = (n: number) => n < blockCount;
+  if (mode === "replace") {
     const from = int(raw.from);
     const to = int(raw.to) ?? from;
     if (from !== null && to !== null) {
-      const a = clamp(Math.min(from, to));
-      const b = clamp(Math.max(from, to));
-      return { mode: "replace", from: a, to: b };
+      const a = Math.min(from, to);
+      const b = Math.max(from, to);
+      return inRange(b) ? { mode: "replace", from: a, to: b } : null;
     }
   }
-  if ((mode === "insert_after" || mode === "insertAfter") && blockCount > 0) {
+  if (mode === "insert_after" || mode === "insertAfter") {
     const block = int(raw.block);
-    if (block !== null) return { mode: "insertAfter", block: clamp(block) };
+    if (block !== null) return inRange(block) ? { mode: "insertAfter", block } : null;
   }
   return { mode: "append" };
 }
@@ -127,8 +131,9 @@ export function parseProposal(raw: unknown, blockCount: number): Proposal | null
       options.push({ title: str(item.title, 80), note: str(item.note, 240), blocks });
     }
   }
-  if (options.length === 0) return null;
-  return { target: parseTarget(raw.target, blockCount), options };
+  const target = parseTarget(raw.target, blockCount);
+  if (options.length === 0 || !target) return null;
+  return { target, options };
 }
 
 function parseUrl(raw: unknown): string {
@@ -162,7 +167,8 @@ export function parseClaims(raw: unknown, blockCount: number): Claim[] {
     let fix: Claim["fix"] = null;
     if (isObj(item.fix)) {
       const blocks = parseBlocks(item.fix.blocks);
-      if (blocks.length > 0) fix = { target: parseTarget(item.fix.target, blockCount), blocks };
+      const target = parseTarget(item.fix.target, blockCount);
+      if (blocks.length > 0 && target) fix = { target, blocks };
     }
     out.push({ quote, verdict, explanation: str(item.explanation, 600), sources, fix });
   }

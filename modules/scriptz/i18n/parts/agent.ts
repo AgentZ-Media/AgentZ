@@ -281,6 +281,7 @@ export const agentDe = {
   "agent.mem.entries_one": "{count} Eintrag",
   "agent.mem.entries_other": "{count} Einträge",
   "agent.mem.saveFailed": "Speichern fehlgeschlagen: {message}",
+  "agent.mem.deleteFailed": "Löschen fehlgeschlagen: {message}",
   "agent.mem.full": "Hier ist kein Platz mehr. Fass Einträge zusammen oder lösche welche.",
   "agent.mem.back": "Zurück",
 } as const;
@@ -564,6 +565,7 @@ export const agentEn: Record<keyof typeof agentDe, string> = {
   "agent.mem.entries_one": "{count} entry",
   "agent.mem.entries_other": "{count} entries",
   "agent.mem.saveFailed": "Saving failed: {message}",
+  "agent.mem.deleteFailed": "Deleting failed: {message}",
   "agent.mem.full": "There's no room left here. Merge or delete entries.",
   "agent.mem.back": "Back",
 };

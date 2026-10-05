@@ -42,10 +42,13 @@ describe("agent proposals", () => {
     expect(proposal?.options[1].blocks).toEqual([{ type: "action", text: "Er geht." }]);
   });
 
-  it("falls back to append for unusable targets", () => {
+  it("falls back to append for missing targets and rejects stale indices", () => {
     expect(parseTarget({ mode: "replace" }, 5)).toEqual({ mode: "append" });
-    expect(parseTarget({ mode: "insert_after", block: 99 }, 5)).toEqual({ mode: "insertAfter", block: 4 });
     expect(parseTarget(null, 5)).toEqual({ mode: "append" });
+    expect(parseTarget({ mode: "insert_after", block: 99 }, 5)).toBeNull();
+    expect(parseTarget({ mode: "replace", from: 3, to: 7 }, 5)).toBeNull();
+    expect(parseTarget({ mode: "replace", from: 3, to: 7 }, 0)).toEqual({ mode: "append" });
+    expect(parseProposal({ target: { mode: "insert_after", block: 9 }, options: [{ title: "A", blocks: [{ type: "action", text: "x" }] }] }, 5)).toBeNull();
   });
 
   it("anchors targets and only applies them where the text still matches", () => {

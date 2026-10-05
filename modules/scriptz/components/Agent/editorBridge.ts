@@ -122,9 +122,14 @@ export function applyBlocks(scriptId: string, blocks: readonly AgentBlock[], pro
       applied = target;
       return;
     }
-    // Append: reuse a trailing empty block instead of leaving a gap.
-    const last = root.getLastChild();
-    if (last && !last.getTextContent().trim()) last.remove();
+    // Append: drop trailing empty blocks (as liveBlocks() ignores them)
+    // instead of leaving a gap before the new lines.
+    let last = root.getLastChild();
+    while (last && !last.getTextContent().trim()) {
+      const previous = last.getPreviousSibling();
+      last.remove();
+      last = previous;
+    }
     for (const node of nodes) root.append(node);
     nodes[nodes.length - 1].selectEnd();
     applied = target;
