@@ -1,16 +1,19 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { DownloadEvent } from "@tauri-apps/plugin-updater";
-import { createDesktopUpdates } from "../updates";
+import type { UpdateChannel } from "@agentz/kit/platform";
+import { createDesktopUpdates, updateNeedsBackup } from "../updates";
 
 function deferred<T>() {
   let resolve!: (value: T) => void;
   const promise = new Promise<T>((done) => { resolve = done; });
   return { promise, resolve };
 }
-function setup() {
+function setup({ version = "1.0.1", currentVersion = "1.0.0" } = {}) {
   const sequence: string[] = [];
+  let channel: UpdateChannel = "stable";
   const update = {
-    version: "1.0.1",
+    version,
+    currentVersion,
     download: vi.fn(async (_event?: (event: DownloadEvent) => void) => { sequence.push("download"); }),
     install: vi.fn(async () => { sequence.push("install"); }),
     close: vi.fn(async () => {}),
@@ -19,17 +22,20 @@ function setup() {
   const options = {
     lockEditing: vi.fn(() => { sequence.push("lock"); return unlock; }),
     restart: vi.fn(async () => { sequence.push("restart"); }),
+    backupDatabase: vi.fn(async (_label: string) => { sequence.push("backup"); }),
   };
   const deps = {
-    check: vi.fn(async () => update),
+    check: vi.fn(async (_channel: UpdateChannel) => update),
     flush: vi.fn(async () => { sequence.push("flush"); return { ok: true, failed: [] as string[], contentFailed: [] as string[] }; }),
-    notifySaveFailure: vi.fn(), notifyUpdateFailure: vi.fn(),
+    notifySaveFailure: vi.fn(), notifyUpdateFailure: vi.fn(), notifyBackupFailure: vi.fn(),
     isDevelopment: false,
     updateCheckEnabled: () => true,
     hourlyUpdateCheck: () => true,
+    updateChannel: () => channel,
   };
   const runtime = createDesktopUpdates(options, deps);
-  return { ...runtime, sequence, update, unlock, options, deps };
+  const setChannel = (next: UpdateChannel) => { channel = next; };
+  return { ...runtime, sequence, update, unlock, options, deps, setChannel };
 }
 afterEach(() => vi.useRealTimers());
 
@@ -193,6 +199,67 @@ describe("desktop updater safety", () => {
     expect(s.store.available()).toBeNull();
     expect(s.update.close).toHaveBeenCalledOnce();
     expect(vi.getTimerCount()).toBe(0);
+    s.dispose();
+  });
+});
+
+describe("nightly channel", () => {
+  it("checks the selected channel", async () => {
+    const s = setup();
+    s.setChannel("nightly");
+    await s.store.checkNow();
+    expect(s.deps.check).toHaveBeenCalledWith("nightly");
+    s.dispose();
+  });
+
+  it("backs up after saving and before installing a nightly update", async () => {
+    const s = setup({ version: "1.0.2-nightly.202610051500" });
+    await s.store.checkNow();
+    await s.store.downloadAndInstall();
+    expect(s.sequence).toEqual(["download", "lock", "flush", "backup", "install", "restart"]);
+    expect(s.options.backupDatabase).toHaveBeenCalledWith("before-1.0.2-nightly.202610051500");
+    s.dispose();
+  });
+
+  it("also backs up when a nightly build is replaced by a stable release", async () => {
+    const s = setup({ version: "1.0.2", currentVersion: "1.0.2-nightly.202610051500" });
+    await s.store.checkNow();
+    await s.store.downloadAndInstall();
+    expect(s.sequence).toEqual(["download", "lock", "flush", "backup", "install", "restart"]);
+    s.dispose();
+  });
+
+  it("does not back up stable-to-stable updates", () => {
+    expect(updateNeedsBackup({ version: "1.0.1", currentVersion: "1.0.0" })).toBe(false);
+    expect(updateNeedsBackup({ version: "1.0.1-rc.1", currentVersion: "1.0.0" })).toBe(false);
+  });
+
+  it("never installs without a backup and retries without downloading again", async () => {
+    const s = setup({ version: "1.0.2-nightly.202610051500" });
+    s.options.backupDatabase.mockImplementationOnce(async () => { s.sequence.push("backup"); throw new Error("disk full"); });
+    await s.store.checkNow();
+    await s.store.downloadAndInstall();
+    expect(s.sequence).toEqual(["download", "lock", "flush", "backup", "unlock"]);
+    expect(s.update.install).not.toHaveBeenCalled();
+    expect(s.deps.notifyBackupFailure).toHaveBeenCalledOnce();
+    expect(s.store.stage()).toBe("error");
+    await s.store.downloadAndInstall();
+    expect(s.update.download).toHaveBeenCalledOnce();
+    expect(s.sequence.slice(5)).toEqual(["lock", "flush", "backup", "install", "restart"]);
+    s.dispose();
+  });
+
+  it("drops a result that arrives after the channel changed", async () => {
+    const s = setup();
+    const pending = deferred<typeof s.update>();
+    s.deps.check.mockReturnValueOnce(pending.promise);
+    const checking = s.store.checkNow();
+    s.setChannel("nightly");
+    pending.resolve(s.update);
+    await checking;
+    expect(s.store.available()).toBeNull();
+    expect(s.store.manualCheck()).toBeNull();
+    expect(s.update.close).toHaveBeenCalledOnce();
     s.dispose();
   });
 });

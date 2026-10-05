@@ -27,3 +27,12 @@ it("rejects unreleasable IDs before opening a database", () => {
   }
   expect(load.mock.calls.length).toBe(before);
 });
+
+it("marks only nightly workflow builds as nightly", async () => {
+  const { readBuildInfo } = await import("../lib/platform");
+  expect(readBuildInfo({})).toEqual({ channel: "stable" });
+  expect(readBuildInfo({ VITE_AGENTZ_BUILD_CHANNEL: "stable", VITE_AGENTZ_BUILD_COMMIT: "abc" })).toEqual({ channel: "stable" });
+  expect(readBuildInfo({
+    VITE_AGENTZ_BUILD_CHANNEL: "nightly", VITE_AGENTZ_BUILD_COMMIT: " 479ff19 ", VITE_AGENTZ_BUILD_TIME: "",
+  })).toEqual({ channel: "nightly", commit: "479ff19", builtAt: undefined });
+});
