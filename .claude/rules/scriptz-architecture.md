@@ -49,6 +49,8 @@ die Befehlspalette, deshalb setzt das Modul `revealsSidebar: true`.
 - **Offen** (Sidebar, unter Pipeline und Ordnern, beide einklappbar): jedes
   Skript, das die volle Skriptansicht zeigt, kommt dazu und bleibt bis zum
   Schließen (✕, Mittelklick, Kontextmenü). Bewusst keine Tab-Leiste oben.
+  Neu geöffnete Skripte stehen oben; bereits offene behalten beim Wechseln
+  ihren Platz. Bei maximal 50 Einträgen fällt das älteste unten heraus.
   Mit `close_finished_scripts` (Standard an) verlässt ein Skript die Liste,
   wenn es in die letzte Stufe wechselt; das angezeigte erst beim Wechsel,
   Rückgängig innerhalb von 15 s holt es zurück (`openStore.syncStatuses`).
