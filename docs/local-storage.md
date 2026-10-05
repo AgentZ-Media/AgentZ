@@ -1,22 +1,22 @@
 # Lokale Speicherung und Vorbereitung der Synchronisierung
 
-Die App arbeitet weiterhin ausschließlich mit ihrer lokalen SQLite-Datenbank.
-Es gibt weder eine Convex-Verbindung noch Konten, Uploads, zusätzliche Timer oder
-Netzwerkanfragen. Editor, Flush-Koordinator, Export und Einstellungen behalten
-ihren bisherigen Ablauf. Diese Änderung ist die lokale Grundlage für eine
-spätere Synchronisierung, keine fertige Synchronisierung.
+Die App arbeitet ausschließlich mit ihrer lokalen SQLite-Datenbank. Es gibt
+weder eine Convex-Verbindung noch Konten, Uploads, zusätzliche Timer oder
+Netzwerkanfragen. Die hier beschriebene Änderungsverfolgung ist die lokale
+Grundlage für eine spätere Synchronisierung, keine fertige Synchronisierung.
 
 ## Schnittstellen
 
 `modules/scriptz/lib/storage.ts` definiert `ScriptzStorage`. Die `api`-Fassade
 leitet Aufrufe an den aktuell registrierten Adapter weiter. Der Desktop nutzt
-weiter den SQL-Adapter. Zwei Teilbereiche ergänzen den bestehenden Vertrag:
+den SQL-Adapter. Neben den Inhaltsfunktionen enthält der Vertrag zwei
+Teilbereiche:
 
 - `agent: AgentStorage`: Chat-Verläufe einschließlich der Sitzungen des
   Agent-Modus (`getChat`, `deleteChat`, `listSessions`), Gedächtnis
-  einschließlich Charakterprofilen und Beziehungen sowie Lernmarkierungen. Die
-  bestehenden Agenten-Funktionen behalten Validierung, Normalisierung und
-  UI-Benachrichtigungen. Nur die Datenbankzugriffe sind in
+  einschließlich Charakterprofilen und Beziehungen sowie Lernmarkierungen.
+  Validierung, Normalisierung und UI-Benachrichtigungen liegen in den
+  Agenten-Funktionen, nur die Datenbankzugriffe sind in
   `agent/sqlStorage.ts` gekapselt. Adapterneutral in `agent/chats.ts` bleiben
   das Wiederherstellen gespeicherter Einträge (`parseItems`) sowie Entwurfs- und
   Sitzungszusammenfassungen; ein weiterer Adapter liefert nur Datensätze.
@@ -40,18 +40,18 @@ Es gibt keinen versteckten Rückfall auf die Desktop-Datenbank.
 | Alle gespeicherten Agenten-Chats, auch frühere Chats, und Sitzungen des Agent-Modus mit Titel, Ordner und Entwürfen | `agent_chats` |
 | Agenten-Gedächtnis, Charakterprofile und Beziehungen | `agent_memory` |
 | Lernstand des Agenten | `agent_learned` |
-| Bestehende tägliche Schreibstatistik | `daily_word_log` |
+| Tägliche Schreibstatistik | `daily_word_log` |
 
-Charaktere bleiben wie bisher Teil des Skriptinhalts; eine neue globale
-Charaktertabelle entsteht nicht. `settings`, `app_state` und der aus Inhalten
+Charaktere sind Teil des Skriptinhalts; es gibt keine globale
+Charaktertabelle. `settings`, `app_state` und der aus Inhalten
 neu aufbaubare FTS-Suchindex sind ausgeschlossen. Die Testabdeckung gleicht diese
 Liste mit dem tatsächlichen Datenbankschema ab.
 
 ## Atomare Änderungsverfolgung
 
-Migration `009_local_changes.sql` ergänzt zwei Tabellen und SQLite-Trigger.
-Alle veröffentlichten Migrationen und bisherigen Inhaltstabellen bleiben
-unverändert. Bereits vorhandene Datensätze erhalten initial einen Marker;
+Migration `009_local_changes.sql` ergänzt zwei Tabellen und SQLite-Trigger,
+die Struktur der Inhaltstabellen ändert sie nicht. Bereits vorhandene
+Datensätze erhalten initial einen Marker;
 ihr Inhalt, ihre IDs und Zeitstempel werden dabei nicht umgeschrieben.
 
 Die Update-Trigger nennen ihre Spalten einzeln, damit Speichern mit
@@ -79,8 +79,8 @@ SQLite `upper()` normalisierten Schlüssel.
 Die Atomarität gilt für das einzelne SQL-Statement samt Triggern. Bestehende
 Fachoperationen aus mehreren Statements werden dadurch nicht zu einer einzigen
 Transaktion. Eine spätere Übertragung muss diese Abläufe und ihre Abhängigkeiten
-berücksichtigen; die aktuelle Änderung verspricht keine atomare Übertragung
-einer gesamten Benutzeraktion.
+berücksichtigen; der Änderungsfeed verspricht keine atomare Übertragung einer
+gesamten Benutzeraktion.
 
 Wiederholte Änderungen ersetzen den Marker des Datensatzes durch eine neue
 Sequenz. Es wird kein zweites Exemplar des Skript- oder Chatinhalts gespeichert.
@@ -151,8 +151,8 @@ Die folgenden Aufgaben gehören ausdrücklich zur anschließenden Anbindung:
   diesen Fall erkennen und gegebenenfalls eine neue Identität samt Erstabgleich
   vergeben.
 
-Die bestehenden `.scriptz`-Importe und -Exporte bleiben unverändert. Sie sind
-weiterhin Einzel-Skript-Dateien, kein Backup aller Agentendaten. Lokale
+`.scriptz`-Importe und -Exporte sind Einzel-Skript-Dateien, kein Backup aller
+Agentendaten. Lokale
 Änderungsmarker und Replikatidentität gehören nicht in dieses Austauschformat;
 importierte Skripte werden über ihre normalen Schreibwege erfasst.
 
@@ -192,4 +192,3 @@ Spaltenabdeckung samt Update-Triggern, beide Migrationsreihenfolgen,
 Sitzungen und Ideen-Herkunft, Änderungsseiten, Neustarts, wiederholtes Speichern, Undo,
 Löschungen und Kaskaden sowie Rollback bei Fehlern. Separate Agenten-Tests prüfen
 Chat-Wiederherstellung, frühere Chats, Gedächtnisgrenzen und Adapterwechsel.
-Die regulären Editor-, Export- und Flush-Tests bleiben unverändert.

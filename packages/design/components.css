@@ -1,17 +1,17 @@
 /* =========================================================================
    @agentz/design - components.css
 
-   Layer 3: component primitives from docs/redesign/concept.html, without
-   the `.A` scope. Every colour comes from tokens.css - the only literal
-   values here are neutral alpha overlays that work on any theme.
+   Layer 3: component primitives. Every colour comes from tokens.css -
+   the only literal values here are neutral alpha overlays that work on
+   any theme.
 
    Positioning is the consumer's job: `.menu`, `.dlg` and `.toast` only
    paint the surface. `.scrim` and `.toast-host` are fixed overlays.
 
-   Compatibility aliases for pre-redesign class names (`.btn-primary`,
+   Compatibility aliases for older class names (`.btn-primary`,
    `.btn-ghost`, `.btn-danger`, `.btn-sm`, `.btn--sm`, `.btn-icon`,
-   `.btn-block`, `.kbd`) are kept next to their new counterpart so old
-   markup renders in the new look.
+   `.btn-block`, `.kbd`) sit next to their counterpart so markup that
+   uses them renders the same way.
    ========================================================================= */
 
 /* ---------------- Glyph helpers ---------------- */
@@ -587,7 +587,7 @@ kbd,
 
 /* ---------------- Text field ----------------
    `.field` on a form control (input / textarea / select) is the boxed
-   input from the concept. `.field-box` is the same look on a wrapper
+   input. `.field-box` is the same look on a wrapper
    (icon + bare input + kbd, e.g. a filter). A `.field` on a div/label
    stays the app's label+control stack (see the app's global.css). */
 :is(input, textarea, select).field,

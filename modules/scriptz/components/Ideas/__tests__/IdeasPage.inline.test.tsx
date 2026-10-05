@@ -1,6 +1,5 @@
 // Tests for the inline editing on the ideas page
-// (components/Ideas/IdeasPage.tsx, variant A of
-// docs/redesign/ideen-varianten.html): rows open in place instead of a
+// (components/Ideas/IdeasPage.tsx): rows open in place instead of a
 // side panel, only one row is open at a time, the open editor survives a
 // store refresh, and the capture field expands for notes + folder.
 

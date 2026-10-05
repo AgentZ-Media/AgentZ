@@ -33,7 +33,7 @@ export const de = {
   "block.dialog": "Dialog",
   "block.parenthetical": "Paren.",
 
-  // ---------- script stages (Werkbank pipeline) ----------
+  // ---------- script stages (pipeline) ----------
   "stage.idea": "Idee",
   "stage.writing": "Schreiben",
   "stage.ready": "Drehbereit",
@@ -262,7 +262,7 @@ export const de = {
   "error.scriptz.missingCharacters": "Feld `script.characters` fehlt oder ist kein Array.",
   "error.scriptz.invalidCharacter": "script.characters[{index}] hat ungültige name/color-Felder.",
 
-  // ---------- redesign parts ----------
+  // ---------- area catalogs (parts/) ----------
   ...shellDe,
   ...scriptDe,
   ...dialogsDe,

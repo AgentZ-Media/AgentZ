@@ -1,8 +1,6 @@
 /* =========================================================================
-   Script screen (Werkbank): top bar, paper canvas, gutter label, inspector,
-   focus chrome. Visual reference: docs/redesign/concept.html (`.bar`,
-   `.crumb`, `.saved`, `.chip`, `.tg-*`, `.canvas`, `.gut`, `.insp`, `.sec*`,
-   `.steps`, `.len*`, `.facts`, `.crow*`, `.origin`, `.ver-row`, `.focus-*`).
+   Script screen: top bar, paper canvas, gutter label, inspector, focus
+   chrome.
    Design tokens only; character colours arrive inline as `--c` (user data).
    Timeline styles live in Timeline.css.
    ========================================================================= */
@@ -206,7 +204,7 @@
   justify-content: center;
 }
 
-/* Quick / colour toggles + explanatory tooltip (concept `.tg-tip`) */
+/* Quick / colour toggles + explanatory tooltip (`.tg-tip`) */
 .ss-bar .tg-group {
   position: relative;
   flex: none;
@@ -269,7 +267,7 @@
   overflow: visible;
 }
 
-/* Block type of the caret block, left of the paper (concept `.gut`) */
+/* Block type of the caret block, left of the paper */
 .ss-gut {
   position: absolute;
   height: 20px;

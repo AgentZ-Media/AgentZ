@@ -1,8 +1,8 @@
 /* =========================================================================
    Agent: avatar, chat panel, stream rows, proposal cards, fact check,
    memory notices, agent onboarding and memory dialog.
-   Visual reference: docs/agent/screens.html. Design tokens only; character
-   colours arrive inline as --char (user data).
+   Design tokens only; character colours arrive inline as --char (user
+   data).
    ========================================================================= */
 
 /* ---------------------------------------------------------------------
@@ -886,7 +886,7 @@
 }
 
 /* ---------------------------------------------------------------------
-   Context menu on selected script text (concept `.menu`)
+   Context menu on selected script text (`.menu` look)
    --------------------------------------------------------------------- */
 .ag-ctx {
   position: fixed;

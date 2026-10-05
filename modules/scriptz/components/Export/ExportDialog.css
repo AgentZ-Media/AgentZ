@@ -1,4 +1,4 @@
-/* Export dialog - concept screen "Export" (`.exp*`, `.pdf*`, `.fmt*`, `.rd`).
+/* Export dialog (`.exp*`, `.pdf*`, `.fmt*`, `.rd`).
    The PDF preview is laid out in millimetres: every line carries its
    position as unitless --x / --y / --w (mm) and is scaled via --mm. The
    page sits in a `data-theme="light"` scope so it stays a white sheet in

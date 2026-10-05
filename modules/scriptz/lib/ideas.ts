@@ -172,8 +172,8 @@ export async function convertIdeaToScript(input: {
   ideaId: string;
   folderId?: string | null;
   /** If true, the note is carried over as the first action into the new
-   *  script. Default false since the Werkbank redesign - the note stays on
-   *  the idea and the inspector shows it under "Aus der Idee". */
+   *  script. Default false: the note stays on the idea and the inspector
+   *  shows it under "Aus der Idee". */
   notesAsAction?: boolean;
 }): Promise<{ idea: Idea; script: ScriptSummary }> {
   const db = await getDb();

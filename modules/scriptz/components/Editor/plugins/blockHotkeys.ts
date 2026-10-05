@@ -23,8 +23,8 @@ const FACTORY: Record<BlockType, () => BaseScriptzNode> = {
   "scriptz-parenthetical": $createScriptzParentheticalNode,
 };
 
-// ⌘1 Action, ⌘2 Character, ⌘3 Dialog, ⌘4 Parenthetical. ⌘5..⌘7 (the
-// retired block types) are deliberately NOT handled anymore: the editor
+// ⌘1 Action, ⌘2 Character, ⌘3 Dialog, ⌘4 Parenthetical. ⌘5..⌘7 are
+// deliberately NOT handled: the editor
 // ignores them and the event keeps its default (e.g. browser tab switching
 // on the web).
 const DIGIT_TO_BLOCK: Record<string, BlockType> = {

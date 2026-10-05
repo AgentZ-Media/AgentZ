@@ -139,10 +139,10 @@ function modalOpen(): boolean {
 }
 
 /**
- * "Übersicht" (concept screen 1): every script of the current scope
+ * "Übersicht": every script of the current scope
  * (all / one stage / one folder / the inbox), grouped by stage, folder or not at all,
  * with the week line, a filter, the ideas teaser, row actions, selection
- * mode and the import / folder operations of the old browser.
+ * mode and the import / folder operations.
  */
 export function ScriptsPage() {
   const route = () => {

@@ -59,7 +59,7 @@ interface TipState {
 
 const TIP_WIDTH = 270;
 
-/** Timeline under the paper (docs/feature-laengenziel.md §3/§4): a 40 px
+/** Timeline under the paper: a 40 px
  *  bar with the mini track by default, ⌘J expands one lane per speaker. */
 export function Timeline(props: TimelineProps) {
   const [tip, setTip] = createSignal<TipState | null>(null);

@@ -1,7 +1,7 @@
 /* =========================================================================
-   Command palette (⌘K). Not in the concept - built in its language: a
-   `.dlg` in the upper third (`.scrim.top`, like quick capture), one big
-   search input, grouped results with `.menu-h` headers, key hints below.
+   Command palette (⌘K): a `.dlg` in the upper third (`.scrim.top`, like
+   quick capture), one big search input, grouped results with `.menu-h`
+   headers, key hints below.
    ========================================================================= */
 
 .pal-scrim {

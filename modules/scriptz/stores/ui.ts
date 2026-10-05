@@ -5,7 +5,7 @@ import { settingsStore } from "./settings";
 import { agentUi } from "./agentUi";
 
 /**
- * UI state of the Werkbank shell: which panels are visible and which
+ * UI state of the shell: which panels are visible and which
  * dialog is open. Every dialog is parameterless and reads its open state
  * from here, so the shell only mounts them once and any component (sidebar,
  * command palette, keyboard handler) can open them.

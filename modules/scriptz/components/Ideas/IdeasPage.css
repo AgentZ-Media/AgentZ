@@ -1,8 +1,6 @@
-/* Ideas page - concept screen "Ideen" (docs/redesign/concept.html) with
-   the inline editor of variant A (docs/redesign/ideen-varianten.html):
-   no side panel, rows open in place (`.ix*`), the capture field expands
-   for notes + folder. Design tokens only; folder dots get their (data)
-   colour inline. */
+/* Ideas page with an inline editor: no side panel, rows open in place
+   (`.ix*`), the capture field expands for notes + folder. Design tokens
+   only; folder dots get their (data) colour inline. */
 
 .ideas-page {
   flex: 1;

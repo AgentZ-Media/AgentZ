@@ -1,16 +1,15 @@
 /**
  * @agentz/design - logo mark.
  *
- * The dot-matrix "Z" (6 rows x 5 columns) from `#logo-z` in
- * docs/redesign/concept.html, as data so any renderer (Solid, Astro,
- * canvas, icon build scripts) can draw it.
+ * The dot-matrix "Z" (6 rows x 5 columns) as data so any renderer
+ * (Solid, Astro, canvas, icon build scripts) can draw it.
  *
- * Rendering contract (matches the concept):
+ * Rendering contract:
  * - viewBox `LOGO_VIEWBOX`, every dot is a circle with radius `LOGO_DOT_R`.
  * - "main" dots: `fill: var(--z1, currentColor)`.
  * - "sub" dots (the two diagonal shadow rows): `fill: var(--z2, currentColor)`
- *   at `opacity: var(--z2o, 0.62)`. On the yellow accent tile the
- *   concept uses `--z2o: 0.5`.
+ *   at `opacity: var(--z2o, 0.62)`. On the yellow accent tile use
+ *   `--z2o: 0.5`.
  *
  * Standalone SVG/PNG exports and the app icon set are generated from this
  * file by `scripts/build-logo.mjs` (see README, "Logo and app icon").

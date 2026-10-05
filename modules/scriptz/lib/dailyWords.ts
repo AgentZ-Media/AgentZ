@@ -3,8 +3,8 @@
 // Two consumers:
 //   1. Writing counter in the sidebar footer (adaptive week/month/year window)
 //   2. Activity dialog with the 365-day heatmap (components/Activity)
-// The streak value is still computed for the stats summary but no longer
-// shown anywhere (no pressure features, see docs/redesign).
+// The streak value is computed for the stats summary but shown nowhere
+// (no pressure features).
 //
 // Write path: lib/scripts.ts calls `recordWordDelta(delta)` on every save,
 // after the diff against the last saved word count has been calculated.

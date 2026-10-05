@@ -5,11 +5,9 @@
    layer 2 (semantic colour roles). Components only ever read the
    semantic names; the dark theme swaps values, never selectors.
 
-   Colour values are taken 1:1 from docs/redesign/concept.html
-   (`.A` = light, `.A.dark` = dark). A few roles the concept uses inline
-   (scrim, dialog shadow, toast shadow, "saved" green, strong hairline,
-   text selection, paper hairline/tint) are lifted into tokens here so no
-   component has to carry a raw colour.
+   Every colour role lives here, including scrim, dialog shadow, toast
+   shadow, "saved" green, strong hairline, text selection and paper
+   hairline/tint, so no component has to carry a raw colour.
 
    Theme switching: `<html data-theme="light|dark">`. The writing surface
    ("paper") stays light in the dark theme unless `<html data-paper="dark">`
@@ -59,7 +57,7 @@
   --sp-9: 48px;
 
   /* Radii. --r-ctl = buttons/inputs, --r-pop = menus/popovers,
-     --r-dlg = dialogs (values from the concept). */
+     --r-dlg = dialogs. */
   --r-1: 4px;
   --r-2: 6px;
   --r-3: 8px;
@@ -78,7 +76,7 @@
 }
 
 /* ---------------------------------------------------------------------
-   Light theme (concept `.A`)
+   Light theme
    --------------------------------------------------------------------- */
 :root,
 [data-theme="light"] {
@@ -135,7 +133,7 @@
 }
 
 /* ---------------------------------------------------------------------
-   Dark theme (concept `.A.dark`). The paper stays a light sheet here -
+   Dark theme. The paper stays a light sheet here -
    only `[data-paper="dark"]` below turns it dark.
    --------------------------------------------------------------------- */
 [data-theme="dark"] {

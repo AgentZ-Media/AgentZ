@@ -7,7 +7,7 @@ import type { LexicalEditor } from "lexical";
  * This plugin just keeps the parent block's `characterName` attribute in sync
  * with its text content (uppercased) so the JSON state and exporters get a
  * normalised name. Mutating only the attribute (never text-node children)
- * avoids the selection drift that previously froze typing after a few keys.
+ * avoids selection drift that would freeze typing after a few keys.
  */
 export function installAllCaps(editor: LexicalEditor): () => void {
   return mergeRegister(

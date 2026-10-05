@@ -73,7 +73,7 @@ export function installCharacterDropdown(
     return list.filter((e) => e.name.toUpperCase().includes(q));
   };
 
-  // Centered under the character line (concept `.ac`). The x coordinate
+  // Centered under the character line. The x coordinate
   // is the line's centre; the view shifts itself by -50 % and is clamped
   // so it never leaves the window.
   const positionFromCursor = (nodeKey: string | null): { x: number; y: number } => {

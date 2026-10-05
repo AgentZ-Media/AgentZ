@@ -1,9 +1,9 @@
 /* =========================================================================
    @agentz/design - legacy.css
 
-   Alias layer: maps every token name the pre-redesign components use
-   onto the semantic tokens from tokens.css. Untouched components pick up
-   the new look in light AND dark without a single selector change.
+   Alias layer: maps older token names that ScriptZ components
+   reference onto the semantic tokens from tokens.css, so those
+   components follow light AND dark without a selector change.
 
    Rules:
    - Aliases are pure `var()` references - no colour values live here.
@@ -12,9 +12,8 @@
    - New code must NOT use these names. Once nothing references a name
      any more, delete its line.
 
-   Deliberately NOT aliased: `--paper`. In the old system it meant
-   "card surface", in the new one it is the writing sheet. Old usages
-   were rewritten to `--surface` in place.
+   Deliberately NOT aliased: `--paper`. It is the writing sheet; card
+   surfaces use `--surface`.
    ========================================================================= */
 
 :root,
@@ -66,7 +65,7 @@
   --primary-border: var(--fg);
   --primary-bg-hover: color-mix(in srgb, var(--fg) 86%, var(--bg));
 
-  /* ---- Old monochrome "brand" + "ink" scales (accent was ink) ---- */
+  /* ---- Monochrome "brand" + "ink" alias scales ---- */
   --brand-50: var(--surface-2);
   --brand-100: var(--fill);
   --brand-200: var(--line-strong);

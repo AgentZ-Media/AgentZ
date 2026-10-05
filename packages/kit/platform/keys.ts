@@ -13,7 +13,7 @@
 // Defensive fallback: if no PlatformAdapter has been registered yet
 // (very early imports, tests without setup, browser pre-mount), we
 // default to "macos" so dev/test environments behave like the
-// historical desktop default. The real value gets picked up the
+// primary desktop target. The real value gets picked up the
 // moment the host's platform.ts runs.
 
 import { getPlatformAdapter, type Platform } from "./platform";

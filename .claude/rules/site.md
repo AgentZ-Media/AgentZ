@@ -16,8 +16,8 @@ paths:
 - `src/i18n.ts`: Deutsch ist kanonisch, Englisch muss dieselben Schlüssel besitzen.
   Alle Nutzertexte in beiden Sprachen pflegen. `/` ist DE, `/en/` EN. Impressum
   und Datenschutz sind bewusst Deutsch; englische Footer-Links kennzeichnen das.
-- Anbieterangaben aus der übernommenen Landing beibehalten; bei sachlichen
-  Änderungen aktuell verifizieren. Hostingangaben mit tatsächlichem Betrieb
+- Anbieterangaben in Impressum und Datenschutz nicht eigenmächtig ändern; bei
+  sachlichen Änderungen aktuell verifizieren. Hostingangaben mit tatsächlichem Betrieb
   abgleichen, keine Aufbewahrungsfristen oder abgeschlossenen Verträge erfinden.
 - Vor Abschluss `pnpm --filter @agentz/site typecheck` und `pnpm build:site`;
   Desktop/Mobil und beide Sprachen einmal visuell prüfen. Ein Build ist keine

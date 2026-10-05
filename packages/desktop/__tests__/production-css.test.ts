@@ -22,7 +22,7 @@ it("retains shared styles when production tree-shaking resolves the public host 
     .filter((asset) => asset.type === "asset" && asset.fileName.endsWith(".css"))
     .map((asset) => asset.type === "asset" ? String(asset.source) : "").join("\n");
   // Component CSS alone can still exist when the public barrel is discarded.
-  // Require each global layer that previously disappeared from the real app.
+  // Require each global layer the real app depends on.
   expect(css).toContain('font-family:Schibsted Grotesk Variable');
   expect(css).toContain("--ui:");
   expect(css).toContain("--bg:");

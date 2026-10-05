@@ -1,18 +1,17 @@
-// Legacy block normalizer (Werkbank redesign).
+// Legacy block normalizer.
 //
 // The editor knows four block types: Action, Character, Dialog and
-// Parenthetical. Older content (database rows, snapshots, .scriptz files)
-// may still contain the three retired types Camera,
-// Caption and SFX. Their node classes no longer exist, so Lexical would
-// refuse to parse such a state - every place that parses content runs it
-// through this module first.
+// Parenthetical. Stored content (database rows, snapshots, .scriptz files)
+// may contain the three retired types Camera, Caption and SFX. They have
+// no node class, so Lexical would refuse to parse such a state - every
+// place that parses content runs it through this module first.
 //
 // Conversion rule: the node's `type` (and the serialized `blockType`, if
 // present) becomes "scriptz-action". Children, text, inline formats and
 // all other node fields stay untouched, so the word count does not change.
 //
-// Parenthetical is NOT retired (it was briefly, during the redesign, and
-// came back on 2026-10-03) - "scriptz-parenthetical" passes through as is.
+// Parenthetical is a regular block type - "scriptz-parenthetical" passes
+// through as is.
 //
 // Pure module without imports so it can be used from lex.ts and every
 // storage adapter without import cycles.

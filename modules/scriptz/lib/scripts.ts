@@ -138,10 +138,8 @@ export interface ListScriptsQuery {
 
 export async function listScripts(q: ListScriptsQuery): Promise<ScriptSummary[]> {
   const db = await getDb();
-  // Single round-trip: all columns in one SELECT instead of N+1
-  // (previously: first SELECT id …, then a separate SELECT per row
-  // via rowToSummary). Every boot paid a Tauri IPC hop per script -
-  // 3 scripts meant 4 calls instead of 1.
+  // Single round-trip: all columns in one SELECT instead of N+1 (a
+  // SELECT per row would cost a Tauri IPC hop per script).
   let sql = `SELECT ${SUMMARY_COLUMNS} FROM scripts WHERE 1=1`;
   const args: (string | number)[] = [];
   let p = 1;
@@ -538,8 +536,8 @@ export async function writeRestoredContent(
   now: number = Date.now(),
 ): Promise<void> {
   const db = await getDb();
-  // Snapshots taken before the block-type reduction may still contain
-  // retired block types - restore them as action blocks.
+  // Snapshots may contain retired block types - restore them as action
+  // blocks.
   const contentJson = normalizeLegacyContent(rawContentJson).json;
   const wordCount = countWordsInContent(contentJson);
   const runtime = runtimeStatsFromContent(contentJson);
@@ -649,7 +647,7 @@ export async function emptyTrash(): Promise<void> {
   // scripts_fts table has no FK cascade (FTS5 contentless table). Two
   // statements instead of N+1: one DELETE FROM scripts_fts (sub-query
   // against scripts), one DELETE FROM scripts. With 50 archived scripts
-  // that used to be 100 round-trips, now it's 2.
+  // that is 2 round-trips instead of 100.
   await db.execute(
     "DELETE FROM scripts_fts WHERE script_id IN " +
       "(SELECT id FROM scripts WHERE archived_at IS NOT NULL)",

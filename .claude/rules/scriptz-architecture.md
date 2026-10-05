@@ -8,8 +8,7 @@ paths:
 # ScriptZ: Architektur
 
 Allgemeine Regeln stehen in [`apps/scriptz/CLAUDE.md`](../../apps/scriptz/CLAUDE.md),
-Suite-Grenzen in [`suite-architecture.md`](suite-architecture.md). Visuelle
-Referenz des Designs: `docs/redesign/concept.html`.
+Suite-Grenzen in [`suite-architecture.md`](suite-architecture.md).
 
 ## Aufbau des Moduls
 
@@ -81,7 +80,8 @@ Kaskade mitzulöschen. `011_track_agent_sessions` nimmt diese Spalten in die
 Update-Trigger des Änderungsfeeds auf. Jede neue Spalte einer Inhaltstabelle
 braucht dasselbe: Trigger neu anlegen und `CONTENT_ENTITIES` ergänzen (Tests
 in `lib/__tests__/localChanges.test.ts` schlagen sonst fehl). Die
-Abschaffung von Kamera/Caption/SFX ist bewusst keine SQL-Migration (siehe unten).
+Umwandlung von Kamera/Caption/SFX in Action ist bewusst keine SQL-Migration
+(siehe unten).
 
 ## Stufen und Zielbereich
 
@@ -126,7 +126,7 @@ Einstellungen aufräumen (manuell oder automatisch nach 4 s Ruhe,
   PDF und Export-Vorschau: Charakter in eigener Farbe, Dialog und
   Parenthetical in der Farbe darüber, ein Action-Block beendet den
   Sprechlauf. Wem Wörter für Statistik und Zeitleiste zugerechnet werden,
-  regeln weiter `lex.ts`/`timing.ts`.
+  regeln `lex.ts`/`timing.ts`.
 - **Hook-Zonen** 3 / 5 / 10 s ab dem ersten Dialog, Regie davor zählt nicht
   (`timelineMath.ts`: `firstDialogStart`, `hookMarks`). Sichtbar nur als
   ruhige Markierung: Balken im linken Papierrand (`Script/HookMarks.tsx`)
@@ -144,7 +144,7 @@ Einstellungen aufräumen (manuell oder automatisch nach 4 s Ruhe,
 
 ## Legacy-Blöcke
 
-Die Node-Klassen für Kamera/Caption/SFX existieren nicht mehr. Jeder Lesepfad
+Für Kamera/Caption/SFX gibt es keine Node-Klassen. Jeder Lesepfad
 (Editor, `lex.ts`, PDF, Plaintext, `.scriptz`-Import, Snapshot-Restore und
 -Vorschau) normalisiert sie zu Action. `migrateLegacyBlocksOnce()` schreibt
 beim Boot einmal alle Skripte um (`internalRewrite`: keine Wörter ins
@@ -153,8 +153,7 @@ nur nach vollständigem Lauf gesetzt. Snapshots bleiben unverändert.
 
 ## Agent
 
-Persönlicher Schreib-Agent mit eigenem Namen, Look und Persona. Visuelle
-Referenz: `docs/agent/screens.html`.
+Persönlicher Schreib-Agent mit eigenem Namen, Look und Persona.
 
 - **Provider-neutral.** `lib/agent/types.ts` definiert `AgentProvider`,
   `AgentThread` und `AgentEvent`. Einzige Integration heute:
@@ -225,9 +224,8 @@ Referenz: `docs/agent/screens.html`.
 
 ## Agent-Modus
 
-Eigene Route `agent` (`components/AgentMode/`), visuelle Referenz
-`docs/agent/agent-modus.html`. Einstieg oben in der Sidebar, `Mod+L`
-außerhalb eines Skripts, `Mod+Shift+L` überall, ⌘K, Ideen-Seite
+Eigene Route `agent` (`components/AgentMode/`). Einstieg oben in der
+Sidebar, `Mod+L` außerhalb eines Skripts, `Mod+Shift+L` überall, ⌘K, Ideen-Seite
 („Ideen mit Ida finden“, „Mit Ida ausschreiben“).
 
 - **Sitzungen** sind Zeilen in `agent_chats` mit `kind = 'session'`; eine neue

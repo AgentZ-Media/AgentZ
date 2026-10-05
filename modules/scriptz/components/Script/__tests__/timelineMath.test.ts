@@ -93,7 +93,7 @@ describe("liveStats", () => {
 
 describe("timelineWindow", () => {
   it("adds air and rounds to 10 s", () => {
-    // concept: 1:15 runtime, range 0:45-1:05 -> 80 s window
+    // 1:15 runtime, range 0:45-1:05 -> 80 s window
     expect(timelineWindow(75, { minSec: 45, maxSec: 65 })).toBe(80);
   });
   it("covers the upper bound when the script is short", () => {

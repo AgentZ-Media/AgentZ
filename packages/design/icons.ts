@@ -7,9 +7,7 @@
  *   stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">`
  * (or `<svg class="i">` with components.css loaded).
  *
- * Source: the `#i-*` sprite in docs/redesign/concept.html, plus
- * x, trash, import, select, play, undo, inbox, list, board, expand, moon and
- * shield drawn on the same grid.
+ * All icons share the same grid and stroke style.
  */
 
 export const ICON_VIEWBOX = "0 0 24 24";

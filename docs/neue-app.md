@@ -19,7 +19,7 @@ Der Generator erstellt:
 - `modules/mein-tool`: Startseite, DE/EN-Texte, Toast-/Bestätigungsbeispiel und ein Interaktionstest.
 - Release-Notes-Verzeichnis, `dev:mein-tool`/`build:mein-tool`, Logo- und Website-Eintrag mit Status `soon`.
 
-Vite-Port, HMR-Port und Tauri-`devUrl` werden gemeinsam vergeben: ScriptZ bleibt bei 1420/1421, die nächste App verwendet 1430/1431. Daten und Fensterpositionen liegen durch die eigene Bundle-ID getrennt.
+Vite-Port, HMR-Port und Tauri-`devUrl` werden gemeinsam vergeben: ScriptZ nutzt 1420/1421, die nächste App verwendet 1430/1431. Daten und Fensterpositionen liegen durch die eigene Bundle-ID getrennt.
 
 Anschließend laufen `pnpm install --no-frozen-lockfile`, der Icon-Build und `cargo check --workspace`. Beide Lockfiles gehören zum Commit. Meldet der Generator, dass `pnpm-lock.yaml` auch fremde Pakete verändert hat, den Diff vor dem Commit prüfen (`git diff pnpm-lock.yaml`). Fehlt Chrome, nimmt der Icon-Build automatisch das mitgelieferte Platzhalterset. Scheitert ein Schritt, stellt der Generator die vorherigen Quellen, Registry-Einträge und beide Lockfiles wieder her. Nach Beheben der Ursache kann der vollständige Befehl erneut laufen. Der Paketmanager-Cache und lokale `node_modules` können bereits aktualisiert sein; bei Bedarf `pnpm install --frozen-lockfile` ausführen.
 

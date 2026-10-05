@@ -11,7 +11,7 @@ identifier, updater key and product migrations stay in the app.
 - New apps use `KIT_BASELINE_SQL` (`settings`, `app_state`) as migration 1.
   Published migrations are never replaced.
 - Standard plugins are registered here, single-instance first. Every app
-  still lists them as direct Cargo dependencies: Tauri reads their
+  also lists them as direct Cargo dependencies: Tauri reads their
   capability metadata through Cargo `links`. Apps need the capability
   `agentz-desktop:default`. System-wide shortcuts are not part of the base.
 - macOS gets a native app menu (About, Settings, Quit, Edit, Window);

@@ -1,8 +1,8 @@
 /* =========================================================================
    Agent cards shared by the script chat and the agent mode: idea boards,
    saved-ideas receipt, draft links, handoff rows and quick replies.
-   Visual reference: docs/agent/agent-modus.html. Design tokens only;
-   character colours arrive inline as --char (user data).
+   Design tokens only; character colours arrive inline as --char (user
+   data).
    ========================================================================= */
 
 .am-sp {

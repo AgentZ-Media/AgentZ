@@ -43,14 +43,21 @@ Kein `cp` der laufenden DB (WAL). Wiederherstellen bei beendeter App:
   Node-Transform pro Tastendruck ändern, das friert die Eingabe ein. Nur das
   `characterName`-Attribut wird per Transform synchronisiert.
 - **Genau vier Blocktypen:** Action (⌘1), Charakter (⌘2), Dialog (⌘3),
-  Parenthetical (⌘4). Kamera, Caption, SFX sind abgeschafft und werden beim
-  Lesen sowie einmal beim Boot zu Action. Jeder neue Lesepfad für
+  Parenthetical (⌘4). Gespeicherte Kamera-, Caption- und SFX-Blöcke werden
+  beim Lesen sowie einmal beim Boot zu Action. Jeder neue Lesepfad für
   `content_json` läuft über `normalizeLegacyContent`/`normalizeLegacyTree`.
 - **Charaktere existieren nur im Skript** (keine globale Charakter-Tabelle);
   Farben sind beim Speichern „klebrig". Die Charakterprofile des Agenten sind
   Gedächtnis (`agent_memory`), keine Charakter-Tabelle.
-- **Längenziel ist ein Bereich.** „Darunter" ist Information, nur „darüber"
-  nutzt `--warn`. Spec: [`docs/feature-laengenziel.md`](../../docs/feature-laengenziel.md).
+- **Längenziel ist ein Bereich** (`lib/lengthGoal.ts`), Minimum und Maximum
+  jeweils optional: nur Maximum = reine Obergrenze, beides leer = kein Ziel
+  (Laufzeit und Zeitleiste bleiben). Der Bereich kommt vom Ordner, sonst aus
+  der globalen Einstellung, einen Bereich pro Skript gibt es nicht. Verglichen
+  wird in ganzen Sekunden, die Differenz gilt immer zur verletzten Grenze.
+  „Darunter" ist leise Information und nie Rot, „im Bereich" bleibt neutral,
+  nur „darüber" nutzt `--warn`. Die Zeitleiste rechnet pro Block mit derselben
+  Formel wie die Gesamtlaufzeit (`runtime.ts`/`timing.ts`). Kein Countdown:
+  das Ziel bewertet das Skript, nicht den Menschen.
 - **Inspector zeigt nur Informationen**, Einstellungen gehören in den
   Einstellungsdialog. **⌘I ist Ideen-Schnellerfassung**, es gibt kein Kursiv.
 - **Agent nur über das Provider-Interface.** Netzwerk und KI laufen über
@@ -66,9 +73,9 @@ Kein `cp` der laufenden DB (WAL). Wiederherstellen bei beendeter App:
   `%APPDATA%\de.agent-z.scriptz\backups\`), die letzten fünf bleiben.
   Wiederherstellen wie unten bei beendeter App.
 
-## Nicht wieder einführen
+## Bewusst ausgeschlossen
 
-Ohne Rücksprache mit dem User nicht zurückholen: Tabs, globale Charaktere,
+Ohne Rücksprache mit dem User nicht einbauen: Tabs, globale Charaktere,
 Projekte, Tags, Aliase, Serien, Vibrancy, Wochenziel, Streak, Sprint-Timer,
 Begrüßungen, Kamera/Caption/SFX-Blöcke, Cloud-Sync, Konten.
 
