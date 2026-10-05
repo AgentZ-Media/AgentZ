@@ -4,9 +4,9 @@ import { createStatePersistence } from "@agentz/kit/stores";
 
 /**
  * The sidebar's "Open" list: the scripts the writer is working on, in the
- * order they were opened. Every script shown in the full script view joins
- * it and stays until it is closed by hand - or, with the setting on, until
- * it reaches the last stage (see `syncStatuses`).
+ * order they were opened, newest first. Every script shown in the full
+ * script view joins it and stays until it is closed by hand - or, with the
+ * setting on, until it reaches the last stage (see `syncStatuses`).
  *
  * Persisted as `{"ids": [...]}` under its own app_state key. Without a
  * stored list the first load seeds it from the recently opened scripts, so
@@ -86,13 +86,12 @@ export const openStore = {
   ids,
   has: (id: string) => ids().includes(id),
 
-  /** Adds a script at the end; already open scripts keep their place. */
+  /** Adds a script at the top; already open scripts keep their place. */
   add(id: string) {
     autoClosed.delete(id);
     if (ids().includes(id)) return;
-    const next = [...ids(), id];
     // Over the cap the oldest entry makes room.
-    update(next.length > MAX_OPEN ? next.slice(next.length - MAX_OPEN) : next);
+    update([id, ...ids()].slice(0, MAX_OPEN));
   },
 
   remove(id: string) {
@@ -142,6 +141,7 @@ export const openStore = {
         if (before === finalId && closed && now - closed.at <= REOPEN_WINDOW_MS && !next.includes(s.id)) {
           next = [...next];
           next.splice(Math.min(closed.index, next.length), 0, s.id);
+          next = next.slice(0, MAX_OPEN);
         }
         autoClosed.delete(s.id);
       }
