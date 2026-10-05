@@ -17,6 +17,12 @@ import type { TimelineSegment, TimingBlock } from "../../lib/timing";
 /** Hook zone at the start of every short-form video. */
 export const HOOK_SEC = 3;
 
+/** The three hook marks after the first line of dialog, by priority:
+ *  3 s decide whether anyone stays, 5 s whether it is clear what this is
+ *  about, 10 s whether the conflict stands. */
+export const HOOK_MARKS = [3, 5, 10] as const;
+export type HookZone = 0 | 1 | 2;
+
 export interface CastEntry {
   /** Uppercased character name. */
   name: string;
@@ -202,4 +208,79 @@ export function sinceBucket(
   const hours = Math.floor(min / 60);
   if (hours < 24) return { unit: "hours", count: hours };
   return { unit: "days", count: Math.floor(hours / 24) };
+}
+
+/** Keys of the speech run around the caret block: a character line with
+ *  its parentheticals and dialog stay together (typewriter focus keeps the
+ *  whole run bright). An action block stands alone. Unknown caret keys
+ *  (a block created a moment ago) are returned on their own. */
+export function speechGroupKeys(blocks: TimingBlock[], caretKey: string): string[] {
+  const i = blocks.findIndex((b) => b.key === caretKey);
+  if (i < 0 || blocks[i].kind === "action") return [caretKey];
+  const inRun = (kind: TimingBlock["kind"]) => kind === "dialog" || kind === "paren";
+  let start = i;
+  if (blocks[i].kind !== "character") {
+    while (start > 0 && inRun(blocks[start - 1].kind)) start--;
+    if (start > 0 && blocks[start - 1].kind === "character") start--;
+  }
+  let end = i;
+  while (end + 1 < blocks.length && inRun(blocks[end + 1].kind)) end++;
+  return blocks.slice(start, end + 1).map((b) => b.key).filter((k): k is string => !!k);
+}
+
+/** When the hook clock starts: the first spoken line. Stage directions
+ *  before it do not count. Null without dialog. */
+export function firstDialogStart(segments: TimelineSegment[]): number | null {
+  const first = segments.find((s) => s.kind === "dialog");
+  return first ? first.startSec : null;
+}
+
+function zoneAt(rel: number): HookZone | null {
+  if (rel < HOOK_MARKS[0]) return 0;
+  if (rel < HOOK_MARKS[1]) return 1;
+  if (rel < HOOK_MARKS[2]) return 2;
+  return null;
+}
+
+export interface HookMarkData {
+  /** Zone of every block that plays inside the first 10 s (character and
+   *  parenthetical lines join their dialog). */
+  zones: Map<string, HookZone>;
+  /** Where the 3 / 5 / 10 s marks fall: block key and how far into that
+   *  block (0..1). */
+  ticks: Array<{ key: string; frac: number; sec: number }>;
+}
+
+/** Hook zones on the paper (3 / 5 / 10 s after the first line of
+ *  dialog). Empty while the script has no dialog. */
+export function hookMarks(blocks: TimingBlock[], segments: TimelineSegment[]): HookMarkData {
+  const zones = new Map<string, HookZone>();
+  const ticks: HookMarkData["ticks"] = [];
+  const s0 = firstDialogStart(segments);
+  if (s0 === null) return { zones, ticks };
+  const byKey = new Map<string, TimelineSegment>();
+  for (const s of segments) if (s.key) byKey.set(s.key, s);
+  let pending: string[] = [];
+  for (const b of blocks) {
+    if (!b.key) continue;
+    if (b.kind === "character" || b.kind === "paren") {
+      pending.push(b.key);
+      continue;
+    }
+    const seg = byKey.get(b.key);
+    if (seg && seg.startSec >= s0) {
+      const zone = zoneAt(seg.startSec - s0);
+      if (zone !== null) {
+        if (b.kind === "dialog") for (const key of pending) zones.set(key, zone);
+        zones.set(b.key, zone);
+      }
+    }
+    pending = [];
+  }
+  for (const sec of HOOK_MARKS) {
+    const at = s0 + sec;
+    const seg = segments.find((s) => s.key && s.startSec <= at && at < s.startSec + s.durSec);
+    if (seg?.key) ticks.push({ key: seg.key, frac: seg.durSec > 0 ? (at - seg.startSec) / seg.durSec : 0, sec });
+  }
+  return { zones, ticks };
 }

@@ -7,6 +7,12 @@ import type { ChatItem } from "../../lib/agent/chats";
 import { markdownToPlain } from "../../lib/agent/markdown";
 import { AGENT_PROCESS_EXITED } from "../../lib/agent/types";
 import { sourceHost, type ClaimVerdict, type ProposalTarget } from "../../lib/agent/proposals";
+import { isAgentJob, type AgentJobId } from "../../lib/agent/jobs";
+import { formatClock, lengthStatus, type LengthRange } from "../../lib/lengthGoal";
+import { getCurrentLocale } from "@agentz/kit/i18n";
+import { clearProposalPreview, liveBlocks, showProposalPreview } from "./editorBridge";
+import { optionMetrics, type OptionMetrics } from "./proposalMetrics";
+import { JOB_ICON } from "./jobLabels";
 import { agentSettings } from "../../stores/agentSettings";
 import type { ChatSession } from "../../stores/agent";
 import { Markdown } from "./Markdown";
@@ -21,17 +27,27 @@ export interface ItemContext {
   lookup: Lookup;
   colorOf(name: string): string;
   canApply: boolean;
+  scriptId: string;
+  range: LengthRange | null;
+  wpm: number;
+  /** Bumps on every editor update. */
+  tick(): number;
 }
 
 // ---------------------------------------------------------------- user
 
 export function UserMessage(props: { item: Item<"user"> }) {
   return (
-    <div class="ag-user">
+    <div class="ag-user" classList={{ "is-job": !!props.item.job }}>
       <Show when={props.item.quote}>
         <span class="ag-user-q">{props.item.quote}</span>
       </Show>
-      <span class="ag-user-t">{props.item.text}</span>
+      <span class="ag-user-t">
+        <Show when={isAgentJob(props.item.job) && props.item.job}>
+          {(job) => <Icon name={JOB_ICON[job() as AgentJobId]} size={12} />}
+        </Show>
+        {props.item.text}
+      </span>
     </div>
   );
 }
@@ -169,8 +185,66 @@ function applyLabel(target: ProposalTarget): string {
 
 const LETTERS = ["A", "B", "C"];
 
+/** "1,1 s" in the UI language. */
+function fmtSec(sec: number): string {
+  return t("agent.metric.sec", { n: sec.toLocaleString(getCurrentLocale(), { minimumFractionDigits: 1, maximumFractionDigits: 1 }) });
+}
+
+/** What a proposal does before it is inserted: runtime against the target
+ *  range, speaker changes, longest line, time to the conflict. */
+function MetricPills(props: { metrics: OptionMetrics; range: LengthRange | null }) {
+  const after = () => props.metrics.after;
+  const before = () => props.metrics.before;
+  const runtime = () => {
+    const sec = after().runtimeSec;
+    const status = lengthStatus(sec, props.range);
+    const time = formatClock(sec);
+    if (status.state === "over") return { cls: "is-warn", text: t("agent.metric.over", { time, n: status.deltaSec }) };
+    if (status.state === "in") return { cls: "is-ok", text: t("agent.metric.in", { time }) };
+    if (status.state === "under") return { cls: "", text: t("agent.metric.under", { time, n: status.deltaSec }) };
+    return { cls: "", text: time };
+  };
+  const delta = () => after().runtimeSec - before().runtimeSec;
+  const conflict = () => {
+    const a = after().conflictSec;
+    const b = before().conflictSec;
+    if (a === null || b === null) return null;
+    return a < 0.3 ? t("agent.metric.conflictNow", { before: fmtSec(b) }) : t("agent.metric.conflict", { after: fmtSec(a), before: fmtSec(b) });
+  };
+  return (
+    <div class="ag-opt-m">
+      <Show when={conflict()}>{(text) => <span class="ag-m-pill is-ok">{text()}</span>}</Show>
+      <span class={`ag-m-pill ${runtime().cls}`}>{runtime().text}</span>
+      <Show when={delta() !== 0}>
+        <span class="ag-m-pill">{t("agent.metric.delta", { delta: `${delta() > 0 ? "+" : "\u2212"}${Math.abs(delta())}` })}</span>
+      </Show>
+      <Show when={after().speakerChanges !== before().speakerChanges}>
+        <span class="ag-m-pill" classList={{ "is-ok": after().speakerChanges > before().speakerChanges }}>
+          {t("agent.metric.changes", { from: before().speakerChanges, to: after().speakerChanges })}
+        </span>
+      </Show>
+      <Show when={after().longestSec < before().longestSec - 0.3}>
+        <span class="ag-m-pill is-ok">{t("agent.metric.longest", { from: fmtSec(before().longestSec), to: fmtSec(after().longestSec) })}</span>
+      </Show>
+    </div>
+  );
+}
+
 export function ProposalCards(props: { item: Item<"proposal">; ctx: ItemContext }) {
+  // Numbers against the script as it is now (incl. unsaved typing).
+  const metrics = createMemo(() => {
+    props.ctx.tick();
+    const current = liveBlocks(props.ctx.scriptId);
+    if (!current) return [];
+    return props.item.proposal.options.map((_, i) => optionMetrics(current, props.item.proposal, i, props.ctx.wpm));
+  });
+  const preview = (index: number) => {
+    if (!props.ctx.canApply || props.item.applied !== null) return;
+    const option = props.item.proposal.options[index];
+    if (option) showProposalPreview(props.ctx.scriptId, props.item.proposal.target, option.blocks, t("agent.preview.tag"));
+  };
   const apply = (index: number) => {
+    clearProposalPreview();
     if (!props.ctx.canApply) { pushToast(t("agent.option.noEditor"), "info"); return; }
     if (!props.ctx.session.applyOption(props.item.id, index)) {
       pushToast(t("agent.option.failed", { name: agentSettings.displayName() }), "error");
@@ -183,13 +257,21 @@ export function ProposalCards(props: { item: Item<"proposal">; ctx: ItemContext 
           const applied = () => props.item.applied === i();
           const dim = () => props.item.applied !== null && !applied();
           return (
-            <div class="ag-opt" classList={{ "is-applied": applied(), "is-dim": dim() }}>
+            <div
+              class="ag-opt"
+              classList={{ "is-applied": applied(), "is-dim": dim() }}
+              onMouseEnter={() => preview(i())}
+              onMouseLeave={clearProposalPreview}
+            >
               <div class="ag-opt-h">
                 <span class="ag-opt-k">{LETTERS[i()] ?? i() + 1}</span>
                 <b>{option.title || LETTERS[i()]}</b>
               </div>
               <Show when={option.note}>
                 <p class="ag-opt-note">{option.note}</p>
+              </Show>
+              <Show when={props.item.applied === null && metrics()[i()]}>
+                {(m) => <MetricPills metrics={m()} range={props.ctx.range} />}
               </Show>
               <ScriptBlocks blocks={option.blocks} colorOf={props.ctx.colorOf} />
               <div class="ag-opt-f">
@@ -232,8 +314,31 @@ function openSource(url: string) {
   void getPlatformAdapter().openUrl(url).catch((error) => console.warn("[agent] open source failed", error));
 }
 
+const VERDICT_ORDER: ClaimVerdict[] = ["correct", "imprecise", "wrong", "unclear"];
+const SUM_KEY: Record<ClaimVerdict, "agent.claims.sum.correct" | "agent.claims.sum.imprecise" | "agent.claims.sum.wrong" | "agent.claims.sum.unclear"> = {
+  correct: "agent.claims.sum.correct",
+  imprecise: "agent.claims.sum.imprecise",
+  wrong: "agent.claims.sum.wrong",
+  unclear: "agent.claims.sum.unclear",
+};
+
 export function ClaimsCard(props: { item: Item<"claims">; ctx: ItemContext }) {
+  // "1 stimmt · 1 ungenau · 1 so nicht haltbar · 4 Quellen"
+  const summary = createMemo(() => {
+    const counts = new Map<ClaimVerdict, number>();
+    for (const claim of props.item.claims) counts.set(claim.verdict, (counts.get(claim.verdict) ?? 0) + 1);
+    const sources = new Set(props.item.claims.flatMap((claim) => claim.sources.map((source) => source.url))).size;
+    return { verdicts: VERDICT_ORDER.filter((v) => counts.has(v)).map((v) => ({ verdict: v, count: counts.get(v) ?? 0 })), sources };
+  });
+  const another = (index: number) => {
+    const claim = props.item.claims[index];
+    if (!claim || props.ctx.session.running()) return;
+    void props.ctx.session.send(t("agent.claim.anotherPrompt", { quote: claim.quote }), undefined, {
+      instruction: `Give one or two other corrected wordings for this claim from your fact check: "${claim.quote}". Keep the joke and the voice. Show them with propose_options, replacing the same blocks as your earlier fix.`,
+    });
+  };
   const apply = (index: number) => {
+    clearProposalPreview();
     if (!props.ctx.canApply) { pushToast(t("agent.option.noEditor"), "info"); return; }
     if (!props.ctx.session.applyFix(props.item.id, index)) {
       pushToast(t("agent.option.failed", { name: agentSettings.displayName() }), "error");
@@ -245,10 +350,21 @@ export function ClaimsCard(props: { item: Item<"claims">; ctx: ItemContext }) {
         <Icon name="search" size={12} />
         {t("agent.claims.title")}
       </div>
+      <div class="ag-claims-sum">
+        <For each={summary().verdicts}>
+          {(entry) => <span class={`ag-verdict is-${entry.verdict}`}>{tPlural(SUM_KEY[entry.verdict], entry.count)}</span>}
+        </For>
+        <Show when={summary().sources > 0}>
+          <span class="ag-claims-src">{tPlural("agent.claims.sum.sources", summary().sources)}</span>
+        </Show>
+      </div>
       <For each={props.item.claims}>
         {(claim, i) => (
           <div class={`ag-claim is-${claim.verdict}`}>
-            <span class={`ag-verdict is-${claim.verdict}`}>{t(VERDICT_KEY[claim.verdict])}</span>
+            <span class={`ag-verdict is-${claim.verdict}`}>
+              <span class={`ag-claim-n is-${claim.verdict}`}>{i() + 1}</span>
+              {t(VERDICT_KEY[claim.verdict])}
+            </span>
             <q class="ag-claim-q">{claim.quote}</q>
             <Show when={claim.explanation}>
               <p class="ag-claim-x">{claim.explanation}</p>
@@ -270,13 +386,25 @@ export function ClaimsCard(props: { item: Item<"claims">; ctx: ItemContext }) {
             </Show>
             <Show when={claim.fix}>
               {(fix) => (
-                <div class="ag-claim-fix">
+                <div
+                  class="ag-claim-fix"
+                  onMouseEnter={() => {
+                    if (props.ctx.canApply && !props.item.applied.includes(i())) showProposalPreview(props.ctx.scriptId, fix().target, fix().blocks, t("agent.preview.tag"));
+                  }}
+                  onMouseLeave={clearProposalPreview}
+                >
                   <ScriptBlocks blocks={fix().blocks} colorOf={props.ctx.colorOf} />
                   <Show
                     when={!props.item.applied.includes(i())}
                     fallback={<span class="ag-opt-done"><Icon name="check" size={12} />{t("agent.claim.fixed")}</span>}
                   >
-                    <button type="button" class="btn" onClick={() => apply(i())}>{t("agent.claim.fix")}</button>
+                    <div class="ag-claim-acts">
+                      <button type="button" class="btn" onClick={() => apply(i())}>{t("agent.claim.fix")}</button>
+                      <button type="button" class="btn ghost" disabled={props.ctx.session.running()} onClick={() => another(i())}>
+                        <Icon name="refresh" size={12} />
+                        {t("agent.claim.another")}
+                      </button>
+                    </div>
                   </Show>
                 </div>
               )}

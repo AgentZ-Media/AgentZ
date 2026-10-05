@@ -113,6 +113,28 @@ Farb-Registry `character_colors` wächst mit und lässt sich in den
 Einstellungen aufräumen (manuell oder automatisch nach 4 s Ruhe,
 `characterAutoPrune.ts`); das Löschen prüft die Nutzung erneut.
 
+## Färbung, Hook und Bewegung
+
+- **Eine Färbe-Regel** (`lib/tint.ts`) für Editor (`plugins/highlight.ts`),
+  PDF und Export-Vorschau: Charakter in eigener Farbe, Dialog und
+  Parenthetical in der Farbe darüber, ein Action-Block beendet den
+  Sprechlauf. Wem Wörter für Statistik und Zeitleiste zugerechnet werden,
+  regeln weiter `lex.ts`/`timing.ts`.
+- **Hook-Zonen** 3 / 5 / 10 s ab dem ersten Dialog, Regie davor zählt nicht
+  (`timelineMath.ts`: `firstDialogStart`, `hookMarks`). Sichtbar nur als
+  ruhige Markierung: Balken im linken Papierrand (`Script/HookMarks.tsx`)
+  und gestufte Zonen in der Zeitleiste.
+- **Bewegung** über `components/Common/motion.tsx`/`motion.css`
+  (Zahl-Tween, Zähler-Puls, Flug in die Seitenleiste, Aufleuchten, View
+  Transition beim Öffnen). Reduzierte Bewegung schaltet alles ab. Der
+  Fertig-Moment hängt an `library.justFinished(id)`.
+- **Schreibmaschine im Fokus** (`focus_typewriter`, Standard aus): die
+  Caret-Zeile bleibt mittig, andere Sprechläufe treten zurück; nur
+  DOM-Attribute (`data-tw-current`), nie Editor-State.
+- **Rückgängig in Toasts**: `pushToast(text, kind, timeout, { action })`
+  aus dem Kit. Papierkorb, Verschieben (Skripte und Ideen) und Ideen
+  löschen (`api.restoreIdea`) nutzen es.
+
 ## Legacy-Blöcke
 
 Die Node-Klassen für Kamera/Caption/SFX existieren nicht mehr. Jeder Lesepfad
@@ -173,6 +195,21 @@ Referenz: `docs/agent/screens.html`.
 - **Settings** unter `agent.*` (siehe `stores/agentSettings.ts`), Effort
   überall standardmäßig `medium`. `agent.enabled = false` startet keinen
   Prozess.
+- **Aufträge** (`lib/agent/jobs.ts`): Einstieg prüfen, Kürzen, Tempo
+  erhöhen, Härteres Ende, Fakten prüfen, Feedback. Der Chat zeigt nur das
+  kurze Label, das Modell bekommt die englische Instruktion. Vier Türen,
+  kein Knopf in der Kopfleiste: Karten im leeren Chat, Chips am Problem
+  (Einstieg-Chip über der Eröffnung, Kürzen/Tempo an der zu langen Länge in
+  der Zeitleiste), Rechtsklick (inkl. „Mehr wie {Figur}“) und ⌘K.
+- **Karten zeigen vorher, was passiert** (`Agent/proposalMetrics.ts`):
+  Laufzeit gegen den Zielbereich, Sprecherwechsel, längste Zeile und beim
+  Einstieg „Konflikt nach X s“ (`propose_options` mit optionalem
+  `conflict_block`/`current_conflict_block`). Hover zeigt den Vorschlag
+  gestrichelt im Papier (`editorBridge.showProposalPreview`, nur Attribute
+  und Overlay). Eingefügte Zeilen leuchten kurz auf (`data-ag-new`).
+- **Faktencheck im Text** (`Agent/ClaimMarks.tsx`): die Behauptungen des
+  letzten Checks werden per CSS Custom Highlight API unterstrichen und
+  nummeriert, solange der Chat offen ist.
 
 ## Datenfluss
 

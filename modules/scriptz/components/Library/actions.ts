@@ -115,14 +115,32 @@ export async function renameScript(s: ScriptSummary, title: string): Promise<boo
   }
 }
 
+/** "Rückgängig" in a toast, bumping the buses after the undo ran. */
+function undoAction(run: () => Promise<void>) {
+  return {
+    action: {
+      label: t("shell.toast.undo"),
+      run: async () => {
+        try {
+          await run();
+        } catch (e) {
+          fail(e);
+        } finally {
+          scriptsBus.bump();
+          foldersBus.bump();
+        }
+      },
+    },
+  };
+}
+
 export async function archiveScripts(list: ScriptSummary[]): Promise<void> {
   if (list.length === 0) return;
+  const done: ScriptSummary[] = [];
   try {
-    for (const s of list) await api.archiveScript(s.id);
-    if (list.length === 1) {
-      pushToast(t("script.toast.archived", { title: list[0].title }), "ok");
-    } else {
-      pushToast(tPlural("shell.toast.archivedMany", list.length), "ok");
+    for (const s of list) {
+      await api.archiveScript(s.id);
+      done.push(s);
     }
   } catch (e) {
     fail(e);
@@ -130,16 +148,34 @@ export async function archiveScripts(list: ScriptSummary[]): Promise<void> {
     scriptsBus.bump();
     foldersBus.bump();
   }
+  // Whatever reached the trash gets its undo, even after a failure.
+  if (done.length === 0) return;
+  const undo = undoAction(async () => {
+    for (const s of done) await api.restoreScript(s.id);
+  });
+  if (done.length === 1) {
+    pushToast(t("script.toast.archived", { title: done[0].title }), "ok", undefined, undo);
+  } else {
+    pushToast(tPlural("shell.toast.archivedMany", done.length), "ok", undefined, undo);
+  }
 }
 
 export async function moveScriptsTo(ids: string[], folderId: string | null): Promise<void> {
   if (ids.length === 0) return;
+  // Where each script was, for "Rückgängig".
+  const before = new Map(ids.map((id) => [id, library.script(id)?.folder_id ?? null]));
   try {
     if (ids.length === 1) await api.moveScript(ids[0], folderId);
     else await api.moveScripts(ids, folderId);
     const name =
       folderId === null ? t("folder.none") : (library.folder(folderId)?.name ?? t("folder.new"));
-    pushToast(t("folder.toast.movedTo", { name }), "ok");
+    pushToast(t("folder.toast.movedTo", { name }), "ok", undefined, undoAction(async () => {
+      for (const [id, previous] of before) {
+        // Only scripts still where this move put them (a later move wins).
+        const now = library.script(id)?.folder_id ?? null;
+        if (previous !== folderId && now === folderId) await api.moveScript(id, previous);
+      }
+    }));
   } catch (e) {
     fail(e);
   } finally {

@@ -71,7 +71,7 @@ describe("ScriptsPage selection scope", () => {
     const view = await selectAll();
     fireEvent.click(view.getByRole("button", { name: t("select.action.pdf") }));
     await waitFor(() => expect(exportScriptsToPdf).toHaveBeenLastCalledWith(
-      ["a", "b"], { includeHighlighting: false, includeTitlePage },
+      ["a", "b"], { includeHighlighting: false, includeTitlePage, wpm: settingsStore.dialogWpm() },
     ));
   });
 

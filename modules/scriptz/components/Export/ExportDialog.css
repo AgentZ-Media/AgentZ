@@ -40,6 +40,28 @@
   border-radius: 2px;
   font-family: var(--type);
 }
+/* All pages stacked; the column scrolls inside the preview pane. */
+.pdf-pages {
+  flex: 1 1 auto;
+  min-height: 0;
+  max-height: 520px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+  padding: 2px 32px 8px;
+  align-self: stretch;
+}
+.pdf-foot {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: calc(12.5 * var(--mm) - 1.5 * var(--mm));
+  text-align: center;
+  font-size: calc(3 * var(--mm));
+  color: var(--paper-muted);
+}
 .pdf-line {
   position: absolute;
   left: calc(var(--x) * var(--mm));

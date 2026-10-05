@@ -2,12 +2,14 @@ import { For, Show, createEffect, createMemo, createSignal, on, onCleanup, type 
 import { Icon } from "@agentz/kit/ui";
 import { formatClock, formatRange, lengthStatus, type LengthRange } from "../../lib/lengthGoal";
 import type { TimelineSegment } from "../../lib/timing";
+import { createTween } from "../Common/motion";
 import { K } from "@agentz/kit/platform";
 import { getCurrentLocale } from "@agentz/kit/i18n";
 import { t } from "../../i18n";
 import {
-  HOOK_SEC,
+  HOOK_MARKS,
   axisTicks,
+  firstDialogStart,
   laneSpeakers,
   longestDialogKey,
   pct,
@@ -33,6 +35,9 @@ export interface TimelineProps {
   /** Hovering a section links it to its paper line (null = hover ended). */
   onHover(seg: TimelineSegment | null): void;
   onJump(seg: TimelineSegment): void;
+  /** Agent jobs offered at the length while it is over the range (hover
+   *  only). Null when the agent is not available. */
+  onJob?: ((job: "cut" | "tempo") => void) | null;
 }
 
 interface Lane {
@@ -64,6 +69,20 @@ export function Timeline(props: TimelineProps) {
   const status = createMemo(() => lengthStatus(props.runtimeSec, props.range));
   const rangeText = () => formatRange(props.range);
   const longest = createMemo(() => longestDialogKey(props.segments));
+  const shownSec = createTween(() => props.runtimeSec);
+  // The hook clock starts with the first spoken line (not with a stage
+  // direction before it).
+  const hookStart = createMemo(() => firstDialogStart(props.segments));
+  // Right after ⌘J opens the timeline its lanes grow in once. Only in this
+  // window - segments re-render on every keystroke and must not replay.
+  const [opening, setOpening] = createSignal(false);
+  let openingTimer: ReturnType<typeof setTimeout> | undefined;
+  createEffect(on(() => props.open, (open) => {
+    clearTimeout(openingTimer);
+    setOpening(open);
+    if (open) openingTimer = setTimeout(() => setOpening(false), 1100);
+  }, { defer: true }));
+  onCleanup(() => clearTimeout(openingTimer));
 
   const lanes = createMemo<Lane[]>(() => {
     const { speakers, hasUnnamed } = laneSpeakers(props.segments);
@@ -150,7 +169,7 @@ export function Timeline(props: TimelineProps) {
   // ---------- labels ----------
   const lenLabel = (expanded: boolean) => (
     <span class="tl-len" title={t("script.tl.estimate", { wpm: props.wpm })}>
-      <b classList={{ over: status().state === "over" }}>{formatClock(props.runtimeSec)}</b>
+      <b classList={{ over: status().state === "over" }}>{formatClock(shownSec())}</b>
       <Show when={rangeText()}>
         {" / "}
         {t("script.tl.goal", { range: rangeText() })}
@@ -183,7 +202,21 @@ export function Timeline(props: TimelineProps) {
     const bandEnd = () => (min() !== null ? (max() ?? w()) : null);
     return (
       <>
-        <span class="z-hook" style={{ width: `${pct(HOOK_SEC, w())}%` }} />
+        <Show when={hookStart() !== null}>
+          {(() => {
+            const zone = (from: number, to: number) => {
+              const s0 = hookStart() as number;
+              return { left: `${pct(s0 + from, w())}%`, width: `${pct(s0 + to, w()) - pct(s0 + from, w())}%` };
+            };
+            return (
+              <>
+                <span class="z-hook z0" style={zone(0, HOOK_MARKS[0])} />
+                <span class="z-hook z1" style={zone(HOOK_MARKS[0], HOOK_MARKS[1])} />
+                <span class="z-hook z2" style={zone(HOOK_MARKS[1], HOOK_MARKS[2])} />
+              </>
+            );
+          })()}
+        </Show>
         <Show when={bandStart() !== null && bandEnd() !== null}>
           <span
             class="z-range"
@@ -229,7 +262,7 @@ export function Timeline(props: TimelineProps) {
   });
 
   return (
-    <section class="tl" classList={{ "is-open": props.open }} aria-label={t("script.tl.aria")}>
+    <section class="tl" classList={{ "is-open": props.open, "is-opening": opening() }} aria-label={t("script.tl.aria")}>
       <div class="tl-bar">
         <button
           type="button"
@@ -251,7 +284,21 @@ export function Timeline(props: TimelineProps) {
             </div>
           </div>
         </Show>
-        {lenLabel(props.open)}
+        <div class="tl-len-wrap">
+          <Show when={props.onJob && status().state === "over"}>
+            <div class="tl-jobs" role="group" aria-label={t("script.tl.jobsAria")}>
+              <button type="button" class="tl-job" onMouseDown={(e) => e.preventDefault()} onClick={() => props.onJob?.("cut")}>
+                <Icon name="scissors" size={12} />
+                {t("agent.job.cut")}
+              </button>
+              <button type="button" class="tl-job" onMouseDown={(e) => e.preventDefault()} onClick={() => props.onJob?.("tempo")}>
+                <Icon name="bolt" size={12} />
+                {t("agent.job.tempo")}
+              </button>
+            </div>
+          </Show>
+          {lenLabel(props.open)}
+        </div>
       </div>
 
       <Show when={props.open}>
@@ -307,11 +354,11 @@ export function Timeline(props: TimelineProps) {
               {(lane) => (
                 <div class="lane">
                   <For each={lane.segments}>
-                    {(s) => (
+                    {(s, i) => (
                       <i
                         class={segClass(s)}
                         classList={{ "is-hover": tip()?.seg === s }}
-                        style={segStyle(s, lane)}
+                        style={{ ...segStyle(s, lane), "--i": String(i()) }}
                         onMouseEnter={(e) => onEnter(s, lane.kind === "action" ? t("block.action") : lane.label, e.currentTarget)}
                         onMouseLeave={onLeave}
                         onMouseDown={(e) => e.preventDefault()}

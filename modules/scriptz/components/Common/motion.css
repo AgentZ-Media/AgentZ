@@ -1,0 +1,93 @@
+/* Motion helpers (motion.tsx) and the shared "done" moment. Tokens only;
+   reduced motion is handled globally in tokens.css. */
+
+/* A count that changed pops once. */
+.mo-bump {
+  display: inline-block;
+  font-variant-numeric: tabular-nums;
+}
+.mo-bump.is-bump {
+  animation: mo-bump var(--t-slow) var(--ease);
+}
+@keyframes mo-bump {
+  0% { transform: scale(1); }
+  35% { transform: scale(1.28); color: var(--fg); }
+  100% { transform: scale(1); }
+}
+
+/* An idea flying into the sidebar. */
+.mo-fly {
+  position: fixed;
+  z-index: 400;
+  padding: 10px 12px;
+  border-radius: var(--r-pop);
+  background: var(--surface);
+  color: var(--fg);
+  box-shadow: var(--shadow-pop);
+  font: 600 13px/1.35 var(--ui);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  pointer-events: none;
+  transform-origin: 50% 50%;
+}
+.is-landed {
+  animation: mo-landed 0.9s var(--ease);
+}
+@keyframes mo-landed {
+  0% { background-color: color-mix(in srgb, var(--accent) 45%, transparent); }
+  100% { background-color: transparent; }
+}
+
+/* Lines a proposal just put on the paper glow yellow and fade. */
+.mo-flash,
+[data-ag-new] {
+  border-radius: 4px;
+  animation: mo-flash 2.4s ease both;
+}
+@keyframes mo-flash {
+  0%, 20% { box-shadow: 0 0 0 4px color-mix(in srgb, var(--accent) 70%, transparent); background-color: color-mix(in srgb, var(--accent) 45%, transparent); }
+  100% { box-shadow: 0 0 0 4px transparent; background-color: transparent; }
+}
+
+/* ---------- a script reaches the last stage ---------- */
+/* The stage ring pops into the filled "done" glyph ... */
+.st.is-finishing {
+  animation: mo-finish 0.75s var(--ease) both;
+}
+@keyframes mo-finish {
+  0% { transform: scale(0.5) rotate(-120deg); opacity: 0.3; }
+  60% { transform: scale(1.3) rotate(0); opacity: 1; }
+  100% { transform: scale(1); }
+}
+/* ... and a highlighter stroke runs over the title, then wipes away. */
+.mo-marker {
+  background-image: linear-gradient(color-mix(in srgb, var(--accent) 75%, transparent), color-mix(in srgb, var(--accent) 75%, transparent));
+  background-repeat: no-repeat;
+  background-position: 0 88%;
+  background-size: 0% 42%;
+  animation: mo-marker 2.6s var(--ease) 0.35s forwards;
+}
+@keyframes mo-marker {
+  0% { background-size: 0% 42%; background-position: 0 88%; }
+  25% { background-size: 100% 42%; background-position: 0 88%; }
+  78% { background-size: 100% 42%; background-position: 100% 88%; }
+  100% { background-size: 0% 42%; background-position: 100% 88%; }
+}
+
+/* ---------- opening a script: list row morphs into the paper ---------- */
+::view-transition-group(scriptz-open) {
+  animation-duration: 0.42s;
+  animation-timing-function: cubic-bezier(0.3, 0.7, 0.2, 1);
+}
+::view-transition-old(scriptz-open),
+::view-transition-new(scriptz-open) {
+  animation-duration: 0.42s;
+  height: 100%;
+  object-fit: cover;
+  object-position: top;
+}
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation-duration: 0.24s;
+}

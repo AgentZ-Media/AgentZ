@@ -98,12 +98,14 @@ export function applyBlocks(scriptId: string, blocks: readonly AgentBlock[], pro
   const editor = agentEditor(scriptId);
   if (!editor || blocks.length === 0) return null;
   let applied: ProposalTarget | null = null;
+  let inserted: string[] = [];
   editor.update(() => {
     const root = $getRoot();
     const children = root.getChildren();
     const target = resolveTarget(proposed, children.map((child) => child.getTextContent()));
     if (!target) return;
     const nodes = blocks.map(buildNode);
+    inserted = nodes.map((node) => node.getKey());
     if (target.mode === "replace") {
       const first = children[target.from];
       for (const node of nodes) first.insertBefore(node);
@@ -136,7 +138,22 @@ export function applyBlocks(scriptId: string, blocks: readonly AgentBlock[], pro
   });
   // Hand the keyboard back to the paper so ⌘Z undoes the insert right away.
   if (applied && editor.getRootElement()) editor.focus();
+  if (applied) markInserted(editor, inserted);
   return applied;
+}
+
+/** The new lines glow yellow for a moment, so it is clear what came in
+ *  (components/Common/motion.css, `[data-ag-new]`). An attribute on the
+ *  rendered element, never editor state. */
+function markInserted(editor: LexicalEditor, keys: readonly string[]): void {
+  if (typeof window === "undefined" || window.matchMedia?.("(prefers-reduced-motion: reduce)").matches) return;
+  requestAnimationFrame(() => {
+    const elements = keys.map((key) => editor.getElementByKey(key)).filter((el): el is HTMLElement => !!el);
+    for (const el of elements) el.setAttribute("data-ag-new", "");
+    setTimeout(() => {
+      for (const el of elements) el.removeAttribute("data-ag-new");
+    }, 2600);
+  });
 }
 
 /** Scrolls the block at `index` into view (after applying). */
@@ -159,4 +176,91 @@ export function targetIndex(scriptId: string, target: ProposalTarget, count: num
   let size = 0;
   editor?.getEditorState().read(() => { size = $getRoot().getChildrenSize(); });
   return Math.max(0, size - count);
+}
+
+// ---------------------------------------------------------------- preview
+
+interface PreviewState {
+  marked: HTMLElement[];
+  spaced: HTMLElement | null;
+  ghost: HTMLElement | null;
+}
+let preview: PreviewState | null = null;
+
+/** Removes the proposal preview from the paper (hover ended, applied,
+ *  chat closed). */
+export function clearProposalPreview(): void {
+  if (!preview) return;
+  for (const el of preview.marked) el.removeAttribute("data-ag-preview");
+  if (preview.spaced) {
+    preview.spaced.removeAttribute("data-ag-ghost-after");
+    preview.spaced.style.removeProperty("--ag-ghost-space");
+  }
+  preview.ghost?.remove();
+  preview = null;
+}
+
+/** Shows a proposal on the paper without touching the script: the lines it
+ *  replaces are struck through and the new lines appear dashed right where
+ *  they would land. Only rendered DOM is touched (attributes and an
+ *  overlay), never editor state. */
+export function showProposalPreview(scriptId: string, target: ProposalTarget, blocks: readonly AgentBlock[], tag: string): void {
+  clearProposalPreview();
+  const editor = agentEditor(scriptId);
+  const root = editor?.getRootElement();
+  const sheet = root?.closest<HTMLElement>(".ss-sheet");
+  if (!editor || !root || !sheet || blocks.length === 0) return;
+  let keys: string[] = [];
+  let resolved: ProposalTarget | null = null;
+  editor.getEditorState().read(() => {
+    const children = $getRoot().getChildren();
+    keys = children.map((child) => child.getKey());
+    resolved = resolveTarget(target, children.map((child) => child.getTextContent()));
+    // Like append(), trailing empty lines do not count.
+    let end = children.length;
+    while (end > 0 && !children[end - 1].getTextContent().trim()) end--;
+    keys = keys.slice(0, Math.max(end, 1));
+  });
+  const at = resolved as ProposalTarget | null;
+  if (!at) return;
+  const state: PreviewState = { marked: [], spaced: null, ghost: null };
+  if (at.mode === "replace") {
+    for (let i = at.from; i <= at.to; i++) {
+      const el = editor.getElementByKey(keys[i] ?? "");
+      if (!el) continue;
+      el.setAttribute("data-ag-preview", "replace");
+      state.marked.push(el);
+    }
+  }
+  const anchorKey = at.mode === "replace" ? keys[at.to] : at.mode === "insertAfter" ? keys[at.block] : keys[keys.length - 1];
+  const anchor = anchorKey ? editor.getElementByKey(anchorKey) : null;
+  if (!anchor) {
+    preview = state;
+    return;
+  }
+  const ghost = document.createElement("div");
+  ghost.className = "ag-ghost";
+  ghost.setAttribute("aria-hidden", "true");
+  for (const block of blocks) {
+    const line = document.createElement("div");
+    line.className = `gb gb-${block.type}`;
+    line.textContent = block.text;
+    ghost.appendChild(line);
+  }
+  const label = document.createElement("span");
+  label.className = "ag-ghost-tag";
+  label.textContent = tag;
+  ghost.appendChild(label);
+  const sheetRect = sheet.getBoundingClientRect();
+  const rootRect = root.getBoundingClientRect();
+  ghost.style.left = `${rootRect.left - sheetRect.left - 14}px`;
+  ghost.style.width = `${rootRect.width + 28}px`;
+  sheet.appendChild(ghost);
+  // Make room below the anchor line, then sit the ghost in that gap.
+  anchor.style.setProperty("--ag-ghost-space", `${ghost.offsetHeight + 20}px`);
+  anchor.setAttribute("data-ag-ghost-after", "");
+  ghost.style.top = `${anchor.getBoundingClientRect().bottom - sheetRect.top + 10}px`;
+  state.spaced = anchor;
+  state.ghost = ghost;
+  preview = state;
 }

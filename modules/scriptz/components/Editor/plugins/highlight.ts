@@ -8,13 +8,12 @@
 // colour. The Editor.css rule paints `background: var(--char-tint, …)`
 // when `data-highlighting="on"` is set on the editor root.
 //
-// PDF export does the equivalent walk in TS (see src/lib/exportPdf.ts,
-// `computeTint` + `hexToRgbTint`). This brings the live editor in line
-// with the rendered output the user sees on save/share.
+// Which speaker tints which block comes from lib/tint.ts, shared with the
+// PDF export and its preview, so the paper and the printout match.
 
 import type { LexicalEditor } from "lexical";
 import { $getRoot } from "lexical";
-import { $isScriptzCharacterNode } from "../nodes";
+import { tintKindOf, tintSpeakers } from "../../../lib/tint";
 import type { ScriptCharacter } from "../../../lib/types";
 
 const TINT_BLOCKS = new Set([
@@ -88,42 +87,28 @@ export function installHighlight(
     const paper = currentPaper();
 
     editor.getEditorState().read(() => {
-      const root = $getRoot();
-      let currentName: string | null = null;
-      for (const child of root.getChildren()) {
-        const type = child.getType();
-        if ($isScriptzCharacterNode(child)) {
-          const name = child.getTextContent().trim().toUpperCase();
-          currentName = name || null;
-        } else if (type !== "scriptz-dialog" && type !== "scriptz-parenthetical") {
-          // An Action block resets the speaker context - a dialog after
-          // stage directions without a new character line shouldn't
-          // inherit the previous speaker's tint. Dialog and parenthetical
-          // sit inside the speech run and keep the speaker.
-          currentName = null;
-        }
-        if (!TINT_BLOCKS.has(type)) continue;
+      const children = $getRoot().getChildren();
+      // Same rule as the PDF and the export preview (lib/tint.ts).
+      const speakers = tintSpeakers(children.map((child) => ({
+        kind: tintKindOf(child.getType()),
+        text: child.getTextContent(),
+      })));
+      children.forEach((child, index) => {
+        if (!TINT_BLOCKS.has(child.getType())) return;
         const dom = editor.getElementByKey(child.getKey()) as HTMLElement | null;
-        if (!dom) continue;
-
-        let speaker: string | null = null;
-        if ($isScriptzCharacterNode(child)) {
-          const own = child.getTextContent().trim().toUpperCase();
-          speaker = own || null;
-        } else {
-          speaker = currentName;
-        }
+        if (!dom) return;
+        const speaker = speakers[index];
         const color = speaker ? colorByName.get(speaker) ?? null : null;
         const next = color ? hexToTint(color, 0.28, paper) : "";
         const prev = lastApplied.get(dom) ?? "";
-        if (next === prev) continue;
+        if (next === prev) return;
         if (next) {
           dom.style.setProperty("--char-tint", next);
         } else {
           dom.style.removeProperty("--char-tint");
         }
         lastApplied.set(dom, next);
-      }
+      });
     });
   };
 

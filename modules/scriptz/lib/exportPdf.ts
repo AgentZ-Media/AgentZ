@@ -16,7 +16,9 @@ import regularFontUrl from "../assets/fonts/iAWriterQuattroS-Regular.ttf?url";
 import boldFontUrl from "../assets/fonts/iAWriterQuattroS-Bold.ttf?url";
 import italicFontUrl from "../assets/fonts/iAWriterQuattroS-Italic.ttf?url";
 import boldItalicFontUrl from "../assets/fonts/iAWriterQuattroS-BoldItalic.ttf?url";
-import { extractBlocks, type ExtractedBlock, type TextRun } from "./lex";
+import { extractBlocks, type TextRun } from "./lex";
+import { tintKindOf, tintSpeakers } from "./tint";
+import { pdfPageLabel } from "./pdfDetails";
 import type { ScriptCharacter } from "./types";
 
 export interface ExportPdfDeps {
@@ -397,7 +399,14 @@ function hexToRgbTint(hex: string, alphaFactor: number): [number, number, number
 export interface BuildPdfBytesOptions {
   includeHighlighting: boolean;
   includeTitlePage: boolean;
+  /** Detail line under the cast on the title page (folder, runtime, date,
+   *  see lib/pdfDetails.ts). */
+  titleDetails?: string | null;
 }
+
+// Page footer: small, grey, centred in the bottom margin.
+const FOOTER_SIZE_PT = 8.5;
+const FOOTER_Y_MM = MARGIN_BOTTOM_MM / 2;
 
 /** Generates the finished PDF bytes for a script. Pure function -
  *  caller decides what happens with the bytes through the host adapter. */
@@ -444,6 +453,17 @@ export async function buildPdfBytes(
         null,
       );
     }
+    if (opts.titleDetails) {
+      layout.writeLine(
+        opts.titleDetails,
+        MARGIN_LEFT_MM,
+        A4_W_MM - MARGIN_LEFT_MM - MARGIN_RIGHT_MM,
+        false,
+        false,
+        "center",
+        null,
+      );
+    }
     layout.newPage();
   }
 
@@ -453,6 +473,8 @@ export async function buildPdfBytes(
   // lib/legacyBlocks.ts.
   const blocks = extractBlocks(deps.contentJson);
 
+  // Same tint rule as the editor and the preview (lib/tint.ts).
+  const speakers = tintSpeakers(blocks.map((block) => ({ kind: tintKindOf(block.kind), text: block.text })));
   // name (UPPER) -> color hex
   const charColor = new Map<string, string>();
   for (const c of deps.characters) {
@@ -469,7 +491,7 @@ export async function buildPdfBytes(
       layout.ensureSpace(LINE_HEIGHT_MM * 4 + PARA_GAP_MM * 2);
     }
 
-    const tint = computeTint(blocks, idx, b, opts.includeHighlighting, charColor);
+    const tint = computeTint(speakers[idx], opts.includeHighlighting, charColor);
 
     const upper = (s: string) => s.toUpperCase();
     switch (b.kind) {
@@ -538,36 +560,33 @@ export async function buildPdfBytes(
     }
   }
 
+  // Page numbers on every content page ("Seite 2 von 3"); the title page
+  // has none and does not count.
+  const pages = doc.getPages();
+  const first = opts.includeTitlePage ? 1 : 0;
+  const total = pages.length - first;
+  for (let i = first; i < pages.length; i++) {
+    const label = pdfPageLabel(i - first + 1, total);
+    const width = regular.widthOfTextAtSize(label, FOOTER_SIZE_PT);
+    pages[i].drawText(label, {
+      x: (A4_W_PT - width) / 2,
+      y: mm(FOOTER_Y_MM),
+      font: regular,
+      size: FOOTER_SIZE_PT,
+      color: rgb(0.45, 0.45, 0.45),
+    });
+  }
+
   return await doc.save({ useObjectStreams: false });
 }
 
 function computeTint(
-  blocks: ExtractedBlock[],
-  idx: number,
-  b: ExtractedBlock,
+  speaker: string | null,
   includeHighlighting: boolean,
   charColor: Map<string, string>,
 ): [number, number, number] | null {
-  if (!includeHighlighting) return null;
-  if (
-    b.kind !== "scriptz-character" &&
-    b.kind !== "scriptz-dialog" &&
-    b.kind !== "scriptz-parenthetical"
-  ) {
-    return null;
-  }
-  let name: string | null =
-    b.kind === "scriptz-character" ? b.text.trim().toUpperCase() : null;
-  if (name === null) {
-    for (let j = idx - 1; j >= 0; j--) {
-      if (blocks[j].kind === "scriptz-character") {
-        name = blocks[j].text.trim().toUpperCase();
-        break;
-      }
-    }
-  }
-  if (name === null) return null;
-  const hex = charColor.get(name);
+  if (!includeHighlighting || speaker === null) return null;
+  const hex = charColor.get(speaker);
   if (!hex) return null;
   return hexToRgbTint(hex, TINT_ALPHA_FACTOR);
 }

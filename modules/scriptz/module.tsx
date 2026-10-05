@@ -33,6 +33,7 @@ import { startAgentUiRuntime } from "./stores/agentUi";
 import { agentStore, startAgentRuntime } from "./stores/agent";
 import { AgentOnboarding } from "./components/Agent/AgentOnboarding";
 import { MemoryDialog } from "./components/Agent/MemoryDialog";
+import { ActivityModal } from "./components/Activity/ActivityModal";
 import "./components/Shell/Shell.css";
 
 /** Plain product description. Stores, timers and storage start only in setup. */
@@ -129,7 +130,7 @@ async function setupScriptz(ctx: ModuleContext): Promise<ModuleRuntime> {
     // List headers (PageBar) show the reopen button; the script view uses
     // Mod+\ and the palette, so the shell adds no button of its own.
     revealsSidebar: true,
-    overlays: [QuickCapture, NewScriptDialog, ExportDialog, StageUndoToast, AgentOnboarding, MemoryDialog],
+    overlays: [QuickCapture, NewScriptDialog, ExportDialog, StageUndoToast, AgentOnboarding, MemoryDialog, ActivityModal],
     settings: scriptzModuleSettings,
     commands: createScriptzCommands(ctx.shell),
     commandPlaceholder: () => t("shell.palette.placeholder"),

@@ -139,7 +139,9 @@ export interface ChatSession {
   items: ChatItem[];
   running: Accessor<boolean>;
   ready: Accessor<boolean>;
-  send(text: string, quote?: { text: string; from: number; to: number }): Promise<void>;
+  /** `options.instruction` goes to the model instead of `text`; the chat
+   *  shows `text` (a job's short label). */
+  send(text: string, quote?: { text: string; from: number; to: number }, options?: { instruction?: string; job?: string }): Promise<void>;
   stop(): Promise<void>;
   /** "New chat": ends the thread and stores an empty chat, so the old
    *  conversation does not come back after a restart. */
@@ -236,7 +238,7 @@ function createSession(scriptId: string): ChatSession {
     get items() { return state.items; },
     running,
     ready,
-    async send(text, quote) {
+    async send(text, quote, options) {
       const clean = text.trim();
       if (!clean || running()) return;
       setRunning(true);
@@ -246,15 +248,16 @@ function createSession(scriptId: string): ChatSession {
       // the new message.
       await loading;
       if (!live()) return;
-      push({ kind: "user", id: localId("user"), text: clean, quote: quote?.text });
+      push({ kind: "user", id: localId("user"), text: clean, quote: quote?.text, ...(options?.job ? { job: options.job } : {}) });
       persist();
       try {
         const list = await ensureModels();
         const model = resolveModel(list, agentSettings.model());
         const active = await ensureThread();
+        const ask = options?.instruction?.trim() || clean;
         const input = quote
-          ? `Selected passage (blocks ${quote.from}-${quote.to} of the current script):\n"""${quote.text}"""\n\n${clean}`
-          : clean;
+          ? `Selected passage (blocks ${quote.from}-${quote.to} of the current script):\n"""${quote.text}"""\n\n${ask}`
+          : ask;
         const result = await active.run(input, {
           model: model?.id ?? "",
           effort: effortOrDefault(model, agentSettings.effort()),

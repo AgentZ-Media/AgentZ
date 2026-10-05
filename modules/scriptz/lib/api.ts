@@ -44,6 +44,7 @@ import {
   convertIdeaToScript as ideasConvert,
   createIdea as ideasCreate,
   deleteIdea as ideasDelete,
+  restoreIdea as ideasRestore,
   listIdeas as ideasList,
   moveIdea as ideasMove,
   updateIdea as ideasUpdate,
@@ -259,6 +260,8 @@ const sqlBackedAdapter: ScriptzStorage = {
     scriptId: string;
     includeHighlighting: boolean;
     includeTitlePage: boolean;
+    /** Detail line of the title page (lib/pdfDetails.ts). */
+    titleDetails?: string | null;
   }): Promise<ExportResult> {
     const s = await scriptsGet(input.scriptId);
     // pdf-lib + fontkit are a ~1 MB bundle - lazy-load so the
@@ -274,6 +277,7 @@ const sqlBackedAdapter: ScriptzStorage = {
       {
         includeHighlighting: input.includeHighlighting,
         includeTitlePage: input.includeTitlePage,
+        titleDetails: input.titleDetails ?? null,
       },
     );
     return getPlatformAdapter().saveAs(
@@ -317,7 +321,7 @@ const sqlBackedAdapter: ScriptzStorage = {
       {
         suggestedName: defaultScriptzFilename(s.title),
         mimeType: SCRIPTZ_MIME,
-        filters: [{ name: "ScriptZ-Datei", extensions: [SCRIPTZ_EXTENSION] }],
+        filters: [{ name: t("browser.fileType"), extensions: [SCRIPTZ_EXTENSION] }],
       },
       bytes,
     );
@@ -358,6 +362,9 @@ const sqlBackedAdapter: ScriptzStorage = {
   },
   async deleteIdea(id: string): Promise<void> {
     return ideasDelete(id);
+  },
+  async restoreIdea(idea: Idea): Promise<void> {
+    return ideasRestore(idea);
   },
   async moveIdea(ideaId: string, folderId: string | null): Promise<void> {
     return ideasMove(ideaId, folderId);

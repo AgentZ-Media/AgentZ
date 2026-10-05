@@ -76,7 +76,9 @@ describe("ExportDialog", () => {
     expect(screen.getByRole("switch", { name: t("exportDialog.opt.titlePage") }).getAttribute("aria-checked")).toBe("true");
     document.querySelector<HTMLButtonElement>(".exp-foot .btn.primary")!.click();
     await tick();
-    expect(exportPdf).toHaveBeenCalledWith({ scriptId: "s1", includeHighlighting: false, includeTitlePage: true });
+    expect(exportPdf).toHaveBeenCalledWith({
+      scriptId: "s1", includeHighlighting: false, includeTitlePage: true, titleDetails: expect.any(String),
+    });
   });
 
   it("remembers title page changes across scripts and exports with the saved choice", async () => {
@@ -92,7 +94,9 @@ describe("ExportDialog", () => {
     expect(screen.getByRole("switch", { name: t("exportDialog.opt.titlePage") }).getAttribute("aria-checked")).toBe("false");
     document.querySelector<HTMLButtonElement>(".exp-foot .btn.primary")!.click();
     await tick();
-    expect(exportPdf).toHaveBeenCalledWith({ scriptId: "s2", includeHighlighting: false, includeTitlePage: false });
+    expect(exportPdf).toHaveBeenCalledWith({
+      scriptId: "s2", includeHighlighting: false, includeTitlePage: false, titleDetails: null,
+    });
     fireEvent.click(screen.getByRole("switch", { name: t("exportDialog.opt.titlePage") }));
     await tick();
     expect(settings.get("export_title_page_default")).toBe("1");
