@@ -44,6 +44,7 @@
   align-items: center;
   gap: 10px;
   padding: 0 14px 0 calc(12px + var(--shell-inset-left, 0px));
+  transition: padding-left var(--t-med);
   border-bottom: 1px solid var(--line);
   background: var(--bg);
   position: relative;

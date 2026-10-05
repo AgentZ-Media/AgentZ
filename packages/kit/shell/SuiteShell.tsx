@@ -1,5 +1,5 @@
 import {
-  For, Show, createMemo, createRoot, createSignal, getOwner, onCleanup, onMount,
+  For, Show, createEffect, createMemo, createRoot, createSignal, getOwner, onCleanup, onMount,
   runWithOwner, type Owner,
 } from "solid-js";
 import { Dynamic } from "solid-js/web";
@@ -62,6 +62,14 @@ export function SuiteShell(props: SuiteShellProps) {
   const shortcuts = createMemo(() => [...createShellShortcuts(shellUi), ...(runtime()?.shortcuts ?? [])]);
   const selectedRoute = createMemo(() => runtime()?.routes.find((route) => route.matches()));
   const sidebarVisible = () => shellUi.sidebarOpen() && !shellUi.focused();
+  let sidebar: HTMLElement | undefined;
+  createEffect(() => {
+    if (!sidebarVisible()) {
+      // Commit inline edits through blur before leaving the hidden navigation inert.
+      const focused = document.activeElement;
+      if (focused instanceof HTMLElement && sidebar?.contains(focused)) focused.blur();
+    }
+  });
 
   onMount(async () => {
     try {
@@ -134,24 +142,23 @@ export function SuiteShell(props: SuiteShellProps) {
           {(active) => <>
             <div class="shell" classList={{ "is-bare": !sidebarVisible(), "is-focus": shellUi.focused() }}
               data-side={sidebarVisible() ? "on" : "off"}>
-              <Show when={sidebarVisible()}>
-                <aside class="side" aria-label={t("shell.sidebar.aria")}>
-                  <div class="side-top" data-tauri-drag-region>
-                    <span class="side-traffic" data-tauri-drag-region aria-hidden="true" />
-                    <span class="side-sp" data-tauri-drag-region />
-                    <button type="button" class="ic-btn" onClick={() => shellUi.toggleSidebar()}
-                      title={t("shell.sidebar.toggle", { hotkey: K("Mod+\\") })}
-                      aria-label={t("shell.sidebar.toggleAria")}><Icon name="sidebar" /></button>
-                  </div>
-                  <div class="side-app">
-                    <AppMark logo={props.module.logo} appName={props.module.name} size={28} />
-                    <span class="side-app-name">{props.module.name}</span>
-                  </div>
-                  <Dynamic component={active().sidebar} />
-                  {props.footer}
-                  <Show when={active().sidebarFooter}>{(Footer) => <Dynamic component={Footer()} />}</Show>
-                </aside>
-              </Show>
+              <aside ref={sidebar} class="side" aria-label={t("shell.sidebar.aria")}
+                inert={!sidebarVisible()} aria-hidden={!sidebarVisible()}>
+                <div class="side-top" data-tauri-drag-region>
+                  <span class="side-traffic" data-tauri-drag-region aria-hidden="true" />
+                  <span class="side-sp" data-tauri-drag-region />
+                  <button type="button" class="ic-btn" onClick={() => shellUi.toggleSidebar()}
+                    title={t("shell.sidebar.toggle", { hotkey: K("Mod+\\") })}
+                    aria-label={t("shell.sidebar.toggleAria")}><Icon name="sidebar" /></button>
+                </div>
+                <div class="side-app">
+                  <AppMark logo={props.module.logo} appName={props.module.name} size={28} />
+                  <span class="side-app-name">{props.module.name}</span>
+                </div>
+                <Dynamic component={active().sidebar} />
+                {props.footer}
+                <Show when={active().sidebarFooter}>{(Footer) => <Dynamic component={Footer()} />}</Show>
+              </aside>
               <main class="shell-main">
                 <Show when={!shellUi.sidebarOpen() && !active().revealsSidebar}>
                   <button type="button" class="btn ghost icon shell-reveal" onClick={() => shellUi.toggleSidebar()}

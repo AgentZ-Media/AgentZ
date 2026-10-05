@@ -48,11 +48,24 @@ describe("independent module in the real Kit shell", () => {
     const page = render(() => <SuiteShell module={fixture} platform={fixturePlatform} kv={kv} />);
     await waitFor(() => expect(page.getByRole("heading", { name: "Ein eigenständiges Modul" })).toBeTruthy());
     expect(document.querySelector(".shell-reveal")).toBeNull();
+    const sidebar = page.getByRole("complementary");
+    const toggle = sidebar.querySelector("button")!;
+    toggle.focus();
     context!.shell.toggleSidebar();
-    await waitFor(() => expect(document.querySelector("aside.side")).toBeNull());
+    await waitFor(() => expect(page.queryByRole("complementary")).toBeNull());
+    expect(sidebar.inert).toBe(true);
+    expect(document.activeElement).not.toBe(toggle);
+    expect(sidebar.isConnected).toBe(true);
     fireEvent.click(document.querySelector(".shell-reveal")!);
-    await waitFor(() => expect(document.querySelector("aside.side")).toBeTruthy());
+    await waitFor(() => expect(page.getByRole("complementary")).toBe(sidebar));
+    expect(sidebar.inert).toBe(false);
     expect(document.querySelector(".shell-reveal")).toBeNull();
+    context!.shell.setFocused(true);
+    expect(page.queryByRole("complementary")).toBeNull();
+    expect(sidebar.inert).toBe(true);
+    expect(context!.shell.sidebarOpen()).toBe(true);
+    context!.shell.setFocused(false);
+    expect(page.getByRole("complementary")).toBe(sidebar);
   });
 
   it("dispatches module shortcuts, honors prevented/composing events and dialog context, and disposes", async () => {
