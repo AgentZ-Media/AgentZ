@@ -28,15 +28,39 @@ Referenz des Designs: `docs/redesign/concept.html`.
 - `components/Editor/`: Lexical-Mount, vier Nodes, Plugins (smartEnter,
   blockHotkeys, parentheticalLive, Picker, Autocomplete, inlineFormat,
   allcaps, highlight, colorPicker), `persistence.ts`.
-- `stores/`: `nav.ts` (Routen, „Zuletzt", Kodierung von `nav.state`),
-  `ui.ts` (Inspector, Zeitleiste, Fokus, Quick-Mode, Produktdialoge,
-  `ui.layout`), `settings.ts` (Produkt-Settings), `ideas`, `dailyStats`.
+- `stores/`: `nav.ts` (Routen, „Zuletzt" für ⌘K, Kodierung von
+  `nav.state`), `open.ts` („Offen"-Liste der Sidebar, `nav.open`),
+  `peek.ts` (Seitenpanel der Listen), `ui.ts` (Inspector, Zeitleiste,
+  Fokus, Quick-Mode, Produktdialoge, `ui.layout`, eingeklappte
+  Sidebar-Bereiche `sidebar.sections`), `settings.ts` (Produkt-Settings),
+  `ideas`, `dailyStats`.
 - `i18n/`: Produktkataloge, mit dem Kit-Katalog komponiert.
 
 Theme, Sprache, Updater-Flags, Navigation-Historie, Shell und Dialoge gehören
-dem Kit. Die Listen-Seitenköpfe (`PageBar`) zeigen den Button zum Einblenden
-der Sidebar, im Skript genügen ⌘\ und die Befehlspalette. Deshalb setzt das
-Modul `revealsSidebar: true` und die Shell blendet keinen eigenen Button ein.
+dem Kit. Die Listen-Seiten haben oben nur einen leeren Streifen (`PageBar`):
+Fensterziehfläche und, bei ausgeblendeter Sidebar, der Button zum
+Einblenden. Filter, Ansicht, Gruppierung, Sortierung und Auswahl stehen in
+der Werkzeugzeile direkt über der Liste. Nur das Skript hat eine echte
+Kopfleiste. Vor/Zurück gibt es nur als ⌘[ / ⌘]. Im Skript genügen ⌘\ und
+die Befehlspalette, deshalb setzt das Modul `revealsSidebar: true`.
+
+## Arbeitsbereich: Offen, Seitenpanel, Board
+
+- **Offen** (Sidebar, unter Pipeline und Ordnern, beide einklappbar): jedes
+  Skript, das die volle Skriptansicht zeigt, kommt dazu und bleibt bis zum
+  Schließen (✕, Mittelklick, Kontextmenü). Bewusst keine Tab-Leiste oben.
+  Mit `close_finished_scripts` (Standard an) verlässt ein Skript die Liste,
+  wenn es in die letzte Stufe wechselt; das angezeigte erst beim Wechsel,
+  Rückgängig innerhalb von 15 s holt es zurück (`openStore.syncStatuses`).
+- **Seitenpanel**: Klick in Liste oder Board öffnet das Skript rechts neben
+  der Liste (`open_scripts_in_panel`, Standard an; ⌥-Klick umgekehrt). Es
+  ist ein vollwertiger `ScriptScreen` mit `peek` (ohne Inspector, Fokus
+  und Agent). Nur Großöffnen nimmt es in „Offen" auf. Es gibt nie zwei
+  `ScriptScreen` gleichzeitig.
+- **Board**: Inbox, Alle Skripte und Ordner wählen Liste oder Board
+  (`library.mode` je Seite). Spalten: offene Ideen, dann die Stufen in
+  ihrer Reihenfolge (Inbox ohne die letzte). Karte ziehen setzt die Stufe
+  (Undo-Toast), eine Idee auf eine Stufe wird zum Skript.
 
 ## Migrationen
 
@@ -108,6 +132,11 @@ Referenz: `docs/agent/screens.html`.
   Users pro Thread deaktiviert, Sandbox `read-only`, Freigaben werden
   abgelehnt. Der Agent sieht nur die eigenen Tools aus `lib/agent/tools.ts`.
   `code_mode_host` nicht abschalten.
+- **Nur in der großen Skriptansicht.** Im Seitenpanel gibt es weder Chat
+  noch Agent-Button noch Rechtsklick-Menü; `Mod+L` hängt an
+  `navStore.activeScriptId()`, das nur die große Ansicht setzt.
+  Der Chat startet in jedem Skript geschlossen und merkt sich nur für die
+  Sitzung, in welchen Skripten er offen ist (`agentUi.chatOpen(scriptId)`).
 - **Nur Vorschläge.** `propose_options` liefert 1 bis 3 Optionen, eingefügt
   per Klick über `components/Agent/editorBridge.ts` in die normale
   Lexical-History (⌘Z). Ziele tragen den Text der Zielblöcke als Anker

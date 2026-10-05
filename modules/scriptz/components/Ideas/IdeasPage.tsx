@@ -816,32 +816,7 @@ export function IdeasPage() {
 
   return (
     <div class="ideas-page">
-      <PageBar title={t("ideasPage.title")}>
-        <SortMenu options={sortOptions()} value={sort()} onChange={setSort} ariaLabel={t("ideasPage.sort.aria")} />
-        <button
-          type="button"
-          class="btn ghost ideas-used-tg"
-          classList={{ "is-on": showUsed() }}
-          aria-pressed={showUsed()}
-          onClick={() => setShowUsed(!showUsed())}
-        >
-          <Show when={showUsed()}>
-            <Icon name="check" size={13} />
-          </Show>
-          {t("ideasPage.bar.showUsed")}
-        </button>
-        <button
-          type="button"
-          class="btn ghost"
-          classList={{ "is-on": selectMode() }}
-          aria-pressed={selectMode()}
-          disabled={!selectMode() && visible().length === 0}
-          onClick={() => (selectMode() ? exitSelectMode() : enterSelectMode())}
-        >
-          <Icon name="select" />
-          {t("select.enter")}
-        </button>
-      </PageBar>
+      <PageBar />
 
       <div class="ideas">
         <div class="ideas-main">
@@ -1050,6 +1025,30 @@ export function IdeasPage() {
                 </button>
               </Show>
             </label>
+            <SortMenu options={sortOptions()} value={sort()} onChange={setSort} ariaLabel={t("ideasPage.sort.aria")} />
+            <button
+              type="button"
+              class="btn ghost ideas-used-tg"
+              classList={{ "is-on": showUsed() }}
+              aria-pressed={showUsed()}
+              onClick={() => setShowUsed(!showUsed())}
+            >
+              <Show when={showUsed()}>
+                <Icon name="check" size={13} />
+              </Show>
+              {t("ideasPage.bar.showUsed")}
+            </button>
+            <button
+              type="button"
+              class="btn ghost"
+              classList={{ "is-on": selectMode() }}
+              aria-pressed={selectMode()}
+              disabled={!selectMode() && visible().length === 0}
+              onClick={() => (selectMode() ? exitSelectMode() : enterSelectMode())}
+            >
+              <Icon name="select" />
+              {t("select.enter")}
+            </button>
           </div>
 
           <Show when={selectMode() && selectableIds().length > 0}>

@@ -37,41 +37,20 @@ export interface TopBarProps {
   agentAvailable: boolean;
   agentOn: boolean;
   onToggleAgent(): void;
+  /** Side panel next to a list: no inspector or agent toggle, but "open full
+   *  view" and "close" instead. */
+  peek?: { onExpand(): void; onClose(): void };
 }
 
-/** Top bar of the script screen (concept `#tpl-bar`). */
+/** Top bar of the script screen (concept `#tpl-bar`). Back and forward
+ *  are ⌘[ / ⌘] only; the folder crumb leads back to the list. */
 export function TopBar(props: TopBarProps) {
   const openFolder = () => {
     navStore.openScripts({ folderId: props.folder?.id ?? INBOX_FOLDER_ID });
   };
 
   return (
-    <header class="ss-bar" aria-label={t("script.bar.aria")}>
-      <div class="ss-hist">
-        <button
-          type="button"
-          class="ss-hist-btn"
-          disabled={!navStore.canBack()}
-          title={t("script.bar.backTitle", { hotkey: K("Mod+[") })}
-          aria-label={t("script.bar.backTitle", { hotkey: K("Mod+[") })}
-          onMouseDown={(e) => e.preventDefault()}
-          onClick={() => navStore.back()}
-        >
-          <Icon name="left" />
-        </button>
-        <button
-          type="button"
-          class="ss-hist-btn"
-          disabled={!navStore.canForward()}
-          title={t("script.bar.forwardTitle", { hotkey: K("Mod+]") })}
-          aria-label={t("script.bar.forwardTitle", { hotkey: K("Mod+]") })}
-          onMouseDown={(e) => e.preventDefault()}
-          onClick={() => navStore.forward()}
-        >
-          <Icon name="right" />
-        </button>
-      </div>
-
+    <header class="ss-bar" classList={{ "is-peek": !!props.peek }} aria-label={t("script.bar.aria")}>
       <nav class="ss-crumb">
         <button
           type="button"
@@ -147,7 +126,7 @@ export function TopBar(props: TopBarProps) {
         <kbd>{K("Mod+E")}</kbd>
       </button>
 
-      <Show when={props.agentAvailable}>
+      <Show when={props.agentAvailable && !props.peek}>
         <button
           type="button"
           class="btn ss-agent-btn"
@@ -164,18 +143,48 @@ export function TopBar(props: TopBarProps) {
         </button>
       </Show>
 
-      <button
-        type="button"
-        class="btn icon ss-insp-toggle"
-        classList={{ "is-on": props.inspectorVisible }}
-        aria-pressed={props.inspectorVisible}
-        title={t("script.bar.inspectorTitle", { hotkey: K("Mod+Shift+\\") })}
-        aria-label={t("script.bar.inspectorTitle", { hotkey: K("Mod+Shift+\\") })}
-        onMouseDown={(e) => e.preventDefault()}
-        onClick={props.onToggleInspector}
+      <Show
+        when={props.peek}
+        fallback={
+          <button
+            type="button"
+            class="btn icon ss-insp-toggle"
+            classList={{ "is-on": props.inspectorVisible }}
+            aria-pressed={props.inspectorVisible}
+            title={t("script.bar.inspectorTitle", { hotkey: K("Mod+Shift+\\") })}
+            aria-label={t("script.bar.inspectorTitle", { hotkey: K("Mod+Shift+\\") })}
+            onMouseDown={(e) => e.preventDefault()}
+            onClick={props.onToggleInspector}
+          >
+            <Icon name="inspector" />
+          </button>
+        }
       >
-        <Icon name="inspector" />
-      </button>
+        {(peek) => (
+          <div class="ss-peek-acts">
+            <button
+              type="button"
+              class="btn icon"
+              title={t("script.peek.expand")}
+              aria-label={t("script.peek.expand")}
+              onMouseDown={(e) => e.preventDefault()}
+              onClick={() => peek().onExpand()}
+            >
+              <Icon name="expand" />
+            </button>
+            <button
+              type="button"
+              class="btn icon"
+              title={t("script.peek.close", { hotkey: "esc" })}
+              aria-label={t("script.peek.closeAria")}
+              onMouseDown={(e) => e.preventDefault()}
+              onClick={() => peek().onClose()}
+            >
+              <Icon name="x" />
+            </button>
+          </div>
+        )}
+      </Show>
     </header>
   );
 }

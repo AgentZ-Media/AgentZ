@@ -16,63 +16,18 @@
   animation: ds-fade-in var(--t-fast);
 }
 
-/* ---------------- Page bar ---------------- */
+/* ---------------- Page bar ----------------
+   An empty drag strip: no line, no colour of its own. Page tools live in
+   the tools row above the list (`.lib-tools`). */
 .pbar {
-  height: 48px;
+  height: var(--side-top-h, 44px);
   flex: none;
   display: flex;
   align-items: center;
   gap: 6px;
   padding: 0 14px 0 calc(12px + var(--shell-inset-left, 0px));
-  border-bottom: 1px solid var(--line);
   background: var(--bg);
   user-select: none;
-}
-.pbar-hist {
-  display: flex;
-  gap: 2px;
-  margin-right: 4px;
-}
-.pbar-hist-btn {
-  width: 26px;
-  height: 26px;
-  display: grid;
-  place-items: center;
-  border-radius: var(--r-2);
-  color: var(--muted);
-  transition: background var(--t-fast), color var(--t-fast);
-}
-.pbar-hist-btn:hover:not(:disabled) {
-  background: var(--fill);
-  color: var(--fg);
-}
-.pbar-hist-btn:disabled {
-  color: var(--faint);
-  opacity: 0.6;
-  cursor: default;
-}
-.pbar-crumb {
-  min-width: 0;
-  display: flex;
-  align-items: center;
-  gap: 7px;
-  color: var(--muted);
-  white-space: nowrap;
-}
-.pbar-crumb b {
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  color: var(--fg);
-  font-weight: 600;
-}
-.pbar-sp {
-  flex: 1;
-  align-self: stretch;
-}
-.pbar .btn.ghost.is-on {
-  background: var(--fill);
-  color: var(--fg);
 }
 .pbar .btn.ghost svg.i {
   color: inherit;
@@ -105,6 +60,11 @@
 .lib-head-main {
   min-width: 0;
   flex: 1;
+}
+.lib-head-acts {
+  display: flex;
+  gap: 6px;
+  flex: none;
 }
 .lib-head h1 {
   margin: 0;
@@ -174,6 +134,106 @@
 .lib-filter-x:hover {
   background: var(--fill);
   color: var(--fg);
+}
+
+/* ---------------- Tools row ----------------
+   Filter, view, grouping, sort and selection of the page, right above the
+   content they control. Sticks to the top while the list scrolls. */
+.lib-tools {
+  position: sticky;
+  top: 0;
+  z-index: 3;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin: 0 -8px 12px;
+  padding: 8px;
+  background: var(--bg);
+}
+.lib-tools .lib-filter {
+  margin-right: auto;
+}
+.lib-tools .btn.ghost.is-on {
+  background: var(--fill);
+  color: var(--fg);
+}
+.lib-tools .btn.ghost svg.i {
+  color: inherit;
+}
+.lib-view {
+  display: inline-flex;
+  padding: 2px;
+  margin-right: 4px;
+  border-radius: var(--r-ctl);
+  background: var(--fill);
+}
+.lib-view button {
+  height: 24px;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 0 8px;
+  border-radius: var(--r-2);
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 600;
+  transition: background var(--t-fast), color var(--t-fast);
+}
+.lib-view button:hover {
+  color: var(--fg);
+}
+.lib-view button[aria-pressed="true"] {
+  background: var(--surface);
+  color: var(--fg);
+  box-shadow: var(--shadow-raise);
+}
+.lib.is-board {
+  max-width: none;
+}
+
+/* ---------------- Side panel ----------------
+   A script next to the list (PeekPanel). No backdrop: the list keeps its
+   room left of the panel and stays usable. */
+.lib-page {
+  --peek-w: clamp(520px, 50%, 860px);
+}
+.lib-page.has-peek .lib-scroll {
+  padding-right: var(--peek-w);
+}
+.peek {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 20;
+  width: var(--peek-w);
+  display: flex;
+  min-height: 0;
+  border-left: 1px solid var(--line);
+  background: var(--bg);
+  box-shadow: var(--shadow-pop);
+  animation: lib-peek-in var(--t-med);
+}
+.peek > .ss {
+  flex: 1 1 0;
+}
+@keyframes lib-peek-in {
+  from {
+    transform: translateX(24px);
+    opacity: 0;
+  }
+}
+.lrow.is-peek {
+  background: var(--accent-soft);
+}
+.lrow.is-peek::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 3px;
+  background: var(--accent);
 }
 
 /* ---------------- Groups ---------------- */

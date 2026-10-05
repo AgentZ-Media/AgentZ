@@ -16,7 +16,13 @@ export interface ScriptRowProps {
   snippetHtml?: string;
   selectMode: boolean;
   selected: boolean;
-  onOpen: () => void;
+  /** Shown in the side panel right now (row is marked). */
+  peek?: boolean;
+  /** Row click / Enter. `inverse`: Alt-click, open the other way than the
+   *  "open in side panel" setting says. */
+  onOpen: (inverse: boolean) => void;
+  /** The row's open button: always the full script view. */
+  onOpenFull?: () => void;
   /** Gets the triggering event so shift-click can select a range. */
   onToggleSelect: (e?: MouseEvent | KeyboardEvent) => void;
   /** Opens the row menu. `anchor` is set when triggered from the "⋯" button. */
@@ -66,7 +72,7 @@ export function ScriptRow(props: ScriptRowProps) {
   });
 
   const activate = (e?: MouseEvent | KeyboardEvent) =>
-    props.selectMode ? props.onToggleSelect(e) : props.onOpen();
+    props.selectMode ? props.onToggleSelect(e) : props.onOpen(e?.altKey ?? false);
   const title = () => s().title || t("common.untitled");
 
   return (
@@ -78,6 +84,7 @@ export function ScriptRow(props: ScriptRowProps) {
         "is-selecting": props.selectMode,
         "is-selected": props.selectMode && props.selected,
         "is-dragging": dragging(),
+        "is-peek": !!props.peek && !props.selectMode,
       }}
       aria-label={title()}
       aria-pressed={props.selectMode ? props.selected : undefined}
@@ -166,7 +173,8 @@ export function ScriptRow(props: ScriptRowProps) {
             tabIndex={-1}
             onClick={(e) => {
               e.stopPropagation();
-              props.onOpen();
+              if (props.onOpenFull) props.onOpenFull();
+              else props.onOpen(false);
             }}
           >
             <Icon name="return" size={13} />

@@ -12,7 +12,7 @@ import {
   type JSX,
 } from "solid-js";
 import type { Idea, ScriptStatus, ScriptSummary, SearchHit } from "../../lib/types";
-import { finalStageId, firstStageId, isKnownStage, scriptStages, stageIndex, stageLabel } from "../../lib/stages";
+import { finalStageId, firstStageId, isFinalStage, isKnownStage, scriptStages, stageIndex, stageLabel } from "../../lib/stages";
 import { api } from "../../lib/api";
 import { debounce, relativeTime } from "@agentz/kit/lib";
 import { formatClock, formatRange, resolveLengthRange } from "../../lib/lengthGoal";
@@ -20,6 +20,7 @@ import { INBOX_FOLDER_ID } from "../../lib/folders";
 import { K, isModKey } from "@agentz/kit/platform";
 import { exportScriptsToPdf } from "../../lib/exportSelection";
 import { navStore } from "../../stores/nav";
+import { openScriptFromList, peekStore } from "../../stores/peek";
 import { uiStore } from "../../stores/ui";
 import { settingsStore } from "../../stores/settings";
 import { dailyStatsStore } from "../../stores/dailyStats";
@@ -38,14 +39,16 @@ import {
   runtimeSecFor,
 } from "../Shell/libraryData";
 import { ContextMenu, type ContextMenuItem } from "./ContextMenu";
-import { InboxIdeas } from "./InboxIdeas";
+import { Board, type BoardColumn } from "./Board";
+import { InboxIdeas, openIdea } from "./InboxIdeas";
+import { PeekPanel } from "./PeekPanel";
 import { PageBar } from "./PageBar";
 import { PromptDialog } from "./PromptDialog";
 import { ScriptRow } from "./ScriptRow";
 import { SelectionBar } from "./SelectionBar";
 import { SelectAllLine, SelectCheck } from "./SelectCheck";
 import { checkState, rangeBetween, toggleIds, withIds } from "./selection";
-import { libraryPrefs, type Grouping, type SortKey } from "./prefs";
+import { libraryPrefs, type Grouping, type SortKey, type ViewMode, type ViewScope } from "./prefs";
 import { setStageWithUndo } from "../Script/stageActions";
 import {
   archiveScripts,
@@ -143,6 +146,16 @@ export function ScriptsPage() {
   /** Inbox: open ideas plus every script before the last stage. */
   const isInbox = () => navStore.route().kind === "inbox";
   const isAll = () => !isInbox() && status() === null && folderId() === null;
+  /** Pages with a board; a single stage is always a list. */
+  const viewScope = (): ViewScope | null => {
+    if (isInbox()) return "inbox";
+    if (status() !== null) return null;
+    return folderId() === null ? "all" : "folder";
+  };
+  const isBoard = () => {
+    const scope = viewScope();
+    return scope !== null && libraryPrefs.viewMode(scope) === "board";
+  };
 
   // Normally already loaded during boot (AppShell); a no-op then.
   onMount(() => void libraryPrefs.load());
@@ -228,17 +241,36 @@ export function ScriptsPage() {
 
   const sorted = createMemo(() => sortScripts(matches(), libraryPrefs.sort()));
 
-  /** Open ideas of the inbox, filtered like the rows. Ideas have no edit
-   *  time, so "updated" and "created" both list the newest first. */
-  const inboxIdeas = createMemo<Idea[]>(() => {
-    if (!isInbox()) return [];
+  /** Open ideas of this page (inbox: all of them, a folder: its own),
+   *  filtered like the rows. Ideas have no edit time, so "updated" and
+   *  "created" both list the newest first. */
+  const scopeIdeas = createMemo<Idea[]>(() => {
+    if (status() !== null) return [];
+    const fid = folderId();
     const n = needle();
-    const list = library
-      .openIdeas()
-      .filter((i) => !n || i.title.toLowerCase().includes(n) || (i.notes ?? "").toLowerCase().includes(n));
+    const list = library.openIdeas().filter((i) => {
+      if (fid === INBOX_FOLDER_ID ? i.folder_id !== null : fid !== null && i.folder_id !== fid) return false;
+      return !n || i.title.toLowerCase().includes(n) || (i.notes ?? "").toLowerCase().includes(n);
+    });
     return libraryPrefs.sort() === "title"
       ? list.sort((a, b) => localeCompare(a.title, b.title))
       : list.sort((a, b) => b.created_at - a.created_at);
+  });
+  /** The inbox list shows its ideas below the stage groups. */
+  const inboxIdeas = () => (isInbox() ? scopeIdeas() : []);
+
+  /** Board: the ideas, then every stage in pipeline order (the inbox
+   *  leaves out the last one, like its list). */
+  const boardColumns = createMemo<BoardColumn[]>(() => {
+    const list = sorted();
+    const cols: BoardColumn[] = [
+      { key: "idea", stage: null, label: t("shell.nav.ideas"), scripts: [], ideas: scopeIdeas() },
+    ];
+    for (const { id } of scriptStages()) {
+      if (isInbox() && isFinalStage(id)) continue;
+      cols.push({ key: id, stage: id, label: stageLabel(id), scripts: list.filter((s) => s.status === id), ideas: [] });
+    }
+    return cols;
   });
   const visible = createMemo(() => sorted().slice(0, limit()));
   const hasMore = () => sorted().length > limit();
@@ -474,6 +506,7 @@ export function ScriptsPage() {
   function rowItems(s: ScriptSummary): ContextMenuItem[] {
     return [
       { label: t("script.menu.open"), icon: "return", onClick: () => navStore.openScript(s.id, s.title) },
+      { label: t("script.menu.openPanel"), icon: "inspector", onClick: () => peekStore.open(s.id) },
       { label: t("script.menu.rename"), icon: "pen", onClick: () => setRenameTarget(s) },
       { label: t("script.menu.duplicate"), icon: "doc", onClick: () => void duplicateScript(s) },
       { label: t("script.menu.move"), icon: "folder", children: moveItems([s.id], s.folder_id) },
@@ -565,6 +598,7 @@ export function ScriptsPage() {
         !e.shiftKey &&
         !e.altKey &&
         e.key.toLowerCase() === "a" &&
+        !isBoard() &&
         !isTypingTarget(e.target) &&
         selectableIds().length > 0
       ) {
@@ -601,9 +635,10 @@ export function ScriptsPage() {
   const newScriptHere = () => openNewScript(currentFolderContext());
 
   const libraryEmpty = () => library.loaded() && library.scripts().length === 0;
+  const pageIdeas = () => (isBoard() ? scopeIdeas() : inboxIdeas());
   const nothingFound = () =>
-    needle() !== "" && matches().length === 0 && contentHits().length === 0 && inboxIdeas().length === 0;
-  const scopeEmpty = () => library.loaded() && scope().length === 0 && inboxIdeas().length === 0;
+    needle() !== "" && matches().length === 0 && contentHits().length === 0 && pageIdeas().length === 0;
+  const scopeEmpty = () => library.loaded() && scope().length === 0 && pageIdeas().length === 0;
 
   const renderRows = (items: ScriptSummary[]) => (
     <div class="rows">
@@ -613,7 +648,9 @@ export function ScriptsPage() {
             script={s}
             selectMode={selectMode()}
             selected={selected().has(s.id)}
-            onOpen={() => navStore.openScript(s.id, s.title)}
+            peek={peekStore.scriptId() === s.id}
+            onOpen={(inverse) => openScriptFromList(s.id, s.title, inverse)}
+            onOpenFull={() => navStore.openScript(s.id, s.title)}
             onToggleSelect={(e) => toggleSelect(s.id, e)}
             onMenu={(e, anchor) => openRowMenu(s, e, anchor)}
           />
@@ -643,53 +680,27 @@ export function ScriptsPage() {
     return null;
   };
 
+  const setView = (scope: ViewScope, mode: ViewMode) => {
+    if (mode === "board") exitSelect();
+    libraryPrefs.setViewMode(scope, mode);
+  };
+  const ViewButton = (p: { mode: ViewMode; scope: ViewScope }) => (
+    <button
+      type="button"
+      aria-pressed={libraryPrefs.viewMode(p.scope) === p.mode}
+      onClick={() => setView(p.scope, p.mode)}
+    >
+      <Icon name={p.mode} size={13} />
+      {p.mode === "list" ? t("shell.view.list") : t("shell.view.board")}
+    </button>
+  );
+
   return (
-    <div class="lib-page">
-      <PageBar title={pageTitle()}>
-        <button
-          type="button"
-          class="btn ghost"
-          aria-haspopup="menu"
-          onClick={(e) => menuAt(e.currentTarget, groupingItems(), { width: 200 })}
-        >
-          {groupingLabel(libraryPrefs.grouping())}
-          <Icon name="down" size={12} />
-        </button>
-        <button
-          type="button"
-          class="btn ghost"
-          aria-haspopup="menu"
-          title={t("shell.sort.title")}
-          onClick={(e) => menuAt(e.currentTarget, sortItems(), { width: 180 })}
-        >
-          {t(`browser.sort.${libraryPrefs.sort()}`)}
-          <Icon name="down" size={12} />
-        </button>
-        <button
-          type="button"
-          class="btn ghost"
-          classList={{ "is-on": selectMode() }}
-          aria-pressed={selectMode()}
-          disabled={scope().length === 0}
-          onClick={() => (selectMode() ? exitSelect() : setSelectMode(true))}
-        >
-          <Icon name="select" />
-          {t("select.enter")}
-        </button>
-        <button
-          type="button"
-          class="btn ghost icon"
-          aria-haspopup="menu"
-          title={t("shell.more")}
-          aria-label={t("shell.more")}
-          onClick={(e) => menuAt(e.currentTarget, moreItems())}
-        >
-          <Icon name="dots" />
-        </button>
-      </PageBar>
+    <div class="lib-page" classList={{ "has-peek": peekStore.scriptId() !== null }}>
+      <PageBar />
 
       <div class="lib-scroll" classList={{ "has-selbar": selectMode() }}>
-        <div class="lib">
+        <div class="lib" classList={{ "is-board": isBoard() }}>
           <div class="lib-head">
             <div class="lib-head-main">
               <h1>{pageTitle()}</h1>
@@ -760,6 +771,9 @@ export function ScriptsPage() {
                 </Match>
               </Switch>
             </div>
+          </div>
+
+          <div class="lib-tools">
             <label class="field-box lib-filter">
               <Icon name="search" size={13} />
               <input
@@ -803,6 +817,58 @@ export function ScriptsPage() {
                 </button>
               </Show>
             </label>
+            <Show when={viewScope()}>
+              {(scope) => (
+                <div class="lib-view" role="group" aria-label={t("shell.view.aria")}>
+                  <ViewButton mode="list" scope={scope()} />
+                  <ViewButton mode="board" scope={scope()} />
+                </div>
+              )}
+            </Show>
+            <Show when={!isBoard()}>
+              <button
+                type="button"
+                class="btn ghost"
+                aria-haspopup="menu"
+                onClick={(e) => menuAt(e.currentTarget, groupingItems(), { width: 200 })}
+              >
+                {groupingLabel(libraryPrefs.grouping())}
+                <Icon name="down" size={12} />
+              </button>
+            </Show>
+            <button
+              type="button"
+              class="btn ghost"
+              aria-haspopup="menu"
+              title={t("shell.sort.title")}
+              onClick={(e) => menuAt(e.currentTarget, sortItems(), { width: 180 })}
+            >
+              {t(`browser.sort.${libraryPrefs.sort()}`)}
+              <Icon name="down" size={12} />
+            </button>
+            <Show when={!isBoard()}>
+              <button
+                type="button"
+                class="btn ghost"
+                classList={{ "is-on": selectMode() }}
+                aria-pressed={selectMode()}
+                disabled={scope().length === 0}
+                onClick={() => (selectMode() ? exitSelect() : setSelectMode(true))}
+              >
+                <Icon name="select" />
+                {t("select.enter")}
+              </button>
+            </Show>
+            <button
+              type="button"
+              class="btn ghost icon"
+              aria-haspopup="menu"
+              title={t("shell.more")}
+              aria-label={t("shell.more")}
+              onClick={(e) => menuAt(e.currentTarget, moreItems())}
+            >
+              <Icon name="dots" />
+            </button>
           </div>
 
           <Switch>
@@ -874,17 +940,20 @@ export function ScriptsPage() {
                 </Switch>
               </div>
             </Match>
+            <Match when={isBoard()}>
+              <Board
+                columns={boardColumns()}
+                peekId={peekStore.scriptId()}
+                showFolder={folderId() === null}
+                onOpen={(s, inverse) => openScriptFromList(s.id, s.title, inverse)}
+                onOpenIdea={openIdea}
+                onMenu={(s, e, anchor) => openRowMenu(s, e, anchor)}
+                onNewScript={newScriptHere}
+              />
+            </Match>
             <Match when={true}>
               <Show when={selectMode() && selectableIds().length > 0}>
                 <SelectAllLine state={allState()} count={selectableIds().length} onToggle={toggleAll} />
-              </Show>
-              <Show when={inboxIdeas().length > 0}>
-                <InboxIdeas
-                  ideas={inboxIdeas()}
-                  closed={ideasClosed()}
-                  canCollapse={!needle()}
-                  onToggle={() => libraryPrefs.toggleCollapsed(collapseKey("ideas"))}
-                />
               </Show>
               <For each={blocks()}>
                 {(block) => (
@@ -954,13 +1023,22 @@ export function ScriptsPage() {
                   </Switch>
                 )}
               </For>
-
               <Show when={hasMore()}>
                 <div class="lib-more">
                   <button type="button" class="btn ghost" onClick={() => setLimit((n) => n + PAGE_SIZE)}>
                     {t("browser.loadMore", { n: Math.min(PAGE_SIZE, sorted().length - limit()) })}
                   </button>
                 </div>
+              </Show>
+
+              {/* Work in progress first, the (often long) idea list below it. */}
+              <Show when={inboxIdeas().length > 0}>
+                <InboxIdeas
+                  ideas={inboxIdeas()}
+                  closed={ideasClosed()}
+                  canCollapse={!needle()}
+                  onToggle={() => libraryPrefs.toggleCollapsed(collapseKey("ideas"))}
+                />
               </Show>
 
               <Show when={contentHits().length > 0}>
@@ -981,7 +1059,9 @@ export function ScriptsPage() {
                           snippetHtml={hit.snippet}
                           selectMode={selectMode()}
                           selected={selected().has(hit.script.id)}
-                          onOpen={() => navStore.openScript(hit.script.id, hit.script.title)}
+                          peek={peekStore.scriptId() === hit.script.id}
+                          onOpen={(inverse) => openScriptFromList(hit.script.id, hit.script.title, inverse)}
+                          onOpenFull={() => navStore.openScript(hit.script.id, hit.script.title)}
                           onToggleSelect={(e) => toggleSelect(hit.script.id, e)}
                           onMenu={(e, anchor) => openRowMenu(hit.script, e, anchor)}
                         />
@@ -1045,6 +1125,8 @@ export function ScriptsPage() {
           if (target && (await renameScript(target, v))) setRenameTarget(null);
         }}
       />
+
+      <PeekPanel />
 
       <PromptDialog
         open={newFolderFor() !== null}

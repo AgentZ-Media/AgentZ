@@ -5,8 +5,10 @@
 export const scriptDe = {
   // ---------- top bar ----------
   "script.bar.aria": "Skript-Leiste",
-  "script.bar.backTitle": "Zurück ({hotkey})",
-  "script.bar.forwardTitle": "Vor ({hotkey})",
+  "script.peek.aria": "Skript im Seitenpanel",
+  "script.peek.expand": "Groß öffnen",
+  "script.peek.close": "Schließen ({hotkey})",
+  "script.peek.closeAria": "Seitenpanel schließen",
   "script.bar.noFolder": "Ohne Ordner",
   "script.bar.folderTitle": "Alle Skripte in „{folder}\" zeigen",
   "script.bar.noFolderTitle": "Alle Skripte ohne Ordner zeigen",
@@ -99,8 +101,10 @@ export const scriptDe = {
 export const scriptEn: Record<keyof typeof scriptDe, string> = {
   // ---------- top bar ----------
   "script.bar.aria": "Script bar",
-  "script.bar.backTitle": "Back ({hotkey})",
-  "script.bar.forwardTitle": "Forward ({hotkey})",
+  "script.peek.aria": "Script in the side panel",
+  "script.peek.expand": "Open full view",
+  "script.peek.close": "Close ({hotkey})",
+  "script.peek.closeAria": "Close side panel",
   "script.bar.noFolder": "No folder",
   "script.bar.folderTitle": "Show all scripts in “{folder}”",
   "script.bar.noFolderTitle": "Show all scripts without a folder",

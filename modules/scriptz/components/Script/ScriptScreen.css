@@ -51,35 +51,15 @@
   user-select: none;
 }
 
-.ss-hist {
+/* Side panel next to a list: it sits right of the list, so the traffic
+   light inset never applies. */
+.ss-bar.is-peek {
+  padding-left: 14px;
+}
+.ss-peek-acts {
   display: flex;
-  gap: 2px;
+  gap: 4px;
   flex: none;
-}
-.ss-hist-btn {
-  width: 26px;
-  height: 26px;
-  display: grid;
-  place-items: center;
-  padding: 0;
-  border: 0;
-  border-radius: var(--r-2);
-  background: transparent;
-  color: var(--muted);
-  cursor: pointer;
-}
-.ss-hist-btn:hover:not(:disabled) {
-  background: var(--fill);
-  color: var(--fg);
-}
-.ss-hist-btn:disabled {
-  color: var(--faint);
-  opacity: 0.6;
-  cursor: default;
-}
-.ss-hist-btn:focus-visible {
-  outline: 2px solid var(--focus);
-  outline-offset: 1px;
 }
 
 .ss-crumb {

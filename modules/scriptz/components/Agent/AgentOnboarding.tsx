@@ -13,6 +13,7 @@ import {
   type AgentTrait,
 } from "../../stores/agentSettings";
 import { agentUi } from "../../stores/agentUi";
+import { navStore } from "../../stores/nav";
 import { AgentAvatar, type AvatarState } from "./AgentAvatar";
 import { EffortControl } from "./AgentSettings";
 import { scopeLabel, folderLookup } from "./labels";
@@ -99,7 +100,8 @@ export function AgentOnboarding() {
       if (setup) await agentSettings.setEnabled(true);
       agentUi.closeOnboarding();
       if (first) {
-        agentUi.setChatOpen(true);
+        const scriptId = navStore.activeScriptId();
+        if (scriptId) agentUi.setChatOpen(scriptId, true);
         agentStore.scheduleLearning(4000);
       }
     } finally {

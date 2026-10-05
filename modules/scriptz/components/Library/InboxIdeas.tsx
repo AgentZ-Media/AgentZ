@@ -21,12 +21,12 @@ function firstLine(notes: string | null | undefined): string {
 
 /** Opens the ideas page with this idea selected (filters that hide it are
  *  cleared by the page, like the palette does). */
-function openIdea(idea: Idea): void {
+export function openIdea(idea: Idea): void {
   uiStore.revealIdea(idea.id);
   void navStore.openIdeas(idea.folder_id);
 }
 
-/** "Ideen" group of the inbox: every open idea as a list row, above the
+/** "Ideen" group of the inbox: every open idea as a list row, below the
  *  scripts that are still in progress. */
 export function InboxIdeas(props: {
   ideas: Idea[];
