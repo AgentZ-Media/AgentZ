@@ -1,7 +1,8 @@
 // Settings > Stufen (components/Settings/sections/SettingsStages.tsx):
 // removing a stage moves its scripts to the neighbouring stage before the
 // list is saved, renaming a built-in stage back to its default drops the
-// own name, and reordering changes which stage is "done".
+// own name, reordering changes which stage is "done", and the agent's learn
+// stage moves on when its stage is removed.
 
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { cleanup, render } from "@solidjs/testing-library";
@@ -9,6 +10,7 @@ import { getTestStorage, setTestStorage, type TestStorage } from "../../../test/
 import "../../../lib/api";
 import { settingsStore, startSettingsRuntime } from "../../../stores/settings";
 import { scriptStages } from "../../../lib/stages";
+import { agentSettings, startAgentSettingsRuntime } from "../../../stores/agentSettings";
 
 const confirm = vi.fn(async () => true);
 vi.mock("@agentz/kit/ui", async (orig) => ({
@@ -22,6 +24,7 @@ const originalAdapter = getTestStorage();
 const calls: string[] = [];
 const counts = new Map<string, number>();
 let stopSettings: () => void;
+let stopAgentSettings: () => void;
 
 beforeAll(() => {
   const fake: Partial<TestStorage> = {
@@ -46,11 +49,14 @@ afterAll(() => setTestStorage(originalAdapter));
 
 beforeEach(async () => {
   stopSettings = startSettingsRuntime();
+  stopAgentSettings = startAgentSettingsRuntime();
   await settingsStore.load();
+  await agentSettings.load();
 });
 afterEach(() => {
   cleanup();
   stopSettings();
+  stopAgentSettings();
   calls.length = 0;
   counts.clear();
   confirm.mockClear();
@@ -100,6 +106,21 @@ describe("SettingsStages", () => {
     expect(confirm).not.toHaveBeenCalled();
     expect(calls[0]).toBe("move:writing->ready");
     expect(scriptStages()[0].id).toBe("ready");
+  });
+
+  it("moves the agent's learn stage on to the next stage when it is removed", async () => {
+    await agentSettings.setLearnStage("ready");
+    calls.length = 0;
+    const { container } = render(() => <SettingsStages onClose={() => {}} />);
+    rowButton(rows(container)[1], 2).click();
+    await tick();
+    await tick();
+    expect(calls).toEqual([
+      "move:ready->writing",
+      'set:script_stages=[{"id":"writing"},{"id":"shot"},{"id":"online"}]',
+      "set:agent.learn_stage=shot",
+    ]);
+    expect(agentSettings.learnStage()).toBe("shot");
   });
 
   it("keeps nothing when the removal is cancelled", async () => {
