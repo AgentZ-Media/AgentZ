@@ -2,6 +2,7 @@ import { For, Match, Show, Switch, createEffect, createMemo, createSignal, on, o
 import { Icon } from "@agentz/kit/ui";
 import { K } from "@agentz/kit/platform";
 import { shellUi } from "@agentz/kit/stores";
+import { CodexSetupInstructions } from "./CodexSetupInstructions";
 import { t } from "../../i18n";
 import { api } from "../../lib/api";
 import { scriptsBus } from "../../lib/scriptsBus";
@@ -160,11 +161,6 @@ function PanelHead(props: { running: boolean; onClose(): void; session?: ChatSes
 
 function GateView(props: { gate: "off" | "setup" | "status" }) {
   const name = () => agentSettings.displayName();
-  const command = () => <code>codex login</code>;
-  const splitCmd = (text: string) => {
-    const [a, b] = text.split("{command}");
-    return <>{a}{command()}{b ?? ""}</>;
-  };
   return (
     <div class="ag-gate">
       <AgentAvatar look={agentSettings.look()} size={64} state={props.gate === "status" && agentStore.status().state === "checking" ? "think" : "idle"} />
@@ -186,11 +182,12 @@ function GateView(props: { gate: "off" | "setup" | "status" }) {
             </Match>
             <Match when={agentStore.status().state === "missing"}>
               <h3>{t("agent.state.missing.title")}</h3>
-              <p>{splitCmd(t("agent.state.missing.body", { name: name() }))}</p>
+              <p>{t("agent.state.missing.body", { name: name() })}</p>
+              <CodexSetupInstructions install />
             </Match>
             <Match when={agentStore.status().state === "logged-out"}>
               <h3>{t("agent.state.loggedOut.title")}</h3>
-              <p>{splitCmd(t("agent.state.loggedOut.body"))}</p>
+              <CodexSetupInstructions install={false} />
             </Match>
             <Match when={agentStore.status().state === "unavailable"}>
               <p>{t("agent.state.unavailable")}</p>

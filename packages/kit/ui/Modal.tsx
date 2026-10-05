@@ -7,6 +7,8 @@ export interface ModalProps {
   open: boolean;
   onClose(): void;
   title?: string;
+  /** Accessible name when the dialog renders its own heading instead of `title`. */
+  label?: string;
   children: JSX.Element;
   /** Optional element placed in the footer area. */
   footer?: JSX.Element;
@@ -121,7 +123,7 @@ export function Modal(props: ModalProps) {
             class="modal"
             role="dialog"
             aria-modal="true"
-            aria-label={props.title}
+            aria-label={props.label ?? props.title}
             style={
               props.maxWidth ? `max-width:${props.maxWidth}px;width:min(${props.maxWidth}px,92vw)` : ""
             }

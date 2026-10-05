@@ -8,6 +8,7 @@ paths:
   - "docs/release-notes/**"
   - "tooling/release/**"
   - ".github/workflows/release.yml"
+  - ".github/workflows/nightly.yml"
 ---
 
 # Releases
@@ -63,9 +64,45 @@ ausgeben oder committen, außerhalb des Repos gesichert halten.
 `gh workflow run release.yml --ref main -f app=<app>` ist immer ein
 Probelauf: baut beide Installer ohne Signatur und veröffentlicht nichts.
 
+## Nightly
+
+`.github/workflows/nightly.yml` läuft alle drei Stunden (und per
+`gh workflow run nightly.yml --ref main [-f app=<app>] [-f force=true]`).
+
+- `plan` nimmt den neuesten `main`-Commit mit grünem „CI passed" und baut nur
+  Apps, deren Code sich seit dem letzten Nightly geändert hat
+  (`nightlyRelevant`: `apps/<app>`, `modules/<app>`, `packages/`, `crates/`,
+  Lockfiles; keine Markdown-Dateien).
+- Version `<nächster Patch>-nightly.<UTC JJJJMMTTHHMM>`, bei vorbereiteter,
+  noch nicht getaggter Version deren Kern. Gesetzt nur per `--config` beim
+  Build, keine Datei und kein Commit. Die nächste stabile Version ist immer
+  neuer und löst Nightlies automatisch ab.
+- macOS und Windows bauen parallel mit demselben Signaturschlüssel;
+  `VITE_AGENTZ_BUILD_*` markiert den Build (Sternenhimmel, Über-Infos), die
+  Icons kommen aus `src-tauri/icons-nightly/`.
+- `publish` (Concurrency `nightly-<app>`) lädt in den rollierenden
+  Pre-Release `<app>-nightly` erst die versionierten Assets, dann
+  `<app>-nightly-macos-arm64.dmg`/`-windows-x64-setup.exe`, zuletzt
+  `latest.json`, dann den Release-Text mit Commit-/Versions-Marker. Nie
+  zurück auf ältere Versionen; behalten werden die Assets der letzten drei
+  Nightlies. Der Tag `<app>-nightly` benennt nur den Kanal und bleibt stehen,
+  den gebauten Commit nennt der Release-Text. Den Marker nie entfernen.
+- In der App wählt `update_channel` (`stable`/`nightly`) den Kanal. Der Nightly-
+  Kanal prüft `<app>-nightly` **und** `<app>-latest` und nimmt die neuere
+  Version. Vor jedem Update von, zu oder zwischen Nightlies legt die App per
+  `VACUUM INTO` eine Sicherung in `<App-Konfigordner>/backups/` an (die
+  letzten fünf bleiben).
+- **Nightlies teilen die Datenbank mit der stabilen Version.** Eine Migration
+  gilt deshalb ab dem Merge auf `main` als veröffentlicht, nicht erst ab dem
+  Tag. Ein Zurück auf eine ältere Version gibt es nicht.
+- Lokal testen: `VITE_AGENTZ_BUILD_CHANNEL=nightly pnpm dev:scriptz` zeigt
+  die Nightly-Optik, Kit-Fixture mit `?nightly`.
+
 ## Installation
 
-Updater-Endpoint: `https://github.com/AgentZ-Media/AgentZ/releases/download/<app>-latest/latest.json`.
+Updater-Endpoint: `https://github.com/AgentZ-Media/AgentZ/releases/download/<app>-latest/latest.json`,
+für Nightlies zusätzlich `.../<app>-nightly/latest.json` (abgeleitet in
+`crates/agentz-desktop/src/updates.rs`).
 Die Apps sind nicht notarisiert bzw. codesigniert: macOS braucht beim ersten
 Start `xattr -cr "/Applications/<Produkt>.app"`, Windows zeigt SmartScreen.
 Der Install-Footer erklärt beides. ScriptZ 0.8.4 und älter nutzen noch den
