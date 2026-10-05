@@ -3,6 +3,7 @@
 mod codex;
 mod lifecycle;
 mod menu;
+mod updates;
 
 use tauri::{plugin::TauriPlugin, Manager, Wry};
 use tauri_plugin_sql::Migration;
@@ -23,6 +24,7 @@ pub struct Config {
 pub fn builder(config: Config) -> tauri::Builder<Wry> {
     tauri::Builder::default()
         .manage(lifecycle::Lifecycle::default())
+        .manage(updates::HostId(config.id))
         // Must be first: a second process must never open the app database.
         .plugin(tauri_plugin_single_instance::init(|app, _, _| {
             lifecycle::show_main(app);
@@ -49,6 +51,8 @@ fn host_plugin() -> TauriPlugin<Wry> {
             lifecycle::ready,
             lifecycle::finish_exit,
             menu::set_menu_language,
+            updates::update_check,
+            updates::prepare_database_backup,
             codex::codex_locate,
             codex::codex_start,
             codex::codex_send,

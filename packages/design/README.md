@@ -68,13 +68,19 @@ Standalone assets live in `assets/`:
 | `<id>-app-icon.svg` / `.png` | Accent-yellow app tile and dark dot glyph, matching the in-app mark; PNG is 1024 px when generated with Chrome. |
 | `<id>-mark.svg` | Bare glyph for light backgrounds. |
 | `<id>-mark-inverse.svg` | Bare glyph for dark backgrounds, using the registry accent. |
+| `<id>-app-icon-nightly.svg` | Night-sky tile of nightly builds (chalk glyph, accent shadow rows, moon). |
 | `placeholder/` | Bundled AgentZ suite icon set for machines without Chrome. |
 
 ```bash
 pnpm --filter @agentz/design build:logo --app scriptz
 pnpm --filter @agentz/design build:logo --app suite
 node packages/design/scripts/build-logo.mjs --app <id> --svg-only
+node packages/design/scripts/build-logo.mjs --app <id> --nightly
 ```
+
+`--nightly` only writes the nightly tile and `apps/<id>/src-tauri/icons-nightly/`
+(the six files a Tauri bundle uses) and needs Chrome. The nightly workflow
+uses that set when it is complete, otherwise the regular icons.
 
 The builder needs Node >= 22.18. Google Chrome or Chromium renders the PNG;
 set `CHROME=/absolute/path/to/chrome` when auto-discovery does not find it.

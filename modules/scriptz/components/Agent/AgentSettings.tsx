@@ -1,6 +1,7 @@
 import { For, Show, createEffect, createMemo } from "solid-js";
 import { Icon, Row, SectionHead, Switch, confirmDialog } from "@agentz/kit/ui";
 import { pushToast } from "@agentz/kit/stores";
+import { CodexSetupInstructions } from "./CodexSetupInstructions";
 import { t } from "../../i18n";
 import { resolveLearnStage } from "../../lib/agent/learnStage";
 import { clearMemory } from "../../lib/agent/memory";
@@ -174,6 +175,9 @@ export function AgentSettings(props: { onClose(): void }) {
             <div><b>{t("agent.prefs.local")}</b><small>{t("agent.prefs.later")}</small></div>
           </div>
         </div>
+        <Show when={agentSettings.enabled() && (agentStore.status().state === "missing" || agentStore.status().state === "logged-out")}>
+          <CodexSetupInstructions install={agentStore.status().state === "missing"} />
+        </Show>
         <Show when={agentSettings.enabled() && !ready() && agentStore.status().state !== "checking"}>
           <div class="ag-prov-retry">
             <button type="button" class="btn" onClick={() => void agentStore.refreshStatus()}>{t("agent.state.retry")}</button>

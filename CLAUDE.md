@@ -35,7 +35,9 @@ zwischen Produkten. Details: [`suite-architecture.md`](.claude/rules/suite-archi
   `app_state`-Schlüssel samt JSON-Form nie ändern. Schemaänderungen nur als
   neue, angehängte Migration. `pnpm dev:<app>` nutzt dieselben Daten wie die
   installierte App: vor Arbeit an Speicher, Migrationen oder Boot die DB sichern
-  (siehe [`apps/scriptz/CLAUDE.md`](apps/scriptz/CLAUDE.md)).
+  (siehe [`apps/scriptz/CLAUDE.md`](apps/scriptz/CLAUDE.md)). Nightly-Builds
+  nutzen dieselbe Datenbank: Eine Migration gilt ab dem Merge auf `main` als
+  veröffentlicht.
 - **Keine I/O beim Import.** Stores, Resources, Timer und Listener entstehen
   erst in `setup(ctx)` und werden über `ctx.onDispose()` abgebaut.
 - **Speichern über den Flush-Koordinator** (`registerFlusher`). Inhalt
@@ -47,6 +49,7 @@ zwischen Produkten. Details: [`suite-architecture.md`](.claude/rules/suite-archi
 - **Jeder sichtbare Text in DE und EN** (siehe [`i18n.md`](.claude/rules/i18n.md)).
 - **Neue Apps nur über `pnpm new-app`**, Releases nur über
   `pnpm release:bump` und Tags `<app>-vX.Y.Z` (siehe [`release.md`](.claude/rules/release.md)).
+  Nightly-Builds baut der Workflow `nightly.yml` selbst aus `main`.
 - **Regel der Zwei:** Ins Kit kommt nur, was heute produktneutral ist oder ein
   zweites Produkt wirklich braucht.
 

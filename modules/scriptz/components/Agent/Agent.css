@@ -1046,6 +1046,67 @@
 .ag-prov-retry {
   display: flex;
 }
+
+/* Shared Codex installation and sign-in instructions. */
+.ag-codex-setup {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  width: 100%;
+  min-width: 0;
+  text-align: left;
+  font-size: 12px;
+  line-height: 1.5;
+}
+.ag-onb .ag-codex-setup {
+  margin-top: 18px;
+}
+.ag-codex-setup p {
+  margin: 0;
+  max-width: none;
+  color: var(--fg);
+  font-size: inherit;
+}
+.ag-codex-setup .seg {
+  align-self: flex-start;
+}
+.ag-codex-setup a {
+  color: var(--fg);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  align-self: flex-start;
+}
+.ag-codex-command {
+  min-width: 0;
+}
+.ag-codex-command-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 5px;
+}
+.ag-codex-command code {
+  display: block;
+  padding: 9px 10px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-pop);
+  background: var(--fill);
+  color: var(--fg);
+  font: 12px/1.5 var(--type);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  user-select: text;
+}
+.ag-codex-copy-status:empty {
+  display: none;
+}
+.ag-gate:has(.ag-codex-setup) {
+  justify-content: flex-start;
+  min-height: 0;
+  overflow-y: auto;
+}
 .ag-model-ctl {
   display: inline-flex;
   gap: 6px;
