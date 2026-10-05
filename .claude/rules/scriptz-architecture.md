@@ -67,7 +67,11 @@ die Befehlspalette, deshalb setzt das Modul `revealsSidebar: true`.
 `001_baseline` bis `007_werkbank` in `apps/scriptz/src-tauri/migrations/` sind
 veröffentlicht und unveränderlich. `007` ergänzt `scripts.status`,
 `status_changed_at` und den Ordner-Zielbereich. `008_agent` legt
-`agent_memory`, `agent_chats` und `agent_learned` an. Die Abschaffung von
+`agent_memory`, `agent_chats` und `agent_learned` an. `009_local_changes`
+ergänzt eine lokale Replikat-ID und kompakte Änderungsmarker mit Triggern für
+alle Inhaltstabellen, einschließlich Agentendaten; keine Cloud-Anbindung.
+Vertrag und Grenzen: [`local-storage.md`](../../docs/local-storage.md).
+Die Abschaffung von
 Kamera/Caption/SFX ist bewusst keine SQL-Migration (siehe unten).
 
 ## Stufen und Zielbereich
@@ -154,6 +158,8 @@ Referenz: `docs/agent/screens.html`.
   (abschaltbar), aus abgeschlossenen Skripten nach `agent.learn_since` und
   90 s Ruhe, rückwirkend nur per Button. Gedächtnis ist nicht Teil des
   `.scriptz`-Exports.
+- **Storage-Grenze:** `agent/chats.ts` und `agent/memory.ts` delegieren an
+  `ScriptzStorage.agent`; SQL liegt in `agent/sqlStorage.ts`.
 - **Chats** pro Skript in `agent_chats` (`items_json`), Lernstand in
   `agent_learned` (Inhalts-Hash). Rohes JSON wird nie angezeigt; Tool-Aufrufe
   laufen über `components/Agent/labels.ts`.

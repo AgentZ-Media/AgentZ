@@ -9,7 +9,7 @@
 // Character names are stored upper-case, like the character blocks show them.
 
 import { createSignal } from "solid-js";
-import { getDb } from "../db";
+import { getStorageAdapter } from "../storage";
 
 export type MemoryKind = "global" | "folder" | "character" | "relation";
 export type MemorySource = "chat" | "script" | "user";
@@ -26,18 +26,6 @@ export interface MemoryEntry {
   updatedAt: number;
 }
 
-interface MemoryRow {
-  id: string;
-  kind: string;
-  folder_id: string | null;
-  subject: string | null;
-  content: string;
-  source: string;
-  source_script_id: string | null;
-  created_at: number;
-  updated_at: number;
-}
-
 /** Hard limits keep the always-loaded context small and force the agent to
  *  consolidate instead of piling up notes. */
 export const MEMORY_LIMITS = {
@@ -46,27 +34,10 @@ export const MEMORY_LIMITS = {
   perScopeEntries: 30,
 } as const;
 
-const KINDS: readonly MemoryKind[] = ["global", "folder", "character", "relation"];
-const SOURCES: readonly MemorySource[] = ["chat", "script", "user"];
-
 /** Bumps on every write so views (memory page, chat notices) reload. */
 const [memoryVersion, setMemoryVersion] = createSignal(0);
 export { memoryVersion };
 const bump = () => setMemoryVersion((v) => v + 1);
-
-function rowToEntry(row: MemoryRow): MemoryEntry {
-  return {
-    id: row.id,
-    kind: (KINDS as readonly string[]).includes(row.kind) ? (row.kind as MemoryKind) : "global",
-    folderId: row.folder_id,
-    subject: row.subject,
-    content: row.content,
-    source: (SOURCES as readonly string[]).includes(row.source) ? (row.source as MemorySource) : "chat",
-    sourceScriptId: row.source_script_id,
-    createdAt: row.created_at,
-    updatedAt: row.updated_at,
-  };
-}
 
 export function normalizeCharacter(name: string): string {
   return name.trim().replace(/\s+/g, " ").toUpperCase();
@@ -82,17 +53,11 @@ export function cleanMemoryText(text: string): string {
 }
 
 export async function listMemory(): Promise<MemoryEntry[]> {
-  const db = await getDb();
-  const rows = await db.select<MemoryRow[]>(
-    "SELECT * FROM agent_memory ORDER BY kind, folder_id, subject, created_at",
-  );
-  return rows.map(rowToEntry);
+  return getStorageAdapter().agent.listMemory();
 }
 
 export async function getMemoryEntry(id: string): Promise<MemoryEntry | null> {
-  const db = await getDb();
-  const rows = await db.select<MemoryRow[]>("SELECT * FROM agent_memory WHERE id = $1", [id]);
-  return rows[0] ? rowToEntry(rows[0]) : null;
+  return getStorageAdapter().agent.getMemoryEntry(id);
 }
 
 export interface MemoryScope {
@@ -103,16 +68,6 @@ export interface MemoryScope {
 
 function scopeKey(scope: MemoryScope): string {
   return `${scope.kind}:${scope.folderId ?? ""}:${scope.subject ?? ""}`;
-}
-
-async function countScope(scope: MemoryScope): Promise<number> {
-  const db = await getDb();
-  const rows = await db.select<{ n: number }[]>(
-    `SELECT COUNT(*) AS n FROM agent_memory
-      WHERE kind = $1 AND folder_id IS $2 AND subject IS $3`,
-    [scope.kind, scope.folderId, scope.subject],
-  );
-  return rows[0]?.n ?? 0;
 }
 
 export class MemoryFullError extends Error {
@@ -131,8 +86,7 @@ export async function addMemory(input: AddMemoryInput): Promise<MemoryEntry> {
   const content = cleanMemoryText(input.content);
   if (!content) throw new Error("empty memory entry");
   const limit = input.kind === "global" ? MEMORY_LIMITS.globalEntries : MEMORY_LIMITS.perScopeEntries;
-  if ((await countScope(input)) >= limit) throw new MemoryFullError(input);
-  const db = await getDb();
+  if ((await getStorageAdapter().agent.countMemoryScope(input)) >= limit) throw new MemoryFullError(input);
   const now = Date.now();
   const entry: MemoryEntry = {
     id: crypto.randomUUID(),
@@ -145,11 +99,7 @@ export async function addMemory(input: AddMemoryInput): Promise<MemoryEntry> {
     createdAt: now,
     updatedAt: now,
   };
-  await db.execute(
-    `INSERT INTO agent_memory (id, kind, folder_id, subject, content, source, source_script_id, created_at, updated_at)
-     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
-    [entry.id, entry.kind, entry.folderId, entry.subject, entry.content, entry.source, entry.sourceScriptId, now, now],
-  );
+  await getStorageAdapter().agent.insertMemory(entry);
   bump();
   return entry;
 }
@@ -157,12 +107,8 @@ export async function addMemory(input: AddMemoryInput): Promise<MemoryEntry> {
 export async function updateMemory(id: string, content: string): Promise<MemoryEntry> {
   const clean = cleanMemoryText(content);
   if (!clean) throw new Error("empty memory entry");
-  const db = await getDb();
-  const result = await db.execute(
-    "UPDATE agent_memory SET content = $1, updated_at = $2 WHERE id = $3",
-    [clean, Date.now(), id],
-  );
-  if (result.rowsAffected === 0) throw new Error(`memory entry not found: ${id}`);
+  const updated = await getStorageAdapter().agent.updateMemory(id, clean, Date.now());
+  if (!updated) throw new Error(`memory entry not found: ${id}`);
   bump();
   const entry = await getMemoryEntry(id);
   if (!entry) throw new Error(`memory entry not found: ${id}`);
@@ -170,26 +116,18 @@ export async function updateMemory(id: string, content: string): Promise<MemoryE
 }
 
 export async function deleteMemory(id: string): Promise<void> {
-  const db = await getDb();
-  await db.execute("DELETE FROM agent_memory WHERE id = $1", [id]);
+  await getStorageAdapter().agent.deleteMemory(id);
   bump();
 }
 
 /** Restores a deleted entry verbatim (undo). */
 export async function restoreMemory(entry: MemoryEntry): Promise<void> {
-  const db = await getDb();
-  await db.execute(
-    `INSERT OR REPLACE INTO agent_memory (id, kind, folder_id, subject, content, source, source_script_id, created_at, updated_at)
-     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
-    [entry.id, entry.kind, entry.folderId, entry.subject, entry.content, entry.source, entry.sourceScriptId, entry.createdAt, entry.updatedAt],
-  );
+  await getStorageAdapter().agent.restoreMemory(entry);
   bump();
 }
 
 export async function clearMemory(): Promise<void> {
-  const db = await getDb();
-  await db.execute("DELETE FROM agent_memory");
-  await db.execute("DELETE FROM agent_learned");
+  await getStorageAdapter().agent.clearMemory();
   bump();
 }
 
