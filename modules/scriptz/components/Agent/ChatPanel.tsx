@@ -2,6 +2,7 @@ import { For, Match, Show, Switch, createEffect, createMemo, createSignal, on, o
 import { Icon } from "@agentz/kit/ui";
 import { K } from "@agentz/kit/platform";
 import { shellUi } from "@agentz/kit/stores";
+import { CodexSetupInstructions } from "./CodexSetupInstructions";
 import { t } from "../../i18n";
 import { api } from "../../lib/api";
 import { scriptsBus } from "../../lib/scriptsBus";
@@ -14,7 +15,11 @@ import { AgentAvatar, type AvatarState } from "./AgentAvatar";
 import type { ItemContext } from "./ChatItems";
 import { ChatList, createDraftIndex, lastReplies } from "./ChatList";
 import { RepliesBar } from "./ModeItems";
-import { agentEditor, readSelection } from "./editorBridge";
+import { agentEditor, clearProposalPreview, liveBlocks } from "./editorBridge";
+import { AGENT_JOBS, jobInstruction, type AgentJobId } from "../../lib/agent/jobs";
+import { formatClock, formatRange, type LengthRange } from "../../lib/lengthGoal";
+import { measureBlocks } from "./proposalMetrics";
+import { JOB_HINT, JOB_ICON, JOB_LABEL } from "./jobLabels";
 import { folderLookup } from "./labels";
 import "./Agent.css";
 
@@ -22,9 +27,15 @@ export interface ChatPanelProps {
   scriptId: string;
   colorOf(name: string): string;
   onClose(): void;
+  /** Target range of the script (for runtimes on cards and the jobs). */
+  range: LengthRange | null;
+  wpm: number;
+  /** Bumps on every editor update (card numbers follow the typing). */
+  tick?: () => number;
 }
 
-export function avatarStateFor(running: boolean): AvatarState {
+export function avatarStateFor(running: boolean, talking = false): AvatarState {
+  if (running && talking) return "talk";
   if (running) return "think";
   if (agentStore.learning()) return "learn";
   return "idle";
@@ -50,7 +61,7 @@ export function ChatPanel(props: ChatPanelProps) {
   return (
     <aside class="ag-panel" aria-label={t("agent.panel.aria", { name: agentSettings.displayName() })}>
       <Show when={gate() === "chat"} fallback={<PanelHead running={false} onClose={props.onClose} />}>
-        <ChatLoader scriptId={props.scriptId} colorOf={props.colorOf} onClose={props.onClose} />
+        <ChatLoader {...props} />
       </Show>
       <Show when={gate() !== "chat" && (gate() as "off" | "setup" | "status")}>
         {(g) => <GateView gate={g()} />}
@@ -71,9 +82,15 @@ function PanelHead(props: { running: boolean; onClose(): void; session?: ChatSes
     return agentStore.resolveModel()?.label ?? t("agent.status.ready");
   };
   const ready = () => agentSettings.enabled() && agentStore.status().state === "ready";
+  // While the answer streams in, the face talks; while tools run, it thinks.
+  const talking = () => {
+    const items = props.session?.items;
+    const last = items?.[items.length - 1];
+    return !!last && last.kind === "assistant" && !!last.streaming && !last.commentary;
+  };
   return (
     <header class="ag-head">
-      <AgentAvatar look={agentSettings.look()} size={30} state={avatarStateFor(props.running)} />
+      <AgentAvatar look={agentSettings.look()} size={30} state={avatarStateFor(props.running, talking())} />
       <div class="ag-head-nm">
         <b>{agentSettings.displayName()}</b>
         <small classList={{ "is-ready": ready() }}>
@@ -127,11 +144,6 @@ function PanelHead(props: { running: boolean; onClose(): void; session?: ChatSes
 
 export function GateView(props: { gate: "off" | "setup" | "status" }) {
   const name = () => agentSettings.displayName();
-  const command = () => <code>codex login</code>;
-  const splitCmd = (text: string) => {
-    const [a, b] = text.split("{command}");
-    return <>{a}{command()}{b ?? ""}</>;
-  };
   return (
     <div class="ag-gate">
       <AgentAvatar look={agentSettings.look()} size={64} state={props.gate === "status" && agentStore.status().state === "checking" ? "think" : "idle"} />
@@ -153,11 +165,12 @@ export function GateView(props: { gate: "off" | "setup" | "status" }) {
             </Match>
             <Match when={agentStore.status().state === "missing"}>
               <h3>{t("agent.state.missing.title")}</h3>
-              <p>{splitCmd(t("agent.state.missing.body", { name: name() }))}</p>
+              <p>{t("agent.state.missing.body", { name: name() })}</p>
+              <CodexSetupInstructions install />
             </Match>
             <Match when={agentStore.status().state === "logged-out"}>
               <h3>{t("agent.state.loggedOut.title")}</h3>
-              <p>{splitCmd(t("agent.state.loggedOut.body"))}</p>
+              <CodexSetupInstructions install={false} />
             </Match>
             <Match when={agentStore.status().state === "unavailable"}>
               <p>{t("agent.state.unavailable")}</p>
@@ -188,7 +201,7 @@ function ChatLoader(props: ChatPanelProps) {
   }));
   return (
     <Show when={session()} keyed fallback={<PanelHead running={false} onClose={props.onClose} />}>
-      {(chat) => <ChatBody scriptId={props.scriptId} colorOf={props.colorOf} onClose={props.onClose} session={chat} />}
+      {(chat) => <ChatBody {...props} session={chat} />}
     </Show>
   );
 }
@@ -239,6 +252,10 @@ function ChatBody(props: ChatPanelProps & { session: ChatSession }) {
       void navStore.openAgent(session().chatId());
     },
     send: (text) => void send(text, null),
+    scriptId: props.scriptId,
+    range: props.range,
+    wpm: props.wpm,
+    tick: () => props.tick?.() ?? 0,
   });
 
   const running = () => session().running();
@@ -253,20 +270,31 @@ function ChatBody(props: ChatPanelProps & { session: ChatSession }) {
     if (!stick || !listRef) return;
     requestAnimationFrame(() => { if (listRef) listRef.scrollTop = listRef.scrollHeight; });
   }));
+  onCleanup(clearProposalPreview);
   createEffect(on(() => props.scriptId, () => {
+    clearProposalPreview();
     stick = true;
     setQuote(null);
     requestAnimationFrame(() => { if (listRef) listRef.scrollTop = listRef.scrollHeight; });
   }));
 
-  const send = async (text = draft(), q = quote()) => {
+  const send = async (text = draft(), q = quote(), extra?: { instruction?: string; job?: AgentJobId }) => {
     const clean = text.trim();
     if (!clean || running()) return;
     setDraft("");
     setQuote(null);
     stick = true;
     resize();
-    await session().send(clean, q ?? undefined);
+    await session().send(clean, q ?? undefined, extra);
+  };
+
+  /** A fixed job: the chat shows its label, the model gets the full
+   *  instruction (lib/agent/jobs.ts). */
+  const runJob = (job: AgentJobId) => {
+    const blocks = liveBlocks(props.scriptId) ?? [];
+    const runtime = measureBlocks(blocks, props.wpm).runtimeSec;
+    const instruction = jobInstruction(job, { range: formatRange(props.range), runtime: formatClock(runtime), wpm: props.wpm });
+    void send(t(JOB_LABEL[job]), null, { instruction, job });
   };
 
   // Requests from the editor context menu.
@@ -275,7 +303,8 @@ function ChatBody(props: ChatPanelProps & { session: ChatSession }) {
     if (!req || req.scriptId !== props.scriptId) return;
     const taken = agentUi.takeRequest(props.scriptId);
     if (!taken) return;
-    if (taken.send) void send(taken.text, taken.quote ?? null);
+    if (taken.job) runJob(taken.job);
+    else if (taken.send) void send(taken.text, taken.quote ?? null, taken.instruction ? { instruction: taken.instruction } : undefined);
     else {
       setQuote(taken.quote ?? null);
       setDraft(taken.text);
@@ -301,8 +330,6 @@ function ChatBody(props: ChatPanelProps & { session: ChatSession }) {
     onCleanup(() => window.removeEventListener("keydown", onKey));
   });
 
-  const suggestions = () => [t("agent.empty.s1"), t("agent.empty.s2"), t("agent.empty.s3")];
-
   return (
     <>
       <PanelHead running={running()} onClose={props.onClose} session={session()} />
@@ -315,15 +342,18 @@ function ChatBody(props: ChatPanelProps & { session: ChatSession }) {
                 <AgentAvatar look={agentSettings.look()} size={52} state="idle" />
                 <h3>{t("agent.empty.title")}</h3>
                 <p>{t("agent.empty.body", { name: agentSettings.displayName() })}</p>
-                <div class="ag-sugg">
-                  <For each={suggestions()}>
-                    {(text) => (
-                      <button type="button" class="ag-sugg-b" onClick={() => void send(text, readSelection(props.scriptId))}>
-                        {text}
+                <div class="ag-jobs" role="list" aria-label={t("agent.jobs.title")}>
+                  <For each={AGENT_JOBS}>
+                    {(job) => (
+                      <button type="button" class="ag-job" role="listitem" onClick={() => runJob(job)}>
+                        <Icon name={JOB_ICON[job]} size={14} />
+                        <b>{t(JOB_LABEL[job])}</b>
+                        <small>{t(JOB_HINT[job])}</small>
                       </button>
                     )}
                   </For>
                 </div>
+                <p class="ag-jobs-or">{t("agent.jobs.or")}</p>
               </div>
             </Show>
           }

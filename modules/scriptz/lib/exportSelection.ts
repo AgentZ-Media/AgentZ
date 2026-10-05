@@ -8,6 +8,7 @@
 import { getPlatformAdapter } from "@agentz/kit/platform";
 import { getStorageAdapter } from "./storage";
 import { buildPdfBytes } from "./exportPdf";
+import { pdfTitleDetails } from "./pdfDetails";
 import { t } from "../i18n";
 
 function sanitizePdfFilename(title: string): string {
@@ -19,6 +20,8 @@ function sanitizePdfFilename(title: string): string {
 export interface PdfExportOptions {
   includeHighlighting: boolean;
   includeTitlePage: boolean;
+  /** Speaking pace for the runtime on the title page. */
+  wpm: number;
 }
 
 export interface PdfExportResult {
@@ -35,11 +38,21 @@ export async function exportScriptsToPdf(
   const storage = getStorageAdapter();
   const platform = getPlatformAdapter();
 
+  const folders = opts.includeTitlePage ? await storage.listFolders().catch(() => []) : [];
+  const date = new Date();
   const buildFor = async (id: string) => {
     const s = await storage.getScript(id);
+    const titleDetails = opts.includeTitlePage
+      ? pdfTitleDetails({
+          folder: folders.find((f) => f.id === s.folder_id)?.name ?? null,
+          contentJson: s.content_json,
+          wpm: opts.wpm,
+          date,
+        })
+      : null;
     const bytes = await buildPdfBytes(
       { title: s.title, contentJson: s.content_json, characters: s.characters ?? [] },
-      opts,
+      { includeHighlighting: opts.includeHighlighting, includeTitlePage: opts.includeTitlePage, titleDetails },
     );
     return { name: sanitizePdfFilename(s.title), bytes };
   };

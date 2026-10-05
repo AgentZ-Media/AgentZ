@@ -105,6 +105,27 @@ export async function deleteIdea(id: string): Promise<void> {
   ideasBus.bump();
 }
 
+/** Puts a deleted idea back exactly as it was (undo of deleteIdea). A
+ *  folder, script or agent session that is gone by now is dropped from the
+ *  link instead of failing the restore. */
+export async function restoreIdea(idea: Idea): Promise<void> {
+  const db = await getDb();
+  const exists = async (table: "folders" | "scripts" | "agent_chats", id: string | null | undefined) => {
+    if (!id) return false;
+    const rows = await db.select<{ n: number }[]>(`SELECT COUNT(*) AS n FROM ${table} WHERE id = $1`, [id]);
+    return (rows[0]?.n ?? 0) > 0;
+  };
+  const folderId = (await exists("folders", idea.folder_id)) ? idea.folder_id : null;
+  const scriptId = (await exists("scripts", idea.script_id)) ? idea.script_id : null;
+  const sourceChatId = (await exists("agent_chats", idea.source_chat_id)) ? idea.source_chat_id ?? null : null;
+  await db.execute(
+    `INSERT OR IGNORE INTO ideas (id, title, notes, created_at, used_at, script_id, folder_id, source_chat_id)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
+    [idea.id, idea.title, idea.notes ?? "", idea.created_at, idea.used_at, scriptId, folderId, sourceChatId],
+  );
+  ideasBus.bump();
+}
+
 /** Moves an idea into a folder (or out of any folder when null). Shares
  *  the folders table with scripts; mirrors folders.ts::moveScript. */
 export async function moveIdea(

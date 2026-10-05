@@ -602,7 +602,7 @@ export async function purgeScript(id: string): Promise<void> {
     [id],
   );
   // Sessions of the agent mode outlive the script (trigger in migration
-  // 009, atomic with this DELETE); script chats go with it.
+  // 010, atomic with this DELETE); script chats go with it.
   await db.execute("DELETE FROM scripts WHERE id = $1", [id]);
   await deleteScriptFts(id);
   if (parseCharsMeta(metaRows[0]?.characters_meta ?? "[]").length > 0) {

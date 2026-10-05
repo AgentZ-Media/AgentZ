@@ -22,6 +22,8 @@ import type {
   SnapshotMeta,
 } from "./types";
 import { t } from "../i18n";
+import type { AgentStorage } from "./agent/storage";
+import type { LocalChangeStore } from "./localChanges/types";
 
 export interface CreateScriptInput {
   title?: string;
@@ -85,6 +87,8 @@ export interface ExportPdfRequest {
   scriptId: string;
   includeHighlighting: boolean;
   includeTitlePage: boolean;
+  /** Detail line of the title page (folder, runtime, date). */
+  titleDetails?: string | null;
 }
 
 export interface ExportPlaintextRequest {
@@ -100,6 +104,10 @@ export interface ExportResult {
 }
 
 export interface ScriptzStorage {
+  /** User-authored agent content uses the same storage boundary as scripts. */
+  agent: AgentStorage;
+  /** Local change feed only; no cloud provider or network is installed. */
+  localChanges: LocalChangeStore;
   // ===== Scripts =====
   createScript(input: CreateScriptInput): Promise<ScriptSummary>;
   getScript(id: string): Promise<Script>;
@@ -184,6 +192,8 @@ export interface ScriptzStorage {
   createIdea(input: CreateIdeaInput): Promise<Idea>;
   updateIdea(input: UpdateIdeaInput): Promise<Idea>;
   deleteIdea(id: string): Promise<void>;
+  /** Puts a deleted idea back (undo); missing folder/script links drop. */
+  restoreIdea(idea: Idea): Promise<void>;
   /** Moves an idea into a folder (or out of any folder when null).
    *  Shares the same folders as scripts. */
   moveIdea(ideaId: string, folderId: string | null): Promise<void>;

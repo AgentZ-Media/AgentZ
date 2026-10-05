@@ -1,10 +1,13 @@
 // Chat items and their persistence (table `agent_chats`, migrations 008 and
-// 009). A script chat belongs to one script (the newest row); "new chat"
+// 010). A script chat belongs to one script (the newest row); "new chat"
 // starts a fresh row. A session (kind 'session') starts in the agent mode
 // without a script and may later be handed to a script it created. Items
 // are stored as rendered UI state, never as raw provider frames.
+//
+// Storage goes through `ScriptzStorage.agent` (SQL in `sqlStorage.ts`); the
+// item normalization and session summaries here are adapter-neutral.
 
-import { getDb } from "../db";
+import { getStorageAdapter } from "../storage";
 import { collectDrafts } from "./drafts";
 import type { Claim, Proposal } from "./proposals";
 import type { MemoryEntry } from "./memory";
@@ -29,7 +32,7 @@ export interface SavedIdeaRef {
 }
 
 export type ChatItem =
-  | { kind: "user"; id: string; text: string; quote?: string }
+  | { kind: "user"; id: string; text: string; quote?: string; job?: string }
   | { kind: "assistant"; id: string; text: string; streaming?: boolean; commentary?: boolean }
   | { kind: "thinking"; id: string; text: string; done: boolean }
   | { kind: "tool"; id: string; tool: string; args: Record<string, unknown>; status: ToolStatus }
@@ -63,25 +66,14 @@ export interface ChatRecord {
   updatedAt: number;
 }
 
-interface ChatRow {
-  id: string;
-  kind: string | null;
-  script_id: string | null;
-  provider: string;
-  thread_id: string | null;
-  title: string | null;
-  folder_id: string | null;
-  items_json: string;
-  created_at: number;
-  updated_at: number;
-}
-
 const KNOWN_KINDS = new Set([
   "user", "assistant", "thinking", "tool", "search", "proposal", "claims", "memory",
   "ideas", "ideas-saved", "replies", "handoff", "draft-discarded",
   "blocked", "error", "interrupted",
 ]);
 
+/** Restores stored items: unknown kinds are dropped and transient running
+ *  states end, so a crash mid-turn leaves no spinners. Every adapter uses it. */
 export function parseItems(raw: string): ChatItem[] {
   try {
     const parsed: unknown = JSON.parse(raw);
@@ -100,54 +92,23 @@ export function parseItems(raw: string): ChatItem[] {
   }
 }
 
-function rowToChat(row: ChatRow): ChatRecord {
-  return {
-    id: row.id,
-    kind: row.kind === "session" ? "session" : "script",
-    scriptId: row.script_id,
-    provider: row.provider,
-    threadId: row.thread_id,
-    title: row.title,
-    folderId: row.folder_id,
-    items: parseItems(row.items_json),
-    createdAt: row.created_at,
-    updatedAt: row.updated_at,
-  };
-}
-
+/** Newest chat of a script (sessions handed to it included), or of the
+ *  unassigned scope when null. */
 export async function latestChat(scriptId: string | null): Promise<ChatRecord | null> {
-  const db = await getDb();
-  const rows = await db.select<ChatRow[]>(
-    `SELECT * FROM agent_chats WHERE script_id IS $1 ORDER BY updated_at DESC LIMIT 1`,
-    [scriptId],
-  );
-  return rows[0] ? rowToChat(rows[0]) : null;
+  return getStorageAdapter().agent.latestChat(scriptId);
 }
 
 export async function getChat(id: string): Promise<ChatRecord | null> {
-  const db = await getDb();
-  const rows = await db.select<ChatRow[]>(`SELECT * FROM agent_chats WHERE id = $1`, [id]);
-  return rows[0] ? rowToChat(rows[0]) : null;
+  return getStorageAdapter().agent.getChat(id);
 }
 
+/** Persists rendered chat state through the active adapter; callers coordinate flush ordering. */
 export async function saveChat(chat: ChatRecord): Promise<void> {
-  const db = await getDb();
-  await db.execute(
-    `INSERT INTO agent_chats (id, script_id, provider, thread_id, items_json, created_at, updated_at, kind, title, folder_id)
-     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
-     ON CONFLICT(id) DO UPDATE SET script_id = excluded.script_id, thread_id = excluded.thread_id,
-       items_json = excluded.items_json, updated_at = excluded.updated_at,
-       title = excluded.title, folder_id = excluded.folder_id`,
-    [
-      chat.id, chat.scriptId, chat.provider, chat.threadId, JSON.stringify(chat.items),
-      chat.createdAt, chat.updatedAt, chat.kind, chat.title, chat.folderId,
-    ],
-  );
+  return getStorageAdapter().agent.saveChat(chat);
 }
 
 export async function deleteChat(id: string): Promise<void> {
-  const db = await getDb();
-  await db.execute(`DELETE FROM agent_chats WHERE id = $1`, [id]);
+  return getStorageAdapter().agent.deleteChat(id);
 }
 
 /** A session as the start screen and the session menu list it. */
@@ -211,29 +172,16 @@ export function summarizeSession(chat: Pick<ChatRecord, "id" | "title" | "folder
 /** Sessions with at least one message, newest first. `query` searches the
  *  title and the conversation (draft titles included); `offset` pages. */
 export async function listSessions(limit = 40, offset = 0, query = ""): Promise<SessionSummary[]> {
-  const db = await getDb();
-  const q = query.trim();
-  const pattern = `%${q.replace(/[\\%_]/g, (c) => `\\${c}`)}%`;
-  const rows = await db.select<ChatRow[]>(
-    `SELECT * FROM agent_chats WHERE kind = 'session' AND items_json != '[]'
-       AND ($3 = '' OR title LIKE $4 ESCAPE '\\' OR items_json LIKE $4 ESCAPE '\\')
-     ORDER BY updated_at DESC, id LIMIT $1 OFFSET $2`,
-    [limit, offset, q, pattern],
-  );
-  return rows.map((row) => summarizeSession(rowToChat(row)));
+  const chats = await getStorageAdapter().agent.listSessions({ limit, offset, query: query.trim() });
+  return chats.map(summarizeSession);
 }
 
+/** Returns the last learned content hash, or null when the script has not been learned. */
 export async function learnedHash(scriptId: string): Promise<string | null> {
-  const db = await getDb();
-  const rows = await db.select<{ content_hash: string }[]>("SELECT content_hash FROM agent_learned WHERE script_id = $1", [scriptId]);
-  return rows[0]?.content_hash ?? null;
+  return getStorageAdapter().agent.learnedHash(scriptId);
 }
 
+/** Records the content hash only after the caller has completed a learning turn. */
 export async function markLearned(scriptId: string, hash: string): Promise<void> {
-  const db = await getDb();
-  await db.execute(
-    `INSERT INTO agent_learned (script_id, content_hash, learned_at) VALUES ($1, $2, $3)
-     ON CONFLICT(script_id) DO UPDATE SET content_hash = excluded.content_hash, learned_at = excluded.learned_at`,
-    [scriptId, hash, Date.now()],
-  );
+  return getStorageAdapter().agent.markLearned(scriptId, hash);
 }

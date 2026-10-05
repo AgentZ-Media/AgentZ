@@ -13,25 +13,26 @@ import type { Script } from "../../lib/types";
 import { Icon } from "@agentz/kit/ui";
 import { DialogFrame } from "@agentz/kit/ui";
 import { layoutPdfPreview } from "./pdfPreview";
+import { pdfPageLabel, pdfTitleDetails } from "../../lib/pdfDetails";
+import { library } from "../Shell/libraryData";
 import "./ExportDialog.css";
 
 type Format = "pdf" | "txt" | "scriptz";
 const FORMATS: Format[] = ["pdf", "txt", "scriptz"];
 
 /** Export dialog (⌘E). Parameterless: the script comes from
- *  `uiStore.exportScriptId()`. Left a live preview (first PDF page laid
+ *  `uiStore.exportScriptId()`. Left a live preview (every PDF page laid
  *  out like lib/exportPdf.ts, or the teleprompter text), right the three
  *  formats as cards and the options that belong to the chosen format. */
 export function ExportDialog() {
   const [script, setScript] = createSignal<Script | null>(null);
   const [format, setFormat] = createSignal<Format>("pdf");
   const [highlighting, setHighlighting] = createSignal(false);
-  const [titlePage, setTitlePage] = createSignal(false);
   const [exporting, setExporting] = createSignal(false);
 
   const open = () => uiStore.exportScriptId() !== null;
 
-  // Load the script fresh on every open; options reset like before.
+  // Load the script fresh on every open; PDF title pages follow the saved preference.
   createEffect(() => {
     const id = uiStore.exportScriptId();
     if (!id) return;
@@ -73,7 +74,6 @@ export function ExportDialog() {
   function reset(id: string) {
     setScript(null);
     setFormat("pdf");
-    setTitlePage(false);
     setExporting(false);
     setHighlighting(settingsStore.highlightingDefault());
     void load(id, true);
@@ -84,6 +84,18 @@ export function ExportDialog() {
     const s = script();
     return s ? extractBlocks(s.content_json) : [];
   });
+  // Folder, runtime and date for the title page - the same line goes
+  // into the preview and the exported PDF.
+  const titleDetails = createMemo(() => {
+    const s = script();
+    if (!s || !settingsStore.exportTitlePageDefault()) return null;
+    return pdfTitleDetails({
+      folder: library.folder(s.folder_id)?.name ?? null,
+      contentJson: s.content_json,
+      wpm: settingsStore.dialogWpm(),
+      date: new Date(),
+    });
+  });
   const pages = createMemo(() => {
     const s = script();
     if (!s) return [];
@@ -93,8 +105,10 @@ export function ExportDialog() {
       blocks: blocks(),
       characters: s.characters ?? [],
       includeHighlighting: highlighting(),
-      includeTitlePage: titlePage(),
+      includeTitlePage: settingsStore.exportTitlePageDefault(),
       castLine: names.length > 0 ? t("export.pdf.characters", { names: names.join(", ") }) : null,
+      titleDetails: titleDetails(),
+      pageLabel: pdfPageLabel,
     });
   });
   const teleprompter = createMemo(() => {
@@ -122,7 +136,7 @@ export function ExportDialog() {
       const fmt = format();
       const result =
         fmt === "pdf"
-          ? await api.exportPdf({ scriptId: id, includeHighlighting: highlighting(), includeTitlePage: titlePage() })
+          ? await api.exportPdf({ scriptId: id, includeHighlighting: highlighting(), includeTitlePage: settingsStore.exportTitlePageDefault(), titleDetails: titleDetails() })
           : fmt === "txt"
             ? await api.exportPlaintext({ scriptId: id })
             : await api.exportScriptz(id);
@@ -179,24 +193,34 @@ export function ExportDialog() {
         <div class="exp-prev" aria-hidden="true">
           <Switch>
             <Match when={format() === "pdf"}>
-              <div class="pdf-page" data-theme="light">
-                <For each={pages()[0]?.lines ?? []}>
-                  {(line) => (
-                    <div
-                      class="pdf-line"
-                      classList={{ b: line.bold, it: line.italic, c: line.align === "center" }}
-                      style={{
-                        "--x": String(line.xMm),
-                        "--w": String(line.widthMm),
-                        "--y": String(line.baselineMm),
-                      }}
-                    >
-                      <Show when={line.tint} fallback={line.text}>
-                        {(tint) => (
-                          <span class="pdf-tint" style={{ "--tc": tint() }}>
-                            {line.text}
-                          </span>
+              {/* Every page, exactly as the PDF breaks them. */}
+              <div class="pdf-pages">
+                <For each={pages()}>
+                  {(page) => (
+                    <div class="pdf-page" data-theme="light">
+                      <For each={page.lines}>
+                        {(line) => (
+                          <div
+                            class="pdf-line"
+                            classList={{ b: line.bold, it: line.italic, c: line.align === "center" }}
+                            style={{
+                              "--x": String(line.xMm),
+                              "--w": String(line.widthMm),
+                              "--y": String(line.baselineMm),
+                            }}
+                          >
+                            <Show when={line.tint} fallback={line.text}>
+                              {(tint) => (
+                                <span class="pdf-tint" style={{ "--tc": tint() }}>
+                                  {line.text}
+                                </span>
+                              )}
+                            </Show>
+                          </div>
                         )}
+                      </For>
+                      <Show when={page.footer}>
+                        <div class="pdf-foot">{page.footer}</div>
                       </Show>
                     </div>
                   )}
@@ -284,9 +308,9 @@ export function ExportDialog() {
                   type="button"
                   class="sw-t"
                   role="switch"
-                  aria-checked={titlePage()}
+                  aria-checked={settingsStore.exportTitlePageDefault()}
                   aria-label={t("exportDialog.opt.titlePage")}
-                  onClick={() => setTitlePage(!titlePage())}
+                  onClick={() => void settingsStore.setExportTitlePageDefault(!settingsStore.exportTitlePageDefault())}
                 />
               </div>
             </div>

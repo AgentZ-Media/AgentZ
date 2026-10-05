@@ -47,6 +47,7 @@ export const de = {
 
   // ---------- browser / file overview ----------
   "browser.import.title": "ScriptZ-Datei importieren",
+  "browser.fileType": "ScriptZ-Datei",
   "browser.trash": "Papierkorb",
   "browser.newScript": "Neues Skript",
   "browser.empty.search.title": "Nichts gefunden für „{query}\"",
@@ -193,6 +194,8 @@ export const de = {
   "export.toast.downloaded": "Datei heruntergeladen",
   "export.toast.failed": "Export fehlgeschlagen: {message}",
   "export.pdf.characters": "Charaktere: {names}",
+  "export.pdf.runtime": "Laufzeit {time}",
+  "export.pdf.page": "Seite {page} von {total}",
 
   // ---------- selection mode ----------
   "select.enter": "Auswählen",

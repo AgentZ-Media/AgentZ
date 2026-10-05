@@ -48,11 +48,50 @@ describe("independent module in the real Kit shell", () => {
     const page = render(() => <SuiteShell module={fixture} platform={fixturePlatform} kv={kv} />);
     await waitFor(() => expect(page.getByRole("heading", { name: "Ein eigenständiges Modul" })).toBeTruthy());
     expect(document.querySelector(".shell-reveal")).toBeNull();
+    const sidebar = page.getByRole("complementary");
+    const toggle = sidebar.querySelector("button")!;
+    toggle.focus();
     context!.shell.toggleSidebar();
-    await waitFor(() => expect(document.querySelector("aside.side")).toBeNull());
+    await waitFor(() => expect(page.queryByRole("complementary")).toBeNull());
+    expect(sidebar.inert).toBe(true);
+    expect(document.activeElement).not.toBe(toggle);
+    expect(sidebar.isConnected).toBe(true);
     fireEvent.click(document.querySelector(".shell-reveal")!);
-    await waitFor(() => expect(document.querySelector("aside.side")).toBeTruthy());
+    await waitFor(() => expect(page.getByRole("complementary")).toBe(sidebar));
+    expect(sidebar.inert).toBe(false);
     expect(document.querySelector(".shell-reveal")).toBeNull();
+    context!.shell.setFocused(true);
+    expect(page.queryByRole("complementary")).toBeNull();
+    expect(sidebar.inert).toBe(true);
+    expect(context!.shell.sidebarOpen()).toBe(true);
+    context!.shell.setFocused(false);
+    expect(page.getByRole("complementary")).toBe(sidebar);
+  });
+
+  it("marks a nightly build with a night sky, a badge and a chip while the sidebar is hidden", async () => {
+    const { kv } = createFixtureKv();
+    let context: ModuleContext | undefined;
+    const fixture = createFixtureModule({ onSetup: (value) => { context = value; } });
+    const nightly = { ...fixturePlatform, build: { channel: "nightly" as const, commit: "a".repeat(40) } };
+    const page = render(() => <SuiteShell module={fixture} platform={nightly} kv={kv} />);
+    await waitFor(() => expect(page.getByRole("heading", { name: "Ein eigenständiges Modul" })).toBeTruthy());
+    expect(document.documentElement.dataset.build).toBe("nightly");
+    expect(document.querySelector("aside.side .night-sky")).toBeTruthy();
+    expect(document.querySelector("aside.side .night-badge")?.textContent).toBe("Nightly");
+    expect(document.querySelector(".shell-night-chip")).toBeNull();
+    context!.shell.toggleSidebar();
+    await waitFor(() => expect(document.querySelector(".shell-night-chip")).toBeTruthy());
+    fireEvent.click(document.querySelector(".shell-night-chip")!);
+    await waitFor(() => expect(context!.shell.settingsSection()).toBe("about"));
+    expect(context!.shell.settingsOpen()).toBe(true);
+  });
+
+  it("renders nothing nightly for stable builds", async () => {
+    const { kv } = createFixtureKv();
+    const page = render(() => <SuiteShell module={createFixtureModule()} platform={fixturePlatform} kv={kv} />);
+    await waitFor(() => expect(page.getByRole("heading", { name: "Ein eigenständiges Modul" })).toBeTruthy());
+    expect(document.documentElement.dataset.build).toBeUndefined();
+    expect(document.querySelector(".night-sky, .night-badge, .shell-night-chip")).toBeNull();
   });
 
   it("dispatches module shortcuts, honors prevented/composing events and dialog context, and disposes", async () => {

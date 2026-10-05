@@ -1,4 +1,4 @@
-import { For, Show, createSignal, onCleanup, type JSX } from "solid-js";
+import { For, Show, createEffect, createSignal, onCleanup, type JSX } from "solid-js";
 import { navStore } from "../../stores/nav";
 import { openStore } from "../../stores/open";
 import { uiStore, type SidebarSection } from "../../stores/ui";
@@ -11,6 +11,7 @@ import { agentSettings } from "../../stores/agentSettings";
 import { agentUi } from "../../stores/agentUi";
 import { agentStore } from "../../stores/agent";
 import { Icon } from "@agentz/kit/ui";
+import { BumpNumber } from "../Common/motion";
 import { StageGlyph } from "../Common/StageGlyph";
 import { ContextMenu, type ContextMenuItem } from "../Library/ContextMenu";
 import { SCRIPT_DRAG_MIME } from "../Library/dnd";
@@ -57,6 +58,17 @@ export function Sidebar() {
   const [renamingId, setRenamingId] = createSignal<string | null>(null);
   const [dropTarget, setDropTarget] = createSignal<string | null>(null);
   const [menu, setMenu] = createSignal<{ x: number; y: number; items: ContextMenuItem[] } | null>(null);
+
+  createEffect(() => {
+    if (!uiStore.sidebarOpen() || uiStore.focusMode()) {
+      // The shell now keeps the sidebar mounted for its slide transition.
+      // Clear transient controls (including portalled menus); inline cleanup saves edits.
+      setCreatingFolder(false);
+      setRenamingId(null);
+      setDropTarget(null);
+      setMenu(null);
+    }
+  });
 
   const folderItems = (f: Folder): ContextMenuItem[] => [
     { label: t("folder.menu.rename"), icon: "pen", onClick: () => setRenamingId(f.id) },
@@ -136,6 +148,7 @@ export function Sidebar() {
           <Show when={!uiStore.isSectionCollapsed("pipeline")}>
             <NavItem
               on={route().kind === "ideas"}
+              navId="ideas"
               icon={<StageGlyph stage="idea" />}
               label={t("shell.nav.ideas")}
               count={library.openIdeas().length}
@@ -451,6 +464,8 @@ interface NavItemProps {
   icon: JSX.Element;
   label: string;
   count?: number;
+  /** `data-nav` hook for motion targets (an idea flies into "ideas"). */
+  navId?: string;
   onClick: () => void;
   onContextMenu?: (e: MouseEvent) => void;
   onDragOver?: (e: DragEvent) => void;
@@ -466,6 +481,7 @@ function NavItem(props: NavItemProps) {
       classList={{ "is-on": props.on, sub: !!props.sub, "is-drop": !!props.drop }}
       aria-current={props.on ? "page" : undefined}
       title={props.label}
+      data-nav={props.navId}
       onClick={() => props.onClick()}
       onContextMenu={(e) => props.onContextMenu?.(e)}
       onDragOver={(e) => props.onDragOver?.(e)}
@@ -475,7 +491,7 @@ function NavItem(props: NavItemProps) {
       {props.icon}
       <span class="lbl">{props.label}</span>
       <Show when={props.count !== undefined && props.count > 0}>
-        <span class="n">{props.count}</span>
+        <BumpNumber class="n" value={props.count ?? 0} />
       </Show>
     </button>
   );

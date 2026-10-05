@@ -62,6 +62,26 @@ describe("layoutPdfPreview", () => {
     expect(on[0].lines[2].tint).toBeNull();
   });
 
+  it("ends a speaker's tint at an action block, like the editor", () => {
+    const blocks = [block("character", "Timo"), block("dialog", "Fertig."), block("action", "Timo setzt sich."), block("dialog", "Klar.")];
+    const lines = layoutPdfPreview({ ...base, blocks, includeHighlighting: true })[0].lines;
+    expect(lines.map((l) => l.tint)).toEqual(["#2fa56b", "#2fa56b", null, null]);
+  });
+
+  it("numbers content pages but not the title page", () => {
+    const pages = layoutPdfPreview({
+      ...base,
+      blocks: [block("dialog", "Hallo.")],
+      includeTitlePage: true,
+      titleDetails: "Büro-Sketche · Laufzeit 0:05",
+      pageLabel: (page, total) => `${page}/${total}`,
+    });
+    expect(pages).toHaveLength(2);
+    expect(pages[0].footer).toBeNull();
+    expect(pages[0].lines.map((l) => l.text)).toContain("Büro-Sketche · Laufzeit 0:05");
+    expect(pages[1].footer).toBe("1/1");
+  });
+
   it("lays out a parenthetical like the PDF: italic, indented further than dialog, tinted", () => {
     const blocks = [
       block("character", "Timo"),

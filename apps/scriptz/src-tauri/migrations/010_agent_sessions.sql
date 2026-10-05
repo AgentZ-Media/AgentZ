@@ -1,6 +1,7 @@
--- v9: Agent-Modus - Sitzungen ohne Skript und Herkunft von Ideen.
+-- v10: Agent-Modus - Sitzungen ohne Skript und Herkunft von Ideen.
 --
--- Rein additiv, bestehende Zeilen behalten ihre Bedeutung.
+-- Rein additiv, bestehende Zeilen behalten ihre Bedeutung. Die Erfassung
+-- der neuen Spalten im lokalen Änderungsfeed (009) ergänzt 011.
 --
 -- 1. agent_chats.kind: 'script' (Chat im Skript-Panel, Standard für alle
 --    bestehenden Zeilen) oder 'session' (im Agent-Modus begonnen). Eine

@@ -1,41 +1,64 @@
 import { createSignal } from "solid-js";
-import { check, type Update } from "@tauri-apps/plugin-updater";
+import { invoke } from "@tauri-apps/api/core";
+import { Update } from "@tauri-apps/plugin-updater";
 import { baseSettingsStore, pushToast } from "@agentz/kit/stores";
-import type { ManualCheckState, UpdatesStore, UpdateStage } from "@agentz/kit/platform";
+import { isNightlyVersion } from "@agentz/kit/platform";
+import type { ManualCheckState, UpdateChannel, UpdatesStore, UpdateStage } from "@agentz/kit/platform";
 import { flushAll, type FlushResult } from "@agentz/kit/lib";
 import { t } from "@agentz/kit/i18n";
 
 const HOUR_MS = 60 * 60 * 1000;
 const STARTUP_DELAY_MS = 30_000;
 
-type DesktopUpdate = Pick<Update, "version" | "download" | "install" | "close">;
+type DesktopUpdate = Pick<Update, "version" | "currentVersion" | "download" | "install" | "close">;
+type UpdateMetadata = ConstructorParameters<typeof Update>[0];
 export interface DesktopUpdatesOptions {
   /** Freeze user input before flushing; the returned function restores it. */
   lockEditing(): () => void;
   /** Native restart. Only called while editing is locked after a successful flush. */
   restart(): Promise<void>;
+  /** Consistent copy of the app database. Runs after a successful flush and
+   *  before a nightly update replaces the app (or a nightly build is replaced). */
+  backupDatabase(label: string): Promise<void>;
 }
 
 interface UpdateDependencies {
-  check(): Promise<DesktopUpdate | null>;
+  check(channel: UpdateChannel): Promise<DesktopUpdate | null>;
   flush(timeoutMs: number): Promise<FlushResult>;
   notifySaveFailure(): void;
   notifyUpdateFailure(): void;
+  notifyBackupFailure(): void;
   isDevelopment: boolean;
   updateCheckEnabled(): boolean;
   hourlyUpdateCheck(): boolean;
+  updateChannel(): UpdateChannel;
+}
+
+/** The native check knows both channel endpoints. On the nightly channel it
+ * also considers the stable manifest, so a newer stable release always wins. */
+async function checkChannel(channel: UpdateChannel): Promise<DesktopUpdate | null> {
+  const metadata = await invoke<UpdateMetadata | null>("plugin:agentz-desktop|update_check", { channel });
+  return metadata ? new Update(metadata) : null;
+}
+
+/** Nightly builds share the stable database. Every switch into, within or out
+ * of nightly builds gets a restorable copy first. */
+export function updateNeedsBackup(update: Pick<DesktopUpdate, "version" | "currentVersion">): boolean {
+  return isNightlyVersion(update.version) || isNightlyVersion(update.currentVersion);
 }
 
 /** One updater per desktop boot. Importing this file starts no work. */
 export function createDesktopUpdates(options: DesktopUpdatesOptions, overrides: Partial<UpdateDependencies> = {}) {
   const deps: UpdateDependencies = {
-    check,
+    check: checkChannel,
     flush: flushAll,
     notifySaveFailure: () => pushToast(t("persistence.saveFailed"), "error"),
     notifyUpdateFailure: () => pushToast(t("shell.update.error"), "error"),
+    notifyBackupFailure: () => pushToast(t("shell.update.backupFailed"), "error"),
     isDevelopment: import.meta.env.DEV,
     updateCheckEnabled: baseSettingsStore.updateCheckEnabled,
     hourlyUpdateCheck: baseSettingsStore.hourlyUpdateCheck,
+    updateChannel: baseSettingsStore.updateChannel,
     ...overrides,
   };
   const [stage, setStage] = createSignal<UpdateStage>("idle");
@@ -61,12 +84,16 @@ export function createDesktopUpdates(options: DesktopUpdatesOptions, overrides: 
     if (disposed || checking || applying || installed) return;
     if (!manual && !deps.updateCheckEnabled()) return;
     const epoch = pollingEpoch;
+    const channel = deps.updateChannel();
     checking = true;
     if (manual) setManualCheck({ kind: "checking" });
     try {
-      const update = await deps.check();
-      if (disposed || (!manual && (epoch !== pollingEpoch || !deps.updateCheckEnabled()))) {
+      const update = await deps.check(channel);
+      // A result for a channel the user just left is never offered.
+      if (disposed || channel !== deps.updateChannel()
+        || (!manual && (epoch !== pollingEpoch || !deps.updateCheckEnabled()))) {
         close(update);
+        if (!disposed && manual) setManualCheck(null);
         return;
       }
       close(available());
@@ -115,6 +142,20 @@ export function createDesktopUpdates(options: DesktopUpdatesOptions, overrides: 
         deps.notifySaveFailure();
         release();
         return;
+      }
+      if (!installed && updateNeedsBackup(update)) {
+        try {
+          await options.backupDatabase(`before-${update.version}`);
+        } catch (error) {
+          console.warn("[desktop] database backup before update failed", error);
+          if (disposed) return;
+          // Keep the download: a retry saves and backs up again, then installs.
+          setStage("error");
+          deps.notifyBackupFailure();
+          release();
+          return;
+        }
+        if (disposed) return;
       }
       if (!installed) {
         // Windows can exit inside install(). The successful flush MUST precede

@@ -50,15 +50,32 @@ describe("openStore", () => {
     expect(openStore.ids()).toEqual([]);
   });
 
-  it("adds at the end, keeps the place of open scripts and drops dead ones", async () => {
-    await start({ "nav.open": '{"ids":["a"]}' });
+  it("adds at the top, keeps the place of open scripts and drops dead ones", async () => {
+    const kv = await start({ "nav.open": '{"ids":["a"]}' });
     await openStore.load(() => []);
     openStore.add("b");
     openStore.add("a");
     openStore.add("c");
-    expect(openStore.ids()).toEqual(["a", "b", "c"]);
+    expect(openStore.ids()).toEqual(["c", "b", "a"]);
     openStore.reconcile(new Set(["a", "c"]));
-    expect(openStore.ids()).toEqual(["a", "c"]);
+    expect(openStore.ids()).toEqual(["c", "a"]);
+    await flushAll();
+    stop?.();
+    stop = startOpenStore(kv);
+    await openStore.load(() => []);
+    expect(openStore.ids()).toEqual(["c", "a"]);
+  });
+
+  it("keeps the 50 newest open scripts when the list reaches its cap", async () => {
+    await start();
+    for (let i = 0; i < 51; i++) openStore.add(`script-${i}`);
+    expect(openStore.ids()).toEqual(Array.from({ length: 50 }, (_, i) => `script-${50 - i}`));
+    openStore.add("script-25");
+    expect(openStore.ids()).toEqual(Array.from({ length: 50 }, (_, i) => `script-${50 - i}`));
+    openStore.remove("script-25");
+    openStore.add("script-25");
+    expect(openStore.ids()[0]).toBe("script-25");
+    expect(openStore.ids()).toHaveLength(50);
   });
 
   it("closes a script that reaches the last stage unless it is on screen", async () => {
@@ -82,7 +99,7 @@ describe("openStore", () => {
     expect(openStore.ids()).toEqual(["a"]);
     openStore.add("b");
     openStore.syncStatuses(scripts({ a: "online", b: "online" }), "online", null, false);
-    expect(openStore.ids()).toEqual(["a", "b"]);
+    expect(openStore.ids()).toEqual(["b", "a"]);
   });
 
   it("brings an automatically closed script back when the change is undone", async () => {
@@ -103,5 +120,22 @@ describe("openStore", () => {
     openStore.syncStatuses(scripts({ a: "writing" }), "online", "a", true);
     openStore.leave("a");
     expect(openStore.ids()).toEqual(["a"]);
+  });
+
+  it("keeps the cap when undo reopens a script after another one was added", async () => {
+    const kv = await start();
+    const initial = Array.from({ length: 50 }, (_, i) => `script-${49 - i}`);
+    for (const id of [...initial].reverse()) openStore.add(id);
+    const entries = Object.fromEntries(initial.map((id) => [id, "writing"]));
+    openStore.syncStatuses(scripts(entries), "online", null, true);
+    openStore.syncStatuses(scripts({ ...entries, "script-49": "online" }), "online", null, true);
+    openStore.add("new-script");
+    openStore.syncStatuses(scripts(entries), "online", null, true);
+
+    const expected = ["script-49", "new-script", ...initial.slice(1, -1)];
+    expect(openStore.ids()).toEqual(expected);
+    expect(openStore.ids()).toHaveLength(50);
+    await flushAll();
+    expect(JSON.parse(kv.state.get("nav.open")!)).toEqual({ ids: expected });
   });
 });

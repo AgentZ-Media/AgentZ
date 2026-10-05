@@ -10,9 +10,12 @@ Architektur und Datenfluss: [`scriptz-architecture.md`](../../.claude/rules/scri
 ## Daten schützen
 
 Identifier `de.agent-z.scriptz`, `scriptz.db`, die Migrationen `001` bis
-`008` sowie alle Settings- und `app_state`-Schlüssel sind fix. Neue
+`011` sowie alle Settings- und `app_state`-Schlüssel sind fix. Neue
 Schemaänderungen nur als neue Migration in `src-tauri/migrations/`, registriert
-in `src-tauri/src/lib.rs`, und im `.scriptz`-Import/Export mitdenken.
+in `src-tauri/src/lib.rs`, und im `.scriptz`-Import/Export mitdenken. Neue
+Spalten einer Inhaltstabelle brauchen außerdem neu angelegte Update-Trigger
+des Änderungsfeeds und einen Eintrag in `CONTENT_ENTITIES`
+([`local-storage.md`](../../docs/local-storage.md)).
 
 `pnpm dev:scriptz` nutzt dieselbe Datenbank wie die installierte App. Vor
 Arbeit an Speicher, Migrationen oder Boot sichern (App vorher beenden):
@@ -55,8 +58,13 @@ Kein `cp` der laufenden DB (WAL). Wiederherstellen bei beendeter App:
   Agent schlägt vor, schreibt nie direkt ins Skript, und Lernen bleibt
   freiwillig. Details: Abschnitt „Agent" in `scriptz-architecture.md`.
 - Netzwerkanfragen: der Updater
-  (`releases/download/scriptz-latest/latest.json`) und, nur wenn der Agent
-  eingeschaltet ist, der lokale Codex-Prozess. Keine Telemetrie.
+  (`releases/download/scriptz-latest/latest.json`, mit Nightly-Kanal zusätzlich
+  `scriptz-nightly/latest.json`) und, nur wenn der Agent eingeschaltet ist, der
+  lokale Codex-Prozess. Keine Telemetrie.
+- **Nightly-Sicherungen** liegen unter
+  `~/Library/Application Support/de.agent-z.scriptz/backups/` (Windows:
+  `%APPDATA%\de.agent-z.scriptz\backups\`), die letzten fünf bleiben.
+  Wiederherstellen wie unten bei beendeter App.
 
 ## Nicht wieder einführen
 

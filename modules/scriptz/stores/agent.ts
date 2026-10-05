@@ -3,9 +3,10 @@ import { createStore, produce, reconcile, type SetStoreFunction } from "solid-js
 import { language } from "@agentz/kit/i18n";
 import { registerFlusher } from "@agentz/kit/lib";
 import { api } from "../lib/api";
-import { finalStageId } from "../lib/stages";
+import { scriptStages } from "../lib/stages";
 import type { Folder } from "../lib/types";
 import { CodexProvider, effortOrDefault, type CodexHostLike } from "../lib/agent/codex/provider";
+import { learnStageIds } from "../lib/agent/learnStage";
 import { draftStates, getChat, latestChat, learnedHash, listSessions, markLearned, saveChat, deleteChat, type ChatItem, type ChatKind, type ChatRecord, type SavedIdeaRef, type SessionSummary } from "../lib/agent/chats";
 import { listMemory, selectRelevantMemory, deleteMemory, restoreMemory, updateMemory } from "../lib/agent/memory";
 import { buildInstructions, contextBlock, LEARN_RULES, memoryBlock, personaBlock, type InstructionMode } from "../lib/agent/prompt";
@@ -168,8 +169,10 @@ export interface ChatSession {
   items: ChatItem[];
   running: Accessor<boolean>;
   ready: Accessor<boolean>;
-  /** `hint`: context for the model only (e.g. an idea id), not shown. */
-  send(text: string, quote?: ChatQuote, hint?: string): Promise<void>;
+  /** `options.instruction` goes to the model instead of `text`; the chat
+   *  shows `text` (a job's short label). `options.hint` is context for the
+   *  model only (e.g. an idea id), never shown. */
+  send(text: string, quote?: ChatQuote, options?: SendOptions): Promise<void>;
   stop(): Promise<void>;
   /** "New chat": ends the thread and stores an empty chat, so the old
    *  conversation does not come back after a restart. */
@@ -201,6 +204,15 @@ export interface ChatSession {
   /** Stops for good before the chat row is deleted: no turn, timer or
    *  pending write may store it again. */
   discard(): Promise<void>;
+}
+
+export interface SendOptions {
+  /** Sent to the model instead of the visible text (fixed jobs). */
+  instruction?: string;
+  /** Job id stored on the user item (lib/agent/jobs.ts). */
+  job?: string;
+  /** Context for the model only, never shown. */
+  hint?: string;
 }
 
 export interface ChatQuote {
@@ -451,7 +463,7 @@ function createChat(source: ChatSource): ChatSession {
     get items() { return state.items; },
     running,
     ready,
-    async send(text, quote, hint) {
+    async send(text, quote, options) {
       const clean = text.trim();
       if (!clean || running()) return;
       setRunning(true);
@@ -464,7 +476,7 @@ function createChat(source: ChatSource): ChatSession {
       if (kind() === "session" && !title()) setTitle(sessionTitleFrom(clean));
       // Quick replies belong to the turn before; answering ends them.
       setState("items", (items) => items.filter((item) => item.kind !== "replies"));
-      push({ kind: "user", id: localId("user"), text: clean, quote: quote?.text });
+      push({ kind: "user", id: localId("user"), text: clean, quote: quote?.text, ...(options?.job ? { job: options.job } : {}) });
       persist();
       try {
         const list = await ensureModels();
@@ -473,13 +485,13 @@ function createChat(source: ChatSource): ChatSession {
         const model = resolveModel(list, agentSettings.model());
         const active = await ensureThread();
         if (!live() || discarded) return;
-        let input = clean;
+        let input = options?.instruction?.trim() || clean;
         if (quote) {
           input = quote.draft !== undefined
-            ? `Selected passage of the draft "${quote.draft}":\n"""${quote.text}"""\n\n${clean}`
-            : `Selected passage (blocks ${quote.from}-${quote.to} of the current script):\n"""${quote.text}"""\n\n${clean}`;
+            ? `Selected passage of the draft "${quote.draft}":\n"""${quote.text}"""\n\n${input}`
+            : `Selected passage (blocks ${quote.from}-${quote.to} of the current script):\n"""${quote.text}"""\n\n${input}`;
         }
-        if (hint) input = `${input}\n\n(${hint})`;
+        if (options?.hint) input = `${input}\n\n(${options.hint})`;
         if (modeNow() === "session") input = `${await sessionPreamble()}\n\n${input}`;
         const result = await active.run(input, {
           model: model?.id ?? "",
@@ -810,7 +822,8 @@ function finishStreaming(setState: SetStoreFunction<{ items: ChatItem[] }>): voi
 
 // ---------------------------------------------------------------------------
 // Learning (always optional for the agent; it may store nothing)
-//  - after a script reaches the last stage (background, sequential)
+//  - after a script reaches the learn stage, by default the last one
+//    (background, sequential)
 //  - once over all existing scripts (onboarding / settings, with progress)
 // ---------------------------------------------------------------------------
 
@@ -843,6 +856,12 @@ const BATCH_SIZE = 4;
 /** Quiet time after the last edit before a finished script is learned. */
 const SETTLE_MS = 90_000;
 
+/** Stages whose scripts count as finished for learning: the configured
+ *  learn stage and every later one. */
+function finishedStageIds(): string[] {
+  return learnStageIds(agentSettings.learnStage(), scriptStages());
+}
+
 function scheduleLearning(delayMs = 6000): void {
   if (learnTimer) clearTimeout(learnTimer);
   learnTimer = setTimeout(() => { learnTimer = null; void runLearning(); }, delayMs);
@@ -870,8 +889,10 @@ async function runLearning(): Promise<void> {
   const generation = learnGeneration;
   try {
     const now = Date.now();
-    const finished = (await api.listScripts({ status: finalStageId(), sort: "updated", limit: 500 }))
-      .filter((s) => Math.max(s.status_changed_at ?? 0, s.updated_at) > since);
+    const lists = await Promise.all(finishedStageIds().map((status) => api.listScripts({ status, sort: "updated", limit: 500 })));
+    const finished = lists.flat()
+      .filter((s) => Math.max(s.status_changed_at ?? 0, s.updated_at) > since)
+      .sort((a, b) => b.updated_at - a.updated_at);
     // A finished script that is still being edited is learned once it has
     // been quiet for a while, not after every keystroke.
     const settling = finished.filter((s) => s.updated_at > now - SETTLE_MS);
@@ -968,9 +989,9 @@ async function startBootstrap(): Promise<void> {
     if (status().state !== "ready") await refreshStatus();
     if (status().state !== "ready") throw new Error("agent not ready");
     const summaries = await api.listScripts({ sort: "updated", limit: 2000 });
-    const final = finalStageId();
+    const finished = new Set(finishedStageIds());
     // Finished scripts first: they show the writer's intended result.
-    summaries.sort((a, b) => Number(b.status === final) - Number(a.status === final));
+    summaries.sort((a, b) => Number(finished.has(b.status)) - Number(finished.has(a.status)));
     const targets: LearnTarget[] = [];
     for (const summary of summaries) {
       if (generation !== bootstrapGeneration) return;
@@ -1181,8 +1202,11 @@ export function startAgentRuntime(services: Readonly<Record<string, unknown>>): 
   // Any script change (stage, content, import) may finish a script.
   const disposeWatch = createRoot((dispose) => {
     createEffect(on(scriptsBus.version, () => scheduleLearning(), { defer: true }));
-    createEffect(on(() => agentSettings.enabled() && agentSettings.onboarded() && agentSettings.learnFromScripts(), (on) => {
-      if (on) scheduleLearning(3000);
+    // Switching learning on or moving the learn stage may make scripts due.
+    createEffect(on(() => (agentSettings.enabled() && agentSettings.onboarded() && agentSettings.learnFromScripts()
+      ? finishedStageIds().join(",")
+      : ""), (key) => {
+      if (key) scheduleLearning(3000);
     }));
     createEffect(on(agentSettings.enabled, (enabled) => {
       if (!enabled) shutdownProvider();

@@ -36,7 +36,7 @@ export function SettingsDialog(props: SettingsDialogProps) {
       ...product,
       { id: "shortcuts", icon: "keyboard", label: () => t("prefs.shortcuts.title"), component: () => <><SettingsShortcuts onClose={close} shortcuts={props.shortcuts} />{extensions("shortcuts")}</> },
     ];
-    if (updates()) sections.push({ id: "updates", icon: "refresh", sep: true, label: () => t("prefs.updates.title"), component: () => <><SettingsUpdates updates={updates()!} releasesUrl={props.module.about.releasesUrl} onClose={close} />{extensions("updates")}</> });
+    if (updates()) sections.push({ id: "updates", icon: "refresh", sep: true, label: () => t("prefs.updates.title"), component: () => <><SettingsUpdates updates={updates()!} appName={props.module.name} releasesUrl={props.module.about.releasesUrl} nightlyReleasesUrl={props.module.about.nightlyReleasesUrl} onClose={close} />{extensions("updates")}</> });
     sections.push({ id: "about", icon: "info", sep: true, label: () => t("prefs.about.heading", { appName: props.module.name }), component: () => <><SettingsAbout module={props.module} onClose={close} onShowOnboarding={props.hasOnboarding ? () => { close(); props.shell.openOnboarding(); } : undefined} />{extensions("about")}</> });
     return sections;
   });

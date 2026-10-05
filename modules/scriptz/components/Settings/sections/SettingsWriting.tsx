@@ -128,11 +128,25 @@ export function SettingsWriting(props: { onClose(): void }) {
           label={t("prefs.highlighting.label")}
         />
       </Row>
+      <Row label={t("prefs.exportTitlePage.label")} help={t("prefs.exportTitlePage.help")}>
+        <Switch
+          checked={settingsStore.exportTitlePageDefault()}
+          onChange={(v) => void settingsStore.setExportTitlePageDefault(v)}
+          label={t("prefs.exportTitlePage.label")}
+        />
+      </Row>
       <Row label={t("prefs.focus.label")} help={t("prefs.focus.help", { key: K("Mod+Shift+F") })}>
         <Switch
           checked={settingsStore.focusModeDefault()}
           onChange={(v) => void settingsStore.setFocusModeDefault(v)}
           label={t("prefs.focus.label")}
+        />
+      </Row>
+      <Row label={t("prefs.typewriter.label")} help={t("prefs.typewriter.help")}>
+        <Switch
+          checked={settingsStore.focusTypewriter()}
+          onChange={(v) => void settingsStore.setFocusTypewriter(v)}
+          label={t("prefs.typewriter.label")}
         />
       </Row>
       <Row label={t("prefs.counter.label")} help={t("prefs.counter.help")}>

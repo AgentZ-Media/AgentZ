@@ -2,6 +2,7 @@ import { For, Show, createEffect, createMemo, createSignal, onCleanup } from "so
 import { Icon } from "@agentz/kit/ui";
 import { api } from "../../lib/api";
 import { formatClock, formatRange, lengthStatus, type LengthRange } from "../../lib/lengthGoal";
+import { createTween } from "../Common/motion";
 import { scriptStages, stageIndex } from "../../lib/stages";
 import type { ScriptCharacter, ScriptStatus } from "../../lib/types";
 import { K } from "@agentz/kit/platform";
@@ -44,6 +45,8 @@ export function Inspector(props: InspectorProps) {
   };
 
   const len = () => lengthStatus(props.stats.runtimeSec, props.range);
+  // The number counts to its new value instead of jumping.
+  const shownSec = createTween(() => props.stats.runtimeSec);
   const rangeText = () => formatRange(props.range);
 
   const colorOf = (name: string): string =>
@@ -111,7 +114,7 @@ export function Inspector(props: InspectorProps) {
       <section class="ss-sec">
         <div class="ss-sec-h">{t("script.insp.length")}</div>
         <div class="ss-len">
-          <b classList={{ over: len().state === "over" }}>{formatClock(props.stats.runtimeSec)}</b>
+          <b classList={{ over: len().state === "over" }}>{formatClock(shownSec())}</b>
           <Show when={rangeText()}>
             <span>/ {rangeText()}</span>
           </Show>

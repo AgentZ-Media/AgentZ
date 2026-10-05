@@ -84,6 +84,7 @@ export const shellDe = {
 
   // ---------- toasts ----------
   "shell.toast.stageSet": "Auf „{stage}“ gesetzt",
+  "shell.toast.undo": "Rückgängig",
   "shell.toast.archivedMany_one": "{count} Skript in den Papierkorb verschoben",
   "shell.toast.archivedMany_other": "{count} Skripte in den Papierkorb verschoben",
 
@@ -92,6 +93,8 @@ export const shellDe = {
   "shell.palette.group.scripts": "Skripte",
   "shell.palette.group.ideas": "Ideen",
   "shell.cmd.newIdea": "Neue Idee",
+  "shell.cmd.activity": "Schreib-Aktivität anzeigen",
+  "shell.cmd.activityKeywords": "Statistik Wörter Heatmap Zähler",
   "shell.cmd.openIdeas": "Ideen öffnen",
   "shell.cmd.openInbox": "Inbox öffnen",
   "shell.cmd.export": "Exportieren",
@@ -185,6 +188,7 @@ export const shellEn: Record<keyof typeof shellDe, string> = {
 
   // ---------- toasts ----------
   "shell.toast.stageSet": "Set to \"{stage}\"",
+  "shell.toast.undo": "Undo",
   "shell.toast.archivedMany_one": "{count} script moved to the trash",
   "shell.toast.archivedMany_other": "{count} scripts moved to the trash",
 
@@ -193,6 +197,8 @@ export const shellEn: Record<keyof typeof shellDe, string> = {
   "shell.palette.group.scripts": "Scripts",
   "shell.palette.group.ideas": "Ideas",
   "shell.cmd.newIdea": "New idea",
+  "shell.cmd.activity": "Show writing activity",
+  "shell.cmd.activityKeywords": "statistics words heatmap counter",
   "shell.cmd.openIdeas": "Open ideas",
   "shell.cmd.openInbox": "Open inbox",
   "shell.cmd.export": "Export",

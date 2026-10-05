@@ -3,6 +3,14 @@ import {
   listCharacterColors as ccList,
   setCharacterColor as ccSet,
 } from "./characterColors";
+import { sqlAgentStorage } from "./agent/sqlStorage";
+import { sqlLocalChanges } from "./localChanges/sql";
+
+// Public host contract (package export @agentz/scriptz/storage).
+export { getStorageAdapter, setStorageAdapter } from "./storage";
+export type { ScriptzStorage } from "./storage";
+export type { AgentStorage } from "./agent/storage";
+export type { LocalChange, LocalChangePage, LocalChangeStore } from "./localChanges/types";
 import {
   findUnusedCharacterNames as cuFindUnused,
   pruneUnusedCharacterNames as cuPruneUnused,
@@ -37,6 +45,7 @@ import {
   createIdea as ideasCreate,
   markIdeaUsed as ideasMarkUsed,
   deleteIdea as ideasDelete,
+  restoreIdea as ideasRestore,
   listIdeas as ideasList,
   moveIdea as ideasMove,
   updateIdea as ideasUpdate,
@@ -91,6 +100,8 @@ import type {
 // Registered explicitly by the host; the `api` proxy reads the active
 // adapter on every call, so hosts can replace storage without changing callers.
 const sqlBackedAdapter: ScriptzStorage = {
+  agent: sqlAgentStorage,
+  localChanges: sqlLocalChanges,
   // Scripts
   async createScript(input: {
     title?: string;
@@ -250,6 +261,8 @@ const sqlBackedAdapter: ScriptzStorage = {
     scriptId: string;
     includeHighlighting: boolean;
     includeTitlePage: boolean;
+    /** Detail line of the title page (lib/pdfDetails.ts). */
+    titleDetails?: string | null;
   }): Promise<ExportResult> {
     const s = await scriptsGet(input.scriptId);
     // pdf-lib + fontkit are a ~1 MB bundle - lazy-load so the
@@ -265,6 +278,7 @@ const sqlBackedAdapter: ScriptzStorage = {
       {
         includeHighlighting: input.includeHighlighting,
         includeTitlePage: input.includeTitlePage,
+        titleDetails: input.titleDetails ?? null,
       },
     );
     return getPlatformAdapter().saveAs(
@@ -308,7 +322,7 @@ const sqlBackedAdapter: ScriptzStorage = {
       {
         suggestedName: defaultScriptzFilename(s.title),
         mimeType: SCRIPTZ_MIME,
-        filters: [{ name: "ScriptZ-Datei", extensions: [SCRIPTZ_EXTENSION] }],
+        filters: [{ name: t("browser.fileType"), extensions: [SCRIPTZ_EXTENSION] }],
       },
       bytes,
     );
@@ -352,6 +366,9 @@ const sqlBackedAdapter: ScriptzStorage = {
   },
   async deleteIdea(id: string): Promise<void> {
     return ideasDelete(id);
+  },
+  async restoreIdea(idea: Idea): Promise<void> {
+    return ideasRestore(idea);
   },
   async moveIdea(ideaId: string, folderId: string | null): Promise<void> {
     return ideasMove(ideaId, folderId);

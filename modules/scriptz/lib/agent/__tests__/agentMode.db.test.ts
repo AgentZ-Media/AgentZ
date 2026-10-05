@@ -1,5 +1,5 @@
 // Agent mode against a real SQLite database with the real migrations
-// 001-009: existing chats keep their meaning, sessions survive the deletion
+// 001-011: existing chats keep their meaning, sessions survive the deletion
 // of the script they were handed to, ideas are marked used once, and the
 // store keeps exactly one live object per chat row.
 
@@ -58,13 +58,14 @@ function session(id: string, scriptId: string | null, text = "Hallo"): ChatRecor
   };
 }
 
-describe("migration 009", () => {
+describe("migration 010", () => {
   it("keeps chats from 008 as script chats", async () => {
-    const db = openDatabase(8);
+    const db = openDatabase(9);
     const now = Date.now();
     db.exec(`INSERT INTO scripts (id, title, content_json, characters_meta, created_at, updated_at) VALUES ('s1', 'Alt', '{}', '[]', ${now}, ${now})`);
     db.exec(`INSERT INTO agent_chats (id, script_id, provider, items_json, created_at, updated_at) VALUES ('c1', 's1', 'codex', '[{"kind":"user","id":"u","text":"hi"}]', ${now}, ${now})`);
-    db.exec(readFileSync(join(MIGRATIONS, "009_agent_sessions.sql"), "utf8"));
+    db.exec(readFileSync(join(MIGRATIONS, "010_agent_sessions.sql"), "utf8"));
+    db.exec(readFileSync(join(MIGRATIONS, "011_track_agent_sessions.sql"), "utf8"));
     useDatabase(db);
     const chat = await latestChat("s1");
     expect(chat).toMatchObject({ id: "c1", kind: "script", scriptId: "s1", title: null, folderId: null });

@@ -13,10 +13,14 @@ import {
 } from "../lib/stages";
 
 const [highlightingDefault, setHighlightingDefault] = createSignal<boolean>(false);
+const [exportTitlePageDefault, setExportTitlePageDefault] = createSignal<boolean>(true);
 // Open scripts in focus mode. Default false for fresh installs since the
 // Werkbank redesign (head bar + inspector are the normal writing view);
 // a value stored by an existing install still wins (see load()).
 const [focusModeDefault, setFocusModeDefault] = createSignal<boolean>(false);
+// Typewriter in focus mode: the caret line stays in the middle of the
+// screen and the other lines step back. Default off.
+const [focusTypewriter, setFocusTypewriter] = createSignal<boolean>(false);
 // Auto-flip quick mode on whenever a script has exactly two characters.
 // Per-script manual toggle still wins — once the writer overrides it on a
 // script, that decision sticks across character-count changes.
@@ -97,12 +101,21 @@ export const settingsStore = {
     setHighlightingDefault(v);
     await persistSetting("highlighting_default", v ? "1" : "0");
   },
-
+  exportTitlePageDefault,
+  setExportTitlePageDefault: async (v: boolean) => {
+    setExportTitlePageDefault(v);
+    await persistSetting("export_title_page_default", v ? "1" : "0");
+  },
 
   focusModeDefault,
   setFocusModeDefault: async (v: boolean) => {
     setFocusModeDefault(v);
     await persistSetting("focus_mode_default", v ? "1" : "0");
+  },
+  focusTypewriter,
+  setFocusTypewriter: async (v: boolean) => {
+    setFocusTypewriter(v);
+    await persistSetting("focus_typewriter", v ? "1" : "0");
   },
   quickModeAutoEnable,
   setQuickModeAutoEnable: async (v: boolean) => {
@@ -173,8 +186,9 @@ export const settingsStore = {
   async load() {
     const generation = runtimeGeneration;
     const kv = settingsKv ?? getKvStore();
-    const [hd, qmae, wpm, fmd, sws, dp, lmin, lmax, puc, stages, oip, cfs] = await Promise.all([
+    const [hd, etpd, qmae, wpm, fmd, sws, dp, lmin, lmax, puc, stages, oip, cfs, ftw] = await Promise.all([
       kv.getSetting("highlighting_default"),
+      kv.getSetting("export_title_page_default"),
       kv.getSetting("quick_mode_auto_enable"),
       kv.getSetting("dialog_wpm"),
       kv.getSetting("focus_mode_default"),
@@ -186,11 +200,14 @@ export const settingsStore = {
       kv.getSetting(STAGES_SETTING_KEY),
       kv.getSetting("open_scripts_in_panel"),
       kv.getSetting("close_finished_scripts"),
+      kv.getSetting("focus_typewriter"),
     ]);
     if (generation !== runtimeGeneration) return;
     setHighlightingDefault(hd === null ? false : hd === "1");
+    setExportTitlePageDefault(etpd === null ? true : etpd === "1");
     setQuickModeAutoEnable(qmae === null ? false : qmae === "1");
     setFocusModeDefault(fmd === null ? false : fmd === "1");
+    setFocusTypewriter(ftw === "1");
     setShowWritingStats(sws === null ? true : sws === "1");
     setDarkPaper(dp === null ? false : dp === "1");
     setPruneUnusedCharacters(puc === null ? false : puc === "1");

@@ -2,6 +2,8 @@ import { uiStore } from "../../stores/ui";
 import { For, Show, createSignal, onCleanup, createEffect } from "solid-js";
 import { Icon } from "@agentz/kit/ui";
 import { StageGlyph } from "../Common/StageGlyph";
+import { library } from "../Shell/libraryData";
+import "../Common/motion.css";
 import { scriptStages, stageIndex } from "../../lib/stages";
 import type { ScriptStatus } from "../../lib/types";
 import { K } from "@agentz/kit/platform";
@@ -122,7 +124,7 @@ export function StageChip(props: StageChipProps) {
         onMouseDown={(e) => e.preventDefault()}
         onClick={toggle}
       >
-        <StageGlyph stage={props.status} />
+        <StageGlyph stage={props.status} class={library.justFinished(props.scriptId) ? "is-finishing" : undefined} />
         {stageLabel(props.status)}
         <Icon name="down" size={12} />
       </button>

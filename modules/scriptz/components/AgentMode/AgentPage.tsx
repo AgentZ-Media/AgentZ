@@ -12,6 +12,7 @@ import { agentSettings } from "../../stores/agentSettings";
 import { agentUi } from "../../stores/agentUi";
 import { ideasStore } from "../../stores/ideas";
 import { navStore } from "../../stores/nav";
+import { settingsStore } from "../../stores/settings";
 import { uiStore } from "../../stores/ui";
 import { AgentAvatar } from "../Agent/AgentAvatar";
 import type { ItemContext } from "../Agent/ChatItems";
@@ -212,7 +213,7 @@ function SessionView(props: { chatId: string }) {
     if (!clean || running()) return;
     setText("");
     setQuote(null);
-    await session().send(clean, q ?? undefined, hint);
+    await session().send(clean, q ?? undefined, hint ? { hint } : undefined);
   };
 
   // Requests from outside (ideas page, palette, start presets).
@@ -261,6 +262,11 @@ function SessionView(props: { chatId: string }) {
       agentUi.setDraftPanelClosed(props.chatId, false);
     },
     send: (value) => void send(value, null),
+    // No script on screen: proposals need the paper and do not occur here.
+    scriptId: null,
+    range: null,
+    wpm: settingsStore.dialogWpm(),
+    tick: () => 0,
   });
 
   const replies = createMemo(() => (running() ? [] : lastReplies(session().items)));

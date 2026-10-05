@@ -9,6 +9,7 @@ import { uiStore } from "../../stores/ui";
 import { pushToast } from "@agentz/kit/stores";
 import { t } from "../../i18n";
 import type { Folder } from "../../lib/types";
+import { flyInto } from "../Common/motion";
 import { StageGlyph } from "../Common/StageGlyph";
 import { DialogFrame } from "@agentz/kit/ui";
 import { FolderMenu } from "./parts/FolderMenu";
@@ -88,7 +89,11 @@ export function QuickCapture() {
         navStore.openScript(script.id, script.title);
         pushToast(t("script.toast.created", { title: script.title }), "ok");
       } else {
+        // The card flies into "Ideen" in the sidebar, so it is clear where
+        // the idea went.
+        const from = titleRef?.closest(".dlg")?.getBoundingClientRect() ?? null;
         close();
+        if (from) flyInto(from, document.querySelector('[data-nav="ideas"]'), idea.title);
         pushToast(t("idea.quick.toast.remembered", { title: idea.title }), "ok");
       }
     } catch (err) {

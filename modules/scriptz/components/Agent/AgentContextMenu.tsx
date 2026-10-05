@@ -7,7 +7,9 @@ import { agentSettings } from "../../stores/agentSettings";
 import { agentUi } from "../../stores/agentUi";
 import { uiStore } from "../../stores/ui";
 import { AgentAvatar } from "./AgentAvatar";
-import { readSelection, type BlockSelection } from "./editorBridge";
+import { liveBlocks, readSelection, type BlockSelection } from "./editorBridge";
+import { charactersIn } from "../../lib/agent/scriptText";
+import { voiceInstruction } from "../../lib/agent/jobs";
 
 const MENU_W = 248;
 const SUB_W = 200;
@@ -16,6 +18,28 @@ interface MenuState {
   x: number;
   y: number;
   selection: BlockSelection;
+  /** Speaker of the selected passage first, then the other characters. */
+  voices: Array<{ name: string; own: boolean }>;
+}
+
+/** Who speaks the selected lines, plus the rest of the cast (max 3). */
+function voicesFor(scriptId: string, selection: BlockSelection): MenuState["voices"] {
+  const blocks = liveBlocks(scriptId) ?? [];
+  let own: string | null = null;
+  // Walk up from the selection to its character line; an action block in
+  // between means the passage is stage direction, nobody's voice.
+  for (let i = Math.min(selection.from, blocks.length - 1); i >= 0; i--) {
+    const block = blocks[i];
+    if (block.type === "action") break;
+    if (block.type === "character") {
+      own = block.text.trim().toUpperCase() || null;
+      break;
+    }
+  }
+  const cast = charactersIn(blocks).map((name) => name.toUpperCase());
+  const out: MenuState["voices"] = own ? [{ name: own, own: true }] : [];
+  for (const name of cast) if (name !== own && out.length < 3) out.push({ name, own: false });
+  return out;
 }
 
 type Action = { id: string; icon: IconName; label: TranslationKey; prompt?: TranslationKey; sub?: boolean };
@@ -55,7 +79,7 @@ export function AgentContextMenu(props: { scriptId: string; canvas: () => HTMLEl
       const x = Math.min(event.clientX, window.innerWidth - MENU_W - 8);
       const y = Math.min(event.clientY, window.innerHeight - 260);
       setSubOpen(false);
-      setMenu({ x, y, selection });
+      setMenu({ x, y, selection, voices: voicesFor(props.scriptId, selection) });
     };
     const onDown = (event: MouseEvent) => {
       if (menu() && menuRef && !menuRef.contains(event.target as Node)) close();
@@ -82,6 +106,17 @@ export function AgentContextMenu(props: { scriptId: string; canvas: () => HTMLEl
     const quote = { text: state.selection.text, from: state.selection.from, to: state.selection.to };
     if (prompt) agentUi.ask({ scriptId: props.scriptId, text: t(prompt), quote, send: true });
     else agentUi.ask({ scriptId: props.scriptId, text: "", quote, send: false });
+  };
+
+  /** Rewrite in a character's voice: the chat shows "Mehr wie AXEL", the
+   *  model gets the instruction to use what it knows about AXEL here. */
+  const askVoice = (name: string, own: boolean) => {
+    const state = menu();
+    close();
+    if (!state) return;
+    const quote = { text: state.selection.text, from: state.selection.from, to: state.selection.to };
+    const text = own ? t("agent.ctx.voice", { name }) : t("agent.ctx.voiceOther", { name });
+    agentUi.ask({ scriptId: props.scriptId, text, quote, send: true, instruction: voiceInstruction(name) });
   };
 
   const copy = () => {
@@ -146,6 +181,16 @@ export function AgentContextMenu(props: { scriptId: string; canvas: () => HTMLEl
                           </button>
                         )}
                       </For>
+                      <Show when={state().voices.length > 0}>
+                        <div class="ag-ctx-sep" />
+                        <For each={state().voices}>
+                          {(voice) => (
+                            <button type="button" class="ag-ctx-it" role="menuitem" onClick={() => askVoice(voice.name, voice.own)}>
+                              {voice.own ? t("agent.ctx.voice", { name: voice.name }) : t("agent.ctx.voiceOther", { name: voice.name })}
+                            </button>
+                          )}
+                        </For>
+                      </Show>
                     </div>
                   </Show>
                 </div>

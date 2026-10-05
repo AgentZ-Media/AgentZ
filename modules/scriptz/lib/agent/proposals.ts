@@ -17,11 +17,17 @@ export interface ProposalOption {
   title: string;
   note: string;
   blocks: AgentBlock[];
+  /** "Einstieg prüfen": index (within `blocks`) of the block where the
+   *  conflict becomes clear in this version. */
+  conflictBlock?: number;
 }
 
 export interface Proposal {
   target: ProposalTarget;
   options: ProposalOption[];
+  /** "Einstieg prüfen": script index of the block where the conflict
+   *  becomes clear today (for "Konflikt nach 1,1 s statt 4,6 s"). */
+  currentConflict?: number;
 }
 
 export type ClaimVerdict = "correct" | "imprecise" | "wrong" | "unclear";
@@ -128,12 +134,18 @@ export function parseProposal(raw: unknown, blockCount: number): Proposal | null
       if (!isObj(item)) continue;
       const blocks = parseBlocks(item.blocks);
       if (blocks.length === 0) continue;
-      options.push({ title: str(item.title, 80), note: str(item.note, 240), blocks });
+      const option: ProposalOption = { title: str(item.title, 80), note: str(item.note, 240), blocks };
+      const conflict = int(item.conflict_block);
+      if (conflict !== null && conflict < blocks.length) option.conflictBlock = conflict;
+      options.push(option);
     }
   }
   const target = parseTarget(raw.target, blockCount);
   if (options.length === 0 || !target) return null;
-  return { target, options };
+  const proposal: Proposal = { target, options };
+  const current = int(raw.current_conflict_block);
+  if (current !== null && current < blockCount) proposal.currentConflict = current;
+  return proposal;
 }
 
 function parseUrl(raw: unknown): string {

@@ -44,6 +44,7 @@
   align-items: center;
   gap: 10px;
   padding: 0 14px 0 calc(12px + var(--shell-inset-left, 0px));
+  transition: padding-left var(--t-med);
   border-bottom: 1px solid var(--line);
   background: var(--bg);
   position: relative;
@@ -625,4 +626,88 @@
 .ss-undo-host .toast {
   white-space: nowrap;
   pointer-events: auto;
+}
+
+/* Runtime numbers fade into the warning colour instead of switching. */
+.ss-len b,
+.ss-focus-pill b,
+.tl .tl-len b {
+  transition: color var(--t-slow) var(--ease);
+}
+
+/* Typewriter focus (setting): room above and below so the caret line can
+   sit in the middle, and every speech run but the current one steps back. */
+.ss.is-typewriter .ss-sheet {
+  padding-top: 32vh;
+  padding-bottom: 48vh;
+}
+.ss.is-typewriter .editor-root > .block {
+  transition: opacity var(--t-slow) var(--ease);
+}
+.ss.is-typewriter .editor-root > .block:not([data-tw-current]) {
+  opacity: 0.28;
+}
+
+/* ---------------------------------------------------------------------
+   Hook marks (HookMarks.tsx): 3 / 5 / 10 s after the first line of
+   dialog, as quiet bars in the paper's left margin.
+   --------------------------------------------------------------------- */
+.hk-bar {
+  position: absolute;
+  width: 3px;
+  border-radius: 2px;
+  background: var(--accent);
+  pointer-events: none;
+  transition: top var(--t-med) var(--ease), height var(--t-med) var(--ease);
+}
+.hk-bar.z1 {
+  opacity: 0.5;
+}
+.hk-bar.z2 {
+  opacity: 0.22;
+}
+.hk-tick {
+  position: absolute;
+  transform: translateY(-50%);
+  padding: 2px 4px;
+  border-radius: 4px;
+  background: color-mix(in srgb, var(--accent) 30%, var(--paper));
+  color: color-mix(in srgb, var(--accent-fg) 75%, var(--paper));
+  font: 700 9.5px/1 var(--ui);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  pointer-events: auto;
+  transition: top var(--t-med) var(--ease);
+}
+.hk-chip {
+  position: absolute;
+  z-index: 6;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 26px;
+  padding: 0 11px 0 9px;
+  border: 0;
+  border-radius: var(--r-pill);
+  background: var(--fg);
+  color: var(--bg);
+  font: 600 12px/1 var(--ui);
+  white-space: nowrap;
+  box-shadow: var(--shadow-pop);
+  cursor: pointer;
+  opacity: 0;
+  pointer-events: none;
+  transform: translateY(4px);
+  transition: opacity var(--t-fast), transform var(--t-fast) var(--ease);
+}
+.hk-chip.is-on,
+.hk-chip:focus-visible {
+  opacity: 1;
+  pointer-events: auto;
+  transform: none;
+}
+.ss.is-focus .hk-bar,
+.ss.is-focus .hk-tick,
+.ss.is-focus .hk-chip {
+  display: none;
 }

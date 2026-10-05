@@ -56,6 +56,10 @@ function renderList(items: ChatItem[], running = false) {
       draftRef: (id) => index().get(id),
       showDraft,
       send,
+      scriptId: null,
+      range: null,
+      wpm: 180,
+      tick: () => 0,
     };
     return <ChatList items={session.items} running={session.running()} lookup={lookup} ctx={ctx} />;
   });

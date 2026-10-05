@@ -134,7 +134,7 @@
 }
 .ag-ic:focus-visible,
 .ag-send:focus-visible,
-.ag-sugg-b:focus-visible,
+.ag-job:focus-visible,
 .ag-trace-sum:focus-visible,
 .ag-think-h:focus-visible,
 .ag-mem-undo:focus-visible,
@@ -736,28 +736,6 @@
   color: var(--fg);
   font: 12px/1.4 var(--type);
 }
-.ag-sugg {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  width: 100%;
-  max-width: 290px;
-  margin-top: 6px;
-}
-.ag-sugg-b {
-  padding: 8px 11px;
-  border: 1px solid var(--line);
-  border-radius: var(--r-3);
-  background: var(--surface);
-  color: var(--fg);
-  font: 12.5px/1.35 var(--ui);
-  text-align: left;
-  cursor: pointer;
-}
-.ag-sugg-b:hover {
-  border-color: var(--line-strong);
-  background: var(--surface-2);
-}
 
 /* ---------------------------------------------------------------------
    Composer
@@ -1045,6 +1023,67 @@
 }
 .ag-prov-retry {
   display: flex;
+}
+
+/* Shared Codex installation and sign-in instructions. */
+.ag-codex-setup {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  width: 100%;
+  min-width: 0;
+  text-align: left;
+  font-size: 12px;
+  line-height: 1.5;
+}
+.ag-onb .ag-codex-setup {
+  margin-top: 18px;
+}
+.ag-codex-setup p {
+  margin: 0;
+  max-width: none;
+  color: var(--fg);
+  font-size: inherit;
+}
+.ag-codex-setup .seg {
+  align-self: flex-start;
+}
+.ag-codex-setup a {
+  color: var(--fg);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  align-self: flex-start;
+}
+.ag-codex-command {
+  min-width: 0;
+}
+.ag-codex-command-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 5px;
+}
+.ag-codex-command code {
+  display: block;
+  padding: 9px 10px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-pop);
+  background: var(--fill);
+  color: var(--fg);
+  font: 12px/1.5 var(--type);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  user-select: text;
+}
+.ag-codex-copy-status:empty {
+  display: none;
+}
+.ag-gate:has(.ag-codex-setup) {
+  justify-content: flex-start;
+  min-height: 0;
+  overflow-y: auto;
 }
 .ag-model-ctl {
   display: inline-flex;
@@ -1818,4 +1857,243 @@
   .ss-bar .ss-saved {
     display: none;
   }
+}
+
+/* ---------- motion: the chat slides in, new messages rise in ---------- */
+.ss:not(.is-narrow) .ss-agent-wrap {
+  animation: ag-panel-in var(--t-med) var(--ease);
+}
+@keyframes ag-panel-in {
+  from { opacity: 0; transform: translateX(14px); }
+}
+.ag-list > .ag-user,
+.ag-list > .ag-ai,
+.ag-list > .ag-opts,
+.ag-list > .ag-claims,
+.ag-list > .ag-mem,
+.ag-list > .ag-err {
+  animation: ag-item-in var(--t-med) var(--ease) both;
+}
+@keyframes ag-item-in {
+  from { opacity: 0; transform: translateY(6px); }
+}
+.ag-opts > .ag-opt {
+  animation: ag-item-in var(--t-med) var(--ease) both;
+}
+.ag-opts > .ag-opt:nth-child(2) { animation-delay: 70ms; }
+.ag-opts > .ag-opt:nth-child(3) { animation-delay: 140ms; }
+@media (prefers-reduced-motion: reduce) {
+  .ss-agent-wrap,
+  .ag-list > *,
+  .ag-opts > .ag-opt {
+    animation: none;
+  }
+}
+
+/* ---------- proposal preview on the paper (editorBridge.ts) ---------- */
+.editor-root .block[data-ag-preview="replace"] {
+  opacity: 0.45;
+  text-decoration: line-through;
+  text-decoration-color: var(--warn);
+  text-decoration-thickness: 1.5px;
+}
+.editor-root .block[data-ag-ghost-after] {
+  margin-bottom: var(--ag-ghost-space);
+}
+.ag-ghost {
+  position: absolute;
+  z-index: 4;
+  pointer-events: none;
+  padding: 10px 14px 30px;
+  border: 1.5px dashed color-mix(in srgb, var(--paper-fg) 32%, transparent);
+  border-radius: 8px;
+  background: repeating-linear-gradient(-45deg, transparent 0 8px, color-mix(in srgb, var(--paper-fg) 3%, transparent) 8px 16px);
+  color: var(--paper-fg);
+  font-family: var(--type);
+  font-size: 13.5px;
+  line-height: 1.62;
+  animation: ag-item-in var(--t-med) var(--ease) both;
+}
+.ag-ghost .gb {
+  opacity: 0.72;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+.ag-ghost .gb + .gb {
+  margin-top: 4px;
+}
+.ag-ghost .gb-character {
+  margin-top: 12px;
+  text-align: center;
+  text-transform: uppercase;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+}
+.ag-ghost .gb-character:first-child {
+  margin-top: 0;
+}
+.ag-ghost .gb-dialog {
+  margin-left: 16%;
+  margin-right: 16%;
+}
+.ag-ghost .gb-parenthetical {
+  margin-left: 22%;
+  margin-right: 22%;
+  font-style: italic;
+  color: var(--paper-muted);
+}
+.ag-ghost .gb-character + .gb,
+.ag-ghost .gb-parenthetical + .gb-dialog {
+  margin-top: 0;
+}
+.ag-ghost-tag {
+  position: absolute;
+  right: 8px;
+  bottom: 7px;
+  padding: 4px 7px;
+  border-radius: 5px;
+  background: var(--fg);
+  color: var(--bg);
+  font: 600 10.5px/1 var(--ui);
+}
+
+/* ---------- jobs in the empty chat ---------- */
+.ag-jobs {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+  width: 100%;
+  margin-top: 4px;
+}
+.ag-job {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  grid-template-rows: auto auto;
+  column-gap: 7px;
+  align-items: center;
+  padding: 9px 10px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-3, 10px);
+  background: var(--surface);
+  color: var(--fg);
+  text-align: left;
+  cursor: pointer;
+  transition: background var(--t-fast), border-color var(--t-fast), transform var(--t-fast);
+}
+.ag-job:hover {
+  background: var(--accent-soft);
+  border-color: color-mix(in srgb, var(--accent) 70%, var(--line));
+}
+.ag-job:active {
+  transform: scale(0.98);
+}
+.ag-job svg.i {
+  grid-row: 1 / span 2;
+  color: var(--muted);
+}
+.ag-job b {
+  font: 600 12.5px/1.25 var(--ui);
+}
+.ag-job small {
+  grid-column: 2;
+  color: var(--faint);
+  font-size: 11px;
+}
+.ag-empty .ag-jobs-or {
+  margin: 10px 0 0;
+  color: var(--faint);
+  font-size: 12px;
+}
+.ag-user.is-job .ag-user-t {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-weight: 600;
+}
+
+/* ---------- metrics on proposal cards ---------- */
+.ag-opt-m {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  margin: 2px 0 8px;
+}
+.ag-m-pill {
+  display: inline-flex;
+  align-items: center;
+  padding: 3px 7px;
+  border-radius: 6px;
+  background: var(--fill);
+  color: var(--muted);
+  font: 600 11px/1.2 var(--ui);
+  font-variant-numeric: tabular-nums;
+}
+.ag-m-pill.is-ok {
+  background: color-mix(in srgb, var(--ok) 14%, transparent);
+  color: var(--ok);
+}
+.ag-m-pill.is-warn {
+  background: color-mix(in srgb, var(--warn) 12%, transparent);
+  color: var(--warn);
+}
+
+/* ---------- fact check summary + numbers ---------- */
+.ag-claims-sum {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 5px;
+  margin: 2px 0 8px;
+}
+.ag-claims-src {
+  color: var(--faint);
+  font-size: 11.5px;
+}
+/* Numbered verdict dots: the same numbers mark the claims on the paper. */
+.ag-claim-n,
+.ag-fc-dot {
+  display: inline-grid;
+  place-items: center;
+  width: 15px;
+  height: 15px;
+  border-radius: 50%;
+  font: 700 9.5px/1 var(--ui);
+  font-style: normal;
+}
+.ag-claim-n {
+  margin-right: 5px;
+}
+.ag-claim-n.is-correct, .ag-fc-dot.is-correct { background: var(--ok); color: var(--surface); }
+.ag-claim-n.is-imprecise, .ag-fc-dot.is-imprecise { background: var(--accent); color: var(--accent-fg); }
+.ag-claim-n.is-wrong, .ag-fc-dot.is-wrong { background: var(--warn); color: var(--surface); }
+.ag-claim-n.is-unclear, .ag-fc-dot.is-unclear { background: var(--muted); color: var(--surface); }
+.ag-claim-acts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+/* ---------- fact check on the paper (ClaimMarks.tsx) ---------- */
+::highlight(ag-claim-correct) {
+  background-color: color-mix(in srgb, var(--ok) 20%, transparent);
+  text-decoration: underline 2px var(--ok);
+}
+::highlight(ag-claim-imprecise) {
+  background-color: color-mix(in srgb, var(--accent) 38%, transparent);
+  text-decoration: underline 2px var(--accent);
+}
+::highlight(ag-claim-wrong) {
+  background-color: color-mix(in srgb, var(--warn) 18%, transparent);
+  text-decoration: underline 2px var(--warn);
+}
+::highlight(ag-claim-unclear) {
+  background-color: var(--fill);
+  text-decoration: underline 2px var(--muted);
+}
+.ag-fc-mark {
+  position: absolute;
+  z-index: 5;
+  pointer-events: none;
+  box-shadow: 0 0 0 2px var(--paper);
+  animation: ag-item-in var(--t-med) var(--ease) both;
 }

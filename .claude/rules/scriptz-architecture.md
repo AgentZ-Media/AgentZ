@@ -49,6 +49,8 @@ die Befehlspalette, deshalb setzt das Modul `revealsSidebar: true`.
 - **Offen** (Sidebar, unter Pipeline und Ordnern, beide einklappbar): jedes
   Skript, das die volle Skriptansicht zeigt, kommt dazu und bleibt bis zum
   Schließen (✕, Mittelklick, Kontextmenü). Bewusst keine Tab-Leiste oben.
+  Neu geöffnete Skripte stehen oben; bereits offene behalten beim Wechseln
+  ihren Platz. Bei maximal 50 Einträgen fällt das älteste unten heraus.
   Mit `close_finished_scripts` (Standard an) verlässt ein Skript die Liste,
   wenn es in die letzte Stufe wechselt; das angezeigte erst beim Wechsel,
   Rückgängig innerhalb von 15 s holt es zurück (`openStore.syncStatuses`).
@@ -64,14 +66,21 @@ die Befehlspalette, deshalb setzt das Modul `revealsSidebar: true`.
 
 ## Migrationen
 
-`001_baseline` bis `007_werkbank` in `apps/scriptz/src-tauri/migrations/` sind
-veröffentlicht und unveränderlich. `007` ergänzt `scripts.status`,
+`001_baseline` bis `011_track_agent_sessions` in
+`apps/scriptz/src-tauri/migrations/` sind veröffentlicht und unveränderlich. `007` ergänzt `scripts.status`,
 `status_changed_at` und den Ordner-Zielbereich. `008_agent` legt
-`agent_memory`, `agent_chats` und `agent_learned` an. `009_agent_sessions`
-ergänzt `agent_chats.kind`/`title`/`folder_id` (Sitzungen des Agent-Modus) und
-`ideas.source_chat_id` (Idee von Ida gespeichert), rein additiv, plus den
-Trigger `agent_sessions_outlive_script`: endgültiges Löschen eines Skripts löst
-Sitzungen atomar davon, statt sie per Kaskade mitzulöschen. Die
+`agent_memory`, `agent_chats` und `agent_learned` an. `009_local_changes`
+ergänzt eine lokale Replikat-ID und kompakte Änderungsmarker mit Triggern für
+alle Inhaltstabellen, einschließlich Agentendaten; keine Cloud-Anbindung.
+Vertrag und Grenzen: [`local-storage.md`](../../docs/local-storage.md).
+`010_agent_sessions` ergänzt `agent_chats.kind`/`title`/`folder_id`
+(Sitzungen des Agent-Modus) und `ideas.source_chat_id` (Idee von Ida
+gespeichert), rein additiv, plus den Trigger `agent_sessions_outlive_script`:
+endgültiges Löschen eines Skripts löst Sitzungen atomar davon, statt sie per
+Kaskade mitzulöschen. `011_track_agent_sessions` nimmt diese Spalten in die
+Update-Trigger des Änderungsfeeds auf. Jede neue Spalte einer Inhaltstabelle
+braucht dasselbe: Trigger neu anlegen und `CONTENT_ENTITIES` ergänzen (Tests
+in `lib/__tests__/localChanges.test.ts` schlagen sonst fehl). Die
 Abschaffung von Kamera/Caption/SFX ist bewusst keine SQL-Migration (siehe unten).
 
 ## Stufen und Zielbereich
@@ -110,6 +119,28 @@ Farben; neue Namen bekommen die nächste freie Palettenfarbe. Die app-weite
 Farb-Registry `character_colors` wächst mit und lässt sich in den
 Einstellungen aufräumen (manuell oder automatisch nach 4 s Ruhe,
 `characterAutoPrune.ts`); das Löschen prüft die Nutzung erneut.
+
+## Färbung, Hook und Bewegung
+
+- **Eine Färbe-Regel** (`lib/tint.ts`) für Editor (`plugins/highlight.ts`),
+  PDF und Export-Vorschau: Charakter in eigener Farbe, Dialog und
+  Parenthetical in der Farbe darüber, ein Action-Block beendet den
+  Sprechlauf. Wem Wörter für Statistik und Zeitleiste zugerechnet werden,
+  regeln weiter `lex.ts`/`timing.ts`.
+- **Hook-Zonen** 3 / 5 / 10 s ab dem ersten Dialog, Regie davor zählt nicht
+  (`timelineMath.ts`: `firstDialogStart`, `hookMarks`). Sichtbar nur als
+  ruhige Markierung: Balken im linken Papierrand (`Script/HookMarks.tsx`)
+  und gestufte Zonen in der Zeitleiste.
+- **Bewegung** über `components/Common/motion.tsx`/`motion.css`
+  (Zahl-Tween, Zähler-Puls, Flug in die Seitenleiste, Aufleuchten, View
+  Transition beim Öffnen). Reduzierte Bewegung schaltet alles ab. Der
+  Fertig-Moment hängt an `library.justFinished(id)`.
+- **Schreibmaschine im Fokus** (`focus_typewriter`, Standard aus): die
+  Caret-Zeile bleibt mittig, andere Sprechläufe treten zurück; nur
+  DOM-Attribute (`data-tw-current`), nie Editor-State.
+- **Rückgängig in Toasts**: `pushToast(text, kind, timeout, { action })`
+  aus dem Kit. Papierkorb, Verschieben (Skripte und Ideen) und Ideen
+  löschen (`api.restoreIdea`) nutzen es.
 
 ## Legacy-Blöcke
 
@@ -157,14 +188,36 @@ Referenz: `docs/agent/screens.html`.
   Einträge sind gedeckelt (`MEMORY_LIMITS`). Pro Thread wird ein Schnappschuss
   in die Instruktionen eingefroren. Lernen ist immer optional: aus dem Chat
   (abschaltbar), aus abgeschlossenen Skripten nach `agent.learn_since` und
-  90 s Ruhe, rückwirkend nur per Button. Gedächtnis ist nicht Teil des
+  90 s Ruhe, rückwirkend nur per Button. Als abgeschlossen gilt ein Skript ab
+  der Lern-Stufe `agent.learn_stage` (leer = letzte Stufe, spätere Stufen
+  zählen mit, `lib/agent/learnStage.ts`). Eine gewählte Stufe liegt immer
+  zwischen erster und letzter: Wird sie gelöscht, rückt sie auf die nächste
+  vor; landet sie vorn oder hinten, gilt wieder der Standard. Unbekannte IDs
+  fallen beim Lesen auf die letzte Stufe zurück. Gedächtnis ist nicht Teil des
   `.scriptz`-Exports.
+- **Storage-Grenze:** `agent/chats.ts` und `agent/memory.ts` delegieren an
+  `ScriptzStorage.agent`; SQL liegt in `agent/sqlStorage.ts`.
 - **Chats** pro Skript in `agent_chats` (`items_json`), Lernstand in
   `agent_learned` (Inhalts-Hash). Rohes JSON wird nie angezeigt; Tool-Aufrufe
   laufen über `components/Agent/labels.ts`.
 - **Settings** unter `agent.*` (siehe `stores/agentSettings.ts`), Effort
   überall standardmäßig `medium`. `agent.enabled = false` startet keinen
   Prozess.
+- **Aufträge** (`lib/agent/jobs.ts`): Einstieg prüfen, Kürzen, Tempo
+  erhöhen, Härteres Ende, Fakten prüfen, Feedback. Der Chat zeigt nur das
+  kurze Label, das Modell bekommt die englische Instruktion. Vier Türen,
+  kein Knopf in der Kopfleiste: Karten im leeren Chat, Chips am Problem
+  (Einstieg-Chip über der Eröffnung, Kürzen/Tempo an der zu langen Länge in
+  der Zeitleiste), Rechtsklick (inkl. „Mehr wie {Figur}“) und ⌘K.
+- **Karten zeigen vorher, was passiert** (`Agent/proposalMetrics.ts`):
+  Laufzeit gegen den Zielbereich, Sprecherwechsel, längste Zeile und beim
+  Einstieg „Konflikt nach X s“ (`propose_options` mit optionalem
+  `conflict_block`/`current_conflict_block`). Hover zeigt den Vorschlag
+  gestrichelt im Papier (`editorBridge.showProposalPreview`, nur Attribute
+  und Overlay). Eingefügte Zeilen leuchten kurz auf (`data-ag-new`).
+- **Faktencheck im Text** (`Agent/ClaimMarks.tsx`): die Behauptungen des
+  letzten Checks werden per CSS Custom Highlight API unterstrichen und
+  nummeriert, solange der Chat offen ist.
 - **Kontext Länge.** Der Skript-Chat bekommt Längenziel und Sprechtempo in
   den Instruktionen, Sitzungen vor jeder Nachricht eine Zeile `[Session: ...]`
   mit Ordner, Ziel, Wortbudget, Entwürfen und gespeicherten Ideen
