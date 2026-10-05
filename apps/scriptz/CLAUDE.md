@@ -55,8 +55,13 @@ Kein `cp` der laufenden DB (WAL). Wiederherstellen bei beendeter App:
   Agent schlägt vor, schreibt nie direkt ins Skript, und Lernen bleibt
   freiwillig. Details: Abschnitt „Agent" in `scriptz-architecture.md`.
 - Netzwerkanfragen: der Updater
-  (`releases/download/scriptz-latest/latest.json`) und, nur wenn der Agent
-  eingeschaltet ist, der lokale Codex-Prozess. Keine Telemetrie.
+  (`releases/download/scriptz-latest/latest.json`, mit Nightly-Kanal zusätzlich
+  `scriptz-nightly/latest.json`) und, nur wenn der Agent eingeschaltet ist, der
+  lokale Codex-Prozess. Keine Telemetrie.
+- **Nightly-Sicherungen** liegen unter
+  `~/Library/Application Support/de.agent-z.scriptz/backups/` (Windows:
+  `%APPDATA%\de.agent-z.scriptz\backups\`), die letzten fünf bleiben.
+  Wiederherstellen wie unten bei beendeter App.
 
 ## Nicht wieder einführen
 

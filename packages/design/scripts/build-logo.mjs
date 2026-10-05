@@ -1,7 +1,9 @@
 #!/usr/bin/env node
 /** Build a registered app's assets, desktop icons and website thumbnail.
- * node packages/design/scripts/build-logo.mjs --app scriptz [--svg-only | --fallback]
+ * node packages/design/scripts/build-logo.mjs --app scriptz [--svg-only | --fallback | --nightly]
  * Without Chrome, the bundled suite placeholder keeps desktop builds possible.
+ * `--nightly` only writes the night-sky icon set for nightly builds
+ * (`apps/<id>/src-tauri/icons-nightly`); it requires Chrome.
  */
 
 import { execFileSync, spawn } from "node:child_process";
@@ -57,6 +59,59 @@ export function appIconSvg(logo, title) {
   <title>${title}</title>
   <rect x="${INSET}" y="${INSET}" width="${TILE}" height="${TILE}" rx="${fmt(RADIUS)}" fill="${logo.accent}"/>
   ${dots(logo, { main: INK, sub: INK, subOpacity: 0.5, scale, dx, dy })}
+</svg>
+`;
+}
+
+// Night sky of nightly builds (same values as the --night-* design tokens).
+const NIGHT = {
+  top: "#0d1030", mid: "#1a1646", violet: "#8b5cf6", blue: "#3b6fe0", star: "#ffffff", moon: "#e9e4ff",
+};
+
+/** Deterministic stars for the nightly tile, kept clear of the glyph. */
+function nightStars(glyph) {
+  let state = 5;
+  const next = () => (state = (state * 16807) % 2147483647) / 2147483647;
+  const stars = [];
+  while (stars.length < 26) {
+    const x = INSET + 30 + next() * (TILE - 60);
+    const y = INSET + 30 + next() * (TILE - 60);
+    const r = 2.5 + next() * 4.5;
+    const opacity = 0.4 + next() * 0.6;
+    const nearGlyph = x > glyph.x - 40 && x < glyph.x + glyph.w + 40 && y > glyph.y - 40 && y < glyph.y + glyph.h + 40;
+    const nearMoon = Math.hypot(x - 760, y - 262) < 90;
+    if (!nearGlyph && !nearMoon) stars.push(`<circle cx="${fmt(x)}" cy="${fmt(y)}" r="${fmt(r)}" fill="${NIGHT.star}" opacity="${fmt(opacity)}"/>`);
+  }
+  return stars.join("\n    ");
+}
+
+/** App icon of nightly builds: the same glyph on a night sky with a moon. */
+export function nightlyAppIconSvg(logo, title) {
+  title = escapeXml(`${title} Nightly`);
+  const glyphW = TILE * GLYPH_SHARE;
+  const scale = glyphW / logo.width;
+  const dx = CANVAS / 2 - glyphW / 2;
+  const dy = CANVAS / 2 - (logo.height * scale) / 2;
+  const glyph = { x: dx, y: dy, w: glyphW, h: logo.height * scale };
+  const tile = `x="${INSET}" y="${INSET}" width="${TILE}" height="${TILE}" rx="${fmt(RADIUS)}"`;
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${CANVAS} ${CANVAS}" width="${CANVAS}" height="${CANVAS}" role="img" aria-label="${title}">
+  <title>${title}</title>
+  <defs>
+    <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${NIGHT.mid}"/><stop offset="1" stop-color="${NIGHT.top}"/></linearGradient>
+    <radialGradient id="violet" cx="0.8" cy="0.12" r="0.75"><stop offset="0" stop-color="${NIGHT.violet}" stop-opacity="0.75"/><stop offset="1" stop-color="${NIGHT.violet}" stop-opacity="0"/></radialGradient>
+    <radialGradient id="blue" cx="0.12" cy="0.9" r="0.65"><stop offset="0" stop-color="${NIGHT.blue}" stop-opacity="0.5"/><stop offset="1" stop-color="${NIGHT.blue}" stop-opacity="0"/></radialGradient>
+    <clipPath id="tile"><rect ${tile}/></clipPath>
+    <mask id="crescent"><rect width="${CANVAS}" height="${CANVAS}" fill="#fff"/><circle cx="738" cy="246" r="54" fill="#000"/></mask>
+  </defs>
+  <g clip-path="url(#tile)">
+    <rect ${tile} fill="url(#sky)"/>
+    <rect ${tile} fill="url(#violet)"/>
+    <rect ${tile} fill="url(#blue)"/>
+    ${nightStars(glyph)}
+    <circle cx="764" cy="262" r="60" fill="${NIGHT.moon}" mask="url(#crescent)"/>
+  </g>
+  <rect x="${INSET + 2}" y="${INSET + 2}" width="${TILE - 4}" height="${TILE - 4}" rx="${fmt(RADIUS - 2)}" fill="none" stroke="${NIGHT.star}" stroke-opacity="0.14" stroke-width="4"/>
+  ${dots(logo, { main: CHALK, sub: logo.accent, scale, dx, dy })}
 </svg>
 `;
 }
@@ -198,6 +253,36 @@ export async function buildLogo({ appId, logo = LOGOS[appId], root = repoRoot, o
   return { placeholder: false, svgOnly: false };
 }
 
+/** Night-sky icon set used by the nightly workflow (`tooling/release/nightly-config.mjs`). */
+export async function buildNightlyIcons({ appId, logo = LOGOS[appId], root = repoRoot, outputAssets = assetsDir, chrome = findChrome() }) {
+  if (!/^[a-z][a-z0-9]*(?:-[a-z0-9]+)*$/.test(appId) || appId === "suite") throw new Error("Invalid app id");
+  if (!logo) throw new Error(`No LOGOS entry for ${appId}`);
+  const desktopDir = join(root, "apps", appId);
+  if (!existsSync(join(desktopDir, "src-tauri"))) throw new Error(`App directory missing: apps/${appId}/src-tauri`);
+  if (!chrome) throw new Error("Nightly icons need Chrome (set CHROME=/path/to/chrome).");
+  const productName = JSON.parse(readFileSync(join(desktopDir, "src-tauri/tauri.conf.json"), "utf8")).productName || appId;
+  mkdirSync(outputAssets, { recursive: true });
+  const svg = join(outputAssets, `${appId}-app-icon-nightly.svg`);
+  writeFileSync(svg, nightlyAppIconSvg(logo, productName));
+  const tmp = mkdtempSync(join(tmpdir(), "agentz-nightly-icon-"));
+  try {
+    const png = join(tmp, "icon.png");
+    await renderPng(chrome, svg, png, CANVAS);
+    execFileSync("pnpm", ["exec", "tauri", "icon", png, "--output", join(tmp, "icons")], {
+      cwd: desktopDir,
+      stdio: "inherit",
+      shell: process.platform === "win32",
+    });
+    const out = join(desktopDir, "src-tauri/icons-nightly");
+    mkdirSync(out, { recursive: true });
+    // Exactly the files a Tauri bundle uses (the same set as the placeholder).
+    for (const file of PLACEHOLDER_FILES) copyFileSync(join(tmp, "icons", file), join(out, file));
+  } finally {
+    rmSync(tmp, { recursive: true, force: true });
+  }
+  console.log(`Generated ${appId} nightly icons.`);
+}
+
 if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
   try {
     const args = process.argv.slice(2);
@@ -206,9 +291,10 @@ if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.ur
       if (args[i] === "--app") {
         appId = args[++i];
         if (!appId || appId.startsWith("--")) throw new Error("--app requires an app id");
-      } else if (!["--svg-only", "--fallback"].includes(args[i])) throw new Error(`Unknown option: ${args[i]}`);
+      } else if (!["--svg-only", "--fallback", "--nightly"].includes(args[i])) throw new Error(`Unknown option: ${args[i]}`);
     }
-    await buildLogo({ appId, svgOnly: args.includes("--svg-only"), fallback: args.includes("--fallback") });
+    if (args.includes("--nightly")) await buildNightlyIcons({ appId });
+    else await buildLogo({ appId, svgOnly: args.includes("--svg-only"), fallback: args.includes("--fallback") });
   } catch (error) {
     console.error(error.message);
     process.exitCode = 1;

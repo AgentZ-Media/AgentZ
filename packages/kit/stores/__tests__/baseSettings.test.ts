@@ -2,7 +2,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { baseSettingsStore as settings, startBaseSettingsRuntime } from "../baseSettings";
 import { createSettingsWriter } from "../settingsWriter";
 import { flushAll } from "../../lib";
-import type { KvStore } from "../../platform";
+import { setPlatformAdapter, type KvStore, type PlatformAdapter } from "../../platform";
 import { language } from "../../i18n";
 
 const stops: Array<() => void> = [];
@@ -19,12 +19,12 @@ const deferred = <T,>() => {
 afterEach(() => { stops.splice(0).reverse().forEach((stop) => stop()); vi.restoreAllMocks(); });
 
 describe("base settings lifetime", () => {
-  it("loads only the four unchanged shared keys and applies theme/language", async () => {
-    const kv = store({ theme: "dark", language: "en", update_check_enabled: "0", hourly_update_check: "1" });
+  it("loads only the shared keys and applies theme/language", async () => {
+    const kv = store({ theme: "dark", language: "en", update_check_enabled: "0", hourly_update_check: "1", update_channel: "nightly" });
     stops.push(startBaseSettingsRuntime(kv));
     await settings.load();
-    expect(vi.mocked(kv.getSetting).mock.calls.map(([key]) => key).sort()).toEqual(["hourly_update_check", "language", "theme", "update_check_enabled"]);
-    expect([settings.theme(), settings.language(), settings.updateCheckEnabled(), settings.hourlyUpdateCheck()]).toEqual(["dark", "en", false, true]);
+    expect(vi.mocked(kv.getSetting).mock.calls.map(([key]) => key).sort()).toEqual(["hourly_update_check", "language", "theme", "update_channel", "update_check_enabled"]);
+    expect([settings.theme(), settings.language(), settings.updateCheckEnabled(), settings.hourlyUpdateCheck(), settings.updateChannel()]).toEqual(["dark", "en", false, true, "nightly"]);
     expect(document.documentElement.dataset.theme).toBe("dark");
     expect(language()).toBe("en");
     expect(settings.loaded()).toBe(true);
@@ -42,6 +42,22 @@ describe("base settings lifetime", () => {
     expect(settings.theme()).toBe("light");
     expect(settings.language()).toBe("auto");
     expect(settings.updateCheckEnabled()).toBe(true);
+    expect(settings.updateChannel()).toBe("stable");
+  });
+
+  it("starts a directly installed nightly build on the nightly channel until a choice is stored", async () => {
+    setPlatformAdapter({ platform: "linux", build: { channel: "nightly" } } as PlatformAdapter);
+    try {
+      stops.push(startBaseSettingsRuntime(store()));
+      await settings.load();
+      expect(settings.updateChannel()).toBe("nightly");
+      stops.splice(0).forEach((stop) => stop());
+      stops.push(startBaseSettingsRuntime(store({ update_channel: "stable" })));
+      await settings.load();
+      expect(settings.updateChannel()).toBe("stable");
+    } finally {
+      setPlatformAdapter({ platform: "linux" } as PlatformAdapter);
+    }
   });
 
   it("serializes rapid choices and keeps the final stored value", async () => {

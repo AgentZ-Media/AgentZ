@@ -8,8 +8,8 @@
  * (or `<svg class="i">` with components.css loaded).
  *
  * Source: the `#i-*` sprite in docs/redesign/concept.html, plus
- * x, trash, import, select, play, undo, inbox, list, board and expand drawn
- * on the same grid.
+ * x, trash, import, select, play, undo, inbox, list, board, expand, moon and
+ * shield drawn on the same grid.
  */
 
 export const ICON_VIEWBOX = "0 0 24 24";
@@ -52,7 +52,9 @@ export type IconName =
   | "inbox"
   | "list"
   | "board"
-  | "expand";
+  | "expand"
+  | "moon"
+  | "shield";
 
 export const ICONS: Record<IconName, string> = {
   search: '<circle cx="11" cy="11" r="6.5"/><path d="M20 20l-4.2-4.2"/>',
@@ -92,6 +94,8 @@ export const ICONS: Record<IconName, string> = {
   list: '<path d="M9 6.5h11M9 12h11M9 17.5h11"/><path d="M4.5 6.5h.01M4.5 12h.01M4.5 17.5h.01"/>',
   board: '<rect x="3.5" y="4.5" width="17" height="15" rx="2.5"/><path d="M9.2 4.5v15M14.8 4.5v15"/>',
   expand: '<path d="M14 4.5h5.5V10M10 19.5H4.5V14"/><path d="M19.5 4.5L13.5 10.5M4.5 19.5l6-6"/>',
+  moon: '<path d="M19.5 14.5A7.5 7.5 0 0 1 9.5 4.5a7.5 7.5 0 1 0 10 10z"/>',
+  shield: '<path d="M12 3.5l7 3v5.5c0 4.2-2.9 7.3-7 8.5-4.1-1.2-7-4.3-7-8.5V6.5z"/><path d="M9 12l2.2 2.2L15.5 10"/>',
 };
 
 /** Every icon name, e.g. for a component sheet or tests. */
