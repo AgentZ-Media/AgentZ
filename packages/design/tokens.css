@@ -181,6 +181,23 @@
   --on-ink-fill: rgba(0, 0, 0, 0.12);
 }
 
+/* ---------------------------------------------------------------------
+   Nightly builds: the night sky behind the sidebar head, the boot screen
+   and nightly badges. Theme-independent, because the sidebar is dark in
+   both themes. Components derive translucent variants with color-mix().
+   --------------------------------------------------------------------- */
+:root {
+  --night-sky-top: #0d1030;
+  --night-sky-mid: #1a1646;
+  --night-violet: #8b5cf6;
+  --night-blue: #3b6fe0;
+  --night-rose: #ec4899;
+  --night-cloud: #7889e6;
+  --night-star: #ffffff;
+  --night-moon: #e9e4ff;
+  --night-moon-dim: #b8acf5;
+}
+
 /* Dark paper: only when the resolved theme is dark AND the user enabled
    the dark-paper setting. Touches paper tokens only. */
 [data-theme="dark"][data-paper="dark"] {

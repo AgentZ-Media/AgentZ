@@ -5,6 +5,8 @@ import { openUrl, revealItemInDir } from "@tauri-apps/plugin-opener";
 import { getVersion } from "@tauri-apps/api/app";
 import { platform as osPlatform } from "@tauri-apps/plugin-os";
 import {
+  STABLE_BUILD,
+  type BuildInfo,
   type DbConnection,
   type OpenFileResult,
   type Platform,
@@ -102,6 +104,14 @@ async function desktopWriteFileTo(path: string, bytes: Uint8Array): Promise<void
 }
 
 
+/** Set by the nightly workflow at build time (see `.github/workflows/nightly.yml`).
+ *  Local builds and stable releases leave them empty. */
+export function readBuildInfo(env: Record<string, unknown> = import.meta.env): BuildInfo {
+  if (env.VITE_AGENTZ_BUILD_CHANNEL !== "nightly") return STABLE_BUILD;
+  const text = (value: unknown) => (typeof value === "string" && value.trim() ? value.trim() : undefined);
+  return { channel: "nightly", commit: text(env.VITE_AGENTZ_BUILD_COMMIT), builtAt: text(env.VITE_AGENTZ_BUILD_TIME) };
+}
+
 // Lazy plugin-sql connection. Cached, with reset-on-failure so a
 // transient open failure doesn't poison every subsequent DB call.
 export function createDesktopPlatform(id: string): PlatformAdapter {
@@ -123,6 +133,7 @@ export function createDesktopPlatform(id: string): PlatformAdapter {
     supportsDirectoryWrite: true,
     getDb: loadDesktopDb,
     getVersion: () => getVersion(),
+    build: readBuildInfo(),
     openUrl: (url) => openUrl(url),
     revealInFolder: (path) => revealItemInDir(path),
     saveDialog: async (opts) => {

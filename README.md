@@ -19,7 +19,9 @@ account, no cloud, no telemetry.
 The apps are not notarized or code-signed. On first launch, macOS needs
 `xattr -cr /Applications/ScriptZ.app` and Windows SmartScreen needs
 "More info" → "Run anyway"; see the [installation notes](docs/release-notes/_install_footer.md).
-Updates are signed and install from inside the app.
+Updates are signed and install from inside the app. Under *Settings →
+Updates* you can opt into **nightly builds**: untested previews of `main`,
+built at most every three hours and clearly marked by a night sky in the app.
 
 ## Repository
 
@@ -71,8 +73,9 @@ See the [new app guide](docs/neue-app.md) (German).
 
 Releases use tags like `scriptz-v0.9.2`. `pnpm release:bump <app> <version>`
 updates all version files; the workflow builds macOS and Windows, signs the
-updates and moves the app's `<app>-latest` channel. Details:
-[release rules](.claude/rules/release.md) (German).
+updates and moves the app's `<app>-latest` channel. Every three hours the
+nightly workflow builds new changes on `main` into the `<app>-nightly` channel.
+Details: [release rules](.claude/rules/release.md) (German).
 
 ## License and credits
 

@@ -145,6 +145,126 @@
   font-size: 12px;
 }
 
+/* ---------- nightly channel ---------- */
+.srow.set-night {
+  margin: 6px -12px 0;
+  padding: 14px 12px;
+  border-top: 0;
+  border-radius: var(--r-pop);
+  background: linear-gradient(120deg,
+    color-mix(in srgb, var(--night-blue) 8%, transparent),
+    color-mix(in srgb, var(--night-violet) 12%, transparent));
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--night-violet) 22%, transparent);
+}
+.srow.set-night + .srow,
+.set-night-note + .srow {
+  border-top: 0;
+}
+.srow .set-night-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.set-night-pill {
+  height: 17px;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 0 6px 0 5px;
+  border-radius: var(--r-pill);
+  background: linear-gradient(120deg, var(--night-blue), var(--night-violet));
+  color: var(--night-star);
+  font-size: 9.5px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  vertical-align: 3px;
+}
+.set-brand .set-night-pill {
+  margin-left: 8px;
+}
+.set-night-pill svg.i {
+  stroke-width: 2.2;
+}
+.set-night .sw-t {
+  background: color-mix(in srgb, var(--night-violet) 26%, var(--line-strong));
+}
+.set-night .sw-t[aria-checked="true"],
+button.btn.set-night-btn {
+  background: linear-gradient(120deg, var(--night-blue), var(--night-violet));
+  color: var(--night-star);
+}
+button.btn.set-night-btn:hover {
+  filter: brightness(1.08);
+}
+.set-night-note {
+  display: flex;
+  gap: 9px;
+  margin: 12px 0 0;
+  padding: 10px 12px;
+  border-radius: var(--r-3);
+  background: var(--surface-2);
+  color: var(--muted);
+  font-size: 12.5px;
+  line-height: 1.5;
+}
+.set-night-note svg.i {
+  flex: none;
+  margin-top: 1px;
+  color: var(--night-violet);
+}
+.set-about-val {
+  color: var(--muted);
+  font-size: 12.5px;
+  text-align: right;
+}
+
+/* Confirmation with a small night sky as its header. */
+.night-confirm h2 {
+  margin: 0 0 6px;
+}
+.night-confirm p {
+  margin: 0 0 12px;
+  color: var(--muted);
+}
+.night-confirm ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: 8px;
+}
+.night-confirm li {
+  display: flex;
+  gap: 9px;
+  font-size: 13px;
+  line-height: 1.45;
+}
+.night-confirm li svg.i {
+  flex: none;
+  margin-top: 1px;
+  color: var(--night-violet);
+}
+.night-confirm-sky {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  height: 96px;
+  margin: calc(-1 * var(--sp-5)) calc(-1 * var(--sp-6)) var(--sp-5);
+}
+.night-confirm-moon {
+  position: absolute;
+  left: 22px;
+  bottom: -14px;
+  width: 54px;
+  height: 54px;
+  border-radius: 50%;
+  box-shadow:
+    inset -15px 8px 0 0 var(--night-moon),
+    0 0 30px 6px color-mix(in srgb, var(--night-moon-dim) 30%, transparent);
+  transform: rotate(-20deg);
+}
+
 @media (max-width: 760px) {
   .dlg.set {
     grid-template-columns: 1fr;
