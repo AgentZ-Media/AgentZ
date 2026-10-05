@@ -581,7 +581,7 @@ export function ScriptsPage() {
       return;
     }
     try {
-      const res = await exportScriptsToPdf(ids, { includeHighlighting: false, includeTitlePage: true });
+      const res = await exportScriptsToPdf(ids, { includeHighlighting: false, includeTitlePage: settingsStore.exportTitlePageDefault() });
       if (res.cancelled) return;
       pushToast(tPlural("select.pdf.toast", res.count), "ok");
     } catch (e) {

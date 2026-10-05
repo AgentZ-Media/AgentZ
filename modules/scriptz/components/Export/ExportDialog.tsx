@@ -26,12 +26,11 @@ export function ExportDialog() {
   const [script, setScript] = createSignal<Script | null>(null);
   const [format, setFormat] = createSignal<Format>("pdf");
   const [highlighting, setHighlighting] = createSignal(false);
-  const [titlePage, setTitlePage] = createSignal(false);
   const [exporting, setExporting] = createSignal(false);
 
   const open = () => uiStore.exportScriptId() !== null;
 
-  // Load the script fresh on every open; options reset like before.
+  // Load the script fresh on every open; PDF title pages follow the saved preference.
   createEffect(() => {
     const id = uiStore.exportScriptId();
     if (!id) return;
@@ -73,7 +72,6 @@ export function ExportDialog() {
   function reset(id: string) {
     setScript(null);
     setFormat("pdf");
-    setTitlePage(false);
     setExporting(false);
     setHighlighting(settingsStore.highlightingDefault());
     void load(id, true);
@@ -93,7 +91,7 @@ export function ExportDialog() {
       blocks: blocks(),
       characters: s.characters ?? [],
       includeHighlighting: highlighting(),
-      includeTitlePage: titlePage(),
+      includeTitlePage: settingsStore.exportTitlePageDefault(),
       castLine: names.length > 0 ? t("export.pdf.characters", { names: names.join(", ") }) : null,
     });
   });
@@ -122,7 +120,7 @@ export function ExportDialog() {
       const fmt = format();
       const result =
         fmt === "pdf"
-          ? await api.exportPdf({ scriptId: id, includeHighlighting: highlighting(), includeTitlePage: titlePage() })
+          ? await api.exportPdf({ scriptId: id, includeHighlighting: highlighting(), includeTitlePage: settingsStore.exportTitlePageDefault() })
           : fmt === "txt"
             ? await api.exportPlaintext({ scriptId: id })
             : await api.exportScriptz(id);
@@ -284,9 +282,9 @@ export function ExportDialog() {
                   type="button"
                   class="sw-t"
                   role="switch"
-                  aria-checked={titlePage()}
+                  aria-checked={settingsStore.exportTitlePageDefault()}
                   aria-label={t("exportDialog.opt.titlePage")}
-                  onClick={() => setTitlePage(!titlePage())}
+                  onClick={() => void settingsStore.setExportTitlePageDefault(!settingsStore.exportTitlePageDefault())}
                 />
               </div>
             </div>
