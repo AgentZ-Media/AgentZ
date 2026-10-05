@@ -154,9 +154,10 @@ Referenz: `docs/agent/screens.html`.
   (abschaltbar), aus abgeschlossenen Skripten nach `agent.learn_since` und
   90 s Ruhe, rückwirkend nur per Button. Als abgeschlossen gilt ein Skript ab
   der Lern-Stufe `agent.learn_stage` (leer = letzte Stufe, spätere Stufen
-  zählen mit, `lib/agent/learnStage.ts`). Unbekannte IDs und die erste Stufe
-  fallen auf die letzte zurück; wird die Lern-Stufe gelöscht, rückt sie auf
-  die nächste vor. Gedächtnis ist nicht Teil des
+  zählen mit, `lib/agent/learnStage.ts`). Eine gewählte Stufe liegt immer
+  zwischen erster und letzter: Wird sie gelöscht, rückt sie auf die nächste
+  vor; landet sie vorn oder hinten, gilt wieder der Standard. Unbekannte IDs
+  fallen beim Lesen auf die letzte Stufe zurück. Gedächtnis ist nicht Teil des
   `.scriptz`-Exports.
 - **Chats** pro Skript in `agent_chats` (`items_json`), Lernstand in
   `agent_learned` (Inhalts-Hash). Rohes JSON wird nie angezeigt; Tool-Aufrufe

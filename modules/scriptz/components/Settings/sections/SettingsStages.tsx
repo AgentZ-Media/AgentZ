@@ -11,7 +11,7 @@ import {
   stageLabel,
   type StageDef,
 } from "../../../lib/stages";
-import { learnStageAfterRemoval } from "../../../lib/agent/learnStage";
+import { learnStageAfterChange } from "../../../lib/agent/learnStage";
 import { agentSettings } from "../../../stores/agentSettings";
 import { settingsStore } from "../../../stores/settings";
 import { pushToast } from "@agentz/kit/stores";
@@ -21,8 +21,8 @@ import { StageGlyph } from "../../Common/StageGlyph";
 
 /** Editable pipeline: rename, reorder, add and remove stages. The last
  *  stage is "done". Removing a stage first moves its scripts (trash
- *  included) to the neighbouring stage, so no script loses its place; an
- *  agent learn stage on it moves on to the next stage. */
+ *  included) to the neighbouring stage, so no script loses its place. The
+ *  agent's learn stage is kept in step with every change. */
 export function SettingsStages(props: { onClose(): void }) {
   const [busy, setBusy] = createSignal(false);
   // Id of a freshly added stage: its name field takes focus once.
@@ -34,13 +34,17 @@ export function SettingsStages(props: { onClose(): void }) {
     pushToast(t("prefs.stages.failed", { message: (err as Error)?.message ?? String(err) }), "error");
 
   async function save(next: StageDef[]): Promise<boolean> {
+    const before = scriptStages();
     try {
       await settingsStore.setScriptStages(next);
-      return true;
     } catch (err) {
       failed(err);
       return false;
     }
+    // The agent's learn stage follows the pipeline (see learnStage.ts).
+    const learnStage = learnStageAfterChange(agentSettings.learnStage(), before, scriptStages());
+    if (learnStage !== null) await agentSettings.setLearnStage(learnStage).catch(failed);
+    return true;
   }
 
   function rename(id: string, raw: string) {
@@ -99,9 +103,6 @@ export function SettingsStages(props: { onClose(): void }) {
       const moved = await api.reassignScriptStatus(id, target);
       const targetName = stageLabel(target);
       const saved = await save(current.filter((s) => s.id !== id));
-      // The agent's learn stage moves on with the pipeline.
-      const learnStage = learnStageAfterRemoval(agentSettings.learnStage(), id, current);
-      if (saved && learnStage !== null) await agentSettings.setLearnStage(learnStage);
       if (moved > 0) {
         scriptsBus.bump();
         if (saved) pushToast(tPlural("prefs.stages.moved", moved, { target: targetName }), "ok");

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { DEFAULT_STAGES, type StageDef } from "../../stages";
-import { learnStageAfterRemoval, learnStageIds, resolveLearnStage } from "../learnStage";
+import { learnStageAfterChange, learnStageIds, resolveLearnStage } from "../learnStage";
 
 const custom: StageDef[] = [{ id: "writing" }, { id: "ready" }, { id: "c-1", label: "Schnitt" }, { id: "shot" }, { id: "online" }];
 
@@ -30,12 +30,26 @@ describe("learn stage", () => {
   });
 
   it("moves on to the next stage when its stage is removed", () => {
-    expect(learnStageAfterRemoval("ready", "ready", custom)).toBe("c-1");
+    const without = (list: readonly StageDef[], id: string) => list.filter((s) => s.id !== id);
+    expect(learnStageAfterChange("ready", custom, without(custom, "ready"))).toBe("c-1");
+    expect(learnStageAfterChange("ready", DEFAULT_STAGES, without(DEFAULT_STAGES, "ready"))).toBe("shot");
     // The next stage is the last one: back to the default.
-    expect(learnStageAfterRemoval("ready", "ready", DEFAULT_STAGES)).toBe("shot");
-    expect(learnStageAfterRemoval("shot", "shot", DEFAULT_STAGES)).toBe("");
+    expect(learnStageAfterChange("shot", DEFAULT_STAGES, without(DEFAULT_STAGES, "shot"))).toBe("");
     // Other stages and the default are unaffected.
-    expect(learnStageAfterRemoval("ready", "shot", DEFAULT_STAGES)).toBeNull();
-    expect(learnStageAfterRemoval("", "online", DEFAULT_STAGES)).toBeNull();
+    expect(learnStageAfterChange("ready", DEFAULT_STAGES, without(DEFAULT_STAGES, "shot"))).toBeNull();
+    expect(learnStageAfterChange("", DEFAULT_STAGES, without(DEFAULT_STAGES, "online"))).toBeNull();
+  });
+
+  it("returns to the default when the chosen stage ends up first or last", () => {
+    // "online" removed: "shot" is the last stage now and must not stay
+    // stored, or a stage added later would still learn from "shot".
+    expect(learnStageAfterChange("shot", DEFAULT_STAGES, DEFAULT_STAGES.filter((s) => s.id !== "online"))).toBe("");
+    const shotLast: StageDef[] = [{ id: "writing" }, { id: "ready" }, { id: "online" }, { id: "shot" }];
+    expect(learnStageAfterChange("shot", DEFAULT_STAGES, shotLast)).toBe("");
+    const readyFirst: StageDef[] = [{ id: "ready" }, { id: "writing" }, { id: "shot" }, { id: "online" }];
+    expect(learnStageAfterChange("ready", DEFAULT_STAGES, readyFirst)).toBe("");
+    expect(learnStageAfterChange("gone", DEFAULT_STAGES, DEFAULT_STAGES)).toBe("");
+    // Adding a stage at the end keeps an explicit choice.
+    expect(learnStageAfterChange("shot", DEFAULT_STAGES, [...DEFAULT_STAGES, { id: "c-2", label: "Archiv" }])).toBeNull();
   });
 });

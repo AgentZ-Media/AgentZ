@@ -19,13 +19,19 @@ export function learnStageIds(stored: string, list: readonly StageDef[]): string
   return list.slice(from).map((s) => s.id);
 }
 
-/** Stored value after `removedId` leaves the pipeline: the learn stage moves
- *  on to the next stage, so learning still waits at least as long. Returns
- *  null when the setting is unaffected. */
-export function learnStageAfterRemoval(stored: string, removedId: string, list: readonly StageDef[]): string | null {
-  if (!stored || stored !== removedId) return null;
-  const i = list.findIndex((s) => s.id === removedId);
-  const next = i >= 0 ? list[i + 1] : undefined;
-  // The next stage is the last one: back to the default, which follows it.
-  return next && i + 1 < list.length - 1 ? next.id : "";
+/** Stored value after the pipeline changed from `before` to `after`, or null
+ *  when it stays. An explicit learn stage only lives between the first and
+ *  the last stage, so the selector never hides a stored choice: a removed
+ *  stage moves on to the next remaining one (learning still waits at least
+ *  as long), and one that ends up first or last returns to the default. */
+export function learnStageAfterChange(stored: string, before: readonly StageDef[], after: readonly StageDef[]): string | null {
+  if (!stored) return null;
+  const inMiddle = (id: string) => after.slice(1, -1).some((s) => s.id === id);
+  if (inMiddle(stored)) return null;
+  let next = stored;
+  if (!after.some((s) => s.id === stored)) {
+    const i = before.findIndex((s) => s.id === stored);
+    next = i < 0 ? "" : before.slice(i + 1).find((s) => after.some((a) => a.id === s.id))?.id ?? "";
+  }
+  return next && inMiddle(next) ? next : "";
 }

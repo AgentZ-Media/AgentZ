@@ -2,7 +2,7 @@
 // removing a stage moves its scripts to the neighbouring stage before the
 // list is saved, renaming a built-in stage back to its default drops the
 // own name, reordering changes which stage is "done", and the agent's learn
-// stage moves on when its stage is removed.
+// stage follows removals and reordering.
 
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { cleanup, render } from "@solidjs/testing-library";
@@ -121,6 +121,30 @@ describe("SettingsStages", () => {
       "set:agent.learn_stage=shot",
     ]);
     expect(agentSettings.learnStage()).toBe("shot");
+  });
+
+  it("returns the learn stage to the default once it becomes the last stage", async () => {
+    await agentSettings.setLearnStage("shot");
+    calls.length = 0;
+    const { container } = render(() => <SettingsStages onClose={() => {}} />);
+    rowButton(rows(container)[3], 2).click(); // remove "online"
+    await tick();
+    await tick();
+    expect(calls).toEqual([
+      "move:online->shot",
+      'set:script_stages=[{"id":"writing"},{"id":"ready"},{"id":"shot"}]',
+      "set:agent.learn_stage=",
+    ]);
+    expect(agentSettings.learnStage()).toBe("");
+  });
+
+  it("returns the learn stage to the default when it is moved to the end", async () => {
+    await agentSettings.setLearnStage("shot");
+    const { container } = render(() => <SettingsStages onClose={() => {}} />);
+    rowButton(rows(container)[2], 1).click(); // shot down
+    await tick();
+    expect(scriptStages().map((s) => s.id)).toEqual(["writing", "ready", "online", "shot"]);
+    expect(agentSettings.learnStage()).toBe("");
   });
 
   it("keeps nothing when the removal is cancelled", async () => {
