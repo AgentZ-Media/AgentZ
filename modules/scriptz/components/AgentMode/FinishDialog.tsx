@@ -91,10 +91,11 @@ function FinishForm(props: { session: ChatSession; target: FinishTarget; onClose
         title: name,
         slug: props.target.draft.draft.slug,
         versionId: version().id,
-        folderId: folderId(),
+        // The folder the script really got (the menu stays usable meanwhile).
+        folderId: script.folder_id,
       });
       const chatAlong = takeChat() && !attachedElsewhere();
-      if (chatAlong) await props.session.attachToScript(script.id, folderId());
+      if (chatAlong) await props.session.attachToScript(script.id, script.folder_id);
       props.onClose();
       if (open) {
         await navStore.openScript(script.id, name);

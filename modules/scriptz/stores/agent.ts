@@ -279,7 +279,8 @@ function createChat(source: ChatSource): ChatSession {
   // Set before the row is deleted: nothing may write it again.
   let discarded = false;
   // The saved chat could not be read: writing would replace it with what
-  // little is in memory, so the session stays read-only until reopened.
+  // little is in memory, so this object stays read-only. It is not kept in
+  // the registry, so opening the session again loads it anew.
   let loadFailed = false;
 
   const loading = (source.kind === "script" ? Promise.resolve(source.record) : getChat(source.chatId)).then((chat) => {
@@ -296,9 +297,12 @@ function createChat(source: ChatSource): ChatSession {
     console.warn("[agent] loading chat failed", error);
     loadFailed = true;
     push({ kind: "error", id: localId("err"), message: t("agentMode.loadFailed") });
+    // Silently: announcing it would make views ask again at once and retry
+    // in a loop while the database stays unreadable.
+    if (byChat.get(chatId()) === session) byChat.delete(chatId());
   }).finally(() => {
     // One live object per chat row; never replace another one.
-    if (!byChat.has(chatId())) {
+    if (!loadFailed && !byChat.has(chatId())) {
       byChat.set(chatId(), session);
       chatsChanged();
     }
@@ -548,6 +552,8 @@ function createChat(source: ChatSource): ChatSession {
       // fresh chat of its own from here on.
       if (byChat.get(chatId()) === session) byChat.delete(chatId());
       record = null;
+      // A fresh row: nothing stored can be overwritten any more.
+      loadFailed = false;
       setChatId(crypto.randomUUID());
       setKind(scriptId() ? "script" : kind());
       setTitle(null);

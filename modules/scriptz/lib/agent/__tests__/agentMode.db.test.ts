@@ -230,6 +230,28 @@ describe("agent store registry", () => {
     await new Promise((r) => setTimeout(r, 450));
     await chat.flush();
     expect((await getChat("unreadable"))?.items.map((i) => i.id)).toEqual(["u-unreadable"]);
+    // Opening it again loads anew and works once the database answers.
+    const again = agentStore.chat("unreadable");
+    expect(again).not.toBe(chat);
+    await new Promise((r) => setTimeout(r, 0));
+    expect(again.items.map((i) => i.id)).toEqual(["u-unreadable"]);
+    expect(agentStore.chat("unreadable")).toBe(again);
+  });
+
+  it("starts a usable new chat after a failed load", async () => {
+    await saveChat(session("unreadable-reset", null, "Alt"));
+    const original = getStorageAdapter();
+    setStorageAdapter({ ...original, agent: { ...original.agent, getChat: async () => { throw new Error("disk busy"); } } });
+    const chat = agentStore.chat("unreadable-reset");
+    await new Promise((r) => setTimeout(r, 0));
+    setStorageAdapter(original);
+    await chat.reset();
+    expect(chat.chatId()).not.toBe("unreadable-reset");
+    chat.append([{ kind: "user", id: "u-fresh", text: "Neu" }]);
+    await new Promise((r) => setTimeout(r, 450));
+    await chat.flush();
+    expect((await getChat(chat.chatId()))?.items.map((i) => i.id)).toEqual(["u-fresh"]);
+    expect((await getChat("unreadable-reset"))?.items.map((i) => i.id)).toEqual(["u-unreadable-reset"]);
   });
 
   it("takes over the script's folder when a session is handed to it", async () => {
