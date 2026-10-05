@@ -8,3 +8,5 @@ import "@agentz/kit/styles.css";
 
 export { bootDesktopApp } from "./boot";
 export type { DesktopApp, DesktopAppOptions } from "./boot";
+export { createCodexHost } from "./lib/codexHost";
+export type { CodexHost, CodexLocation, CodexProcess } from "./lib/codexHost";

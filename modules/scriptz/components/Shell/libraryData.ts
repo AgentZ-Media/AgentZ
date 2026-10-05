@@ -71,6 +71,10 @@ function createLibraryData(isActive: () => boolean) {
     return m;
   });
 
+  // Read through a memo: readers never hit the resource itself, so a refetch
+  // (every autosave bumps scriptsBus) cannot suspend the screen they sit in.
+  const folderList = createMemo<Folder[]>(() => folders() ?? []);
+
   const folderMap = createMemo(() => {
     const m = new Map<string, Folder>();
     for (const f of folders() ?? []) m.set(f.id, f);
@@ -122,6 +126,7 @@ function createLibraryData(isActive: () => boolean) {
   return {
     scripts,
     folders,
+    folderList,
     byId,
     folderMap,
     openIdeas,
@@ -147,6 +152,10 @@ export const library = {
   script: (id: string | null | undefined): ScriptSummary | undefined =>
     id ? data()?.byId().get(id) : undefined,
   folders: (): Folder[] => data()?.folders() ?? [],
+  /** Like `folders()`, but never triggers a Suspense boundary while the list
+   *  refetches. Use inside the script screen (agent panel): a suspended
+   *  screen is detached and loses every scroll position. */
+  folderList: (): Folder[] => data()?.folderList() ?? [],
   folder: (id: string | null | undefined): Folder | undefined =>
     id && id !== INBOX_FOLDER_ID ? data()?.folderMap().get(id) : undefined,
   openIdeas: () => data()?.openIdeas() ?? [],

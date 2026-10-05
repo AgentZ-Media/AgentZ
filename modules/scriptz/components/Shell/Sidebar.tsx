@@ -5,6 +5,10 @@ import { K } from "@agentz/kit/platform";
 import { scriptStages, stageLabel } from "../../lib/stages";
 import type { Folder, ScriptStatus } from "../../lib/types";
 import { t } from "../../i18n";
+import { AgentAvatar } from "../Agent/AgentAvatar";
+import { agentSettings } from "../../stores/agentSettings";
+import { agentUi } from "../../stores/agentUi";
+import { agentStore } from "../../stores/agent";
 import { Icon } from "@agentz/kit/ui";
 import { StageGlyph } from "../Common/StageGlyph";
 import { ContextMenu, type ContextMenuItem } from "../Library/ContextMenu";
@@ -269,6 +273,8 @@ export function Sidebar() {
 export function SidebarFooter() {
   const route = () => navStore.route();
   return (
+    <>
+      <SidebarAgent />
       <div class="side-foot">
         <div class="side-foot-counter">
           <WritingCounter />
@@ -293,7 +299,44 @@ export function SidebarFooter() {
           <Icon name="gear" />
         </button>
       </div>
+    </>
+  );
+}
 
+/** Agent row above the footer: face, name and what it is doing. */
+function SidebarAgent() {
+  const status = () => {
+    const boot = agentStore.bootstrap();
+    if (boot.running) return t("agent.prefs.relearn.running", { done: boot.done, total: boot.total });
+    if (!agentSettings.onboarded()) return t("agent.state.setup.action");
+    if (!agentSettings.enabled()) return t("agent.status.off");
+    const learning = agentStore.learning();
+    if (learning) return t("agent.status.learning", { title: learning.title });
+    const state = agentStore.status().state;
+    if (state === "ready") return t("agent.status.ready");
+    if (state === "checking") return t("agent.status.checking");
+    return t("agent.status.offline");
+  };
+  const busy = () => agentStore.bootstrap().running || agentStore.learning() !== null;
+  return (
+    <Show when={agentStore.available()}>
+      <button
+        type="button"
+        class="side-agent"
+        classList={{ "is-learning": busy() }}
+        title={agentSettings.onboarded() ? t("agent.panel.memory") : t("agent.state.setup.action")}
+        onClick={() => (agentSettings.onboarded() ? agentUi.openMemory() : agentUi.openOnboarding())}
+      >
+        <AgentAvatar look={agentSettings.look()} size={28} state={busy() ? "learn" : agentSettings.enabled() ? "idle" : "still"} onDark />
+        <span class="side-agent-t">
+          <b>{agentSettings.displayName()}</b>
+          <small>{status()}</small>
+        </span>
+        <Show when={navStore.activeScriptId()}>
+          <kbd>{K("Mod+L")}</kbd>
+        </Show>
+      </button>
+    </Show>
   );
 }
 

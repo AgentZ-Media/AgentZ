@@ -1,5 +1,5 @@
 /* @refresh reload */
-import { bootDesktopApp } from "@agentz/desktop";
+import { bootDesktopApp, createCodexHost } from "@agentz/desktop";
 
 const app = bootDesktopApp({
   id: "scriptz",
@@ -10,6 +10,8 @@ const app = bootDesktopApp({
     const { scriptzModule } = await import("@agentz/scriptz");
     return scriptzModule;
   },
+  // Inert until the module calls it; creating the host performs no I/O.
+  services: { codexHost: createCodexHost() },
 });
 
 if (import.meta.hot) import.meta.hot.dispose(() => app.dispose());

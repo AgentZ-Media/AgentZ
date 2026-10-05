@@ -5,6 +5,7 @@ import { SettingsFolders } from "./sections/SettingsFolders";
 import { SettingsCharacters } from "./sections/SettingsCharacters";
 import { SettingsStages } from "./sections/SettingsStages";
 import { DarkPaperSetting } from "./sections/DarkPaperSetting";
+import { AgentSettings } from "../Agent/AgentSettings";
 import "./SettingsDialog.css";
 
 const REPO_URL = "https://github.com/AgentZ-Media/AgentZ";
@@ -25,6 +26,7 @@ export const scriptzModuleSettings: ModuleSettings = {
     { id: "stages", icon: "check", label: () => t("prefs.stages.title"), component: SettingsStages },
     { id: "folders", icon: "folder", label: () => t("prefs.folders.title"), component: SettingsFolders },
     { id: "characters", icon: "users", label: () => t("prefs.characters.title"), component: SettingsCharacters },
+    { id: "agent", icon: "spark", label: () => t("agent.prefs.title"), component: AgentSettings },
   ],
   extend: { appearance: [DarkPaperSetting] },
 };

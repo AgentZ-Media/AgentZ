@@ -7,6 +7,8 @@ import { navStore } from "../../stores/nav";
 import { uiStore } from "../../stores/ui";
 import { openNewScript } from "../Library/actions";
 import { stepStage } from "../Script/stageActions";
+import { agentUi } from "../../stores/agentUi";
+import { agentStore } from "../../stores/agent";
 
 export function getScriptzShortcuts(): ShortcutDef[] {
   const group = (id: "app" | "editor" | "ideas" | "lists") => ({
@@ -41,6 +43,9 @@ export function getScriptzShortcuts(): ShortcutDef[] {
     entry("inspector", "prefs.shortcuts.inspector", ["Mod+Shift+\\"], "app", {
       matches: (event) => isModKey(event) && (event.key === "|" || (event.key === "\\" && event.shiftKey)),
       enabled: hasScript, run: () => uiStore.toggleInspector(),
+    }),
+    entry("agent", "agent.shortcut", ["Mod+L"], "app", {
+      matches: letter("l"), enabled: () => hasScript() && agentStore.available(), run: () => agentUi.toggleChat(),
     }),
     entry("timeline", "prefs.shortcuts.timeline", ["Mod+J"], "app", {
       matches: letter("j"), enabled: hasScript, run: () => uiStore.toggleTimeline(),
