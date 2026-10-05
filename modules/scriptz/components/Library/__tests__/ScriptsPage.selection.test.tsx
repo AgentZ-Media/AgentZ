@@ -1,4 +1,4 @@
-import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from "vitest";
+import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render, waitFor } from "@solidjs/testing-library";
 import { getTestStorage, setTestStorage, type TestStorage } from "../../../test/storage";
 import "../../../lib/api";
@@ -8,11 +8,18 @@ import { navStore, startNavRuntime } from "../../../stores/nav";
 import { t } from "../../../i18n";
 import { startLibraryData } from "../../Shell/libraryData";
 import { ScriptsPage } from "../ScriptsPage";
+import { settingsStore, startSettingsRuntime } from "../../../stores/settings";
+import { exportScriptsToPdf } from "../../../lib/exportSelection";
+
+vi.mock("../../../lib/exportSelection", () => ({
+  exportScriptsToPdf: vi.fn().mockResolvedValue({ cancelled: true, count: 0 }),
+}));
 
 const originalAdapter = getTestStorage();
 let stopNav: () => void;
 let scripts: ScriptSummary[] = [];
 let stopLibrary: () => void;
+let stopSettings: () => void;
 
 function script(id: string, title: string): ScriptSummary {
   return {
@@ -34,6 +41,7 @@ beforeAll(() => {
   }));
   stopNav = startNavRuntime();
   stopLibrary = startLibraryData();
+  stopSettings = startSettingsRuntime();
 });
 beforeEach(async () => {
   scripts = [script("a", "Alpha"), script("b", "Beta")];
@@ -44,6 +52,7 @@ afterEach(cleanup);
 afterAll(() => {
   stopNav();
   stopLibrary();
+  stopSettings();
   setTestStorage(originalAdapter);
 });
 
@@ -57,6 +66,15 @@ async function selectAll() {
 const count = () => document.querySelector(".lib-selbar-count")?.textContent;
 
 describe("ScriptsPage selection scope", () => {
+  it.each([true, false])("uses the saved title page choice (%s) for selected PDF exports", async (includeTitlePage) => {
+    await settingsStore.setExportTitlePageDefault(includeTitlePage);
+    const view = await selectAll();
+    fireEvent.click(view.getByRole("button", { name: t("select.action.pdf") }));
+    await waitFor(() => expect(exportScriptsToPdf).toHaveBeenLastCalledWith(
+      ["a", "b"], { includeHighlighting: false, includeTitlePage },
+    ));
+  });
+
   it("clears the selection when the filter changes", async () => {
     const view = await selectAll();
     expect(count()).toBe(t("select.count", { count: 2 }));
