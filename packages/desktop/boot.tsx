@@ -52,6 +52,13 @@ export function bootDesktopApp(options: DesktopAppOptions): DesktopApp {
       return lock.acquire();
     },
     restart: () => relaunch(),
+    backupDatabase: async (label) => {
+      // Native code owns the backup folder and its retention; SQLite writes a
+      // consistent copy through the app's own connection, including WAL pages.
+      const path = await invoke<string>("plugin:agentz-desktop|prepare_database_backup", { label });
+      const db = await platform.getDb();
+      await db.execute("VACUUM INTO $1", [path]);
+    },
   });
 
   const ready = (async () => {
@@ -98,6 +105,7 @@ export function bootDesktopApp(options: DesktopAppOptions): DesktopApp {
           const loaded = baseSettingsStore.loaded();
           baseSettingsStore.updateCheckEnabled();
           baseSettingsStore.hourlyUpdateCheck();
+          baseSettingsStore.updateChannel();
           updates.store.stopBackgroundPolling();
           if (loaded) updates.store.startBackgroundPolling();
         });

@@ -12,6 +12,7 @@ checksum = "320119579fcad9c21884f5c4861d16174d0e06250625266f50fe6898340abefa"
 name = "agentz-desktop"
 version = "0.1.0"
 dependencies = [
+ "semver",
  "serde",
  "serde_json",
  "tauri",
@@ -3836,7 +3837,7 @@ checksum = "94143f37725109f92c262ed2cf5e59bce7498c01bcc1502d7b9afe439a4e9f49"
 
 [[package]]
 name = "scriptz"
-version = "0.10.0"
+version = "0.10.1"
 dependencies = [
  "agentz-desktop",
  "serde_json",

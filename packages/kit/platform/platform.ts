@@ -1,6 +1,8 @@
 // Host capability interfaces shared by product modules.
 // Native integrations register an adapter explicitly before application boot.
 
+import { STABLE_BUILD, type BuildInfo } from "./build";
+
 // ===== Host platform =====
 //
 // The three OS families we care about. iOS / Android map to "linux"
@@ -84,6 +86,10 @@ export interface PlatformAdapter {
   /** Read the running app version (e.g. "0.7.3"). */
   getVersion(): Promise<string>;
 
+  /** Build identity, known synchronously at startup. Hosts without it are
+   *  treated as stable builds. */
+  build?: BuildInfo;
+
   /** Open an external URL in the user's default browser. */
   openUrl(url: string): Promise<void>;
 
@@ -129,11 +135,20 @@ export function getPlatformAdapter(): PlatformAdapter {
   return adapter;
 }
 
+/** Build identity of the registered host; stable without an adapter. */
+export function getBuildInfo(): BuildInfo {
+  return adapter?.build ?? STABLE_BUILD;
+}
+
 /** Write the host platform onto `<html data-platform="...">` so platform-
- * specific CSS rules (traffic-light padding etc.) can take effect.
+ * specific CSS rules (traffic-light padding etc.) can take effect, and mark
+ * nightly builds with `data-build="nightly"`.
  * No-op in non-DOM environments. Hosts call this at the end of their
  * platform.ts after `setPlatformAdapter()` has completed. */
 export function applyPlatformToDocument(): void {
   if (typeof document === "undefined" || !adapter) return;
-  document.documentElement.dataset.platform = adapter.platform;
+  const root = document.documentElement;
+  root.dataset.platform = adapter.platform;
+  if (getBuildInfo().channel === "nightly") root.dataset.build = "nightly";
+  else delete root.dataset.build;
 }

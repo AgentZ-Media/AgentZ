@@ -21,6 +21,8 @@ export interface ModuleSettings {
 export interface AboutInfo {
   description: Accessor<string>;
   releasesUrl?: string;
+  /** Release page of the nightly channel, linked for available nightly updates. */
+  nightlyReleasesUrl?: string;
   license: Accessor<string>;
   links: Array<{ id: string; label: Accessor<string>; text: Accessor<string>; url: string }>;
   /** Product description below the generic replay-onboarding row. */

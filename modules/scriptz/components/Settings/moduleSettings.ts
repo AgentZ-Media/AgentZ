@@ -14,6 +14,7 @@ export const scriptzAbout: AboutInfo = {
   description: () => t("settings.about.sub"),
   license: () => t("settings.about.license"),
   releasesUrl: `${REPO_URL}/releases/latest`,
+  nightlyReleasesUrl: `${REPO_URL}/releases/tag/scriptz-nightly`,
   links: [
     { id: "developer", label: () => t("settings.about.developer"), text: () => t("settings.about.developer.linkText"), url: "https://linktr.ee/deragentz" },
     { id: "repository", label: () => t("settings.about.repository"), text: () => t("settings.about.repository.linkText"), url: REPO_URL },

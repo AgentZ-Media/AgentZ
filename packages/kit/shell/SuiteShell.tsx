@@ -5,12 +5,13 @@ import {
 import { Dynamic } from "solid-js/web";
 import { createModuleI18n, t } from "../i18n";
 import { registerFlusher, startRelativeTimeClock } from "../lib";
-import { getKvStore, getPlatformAdapter, setPlatformAdapter, setKvStore, applyPlatformToDocument, K } from "../platform";
+import { getBuildInfo, getKvStore, getPlatformAdapter, setPlatformAdapter, setKvStore, applyPlatformToDocument, K } from "../platform";
 import { baseSettingsStore, startBaseSettingsRuntime } from "../stores/baseSettings";
 import { clearToasts } from "../stores/toasts";
 import { shellUi } from "../stores/ui";
 import { AppMark, BootErrorScreen, Icon, ToastHost, dismissConfirmDialogs } from "../ui";
 import { CommandPalette } from "./CommandPalette";
+import { NightSky } from "./NightSky";
 import { SettingsDialog } from "./SettingsDialog";
 import { completeOnboarding as persistOnboarding } from "./onboarding";
 import { createShellShortcuts, createShortcutRegistry } from "./shortcuts";
@@ -70,6 +71,8 @@ export function SuiteShell(props: SuiteShellProps) {
       if (focused instanceof HTMLElement && sidebar?.contains(focused)) focused.blur();
     }
   });
+  // Static per process: a nightly build stays recognizable in every state.
+  const nightly = () => (props.platform?.build ?? getBuildInfo()).channel === "nightly";
 
   onMount(async () => {
     try {
@@ -135,6 +138,7 @@ export function SuiteShell(props: SuiteShellProps) {
       }>
         <Show when={runtime()} fallback={
           <div class="shell-boot" aria-busy="true" aria-label={labels.t("common.loading")}>
+            <Show when={nightly()}><NightSky variant="fill" count={70} seed={3} /></Show>
             <AppMark logo={props.module.logo} appName={props.module.name} size={44} />
             <div class="shell-boot-bar" />
           </div>
@@ -144,6 +148,7 @@ export function SuiteShell(props: SuiteShellProps) {
               data-side={sidebarVisible() ? "on" : "off"}>
               <aside ref={sidebar} class="side" aria-label={t("shell.sidebar.aria")}
                 inert={!sidebarVisible()} aria-hidden={!sidebarVisible()}>
+                <Show when={nightly()}><NightSky /></Show>
                 <div class="side-top" data-tauri-drag-region>
                   <span class="side-traffic" data-tauri-drag-region aria-hidden="true" />
                   <span class="side-sp" data-tauri-drag-region />
@@ -154,12 +159,24 @@ export function SuiteShell(props: SuiteShellProps) {
                 <div class="side-app">
                   <AppMark logo={props.module.logo} appName={props.module.name} size={28} />
                   <span class="side-app-name">{props.module.name}</span>
+                  <Show when={nightly()}>
+                    <button type="button" class="night-badge" onClick={() => shellUi.openSettings("about")}
+                      title={t("shell.nightly.title")} aria-label={t("shell.nightly.title")}>
+                      <Icon name="moon" size={11} />{t("shell.nightly.badge")}
+                    </button>
+                  </Show>
                 </div>
                 <Dynamic component={active().sidebar} />
                 {props.footer}
                 <Show when={active().sidebarFooter}>{(Footer) => <Dynamic component={Footer()} />}</Show>
               </aside>
               <main class="shell-main">
+                <Show when={nightly() && !sidebarVisible() && !shellUi.focused()}>
+                  <button type="button" class="night-badge shell-night-chip" onClick={() => shellUi.openSettings("about")}
+                    title={t("shell.nightly.title")} aria-label={t("shell.nightly.title")}>
+                    <Icon name="moon" size={12} />{t("shell.nightly.badge")}
+                  </button>
+                </Show>
                 <Show when={!shellUi.sidebarOpen() && !active().revealsSidebar}>
                   <button type="button" class="btn ghost icon shell-reveal" onClick={() => shellUi.toggleSidebar()}
                     title={t("shell.sidebar.toggle", { hotkey: K("Mod+\\") })}
