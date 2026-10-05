@@ -73,12 +73,6 @@ Kein `cp` der laufenden DB (WAL). Wiederherstellen bei beendeter App:
   `%APPDATA%\de.agent-z.scriptz\backups\`), die letzten fünf bleiben.
   Wiederherstellen wie unten bei beendeter App.
 
-## Bewusst ausgeschlossen
-
-Ohne Rücksprache mit dem User nicht einbauen: Tabs, globale Charaktere,
-Projekte, Tags, Aliase, Serien, Vibrancy, Wochenziel, Streak, Sprint-Timer,
-Begrüßungen, Kamera/Caption/SFX-Blöcke, Cloud-Sync, Konten.
-
 ## Fehlerbilder
 
 - **Tippen stirbt nach wenigen Zeichen:** `registerRichText` fehlt oder ein
