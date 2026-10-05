@@ -238,6 +238,27 @@ describe("agent store registry", () => {
     expect(agentStore.chat("unreadable")).toBe(again);
   });
 
+  it("drops a failed session also where the script panel picked it up", async () => {
+    const script = await createScript("Panel und Modus", null, null);
+    await saveChat(session("both-views", script.id, "Verlauf"));
+    const original = getStorageAdapter();
+    let release!: () => void;
+    const gate = new Promise<void>((resolve) => { release = resolve; });
+    setStorageAdapter({ ...original, agent: { ...original.agent, getChat: async () => { await gate; throw new Error("disk busy"); } } });
+    const fromMode = agentStore.chat("both-views");
+    const fromPanel = await agentStore.sessionFor(script.id);
+    expect(fromPanel).toBe(fromMode);
+    release();
+    await new Promise((r) => setTimeout(r, 0));
+    setStorageAdapter(original);
+    expect(agentStore.liveSession(script.id)).toBeNull();
+    const reopened = agentStore.chat("both-views");
+    expect(reopened).not.toBe(fromMode);
+    await new Promise((r) => setTimeout(r, 0));
+    expect(reopened.items.map((i) => i.id)).toEqual(["u-both-views"]);
+    expect(await agentStore.sessionFor(script.id)).toBe(reopened);
+  });
+
   it("starts a usable new chat after a failed load", async () => {
     await saveChat(session("unreadable-reset", null, "Alt"));
     const original = getStorageAdapter();

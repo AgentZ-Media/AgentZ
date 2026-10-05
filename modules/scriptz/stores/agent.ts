@@ -298,8 +298,10 @@ function createChat(source: ChatSource): ChatSession {
     loadFailed = true;
     push({ kind: "error", id: localId("err"), message: t("agentMode.loadFailed") });
     // Silently: announcing it would make views ask again at once and retry
-    // in a loop while the database stays unreadable.
+    // in a loop while the database stays unreadable. Also as a script's
+    // chat: the panel may have picked it up meanwhile.
     if (byChat.get(chatId()) === session) byChat.delete(chatId());
+    for (const [key, value] of byScript) if (value === session) byScript.delete(key);
   }).finally(() => {
     // One live object per chat row; never replace another one.
     if (!loadFailed && !byChat.has(chatId())) {
