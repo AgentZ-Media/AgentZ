@@ -2,6 +2,7 @@ import { createSignal } from "solid-js";
 import { getKvStore, type KvStore } from "@agentz/kit/platform";
 import { createSettingsWriter } from "@agentz/kit/stores";
 import { DEFAULT_EFFORT, isAgentEffort, type AgentEffort } from "../lib/agent/types";
+import { isStageId } from "../lib/stages";
 
 /**
  * Agent preferences (Settings > Agent and the agent onboarding). All keys
@@ -35,6 +36,7 @@ const KEYS = {
   learnFromScripts: "agent.learn_scripts",
   learnFromChat: "agent.learn_chat",
   learnSince: "agent.learn_since",
+  learnStage: "agent.learn_stage",
 } as const;
 
 const [enabled, setEnabled] = createSignal(false);
@@ -55,6 +57,9 @@ const [learnFromChat, setLearnFromChat] = createSignal(true);
 /** Scripts finished before this moment (ms) are only learned via the
  *  explicit "learn from all scripts" action, never automatically. */
 const [learnSince, setLearnSince] = createSignal(0);
+/** Stage id from which scripts count as finished for learning; empty = the
+ *  last stage. Resolved against the live pipeline in lib/agent/learnStage.ts. */
+const [learnStage, setLearnStage] = createSignal("");
 const [loaded, setLoaded] = createSignal(false);
 
 let writer: ReturnType<typeof createSettingsWriter> | undefined;
@@ -135,6 +140,12 @@ export const agentSettings = {
     setLearnSince(now);
     await persist(KEYS.learnSince, String(now));
   },
+  learnStage,
+  setLearnStage: async (v: string) => {
+    const next = isStageId(v) ? v : "";
+    setLearnStage(next);
+    await persist(KEYS.learnStage, next);
+  },
 
   async load() {
     const gen = generation;
@@ -158,6 +169,8 @@ export const agentSettings = {
     setLearnFromChat(flag(get("learnFromChat"), true));
     const since = Number(get("learnSince"));
     setLearnSince(Number.isFinite(since) && since > 0 ? since : 0);
+    const stage = get("learnStage");
+    setLearnStage(isStageId(stage) ? stage : "");
     setLoaded(true);
   },
 };
