@@ -39,6 +39,8 @@ export interface ChatPanelProps {
   /** Target range of the script (for runtimes on cards and the jobs). */
   range: LengthRange | null;
   wpm: number;
+  /** Bumps on every editor update (card numbers follow the typing). */
+  tick?: () => number;
 }
 
 type Group =
@@ -263,6 +265,7 @@ function ChatBody(props: ChatPanelProps) {
     scriptId: props.scriptId,
     range: props.range,
     wpm: props.wpm,
+    tick: () => props.tick?.() ?? 0,
   });
 
   const groups = createMemo<Group[]>((previous) => groupItems(session().items, previous), []);

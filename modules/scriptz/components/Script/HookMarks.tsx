@@ -163,7 +163,6 @@ export function HookMarks(props: HookMarksProps) {
               style={{ right: `${box().chipRight}px`, top: `${Math.max(4, box().top - 30)}px` }}
               onMouseDown={(e) => e.preventDefault()}
               onClick={() => props.onCheck?.()}
-              tabIndex={hover() ? 0 : -1}
             >
               <Icon name="timer" size={12} />
               {t("agent.job.hook")}

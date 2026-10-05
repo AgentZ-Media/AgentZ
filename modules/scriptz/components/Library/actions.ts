@@ -136,25 +136,27 @@ function undoAction(run: () => Promise<void>) {
 
 export async function archiveScripts(list: ScriptSummary[]): Promise<void> {
   if (list.length === 0) return;
-  const done: string[] = [];
+  const done: ScriptSummary[] = [];
   try {
     for (const s of list) {
       await api.archiveScript(s.id);
-      done.push(s.id);
-    }
-    const undo = undoAction(async () => {
-      for (const id of done) await api.restoreScript(id);
-    });
-    if (list.length === 1) {
-      pushToast(t("script.toast.archived", { title: list[0].title }), "ok", undefined, undo);
-    } else {
-      pushToast(tPlural("shell.toast.archivedMany", list.length), "ok", undefined, undo);
+      done.push(s);
     }
   } catch (e) {
     fail(e);
   } finally {
     scriptsBus.bump();
     foldersBus.bump();
+  }
+  // Whatever reached the trash gets its undo, even after a failure.
+  if (done.length === 0) return;
+  const undo = undoAction(async () => {
+    for (const s of done) await api.restoreScript(s.id);
+  });
+  if (done.length === 1) {
+    pushToast(t("script.toast.archived", { title: done[0].title }), "ok", undefined, undo);
+  } else {
+    pushToast(tPlural("shell.toast.archivedMany", done.length), "ok", undefined, undo);
   }
 }
 
@@ -169,7 +171,9 @@ export async function moveScriptsTo(ids: string[], folderId: string | null): Pro
       folderId === null ? t("folder.none") : (library.folder(folderId)?.name ?? t("folder.new"));
     pushToast(t("folder.toast.movedTo", { name }), "ok", undefined, undoAction(async () => {
       for (const [id, previous] of before) {
-        if (previous !== folderId) await api.moveScript(id, previous);
+        // Only scripts still where this move put them (a later move wins).
+        const now = library.script(id)?.folder_id ?? null;
+        if (previous !== folderId && now === folderId) await api.moveScript(id, previous);
       }
     }));
   } catch (e) {

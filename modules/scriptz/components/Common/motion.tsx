@@ -148,11 +148,16 @@ export function openWithTransition(
   let paper: HTMLElement | null = null;
   const transition = doc.startViewTransition(async () => {
     el.style.removeProperty("view-transition-name");
-    await update();
-    // Wait until the paper exists (the script loads asynchronously), but
-    // never freeze the screen for long.
+    // The screen is frozen while this callback runs: wait for the update
+    // (it may flush first) and the new paper within one short deadline. The
+    // update itself keeps running past it.
     const start = performance.now();
-    while (!ready() && performance.now() - start < 360) {
+    let settled = false;
+    void Promise.resolve()
+      .then(update)
+      .catch((err) => console.error("[scriptz] open failed", err))
+      .finally(() => (settled = true));
+    while ((!settled || !ready()) && performance.now() - start < 360) {
       await new Promise((resolve) => requestAnimationFrame(resolve));
     }
     // The name lives on the paper only for this transition.

@@ -520,15 +520,14 @@ export function IdeasPage() {
     );
     if (!ok) return;
     const deleted: Idea[] = [];
-    try {
-      for (const idea of list) {
-        await ideasStore.deleteIdea(idea.id);
-        deleted.push(idea);
-      }
+    // Ideas have no trash: whatever was deleted gets its undo, even when a
+    // later one in the batch fails.
+    const undoToast = () => {
+      if (deleted.length === 0) return;
       pushToast(
-        list.length === 1
-          ? t("ideas.toast.deleted", { title: list[0].title })
-          : tPlural("ideasPage.toast.deletedMany", list.length),
+        deleted.length === 1
+          ? t("ideas.toast.deleted", { title: deleted[0].title })
+          : tPlural("ideasPage.toast.deletedMany", deleted.length),
         "ok",
         undefined,
         {
@@ -544,9 +543,16 @@ export function IdeasPage() {
           },
         },
       );
+    };
+    try {
+      for (const idea of list) {
+        await ideasStore.deleteIdea(idea.id);
+        deleted.push(idea);
+      }
     } catch (err) {
       errorToast(err);
     }
+    undoToast();
   }
 
   async function moveIdeas(list: Idea[], folderId: string | null, name = folderName(folderId)) {
@@ -559,7 +565,11 @@ export function IdeasPage() {
           label: t("shell.toast.undo"),
           run: async () => {
             try {
-              for (const idea of todo) await ideasStore.moveIdea(idea.id, idea.folder_id);
+              // Only ideas still where this move put them (a later move wins).
+              const now = new Map(ideasStore.ideas.latest.map((i) => [i.id, i.folder_id]));
+              for (const idea of todo) {
+                if (now.get(idea.id) === folderId) await ideasStore.moveIdea(idea.id, idea.folder_id);
+              }
             } catch (err) {
               errorToast(err);
             }

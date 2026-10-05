@@ -30,6 +30,8 @@ export interface ItemContext {
   scriptId: string;
   range: LengthRange | null;
   wpm: number;
+  /** Bumps on every editor update. */
+  tick(): number;
 }
 
 // ---------------------------------------------------------------- user
@@ -231,6 +233,7 @@ function MetricPills(props: { metrics: OptionMetrics; range: LengthRange | null 
 export function ProposalCards(props: { item: Item<"proposal">; ctx: ItemContext }) {
   // Numbers against the script as it is now (incl. unsaved typing).
   const metrics = createMemo(() => {
+    props.ctx.tick();
     const current = liveBlocks(props.ctx.scriptId);
     if (!current) return [];
     return props.item.proposal.options.map((_, i) => optionMetrics(current, props.item.proposal, i, props.ctx.wpm));

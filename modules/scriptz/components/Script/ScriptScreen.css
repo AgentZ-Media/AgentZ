@@ -699,7 +699,8 @@
   transform: translateY(4px);
   transition: opacity var(--t-fast), transform var(--t-fast) var(--ease);
 }
-.hk-chip.is-on {
+.hk-chip.is-on,
+.hk-chip:focus-visible {
   opacity: 1;
   pointer-events: auto;
   transform: none;

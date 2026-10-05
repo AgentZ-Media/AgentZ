@@ -379,6 +379,13 @@
 @keyframes tl-seg {
   from { transform: scaleX(0); }
 }
+@media (prefers-reduced-motion: reduce) {
+  .tl.is-opening .tl-body,
+  .tl.is-opening .legend,
+  .tl.is-opening .lane > i {
+    animation: none;
+  }
+}
 
 /* ---------- agent jobs at the length (hover, only when too long) ---------- */
 .tl .tl-len-wrap {

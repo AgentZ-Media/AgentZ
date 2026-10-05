@@ -764,6 +764,7 @@ export function ScriptScreen(props: ScriptScreenProps) {
             onClose={() => agentUi.setChatOpen(props.scriptId, false)}
             range={range()}
             wpm={wpm()}
+            tick={live.tick}
           />
         </div>
       </Show>
