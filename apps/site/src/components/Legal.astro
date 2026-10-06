@@ -2,10 +2,15 @@
 import Base from "../layouts/Base.astro";
 interface Props { title: string; description: string }
 const { title, description } = Astro.props;
+const path = Astro.url.pathname;
 ---
 <Base title={title} description={description}>
-  <article class="legal">
-    <nav class="legal-nav" aria-label="Rechtliche Informationen"><a href="/">Startseite</a><a href="/impressum/">Impressum</a><a href="/datenschutz/">Datenschutz</a></nav>
+  <article class="legal wrap">
+    <nav class="legal-nav" aria-label="Rechtliche Informationen">
+      <a href="/">Startseite</a>
+      <a href="/impressum/" aria-current={path.startsWith("/impressum") ? "page" : undefined}>Impressum</a>
+      <a href="/datenschutz/" aria-current={path.startsWith("/datenschutz") ? "page" : undefined}>Datenschutz</a>
+    </nav>
     <h1>{title}</h1>
     <slot />
   </article>

@@ -12,6 +12,11 @@ const contentExceptions = [
     reason: "Persisted character palette, mirrored by the content model.",
   },
   {
+    file: "apps/site/src/styles/palette.css",
+    line: /^\s*--char-[1-5]:\s*#[\da-f]{6};\s*$/i,
+    reason: "ScriptZ character palette shown as script content in the website demo.",
+  },
+  {
     file: "modules/scriptz/components/Editor/plugins/colorPicker.tsx",
     line: /^const NEUTRAL_PLACEHOLDER = "#9aa0a6";$/,
     reason: "Character color before a document character has been assigned a palette color.",

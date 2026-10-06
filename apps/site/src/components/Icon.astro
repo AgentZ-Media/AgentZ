@@ -1,0 +1,8 @@
+---
+import { ICONS, ICON_VIEWBOX, STAGE_GLYPHS, STAGE_VIEWBOX, type IconName, type StageGlyphName } from "@agentz/design/icons";
+interface Props { name?: IconName; stage?: StageGlyphName; class?: string }
+const { name, stage, class: className } = Astro.props;
+---
+{stage
+  ? <svg class:list={["st", className]} viewBox={STAGE_VIEWBOX} aria-hidden="true" set:html={STAGE_GLYPHS[stage]} />
+  : <svg class:list={["i", className]} viewBox={ICON_VIEWBOX} aria-hidden="true" set:html={name ? ICONS[name] : ""} />}

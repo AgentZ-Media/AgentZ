@@ -1,0 +1,23 @@
+/* iA Writer Quattro (SIL OFL 1.1, see assets/fonts/iA-Writer-LICENSE.md):
+   the writing font of ScriptZ, used by the demo paper. Served with the site. */
+@font-face {
+  font-family: "iA Writer Quattro";
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("../assets/fonts/iAWriterQuattroS-Regular.woff2") format("woff2");
+}
+@font-face {
+  font-family: "iA Writer Quattro";
+  font-style: italic;
+  font-weight: 400;
+  font-display: swap;
+  src: url("../assets/fonts/iAWriterQuattroS-Italic.woff2") format("woff2");
+}
+@font-face {
+  font-family: "iA Writer Quattro";
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url("../assets/fonts/iAWriterQuattroS-Bold.woff2") format("woff2");
+}

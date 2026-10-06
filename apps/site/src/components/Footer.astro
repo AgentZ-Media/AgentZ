@@ -1,0 +1,42 @@
+---
+import { catalogs, type Language } from "../i18n";
+import DotWord from "./DotWord.astro";
+import AiLabel from "./AiLabel.astro";
+interface Props { lang: Language; home: boolean }
+const { lang, home } = Astro.props;
+const t = catalogs[lang];
+const f = t.footer;
+const base = lang === "en" ? "/en/" : "/";
+---
+<footer class="site-footer" data-theme="dark">
+  <div class="wrap">
+    <div class="footer-art" data-reveal>
+      <DotWord text="AgentZ" class="footer-word" gap={1} />
+      <figure class="footer-ai">
+        <AiLabel label={f.aiLabel} />
+        <figcaption><b>{f.aiTitle}</b><span>{f.aiText}</span></figcaption>
+      </figure>
+    </div>
+    <div class="footer-cols">
+      <p class="footer-tag">{f.tagline}</p>
+      <nav aria-label={f.suite}>
+        <p>{f.suite}</p>
+        <a href={`${base}#scriptz`}>ScriptZ</a>
+        <a href={`${base}#apps`}>{t.nav.apps}</a>
+        <a href={`${base}#download`}>{t.nav.download}</a>
+        <a href="https://github.com/AgentZ-Media/AgentZ-Suite">{f.source}</a>
+      </nav>
+      <nav aria-label={f.legalHeading}>
+        <p>{f.legalHeading}</p>
+        <a href="/impressum/">{f.legal}</a>
+        <a href="/datenschutz/">{f.privacy}</a>
+      </nav>
+      <nav aria-label={t.language}>
+        <p>{t.language}</p>
+        <a href="/" lang="de" hreflang="de" aria-current={home && lang === "de" ? "page" : undefined}>Deutsch</a>
+        <a href="/en/" lang="en" hreflang="en" aria-current={home && lang === "en" ? "page" : undefined}>English</a>
+      </nav>
+    </div>
+    <p class="footer-copy">© {new Date().getFullYear()} AgentZ Media · agentz-suite.com</p>
+  </div>
+</footer>

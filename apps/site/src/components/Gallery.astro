@@ -1,0 +1,24 @@
+---
+// Real ScriptZ screenshots (taken from the app in both languages), served
+// pre-sized from public/img/shots.
+import { catalogs, type Language } from "../i18n";
+interface Props { lang: Language }
+const { lang } = Astro.props;
+const g = catalogs[lang].gallery;
+const shot = (key: string, width: number) => `/img/shots/${lang}-${key}-${width}.webp`;
+const keys = ["script", "board", "export"] as const;
+---
+<div class="gallery" data-reveal>
+  <div class="gallery-tabs" role="radiogroup" aria-label={g.title}>
+    {keys.map((key, i) => (
+      <label><input type="radio" name="shot" value={key} checked={i === 0} /><span>{g.tabs[key]}</span></label>
+    ))}
+  </div>
+  <div class="gallery-frame">
+    {keys.map((key, i) => (
+      <figure class={`gallery-shot shot-${key}`}>
+        <img src={shot(key, 1200)} srcset={`${shot(key, 1200)} 1200w, ${shot(key, 2400)} 2400w`} sizes="(max-width: 1240px) 94vw, 1180px" width="2400" height="1500" alt={g.alt[key]} loading={i === 0 ? "eager" : "lazy"} decoding="async" />
+      </figure>
+    ))}
+  </div>
+</div>
