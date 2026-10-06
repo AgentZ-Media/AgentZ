@@ -7,7 +7,7 @@ paths:
 
 # ScriptZ: Architektur
 
-Allgemeine Regeln stehen in [`apps/scriptz/CLAUDE.md`](../../apps/scriptz/CLAUDE.md),
+Allgemeine Regeln stehen in [`apps/scriptz/AGENTS.md`](../../apps/scriptz/AGENTS.md),
 Suite-Grenzen in [`suite-architecture.md`](suite-architecture.md).
 
 ## Aufbau des Moduls

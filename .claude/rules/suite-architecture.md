@@ -19,7 +19,7 @@ eigene Releases. Gemeinsam sind Design, Kit, Desktop-Host, Tooling und Website.
 ## Grenzen
 
 `tooling/checks/architecture.mjs` (ESLint) erzwingt die Richtung aus
-`CLAUDE.md`, auch für Typ-Importe, dynamische Importe, `require` und
+`AGENTS.md`, auch für Typ-Importe, dynamische Importe, `require` und
 TS-Aliasse. Paketübergreifend nur über den Paketnamen und dessen `exports`;
 relative Pfade nur innerhalb eines Pakets. Ein unbekanntes `@agentz/*`-Paket
 ist ein Fehler, bis seine Grenze festgelegt ist. Tooling gehört nie ins Bundle.

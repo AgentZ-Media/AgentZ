@@ -31,7 +31,7 @@ Anschließend laufen `pnpm install --no-frozen-lockfile`, der Icon-Build und `ca
 - Für persistente Änderungen die Kit-Speicher- und Flush-Verträge verwenden; keine unregistrierten Hintergrundschreibvorgänge. Asynchrone Initialisierung beachtet `context.signal`; reaktive Ressourcen nach `await` entstehen über `context.runOwned`.
 - Eigene Tabellen als nächste Migration in `apps/mein-tool/src-tauri/migrations` anlegen und in `src/lib.rs` registrieren. Migration 1 ist eine beim Generieren eingefrorene Kopie von `crates/agentz-desktop/src/baseline.sql`; ausgelieferte Migrationen nicht nachträglich ändern.
 - Zusätzliche native Plugins direkt im App-`Cargo.toml` deklarieren und ihre Berechtigungen ausdrücklich ergänzen. Systemweite Tastenkürzel sind keine Basisfunktion.
-- `apps/mein-tool/CLAUDE.md` um produktspezifische Regeln ergänzen.
+- `apps/mein-tool/AGENTS.md` um produktspezifische Regeln ergänzen.
 
 ## 3. Logo und Vorschau
 
