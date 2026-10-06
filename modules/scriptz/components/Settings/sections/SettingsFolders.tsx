@@ -4,7 +4,7 @@ import { foldersBus } from "../../../lib/foldersBus";
 import { folderHasLengthRange, formatRange } from "../../../lib/lengthGoal";
 import { t } from "../../../i18n";
 import type { Folder } from "../../../lib/types";
-import { folderColor } from "../../Ideas/folderColor";
+import { folderColor } from "../../Common/folderColor";
 import { defaultLengthRange } from "../../Shell/libraryData";
 import { SectionHead } from "@agentz/kit/ui";
 import { RangeFields } from "./parts";

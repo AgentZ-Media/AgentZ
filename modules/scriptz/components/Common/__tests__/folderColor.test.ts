@@ -1,4 +1,4 @@
-// Tests for the stable folder colour (components/Ideas/folderColor.ts).
+// Tests for the stable folder colour (components/Common/folderColor.ts).
 
 import { describe, expect, it } from "vitest";
 import { folderColor } from "../folderColor";

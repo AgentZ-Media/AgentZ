@@ -1,11 +1,11 @@
-import { uiStore } from "../../../stores/ui";
+import { uiStore } from "../../stores/ui";
 import { For, Show, createSignal, onCleanup } from "solid-js";
 import { Portal } from "solid-js/web";
 import { Icon } from "@agentz/kit/ui";
 import { dismissOnDialog } from "@agentz/kit/ui";
-import { t } from "../../../i18n";
-import type { Folder } from "../../../lib/types";
-import { folderColor } from "../folderColor";
+import { t } from "../../i18n";
+import type { Folder } from "../../lib/types";
+import { folderColor } from "./folderColor";
 import "./FolderMenu.css";
 
 // Folder picker: a chip trigger plus a `.menu` popover

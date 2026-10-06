@@ -1,6 +1,7 @@
-import { Match, Switch, type JSX } from "solid-js";
+import { Match, Show, Switch, type JSX } from "solid-js";
 import { Icon } from "@agentz/kit/ui";
 import { t } from "../../i18n";
+import type { ListSelection } from "./listSelection";
 import type { CheckState } from "./selection";
 import "./SelectionBar.css";
 
@@ -61,5 +62,26 @@ export function SelectAllLine(props: SelectAllLineProps) {
       </SelectCheck>
       <span class="n num">{props.count}</span>
     </div>
+  );
+}
+
+export interface GroupCheckProps {
+  selection: ListSelection;
+  /** Ids of the group's rows (beyond the loaded page too). */
+  ids: readonly string[];
+  /** Group name for the accessible label. */
+  name: string;
+}
+
+/** Group header checkbox, shown only while the selection mode is on. */
+export function GroupCheck(props: GroupCheckProps) {
+  return (
+    <Show when={props.selection.selectMode()}>
+      <SelectCheck
+        state={props.selection.groupState(props.ids)}
+        label={t("select.group", { name: props.name })}
+        onToggle={() => props.selection.toggle(props.ids)}
+      />
+    </Show>
   );
 }

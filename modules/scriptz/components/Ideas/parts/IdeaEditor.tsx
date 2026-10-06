@@ -11,7 +11,7 @@ import { Icon } from "@agentz/kit/ui";
 import { StageGlyph } from "../../Common/StageGlyph";
 import { AgentAvatar } from "../../Agent/AgentAvatar";
 import { agentSettings } from "../../../stores/agentSettings";
-import { FolderMenu } from "./FolderMenu";
+import { FolderMenu } from "../../Common/FolderMenu";
 import { ideaAge } from "../ideaGroups";
 import { rankScriptHits, similarIdeas, similarQueryTerms } from "../similar";
 

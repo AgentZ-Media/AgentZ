@@ -1,103 +1,70 @@
 import {
   For,
-  Match,
   Show,
-  Switch,
   batch,
   createEffect,
   createMemo,
-  createResource,
   createSignal,
   onCleanup,
   on,
   onMount,
   untrack,
-  type Accessor,
 } from "solid-js";
-import { api } from "../../lib/api";
-import { foldersBus } from "../../lib/foldersBus";
-import { scriptsBus } from "../../lib/scriptsBus";
 import { INBOX_FOLDER_ID } from "../../lib/folders";
-import { requireSuccessfulFlush } from "@agentz/kit/lib";
-import { K, isModKey } from "@agentz/kit/platform";
+import { isModKey } from "@agentz/kit/platform";
 import { ideasStore } from "../../stores/ideas";
 import { navStore } from "../../stores/nav";
 import { uiStore } from "../../stores/ui";
-import { pushToast } from "@agentz/kit/stores";
-import { localeCompare } from "@agentz/kit/i18n";
-import { t, tPlural } from "../../i18n";
-import type { Folder, Idea, ScriptStatus, ScriptSummary } from "../../lib/types";
-import { scriptStages, stageLabel } from "../../lib/stages";
-import { Icon } from "@agentz/kit/ui";
-import { StageGlyph } from "../Common/StageGlyph";
-import { AgentAvatar } from "../Agent/AgentAvatar";
-import { agentSettings } from "../../stores/agentSettings";
-import { agentModeAvailable, findIdeasWithAgent, writeIdeaWithAgent } from "../AgentMode/actions";
-import { confirmDialog } from "@agentz/kit/ui";
+import { t } from "../../i18n";
+import type { Idea } from "../../lib/types";
+import { agentModeAvailable, writeIdeaWithAgent } from "../AgentMode/actions";
 import { PageBar } from "../Library/PageBar";
-import { ContextMenu, type ContextMenuItem } from "../Library/ContextMenu";
-import { PromptDialog } from "../Library/PromptDialog";
-import { SelectionBar } from "../Library/SelectionBar";
-import { SelectAllLine, SelectCheck } from "../Library/SelectCheck";
-import { checkState, rangeBetween, toggleIds, withIds } from "../Library/selection";
+import { ContextMenu, type ContextMenuItem } from "../Common/ContextMenu";
+import { PromptDialog } from "../Common/PromptDialog";
+import { SelectionBar } from "../Common/SelectionBar";
+import { SelectAllLine } from "../Common/SelectCheck";
+import { rangeBetween } from "../Common/selection";
+import { createListSelection } from "../Common/listSelection";
 import { createFolder } from "../Library/actions";
-import { folderColor } from "./folderColor";
+import { groupLabel, inFolder, scopeIdeas } from "./ideaGroups";
 import {
-  countNewThisWeek,
-  folderCounts,
-  groupIdeas,
-  groupLabel,
-  ideaAge,
-  inFolder,
-  scopeIdeas,
-  sortIdeas,
-  type IdeaGroup,
-  type IdeaSort,
-} from "./ideaGroups";
-import { similarIdeas } from "./similar";
-import { FolderMenu } from "./parts/FolderMenu";
-import { SortMenu } from "./parts/SortMenu";
+  PAGE_SIZE,
+  createIdeasLists,
+  createIdeasSources,
+  groupOpen,
+  query,
+  rowLimit,
+  setGroupOpen,
+  setQuery,
+  setRowLimit,
+  setShowUsed,
+  setSort,
+  showUsed,
+  sort,
+} from "./ideasView";
+import {
+  convertIdea,
+  ideaMoveMenu,
+  ideaStageMenu,
+  moveIdeas as moveIdeasTo,
+  removeIdeas,
+} from "./ideaActions";
+import { createIdeasKeyHandler } from "./ideasKeys";
+import { CaptureField, createCapture } from "./parts/CaptureField";
+import { IdeaRow } from "./parts/IdeaRow";
+import { IdeasEmpty } from "./parts/IdeasEmpty";
+import { IdeasKeyHints } from "./parts/IdeasKeyHints";
+import { IdeaGroupHeader } from "./parts/IdeaGroupHeader";
+import { IdeasToolbar } from "./parts/IdeasToolbar";
 import { IdeaEditor, type IdeaEditorHandle } from "./parts/IdeaEditor";
 import "./IdeasPage.css";
-
-/** Rows rendered per page across all open groups; "Weitere laden" adds
- *  another page. Keeps the DOM small for very large idea collections. */
-const PAGE_SIZE = 50;
-
-// Session-level view state: survives leaving and re-entering the page.
-const [sort, setSort] = createSignal<IdeaSort>("newest");
-const [showUsed, setShowUsed] = createSignal(false);
-const [query, setQuery] = createSignal("");
-/** Explicit open/closed state per group id; default: "older" closed. */
-const [groupOpen, setGroupOpen] = createSignal<Record<string, boolean>>({});
-/** How many rows (across open groups, in display order) are rendered. */
-const [rowLimit, setRowLimit] = createSignal(PAGE_SIZE);
-
-function isEditable(el: EventTarget | null): boolean {
-  if (!(el instanceof HTMLElement)) return false;
-  return el.isContentEditable || el.tagName === "INPUT" || el.tagName === "TEXTAREA" || el.tagName === "SELECT";
-}
 
 /** The ideas page (route `{ kind: "ideas", folderId? }`): capture field
  *  (expands for notes + folder), folder chips and a dense time-grouped
  *  list whose rows open in place into an editor (IdeaEditor). */
 export function IdeasPage() {
   const ideas = () => ideasStore.ideas() ?? [];
-  const [folders] = createResource(() => foldersBus.version(), () => api.listFolders(), {
-    initialValue: [] as Folder[],
-  });
-  const [scripts] = createResource(
-    () => scriptsBus.version(),
-    async () => {
-      try {
-        const list = await api.listScripts({ limit: 1000 });
-        return new Map(list.map((s) => [s.id, s]));
-      } catch {
-        return new Map<string, ScriptSummary>();
-      }
-    },
-    { initialValue: new Map<string, ScriptSummary>() },
-  );
+  const { folders, scripts } = createIdeasSources();
 
   // Ticking clock for the age column + the week grouping.
   const [now, setNow] = createSignal(Date.now());
@@ -126,76 +93,31 @@ export function IdeasPage() {
   const [openQuery, setOpenQuery] = createSignal("");
 
   // ---- derived lists ----
-  const scoped = createMemo(() => {
-    const list = scopeIdeas(ideas(), { query: query(), showUsed: showUsed() });
-    const id = openId();
-    if (!id || query() !== openQuery() || list.some((i) => i.id === id)) return list;
-    const pinned = scopeIdeas(
-      ideas().filter((i) => i.id === id),
-      { query: "", showUsed: showUsed() },
-    );
-    return pinned.length > 0 ? [...list, ...pinned] : list;
-  });
-  const counts = createMemo(() => folderCounts(scoped()));
-  const visible = createMemo(() => sortIdeas(inFolder(scoped(), activeFolder()), sort(), localeCompare));
-  const groups = createMemo(() => groupIdeas(visible(), sort(), new Date(now())));
-  const openCount = createMemo(() => ideas().filter((i) => !i.used_at).length);
-  const freshCount = createMemo(() => countNewThisWeek(ideas(), new Date(now())));
-  const chipFolders = createMemo(() =>
-    (folders() ?? []).filter((f) => (counts().byFolder.get(f.id) ?? 0) > 0 || f.id === activeFolder()),
-  );
-
-  const filtering = () => query().trim().length > 0;
-  const isOpen = (g: IdeaGroup<Idea>) => {
-    if (filtering()) return true;
-    const explicit = groupOpen()[g.id];
-    return explicit ?? g.kind !== "older";
-  };
-  /** Splits the row budget over the open groups in display order. Groups
-   *  after the one where the budget runs out are not rendered at all; the
-   *  "load more" button below the list continues from there. */
-  const paging = createMemo(() => {
-    const shown = new Map<string, Idea[]>();
-    const rendered: IdeaGroup<Idea>[] = [];
-    let budget = rowLimit();
-    let remaining = 0;
-    for (const g of groups()) {
-      if (budget <= 0) {
-        if (isOpen(g)) remaining += g.items.length;
-        continue;
-      }
-      rendered.push(g);
-      if (!isOpen(g)) continue;
-      const take = g.items.slice(0, budget);
-      shown.set(g.id, take);
-      budget -= take.length;
-      remaining += g.items.length - take.length;
-    }
-    return { shown, rendered, remaining };
-  });
-  const shownItems = (g: IdeaGroup<Idea>) => paging().shown.get(g.id) ?? [];
-  // A new folder / filter / sort starts again at the first page.
-  createEffect(on([activeFolder, query, sort, showUsed], () => setRowLimit(PAGE_SIZE), { defer: true }));
-  /** Row ids in display order (only rows actually rendered). */
-  const visibleIds = createMemo(() => {
-    const ids: string[] = [];
-    for (const g of groups()) {
-      if (!isOpen(g)) continue;
-      for (const i of shownItems(g)) ids.push(i.id);
-    }
-    return ids;
-  });
-
-  const groupById = createMemo(() => new Map(groups().map((g) => [g.id, g])));
-  const ideaById = createMemo(() => new Map(ideas().map((i) => [i.id, i])));
+  const {
+    scoped,
+    counts,
+    visible,
+    groups,
+    openCount,
+    freshCount,
+    chipFolders,
+    filtering,
+    isOpen,
+    paging,
+    shownItems,
+    visibleIds,
+    groupById,
+    ideaById,
+    selectableIds,
+  } = createIdeasLists({ ideas, folders, activeFolder, openId, openQuery, now });
 
   // ---- selection ----
   // Outside the selection mode `selected` is just the primary row (the one
   // that opens in place). The selection mode (button, ⌘A, ⌘/⇧-click) shows
   // checkboxes and closes the open row: clicks toggle rows, `primary` is
   // only the keyboard cursor.
-  const [selectMode, setSelectMode] = createSignal(false);
-  const [selected, setSelected] = createSignal<Set<string>>(new Set());
+  const sel = createListSelection({ selectableIds: () => selectableIds() });
+  const { selectMode, setSelectMode, selected, setSelected } = sel;
   const [primary, setPrimary] = createSignal<string | null>(null);
   const [anchor, setAnchor] = createSignal<string | null>(null);
   const [wanted, setWanted] = createSignal<string | null>(null);
@@ -203,8 +125,6 @@ export function IdeasPage() {
   const [wantedOpen, setWantedOpen] = createSignal(false);
   let editor: IdeaEditorHandle | null = null;
   let listRef: HTMLDivElement | undefined;
-  let captureRef: HTMLInputElement | undefined;
-  let captureNotesRef: HTMLTextAreaElement | undefined;
   let filterRef: HTMLInputElement | undefined;
 
   const primaryIdea = () => {
@@ -221,25 +141,10 @@ export function IdeasPage() {
     }
   }
 
-  /** What "select all" covers: every idea of the current view (beyond the
-   *  loaded page too), except groups that are collapsed. */
-  const selectableIds = createMemo(() => {
-    const ids: string[] = [];
-    for (const g of groups()) if (isOpen(g)) for (const i of g.items) ids.push(i.id);
-    return ids;
-  });
-  const allState = () => checkState(selectableIds(), selected());
-
-  function enterSelectMode(initial: Iterable<string> = []) {
-    setSelectMode(true);
-    setSelected(new Set(initial));
-  }
   function exitSelectMode() {
     setSelectMode(false);
     selectOnly(primary() ?? visibleIds()[0] ?? null);
   }
-  const selectAll = () => enterSelectMode(selectableIds());
-  const toggleAll = () => (allState() === "all" ? setSelected(new Set<string>()) : selectAll());
 
   // A different folder starts without a selection, like the scripts page.
   createEffect(
@@ -306,17 +211,13 @@ export function IdeasPage() {
       // Checked rows may sit beyond the loaded page; only drop the ones
       // that left the view (deleted, converted, filtered out).
       const live = new Set(visible().map((i) => i.id));
-      const sel = selected();
-      if ([...sel].some((id) => !live.has(id))) setSelected(new Set([...sel].filter((id) => live.has(id))));
+      sel.retain((id) => live.has(id));
       if (!p || !ids.includes(p)) setPrimary(ids[0] ?? null);
       return;
     }
     if (p && ids.includes(p)) {
       // Drop selected rows that are no longer visible.
-      const sel = selected();
-      if ([...sel].some((id) => !ids.includes(id))) {
-        setSelected(new Set([...sel].filter((id) => ids.includes(id))));
-      }
+      sel.retain((id) => ids.includes(id));
       return;
     }
     selectOnly(ids[0] ?? null);
@@ -363,16 +264,16 @@ export function IdeasPage() {
     if (range) {
       // Shift-click: adds the range (starts the selection mode from the
       // plain list).
-      if (selectMode()) setSelected((prev) => withIds(prev, range, true));
-      else enterSelectMode(range);
+      if (selectMode()) sel.add(range);
+      else sel.enter(range);
       setPrimary(id);
       setAnchor(id);
       return;
     }
     if (selectMode() || isModKey(e)) {
       // ⌘-click on the plain list starts the selection with the current row.
-      if (!selectMode()) enterSelectMode(primary() && primary() !== id ? [primary()!] : []);
-      setSelected((prev) => toggleIds(prev, [id]));
+      if (!selectMode()) sel.enter(primary() && primary() !== id ? [primary()!] : []);
+      sel.toggle([id]);
       setPrimary(id);
       setAnchor(id);
       return;
@@ -381,7 +282,7 @@ export function IdeasPage() {
   }
 
   function toggleRow(id: string) {
-    setSelected((prev) => toggleIds(prev, [id]));
+    sel.toggle([id]);
     setAnchor(id);
   }
 
@@ -401,220 +302,25 @@ export function IdeasPage() {
     queueMicrotask(() => document.getElementById(`idea-row-${id}`)?.scrollIntoView({ block: "nearest" }));
   }
 
-  const errorToast = (err: unknown) =>
-    pushToast(t("common.errorPrefix", { message: (err as Error)?.message ?? String(err) }), "error");
-
   // ---- capture field ----
-  const [capTitle, setCapTitle] = createSignal("");
-  const [capNotes, setCapNotes] = createSignal("");
-  const [capOpen, setCapOpen] = createSignal(false);
-  /** Explicitly picked folder; undefined follows the folder filter. */
-  const [capFolder, setCapFolder] = createSignal<string | null | undefined>(undefined);
-  const capFolderValue = () => {
-    const picked = capFolder();
-    if (picked !== undefined) return picked;
-    const fid = activeFolder();
-    return fid === INBOX_FOLDER_ID ? null : fid;
-  };
-  /** Existing ideas resembling the title being typed (duplicate check). */
-  const capSimilar = createMemo(() =>
-    capOpen() ? similarIdeas({ id: "", title: capTitle() }, ideas(), 2) : [],
-  );
-
-  function growCaptureNotes() {
-    const el = captureNotesRef;
-    if (!el) return;
-    el.style.height = "auto";
-    // scrollHeight excludes the border; add it back so no scrollbar shows.
-    el.style.height = `${el.scrollHeight + el.offsetHeight - el.clientHeight}px`;
-  }
-
-  function expandCapture() {
-    setCapOpen(true);
-    queueMicrotask(() => {
-      growCaptureNotes();
-      captureNotesRef?.focus({ preventScroll: true });
-    });
-  }
-
-  /** Closes the expanded part; its notes and folder pick are dropped so
-   *  nothing invisible rides along with the next idea. */
-  function collapseCapture() {
-    batch(() => {
-      setCapOpen(false);
-      setCapNotes("");
-      setCapFolder(undefined);
-    });
-    captureRef?.focus({ preventScroll: true });
-  }
-
-  // ---- actions ----
-  async function capture(startScript: boolean) {
-    const title = capTitle().trim();
-    if (!title) return;
-    const draft = { title: capTitle(), notes: capNotes(), folder: capFolder(), open: capOpen() };
-    const folderId = capFolderValue();
-    // Clear right away: the field stays usable for the next idea while this
-    // one is saved (and a second Enter cannot submit it twice).
-    batch(() => {
-      setCapTitle("");
-      setCapNotes("");
-      setCapFolder(undefined);
-      setCapOpen(false);
-    });
-    // Focus stays in the field for the next idea.
-    captureRef?.focus({ preventScroll: true });
-    try {
-      const idea = await ideasStore.createIdea({ title, notes: draft.notes.trim(), folderId });
-      if (startScript) {
-        await convert(idea);
-        return;
-      }
+  const capture = createCapture({
+    ideas,
+    activeFolder,
+    convert: convertIdea,
+    onCreated: (idea) => {
       setQuery("");
       setWantedOpen(false);
       setWanted(idea.id);
-    } catch (err) {
-      // Give the text back unless the field was reused meanwhile.
-      if (!capTitle() && !capNotes()) {
-        batch(() => {
-          setCapTitle(draft.title);
-          setCapNotes(draft.notes);
-          setCapFolder(draft.folder);
-          setCapOpen(draft.open);
-        });
-      }
-      errorToast(err);
-    }
-  }
+    },
+  });
 
-  async function convert(idea: Idea) {
-    if (idea.used_at) return;
-    try {
-      // All pending idea drafts, including a row collapsed a moment ago.
-      await requireSuccessfulFlush();
-      const { script } = await ideasStore.convertIdeaToScript({
-        ideaId: idea.id,
-        folderId: idea.folder_id,
-      });
-      pushToast(t("script.toast.created", { title: script.title }), "ok");
-      navStore.openScript(script.id, script.title);
-    } catch (err) {
-      errorToast(err);
-    }
-  }
-
-  async function removeIdeas(list: Idea[]) {
-    if (list.length === 0) return;
-    const ok = await confirmDialog(
-      list.length === 1
-        ? {
-            title: t("ideas.confirm.delete.title"),
-            body: t("ideas.confirm.delete.body", { title: list[0].title }),
-            confirmLabel: t("common.delete"),
-            danger: true,
-          }
-        : {
-            title: t("ideasPage.confirm.deleteMany.title"),
-            body: tPlural("ideasPage.confirm.deleteMany.body", list.length),
-            confirmLabel: t("common.delete"),
-            danger: true,
-          },
-    );
-    if (!ok) return;
-    const deleted: Idea[] = [];
-    // Ideas have no trash: whatever was deleted gets its undo, even when a
-    // later one in the batch fails.
-    const undoToast = () => {
-      if (deleted.length === 0) return;
-      pushToast(
-        deleted.length === 1
-          ? t("ideas.toast.deleted", { title: deleted[0].title })
-          : tPlural("ideasPage.toast.deletedMany", deleted.length),
-        "ok",
-        undefined,
-        {
-          action: {
-            label: t("shell.toast.undo"),
-            run: async () => {
-              try {
-                for (const idea of deleted) await ideasStore.restoreIdea(idea);
-              } catch (err) {
-                errorToast(err);
-              }
-            },
-          },
-        },
-      );
-    };
-    try {
-      for (const idea of list) {
-        await ideasStore.deleteIdea(idea.id);
-        deleted.push(idea);
-      }
-    } catch (err) {
-      errorToast(err);
-    }
-    undoToast();
-  }
-
-  async function moveIdeas(list: Idea[], folderId: string | null, name = folderName(folderId)) {
-    const todo = list.filter((i) => i.folder_id !== folderId);
-    if (todo.length === 0) return;
-    try {
-      for (const idea of todo) await ideasStore.moveIdea(idea.id, folderId);
-      pushToast(t("folder.toast.movedTo", { name }), "ok", undefined, {
-        action: {
-          label: t("shell.toast.undo"),
-          run: async () => {
-            try {
-              // Only ideas still where this move put them (a later move wins).
-              const now = new Map(ideasStore.ideas.latest.map((i) => [i.id, i.folder_id]));
-              for (const idea of todo) {
-                if (now.get(idea.id) === folderId) await ideasStore.moveIdea(idea.id, idea.folder_id);
-              }
-            } catch (err) {
-              errorToast(err);
-            }
-          },
-        },
-      });
-    } catch (err) {
-      errorToast(err);
-    }
-  }
-
-  /** Bulk "Zu Skripten": every open idea of `list` becomes a script in
-   *  `stage` (same folder as the idea). Converted ideas are skipped. */
-  async function convertIdeas(list: Idea[], stage: ScriptStatus) {
-    const open = list.filter((i) => !i.used_at);
-    const skipped = list.length - open.length;
-    if (open.length === 0) return;
-    let done = 0;
-    let restaged = false;
-    try {
-      await requireSuccessfulFlush();
-      for (const idea of open) {
-        const { script } = await ideasStore.convertIdeaToScript({ ideaId: idea.id });
-        if (script.status !== stage) {
-          await api.setScriptStatus(script.id, stage);
-          restaged = true;
-        }
-        done++;
-      }
-    } catch (err) {
-      errorToast(err);
-    } finally {
-      if (restaged) scriptsBus.bump();
-    }
-    if (done > 0) {
-      pushToast(tPlural("ideasPage.toast.convertedMany", done, { stage: stageLabel(stage) }), "ok");
-    }
-    if (skipped > 0) pushToast(tPlural("ideasPage.toast.convertSkipped", skipped), "info");
-  }
+  // ---- actions ----
+  const moveIdeas = (list: Idea[], folderId: string | null, name = folderName(folderId)) =>
+    moveIdeasTo(list, folderId, name);
 
   const selectedIdeas = () => {
-    const sel = selected();
-    return visible().filter((i) => sel.has(i.id));
+    const ids = selected();
+    return visible().filter((i) => ids.has(i.id));
   };
 
   // ---- selection bar menus ----
@@ -626,33 +332,6 @@ export function IdeasPage() {
     const r = el.getBoundingClientRect();
     setMenu({ x: r.left, y: r.top - 6, width, items });
   };
-
-  function moveMenu(list: Idea[]): ContextMenuItem[] {
-    const items: ContextMenuItem[] = [
-      { label: t("folder.none"), onClick: () => void moveIdeas(list, null) },
-    ];
-    for (const f of folders() ?? []) {
-      items.push({
-        label: f.name,
-        icon: <span class="fdot" style={{ background: folderColor(f.id) }} />,
-        onClick: () => void moveIdeas(list, f.id, f.name),
-      });
-    }
-    items.push({
-      label: t("folder.newDots"),
-      icon: "plus",
-      separatorBefore: true,
-      onClick: () => setNewFolderFor(list),
-    });
-    return items;
-  }
-
-  const stageMenu = (list: Idea[]): ContextMenuItem[] =>
-    scriptStages().map(({ id: st }) => ({
-      label: stageLabel(st),
-      icon: <StageGlyph stage={st} />,
-      onClick: () => void convertIdeas(list, st),
-    }));
 
   /** Selects `id` (and opens its row) and scrolls it into view, first
    *  clearing whatever hides it: the text filter, "show used", the folder
@@ -682,184 +361,31 @@ export function IdeasPage() {
   });
 
   // ---- keyboard ----
-  const onKey = (e: KeyboardEvent) => {
-    if (e.defaultPrevented || uiStore.anyDialogOpen() || menu()) return;
-    const target = e.target as HTMLElement | null;
-    // Legacy modals (confirm) and open menus handle their own keys.
-    if (target?.closest?.(".modal-backdrop, .scrim, .menu") || document.querySelector(".modal-backdrop")) return;
-    const editable = isEditable(target);
-    const inEditor = !!target?.closest?.(".ix");
-
-    if (e.key === "Enter" && isModKey(e)) {
-      if (editable && !inEditor) return; // capture / filter fields handle it
-      if (target?.closest?.(".i-cap")) {
-        // A capture button (folder, similar link, ...) has focus.
-        e.preventDefault();
-        void capture(true);
-        return;
-      }
-      const idea = primaryIdea();
-      if (idea) {
-        e.preventDefault();
-        void convert(idea);
-      }
-      return;
-    }
-    if (editable) return;
-    if (isModKey(e) && !e.shiftKey && !e.altKey && e.key.toLowerCase() === "a") {
-      if (target instanceof HTMLButtonElement && target.closest(".ix")) return;
-      if (selectableIds().length > 0) {
-        e.preventDefault();
-        selectAll();
-      }
-      return;
-    }
-    if (e.key === " " && selectMode() && !e.metaKey && !e.ctrlKey && !e.altKey) {
-      if (target instanceof HTMLButtonElement || target instanceof HTMLAnchorElement) return;
-      const id = primary();
-      if (id) {
-        e.preventDefault();
-        toggleRow(id);
-      }
-      return;
-    }
-    if (e.key === "/" && !e.metaKey && !e.ctrlKey && !e.altKey) {
-      e.preventDefault();
-      filterRef?.focus();
-      return;
-    }
-    if (e.key === "ArrowDown" || e.key === "ArrowUp") {
-      if (target instanceof HTMLButtonElement && target.closest(".ix, .i-cap, .i-chips")) return;
-      e.preventDefault();
-      move(e.key === "ArrowDown" ? 1 : -1);
-      return;
-    }
-    if (e.key === "Enter" && !e.metaKey && !e.ctrlKey && !e.altKey) {
-      if (target instanceof HTMLButtonElement || target instanceof HTMLAnchorElement) return;
-      const idea = primaryIdea();
-      if (idea && !selectMode() && selected().size === 1) {
-        e.preventDefault();
-        if (openId() === idea.id) focusEditor();
-        else openRow(idea.id);
-      }
-      return;
-    }
-    if ((e.key === "Backspace" || e.key === "Delete") && !e.metaKey && !e.ctrlKey) {
-      if (target instanceof HTMLButtonElement && (!target.closest(".ilist") || target.closest(".ix"))) return;
-      const list = selectMode() ? selectedIdeas() : primaryIdea() ? [primaryIdea()!] : [];
-      if (list.length > 0) {
-        e.preventDefault();
-        void removeIdeas(list);
-      }
-      return;
-    }
-    if (e.key === "Escape") {
-      if (openId()) {
-        e.preventDefault();
-        closeRow();
-      } else if (selectMode()) {
-        e.preventDefault();
-        exitSelectMode();
-      }
-    }
-  };
+  const onKey = createIdeasKeyHandler({
+    menuOpen: () => !!menu(),
+    selectMode,
+    selectedCount: () => selected().size,
+    selectableCount: () => selectableIds().length,
+    primary,
+    primaryIdea,
+    openId,
+    selectedIdeas,
+    capture: capture.submit,
+    convert: convertIdea,
+    removeIdeas,
+    selectAll: sel.selectAll,
+    toggleRow,
+    focusFilter: () => filterRef?.focus(),
+    move,
+    openRow,
+    focusEditor,
+    closeRow,
+    exitSelectMode,
+  });
   onMount(() => {
     document.addEventListener("keydown", onKey);
     onCleanup(() => document.removeEventListener("keydown", onKey));
   });
-
-  /** A collapsed list row; a click opens it in place (in the selection
-   *  mode it toggles its checkbox instead). */
-  const ideaRow = (idea: Accessor<Idea>) => (
-    <div
-      id={`idea-row-${idea().id}`}
-      class="irow"
-      classList={{
-        "is-sel": selected().has(idea().id),
-        "is-primary": primary() === idea().id,
-        "is-used": !!idea().used_at,
-      }}
-      role="option"
-      aria-selected={selected().has(idea().id)}
-      onMouseDown={(e) => {
-        if (e.shiftKey) e.preventDefault();
-      }}
-      onClick={(e) => onRowClick(e, idea().id)}
-    >
-      <Switch>
-        <Match when={selectMode()}>
-          <span class="selchk-box" classList={{ "is-on": selected().has(idea().id) }} aria-hidden="true">
-            <Show when={selected().has(idea().id)}>
-              <Icon name="check" size={11} />
-            </Show>
-          </span>
-        </Match>
-        <Match when={idea().used_at}>
-          <Icon name="check" size={14} />
-        </Match>
-        <Match when={true}>
-          <StageGlyph stage="idea" />
-        </Match>
-      </Switch>
-      <div class="ti">
-        <Show when={idea().source_chat_id}>
-          <span class="i-by-agent" title={t("agentMode.ideas.byAgent", { name: agentSettings.displayName() })}>
-            <AgentAvatar look={agentSettings.look()} size={14} state="still" />
-          </span>
-        </Show>
-        {idea().title}
-      </div>
-      <div class="nt">
-        <Show when={idea().used_at} fallback={idea().notes.split("\n")[0]}>
-          <Show
-            when={idea().script_id ? scripts().get(idea().script_id!) : undefined}
-            fallback={<span class="stale">{t("ideas.card.linked.stale")}</span>}
-          >
-            {(s) => (
-              <button
-                type="button"
-                class="ilink"
-                title={t("ideas.card.linked.title")}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  navStore.openScript(s().id, s().title);
-                }}
-              >
-                <Icon name="doc" size={12} />
-                {s().title || t("common.untitled")}
-              </button>
-            )}
-          </Show>
-        </Show>
-      </div>
-      <div class="fo">
-        <Show when={idea().folder_id}>
-          {(fid) => (
-            <>
-              <i style={{ background: folderColor(fid()) }} />
-              <span>{folderName(fid())}</span>
-            </>
-          )}
-        </Show>
-      </div>
-      <div class="ag">{ideaAge(idea().created_at, now())}</div>
-      <span class="irow-chev" aria-hidden="true">
-        <Icon name="down" size={13} />
-      </span>
-    </div>
-  );
-
-  const sortOptions = () => [
-    { id: "newest" as IdeaSort, label: t("ideasPage.sort.newest") },
-    { id: "oldest" as IdeaSort, label: t("ideasPage.sort.oldest") },
-    { id: "title" as IdeaSort, label: t("ideasPage.sort.title") },
-  ];
-
-  const keyHint = (k: string, text: string) => (
-    <>
-      <kbd>{k}</kbd> {text}
-    </>
-  );
 
   return (
     <div class="ideas-page">
@@ -872,281 +398,46 @@ export function IdeasPage() {
             <span>{t("ideasPage.head.counts", { open: openCount(), fresh: freshCount() })}</span>
           </div>
 
-          <div class="i-cap" classList={{ "is-open": capOpen() }}>
-            <div
-              class="i-cap-row"
-              onMouseDown={(e) => {
-                // The whole row focuses the input, like a label would.
-                if (!(e.target as HTMLElement).closest("button, input")) {
-                  e.preventDefault();
-                  captureRef?.focus();
-                }
-              }}
-            >
-              <span class="i-cap-plus" aria-hidden="true">
-                <Icon name="plus" />
-              </span>
-              <input
-                ref={captureRef}
-                class="i-cap-input"
-                value={capTitle()}
-                placeholder={t("ideasPage.capture.placeholder")}
-                aria-label={t("ideasPage.capture.aria")}
-                spellcheck={false}
-                onInput={(e) => setCapTitle(e.currentTarget.value)}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter" && !e.shiftKey) {
-                    e.preventDefault();
-                    void capture(isModKey(e));
-                  } else if (
-                    !capOpen() &&
-                    ((e.key === "Tab" && !e.shiftKey && !e.altKey && !isModKey(e)) || (e.key === "Enter" && e.shiftKey))
-                  ) {
-                    e.preventDefault();
-                    expandCapture();
-                  } else if (e.key === "Escape") {
-                    e.preventDefault();
-                    if (capOpen()) {
-                      collapseCapture();
-                    } else {
-                      setCapTitle("");
-                      e.currentTarget.blur();
-                    }
-                  }
-                }}
-              />
-              <Show when={!capOpen()}>
-                <kbd>⏎</kbd>
-                <button
-                  type="button"
-                  class="btn ghost sm"
-                  tabindex="-1"
-                  title={t("ideasPage.capture.addNoteTitle")}
-                  onClick={expandCapture}
-                >
-                  <Icon name="pen" size={13} />
-                  {t("ideasPage.capture.addNote")}
-                  <kbd>⇥</kbd>
-                </button>
-              </Show>
-              <span class="i-cap-hint">{t("ideasPage.capture.hint", { key: K("Mod+I") })}</span>
-            </div>
-            <Show when={capOpen()}>
-              <textarea
-                ref={captureNotesRef}
-                class="i-cap-notes"
-                rows={2}
-                value={capNotes()}
-                placeholder={t("ideasPage.detail.notesPlaceholder")}
-                aria-label={t("ideasPage.capture.notesAria")}
-                onInput={(e) => {
-                  setCapNotes(e.currentTarget.value);
-                  growCaptureNotes();
-                }}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter" && isModKey(e)) {
-                    e.preventDefault();
-                    void capture(true);
-                  } else if (e.key === "Escape") {
-                    // Back to the title; a second esc closes the notes.
-                    e.preventDefault();
-                    captureRef?.focus({ preventScroll: true });
-                  }
-                }}
-              />
-              <div class="i-cap-foot">
-                <FolderMenu
-                  folders={folders() ?? []}
-                  value={capFolderValue()}
-                  onChange={setCapFolder}
-                  ariaLabel={t("ideasPage.capture.folderAria")}
-                />
-                <Show when={capSimilar().length > 0}>
-                  <div class="i-sim">
-                    <span>{t("ideasPage.detail.similar")}</span>
-                    <For each={capSimilar()}>
-                      {(other) => (
-                        <button
-                          type="button"
-                          class="i-sim-it"
-                          title={`${other.title} · ${t("stage.idea")}`}
-                          onClick={() => revealIdea(other.id)}
-                        >
-                          <Show when={other.used} fallback={<StageGlyph stage="idea" />}>
-                            <Icon name="check" size={14} />
-                          </Show>
-                          <span>{other.title}</span>
-                        </button>
-                      )}
-                    </For>
-                  </div>
-                </Show>
-                <div class="i-cap-act">
-                  <button
-                    type="button"
-                    class="btn"
-                    disabled={!capTitle().trim()}
-                    onClick={() => void capture(true)}
-                  >
-                    {t("ideasPage.detail.convert")}
-                    <kbd>{K("Mod+Enter")}</kbd>
-                  </button>
-                  <button
-                    type="button"
-                    class="btn primary"
-                    disabled={!capTitle().trim()}
-                    onClick={() => void capture(false)}
-                  >
-                    {t("capture.remember")}
-                    <kbd>⏎</kbd>
-                  </button>
-                </div>
-              </div>
-            </Show>
-          </div>
+          <CaptureField capture={capture} folders={folders() ?? []} onReveal={revealIdea} />
 
-          <div class="i-chips" role="group" aria-label={t("ideasPage.chips.aria")}>
-            <button
-              type="button"
-              class="fchip"
-              aria-pressed={activeFolder() === null}
-              onClick={() => setFolder(null)}
-            >
-              {t("ideasPage.chips.all")} <em>{scoped().length}</em>
-            </button>
-            <For each={chipFolders()}>
-              {(f) => (
-                <button
-                  type="button"
-                  class="fchip"
-                  aria-pressed={activeFolder() === f.id}
-                  onClick={() => setFolder(f.id)}
-                >
-                  <i style={{ background: folderColor(f.id) }} />
-                  {f.name} <em>{counts().byFolder.get(f.id) ?? 0}</em>
-                </button>
-              )}
-            </For>
-            <Show when={(folders() ?? []).length > 0 && (counts().inbox > 0 || activeFolder() === INBOX_FOLDER_ID)}>
-              <button
-                type="button"
-                class="fchip"
-                aria-pressed={activeFolder() === INBOX_FOLDER_ID}
-                onClick={() => setFolder(INBOX_FOLDER_ID)}
-              >
-                {t("ideasPage.chips.none")} <em>{counts().inbox}</em>
-              </button>
-            </Show>
-            <Show when={agentModeAvailable()}>
-              <button
-                type="button"
-                class="fchip i-agent"
-                title={t("agentMode.ideas.findTitle", { name: agentSettings.displayName() })}
-                onClick={() => void findIdeasWithAgent(activeFolder() === INBOX_FOLDER_ID ? null : activeFolder())}
-              >
-                <AgentAvatar look={agentSettings.look()} size={16} state="idle" />
-                {t("agentMode.ideas.find", { name: agentSettings.displayName() })}
-              </button>
-            </Show>
-            <span class="sp" />
-            <label class="field-box i-filter">
-              <Icon name="search" size={13} />
-              <input
-                ref={filterRef}
-                value={query()}
-                placeholder={t("ideasPage.filter.placeholder")}
-                aria-label={t("ideasPage.filter.placeholder")}
-                spellcheck={false}
-                onInput={(e) => setQuery(e.currentTarget.value)}
-                onKeyDown={(e) => {
-                  if (e.key === "Escape") {
-                    e.preventDefault();
-                    if (query()) setQuery("");
-                    else e.currentTarget.blur();
-                  } else if (e.key === "ArrowDown" || e.key === "Enter") {
-                    e.preventDefault();
-                    e.currentTarget.blur();
-                    listRef?.focus();
-                    if (e.key === "ArrowDown") move(0);
-                  }
-                }}
-              />
-              <Show when={query()} fallback={<kbd>/</kbd>}>
-                <button
-                  type="button"
-                  class="i-filter-clear"
-                  aria-label={t("ideasPage.filter.clear")}
-                  title={t("ideasPage.filter.clear")}
-                  onClick={() => setQuery("")}
-                >
-                  <Icon name="x" size={12} />
-                </button>
-              </Show>
-            </label>
-            <SortMenu options={sortOptions()} value={sort()} onChange={setSort} ariaLabel={t("ideasPage.sort.aria")} />
-            <button
-              type="button"
-              class="btn ghost ideas-used-tg"
-              classList={{ "is-on": showUsed() }}
-              aria-pressed={showUsed()}
-              onClick={() => setShowUsed(!showUsed())}
-            >
-              <Show when={showUsed()}>
-                <Icon name="check" size={13} />
-              </Show>
-              {t("ideasPage.bar.showUsed")}
-            </button>
-            <button
-              type="button"
-              class="btn ghost"
-              classList={{ "is-on": selectMode() }}
-              aria-pressed={selectMode()}
-              disabled={!selectMode() && visible().length === 0}
-              onClick={() => (selectMode() ? exitSelectMode() : enterSelectMode())}
-            >
-              <Icon name="select" />
-              {t("select.enter")}
-            </button>
-          </div>
+          <IdeasToolbar
+            folders={folders() ?? []}
+            chipFolders={chipFolders()}
+            total={scoped().length}
+            byFolder={counts().byFolder}
+            inbox={counts().inbox}
+            activeFolder={activeFolder()}
+            onFolder={setFolder}
+            filterRef={(el) => (filterRef = el)}
+            query={query()}
+            onQuery={setQuery}
+            onFilterLeave={(selectFirst) => {
+              listRef?.focus();
+              if (selectFirst) move(0);
+            }}
+            sort={sort()}
+            onSort={setSort}
+            showUsed={showUsed()}
+            onShowUsed={setShowUsed}
+            selectMode={selectMode()}
+            selectDisabled={!selectMode() && visible().length === 0}
+            onToggleSelect={() => (selectMode() ? exitSelectMode() : sel.enter())}
+          />
 
           <Show when={selectMode() && selectableIds().length > 0}>
-            <SelectAllLine state={allState()} count={selectableIds().length} onToggle={toggleAll} />
+            <SelectAllLine state={sel.allState()} count={selectableIds().length} onToggle={sel.toggleAll} />
           </Show>
 
           <div class="ilist-scroll" classList={{ "has-selbar": selectMode() }}>
             <Show
               when={groups().length > 0}
               fallback={
-                <div class="i-empty">
-                  <b>
-                    {ideas().length === 0
-                      ? t("ideasPage.empty.none")
-                      : filtering()
-                        ? t("ideasPage.empty.query", { query: query().trim() })
-                        : activeFolder() !== null
-                          ? t("ideasPage.empty.folder")
-                          : t("ideasPage.empty.allUsed")}
-                  </b>
-                  <span>
-                    {ideas().length === 0
-                      ? t("ideasPage.empty.noneSub")
-                      : filtering()
-                        ? t("ideasPage.empty.querySub")
-                        : activeFolder() !== null
-                          ? t("ideasPage.empty.folderSub")
-                          : t("ideasPage.empty.allUsedSub")}
-                  </span>
-                  <Show when={agentModeAvailable() && !filtering()}>
-                    <button
-                      type="button"
-                      class="btn i-empty-agent"
-                      onClick={() => void findIdeasWithAgent(activeFolder() === INBOX_FOLDER_ID ? null : activeFolder())}
-                    >
-                      <AgentAvatar look={agentSettings.look()} size={18} state="idle" />
-                      {t("agentMode.ideas.find", { name: agentSettings.displayName() })}
-                    </button>
-                  </Show>
-                </div>
+                <IdeasEmpty
+                  none={ideas().length === 0}
+                  query={query().trim()}
+                  filtering={filtering()}
+                  activeFolder={activeFolder()}
+                />
               }
             >
               <div
@@ -1167,30 +458,33 @@ export function IdeasPage() {
                     <Show when={groupById().get(gid)}>
                       {(g) => (
                         <>
-                          <div class="igrp-h" classList={{ closed: !isOpen(g()) }}>
-                            <Show when={selectMode()}>
-                              <SelectCheck
-                                state={checkState(g().items.map((i) => i.id), selected())}
-                                label={t("select.group", { name: groupLabel(g(), new Date(now())) })}
-                                onToggle={() => setSelected((prev) => toggleIds(prev, g().items.map((i) => i.id)))}
-                              />
-                            </Show>
-                            <button
-                              type="button"
-                              class="igrp-tog"
-                              aria-expanded={isOpen(g())}
-                              onClick={() => setGroupOpen({ ...groupOpen(), [gid]: !isOpen(g()) })}
-                            >
-                              <Icon name={isOpen(g()) ? "down" : "right"} size={11} />
-                              {groupLabel(g(), new Date(now()))} <em>{g().items.length}</em>
-                            </button>
-                          </div>
+                          <IdeaGroupHeader
+                            selection={sel}
+                            group={g()}
+                            label={groupLabel(g(), new Date(now()))}
+                            open={isOpen(g())}
+                            onToggle={() => setGroupOpen({ ...groupOpen(), [gid]: !isOpen(g()) })}
+                          />
                           <Show when={isOpen(g())}>
                             <For each={shownItems(g()).map((i) => i.id)}>
                               {(id) => (
                                 <Show when={ideaById().get(id)}>
                                   {(idea) => (
-                                    <Show when={openId() === id} fallback={ideaRow(idea)}>
+                                    <Show
+                                      when={openId() === id}
+                                      fallback={
+                                        <IdeaRow
+                                          idea={idea()}
+                                          selected={selected().has(idea().id)}
+                                          primary={primary() === idea().id}
+                                          selectMode={selectMode()}
+                                          scripts={scripts()}
+                                          folderName={folderName}
+                                          now={now()}
+                                          onClick={(e) => onRowClick(e, idea().id)}
+                                        />
+                                      }
+                                    >
                                       <div
                                         id={`idea-row-${id}`}
                                         class="ix"
@@ -1212,7 +506,7 @@ export function IdeasPage() {
                                           onDispose={(h) => {
                                             if (editor === h) editor = null;
                                           }}
-                                          onConvert={(i) => void convert(i)}
+                                          onConvert={(i) => void convertIdea(i)}
                                           onWriteWithAgent={agentModeAvailable() ? (i) => void writeIdeaWithAgent(i) : undefined}
                                           onOpenSession={(chatId) => void navStore.openAgent(chatId)}
                                           onDelete={(i) => void removeIdeas([i])}
@@ -1243,25 +537,19 @@ export function IdeasPage() {
             </Show>
           </div>
 
-          <div class="i-keys" classList={{ "is-hidden": selectMode() }}>
-            {keyHint("↑ ↓", t("ideasPage.keys.select"))} ·{" "}
-            {keyHint("⏎", t("ideasPage.keys.open"))} ·{" "}
-            {keyHint("esc", t("ideasPage.keys.close"))} ·{" "}
-            {keyHint(K("Mod+Enter"), t("ideasPage.keys.convert"))} ·{" "}
-            {keyHint("⌫", t("ideasPage.keys.delete"))} ·{" "}
-            <kbd>{K("Shift")}</kbd>
-            {t("ideasPage.keys.multi")}
-          </div>
+          <IdeasKeyHints hidden={selectMode()} />
 
           <Show when={selectMode()}>
             <SelectionBar
               count={selected().size}
-              allSelected={allState() === "all"}
-              onSelectAll={selectAll}
-              onClear={() => setSelected(new Set<string>())}
+              allSelected={sel.allState() === "all"}
+              onSelectAll={sel.selectAll}
+              onClear={sel.clear}
               onExit={exitSelectMode}
-              onMove={(el) => menuAbove(el, moveMenu(selectedIdeas()))}
-              onStage={(el) => menuAbove(el, stageMenu(selectedIdeas()), 200)}
+              onMove={(el) =>
+                menuAbove(el, ideaMoveMenu(selectedIdeas(), folders() ?? [], (l, f, n) => void moveIdeas(l, f, n), setNewFolderFor))
+              }
+              onStage={(el) => menuAbove(el, ideaStageMenu(selectedIdeas()), 200)}
               stageLabel={t("ideasPage.selection.convert")}
               stageDisabled={selectedIdeas().every((i) => !!i.used_at)}
               onTrash={() => void removeIdeas(selectedIdeas())}

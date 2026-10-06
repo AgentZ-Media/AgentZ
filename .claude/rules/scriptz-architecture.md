@@ -27,6 +27,11 @@ Suite-Grenzen in [`suite-architecture.md`](suite-architecture.md).
 - `components/Editor/`: Lexical-Mount, vier Nodes, Plugins (smartEnter,
   blockHotkeys, parentheticalLive, Picker, Autocomplete, inlineFormat,
   allcaps, highlight, colorPicker), `persistence.ts`.
+- `components/Common/`: Widgets, die mehrere Bereiche nutzen
+  (`ContextMenu`, `FolderMenu`, `PromptDialog`, `folderColor`, Auswahl mit
+  `SelectionBar`, `SelectCheck`, `selection.ts` und `createListSelection`),
+  dazu `motion`, `StageGlyph` und `keyboard.ts`. Ein Widget eines einzelnen
+  Bereichs bleibt in dessen Ordner.
 - `stores/`: `nav.ts` (Routen, „Zuletzt" für ⌘K, Kodierung von
   `nav.state`), `open.ts` („Offen"-Liste der Sidebar, `nav.open`),
   `peek.ts` (Seitenpanel der Listen), `ui.ts` (Inspector, Zeitleiste,

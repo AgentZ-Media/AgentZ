@@ -3,8 +3,8 @@
 // Folders carry no colour in storage, so the colour is derived from the
 // folder id: FNV-1a hash -> slot in the character palette. The same id
 // always maps to the same colour on every surface and across restarts,
-// and renaming a folder never changes its colour. Shared with the shell
-// (sidebar folder list) - import it from here instead of re-implementing.
+// and renaming a folder never changes its colour. Every surface imports it
+// from here instead of re-implementing it.
 
 import { CHARACTER_PALETTE } from "../../lib/colors";
 

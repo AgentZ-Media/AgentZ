@@ -3,7 +3,7 @@ import { For, Show, createSignal, onCleanup } from "solid-js";
 import { Portal } from "solid-js/web";
 import { Icon } from "@agentz/kit/ui";
 import { dismissOnDialog } from "@agentz/kit/ui";
-import "./FolderMenu.css";
+import "../../Common/FolderMenu.css";
 
 // Small option menu behind a ghost button ("Neueste zuerst ▾"). Same
 // keyboard model as FolderMenu.

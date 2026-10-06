@@ -6,7 +6,7 @@ import { uiStore } from "../../stores/ui";
 import { pushToast } from "@agentz/kit/stores";
 import { DialogFrame, Icon } from "@agentz/kit/ui";
 import { t } from "../../i18n";
-import { FolderMenu } from "../Ideas/parts/FolderMenu";
+import { FolderMenu } from "../Common/FolderMenu";
 import { library } from "../Shell/libraryData";
 import { createScript } from "./actions";
 // Same frame, title field and footer as the ⌘I quick capture.
