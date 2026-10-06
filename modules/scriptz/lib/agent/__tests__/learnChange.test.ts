@@ -62,6 +62,23 @@ describe("learnChange", () => {
     ]);
   });
 
+  it("keeps the speaker of multi-line dialog", () => {
+    const before = script(
+      ["character", "TIMO"],
+      ["dialog", "Also.\nIch hätte gern zwei Brötchen und ein Croissant, bitte."],
+      ["character", "AXEL"],
+      ["dialog", "Also.\nWir haben nur noch Schrippen, Wecken und Semmeln im Angebot."],
+    );
+    const after = script(
+      ["character", "TIMO"],
+      ["dialog", "Also.\nWir haben nur noch Schrippen, Wecken und Semmeln im Angebot."],
+      ["character", "AXEL"],
+      ["dialog", "Also.\nIch hätte gern zwei Brötchen und ein Croissant, bitte."],
+    );
+    expect(learnChange(before, before).changedWords).toBe(0);
+    expect(worthRelearning(learnChange(before, after))).toBe(true);
+  });
+
   it("treats an empty earlier version as all new", () => {
     const change = learnChange("", base);
     expect(change.changedWords).toBe(change.totalWords);

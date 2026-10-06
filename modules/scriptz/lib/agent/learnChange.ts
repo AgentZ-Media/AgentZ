@@ -26,13 +26,19 @@ interface Line {
   text: string;
 }
 
+/** Splits a `learnText` string back into blocks. A block's text may hold
+ *  line breaks: a line without a `type:` prefix continues the block above. */
 function parseLines(text: string): Line[] {
   if (!text) return [];
-  return text.split("\n").map((raw) => {
+  const lines: Line[] = [];
+  for (const raw of text.split("\n")) {
     const colon = raw.indexOf(":");
     const type = raw.slice(0, colon) as AgentBlockType;
-    return AGENT_BLOCK_TYPES.includes(type) ? { type, text: raw.slice(colon + 1) } : { type: "action", text: raw };
-  });
+    if (AGENT_BLOCK_TYPES.includes(type)) lines.push({ type, text: raw.slice(colon + 1) });
+    else if (lines.length) lines[lines.length - 1].text += `\n${raw}`;
+    else lines.push({ type: "action", text: raw });
+  }
+  return lines;
 }
 
 /** The speaker of each line: the most recent character above it, like the

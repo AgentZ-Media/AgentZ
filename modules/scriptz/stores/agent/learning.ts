@@ -150,6 +150,11 @@ async function runLearning(): Promise<void> {
       if (target) settling.push({ id: target.id, title: target.title });
     }
     if (generation !== learnGeneration) return;
+    // Switched off while the scripts were being read: nothing is waiting.
+    if (!agentSettings.enabled() || !agentSettings.learnFromScripts()) {
+      setWaiting([]);
+      return;
+    }
     setWaiting(settling);
     if (settling.length) scheduleLearning(SETTLE_MS + 5000);
     for (const summary of finished) {
