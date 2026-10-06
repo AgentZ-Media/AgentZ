@@ -22,7 +22,7 @@ import { RepliesBar } from "../Agent/ModeItems";
 import { folderLookup } from "../Agent/labels";
 import { StageGlyph } from "../Common/StageGlyph";
 import { ideaAge } from "../Ideas/ideaGroups";
-import { ContextMenu, type ContextMenuItem } from "../Library/ContextMenu";
+import { ContextMenu, type ContextMenuItem } from "../Common/ContextMenu";
 import { library } from "../Shell/libraryData";
 import { startSession } from "./actions";
 import { AgentComposer } from "./AgentComposer";

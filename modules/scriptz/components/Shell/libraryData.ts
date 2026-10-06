@@ -13,7 +13,6 @@ import { createEffect, createMemo, createResource, createRoot, createSignal, onC
 import { api } from "../../lib/api";
 import { scriptsBus } from "../../lib/scriptsBus";
 import { foldersBus } from "../../lib/foldersBus";
-import { folderColor } from "../Ideas/folderColor";
 import { resolveLengthRange, type LengthRange } from "../../lib/lengthGoal";
 import { runtimeSeconds } from "../../lib/runtime";
 import { INBOX_FOLDER_ID } from "../../lib/folders";
@@ -222,10 +221,6 @@ export function startLibraryData(): () => void {
   stopRuntime = stop;
   return stop;
 }
-
-/** Stable folder dot colour, shared with the ideas page and the settings
- *  (one implementation, so a folder looks the same everywhere). */
-export { folderColor };
 
 /** Global default range from the settings. */
 export function defaultLengthRange(): LengthRange {

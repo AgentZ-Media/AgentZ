@@ -12,7 +12,7 @@ import type { Folder } from "../../lib/types";
 import { flyInto } from "../Common/motion";
 import { StageGlyph } from "../Common/StageGlyph";
 import { DialogFrame } from "@agentz/kit/ui";
-import { FolderMenu } from "./parts/FolderMenu";
+import { FolderMenu } from "../Common/FolderMenu";
 import "./QuickCapture.css";
 
 type FolderSource = "script" | "filter" | null;

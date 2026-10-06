@@ -13,7 +13,8 @@ import { t } from "../../i18n";
 import { StageGlyph } from "../Common/StageGlyph";
 import { BumpNumber, rememberOpenSource } from "../Common/motion";
 import { setStageWithUndo } from "../Script/stageActions";
-import { folderColor, lengthRangeFor, library, runtimeSecFor } from "../Shell/libraryData";
+import { folderColor } from "../Common/folderColor";
+import { lengthRangeFor, library, runtimeSecFor } from "../Shell/libraryData";
 import { IDEA_DRAG_MIME, SCRIPT_DRAG_MIME } from "./dnd";
 import "./Board.css";
 
