@@ -34,8 +34,6 @@ export {
 } from "./ScriptzParentheticalNode";
 
 export { BaseScriptzNode } from "./BaseScriptzNode";
-export type { SerializedScriptzNode } from "./BaseScriptzNode";
-export type { SerializedScriptzCharacterNode } from "./ScriptzCharacterNode";
 
 export const SCRIPTZ_NODES = [
   ScriptzActionNode,

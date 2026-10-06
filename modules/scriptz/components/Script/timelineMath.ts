@@ -14,9 +14,6 @@ import {
 } from "../../lib/runtime";
 import type { TimelineSegment, TimingBlock } from "../../lib/timing";
 
-/** Hook zone at the start of every short-form video. */
-export const HOOK_SEC = 3;
-
 /** The three hook marks after the first line of dialog, by priority:
  *  3 s decide whether anyone stays, 5 s whether it is clear what this is
  *  about, 10 s whether the conflict stands. */

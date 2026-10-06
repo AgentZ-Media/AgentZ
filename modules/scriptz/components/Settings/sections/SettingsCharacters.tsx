@@ -10,11 +10,8 @@ import { localeCompare } from "@agentz/kit/i18n";
 import { t, tPlural } from "../../../i18n";
 import type { CharacterColorRecord } from "../../../lib/types";
 import { confirmDialog } from "@agentz/kit/ui";
-// TODO(integration): the colour picker lives with the editor (package D);
-// follow it if it moves.
 import { ColorPickerPopover } from "../../Editor/ColorPickerPopover";
 import { Row, SectionHead, Switch } from "@agentz/kit/ui";
-
 
 /** Names listed in the cleanup confirmation before "and N more". */
 const CONFIRM_NAME_LIMIT = 12;

@@ -178,5 +178,3 @@ export function ClaimMarks(props: ClaimMarksProps) {
     </Show>
   );
 }
-
-export default ClaimMarks;

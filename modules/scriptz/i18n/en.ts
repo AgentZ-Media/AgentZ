@@ -1,5 +1,5 @@
-// English catalog. Structure mirrors de.ts; the satisfies-Assertion below
-// TS-errors on missing or extra keys so the two stay in sync.
+// English catalog. Structure mirrors de.ts; the `Record<keyof typeof de,
+// string>` annotation below TS-errors on missing or extra keys so the two stay in sync.
 
 import type { de } from "./de";
 
@@ -13,8 +13,6 @@ export const en: Record<keyof typeof de, string> = {
   // ---------- units ----------
   "units.scripts_one": "{count} script",
   "units.scripts_other": "{count} scripts",
-  "units.pages_one": "1 page",
-  "units.pages_other": "{count} pages",
   "units.words": "words",
   "units.word_one": "word",
   "units.word_other": "words",
@@ -51,7 +49,6 @@ export const en: Record<keyof typeof de, string> = {
   "browser.sort.updated": "Modified",
   "browser.sort.created": "Created",
   "browser.sort.title": "Title",
-  "browser.sort.label": "Sort · {value}",
   "browser.rowMore": "More actions",
 
   // ---------- folders ----------
@@ -80,11 +77,9 @@ export const en: Record<keyof typeof de, string> = {
   "script.renameEmptyHint": "Title can't be empty.",
   "script.menu.open": "Open",
   "script.menu.openPanel": "Open in side panel",
-  "script.menu.openNewTab": "Open in new tab",
   "script.menu.rename": "Rename",
   "script.menu.duplicate": "Duplicate",
   "script.menu.move": "Move to folder",
-  "script.menu.trash": "Move to trash",
   "script.toast.archived": "\"{title}\" moved to trash",
   "script.toast.duplicated": "Script duplicated",
   "script.toast.renamed": "Renamed",
@@ -151,11 +146,6 @@ export const en: Record<keyof typeof de, string> = {
   "editor.recovery.reset": "Continue empty anyway",
   "editor.recovery.resetting": "Resetting…",
   "editor.recovery.tech": "Technical info",
-
-  // ---------- runtime label format ----------
-  "runtime.seconds": "{n} s",
-  "runtime.minutes": "{m} min",
-  "runtime.minutesSeconds": "{m}:{s} min",
 
   // ---------- snapshots dialog ----------
   "snapshots.title": "Versions",

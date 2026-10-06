@@ -19,8 +19,6 @@ export const de = {
   // ---------- units (with plurals) ----------
   "units.scripts_one": "{count} Skript",
   "units.scripts_other": "{count} Skripte",
-  "units.pages_one": "1 Seite",
-  "units.pages_other": "{count} Seiten",
   "units.words": "Wörter",
   "units.word_one": "Wort",
   "units.word_other": "Wörter",
@@ -57,7 +55,6 @@ export const de = {
   "browser.sort.updated": "Geändert",
   "browser.sort.created": "Erstellt",
   "browser.sort.title": "Titel",
-  "browser.sort.label": "Sortieren · {value}",
   "browser.rowMore": "Mehr Aktionen",
 
   // ---------- folder operations ----------
@@ -86,11 +83,9 @@ export const de = {
   "script.renameEmptyHint": "Titel darf nicht leer sein.",
   "script.menu.open": "Öffnen",
   "script.menu.openPanel": "Im Seitenpanel öffnen",
-  "script.menu.openNewTab": "In neuem Tab öffnen",
   "script.menu.rename": "Umbenennen",
   "script.menu.duplicate": "Duplizieren",
   "script.menu.move": "In Ordner verschieben",
-  "script.menu.trash": "In Papierkorb verschieben",
   "script.toast.archived": "„{title}\" in den Papierkorb verschoben",
   "script.toast.duplicated": "Skript dupliziert",
   "script.toast.renamed": "Umbenannt",
@@ -157,11 +152,6 @@ export const de = {
   "editor.recovery.reset": "Trotzdem leer fortfahren",
   "editor.recovery.resetting": "Setze zurück…",
   "editor.recovery.tech": "Technische Info",
-
-  // ---------- runtime label format ----------
-  "runtime.seconds": "{n} s",
-  "runtime.minutes": "{m} Min",
-  "runtime.minutesSeconds": "{m}:{s} Min",
 
   // ---------- snapshots dialog ----------
   "snapshots.title": "Versionen",

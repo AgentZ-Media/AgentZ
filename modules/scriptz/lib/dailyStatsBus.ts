@@ -3,7 +3,7 @@ import { createSignal } from "solid-js";
 /** Version signal for the daily writing statistics (daily_word_log).
  *  Bumped as soon as `recordWordDelta` has written a positive increment -
  *  the stats store then invalidates and re-reads the
- *  heatmap/streak data. */
+ *  heatmap data. */
 const [version, setVersion] = createSignal(0);
 
 export const dailyStatsBus = {

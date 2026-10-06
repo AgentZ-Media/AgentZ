@@ -100,9 +100,6 @@ export const ICONS: Record<IconName, string> = {
   shield: '<path d="M12 3.5l7 3v5.5c0 4.2-2.9 7.3-7 8.5-4.1-1.2-7-4.3-7-8.5V6.5z"/><path d="M9 12l2.2 2.2L15.5 10"/>',
 };
 
-/** Every icon name, e.g. for a component sheet or tests. */
-export const ICON_NAMES = Object.keys(ICONS) as IconName[];
-
 export type StageGlyphName = "idea" | "writing" | "ready" | "shot" | "online";
 
 /**

@@ -7,8 +7,7 @@
 import { beforeAll, describe, it, expect } from "vitest";
 import { applyResolvedLanguage } from "@agentz/kit/i18n";
 
-// Tests are pinned against the German wordings (they were there before
-// i18n moved in). In the vitest environment navigator.language runs as
+// Tests are pinned against the German wordings. In the vitest environment navigator.language runs as
 // "en-US" depending on the host - we pin the language explicitly so the
 // assertions stay deterministic.
 beforeAll(() => {
@@ -89,7 +88,7 @@ describe("scriptzFile - serializeScript", () => {
   it("survives malformed content_json with a clear error message", () => {
     expect(() =>
       serializeScript({ ...baseScript, content_json: "{not-json" }),
-    ).toThrow(/content_json ist kein gueltiges JSON|content_json ist kein gültiges JSON/);
+    ).toThrow(/content_json ist kein gültiges JSON/);
   });
 
   it("keeps characters including the optional share", () => {

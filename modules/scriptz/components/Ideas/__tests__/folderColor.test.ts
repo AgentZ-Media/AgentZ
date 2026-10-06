@@ -8,7 +8,6 @@ describe("folderColor", () => {
   it("is stable for the same id", () => {
     const id = "6f1c2a4e-1b2d-4c3e-9f00-112233445566";
     expect(folderColor(id)).toBe(folderColor(id));
-    expect(folderColor(String(id))).toBe(folderColor(id));
   });
 
   it("always returns a palette colour", () => {

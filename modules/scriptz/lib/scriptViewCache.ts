@@ -59,9 +59,6 @@ export const scriptViewCache = {
   set(id: string, state: ScriptViewState) {
     cache.set(id, state);
   },
-  drop(id: string) {
-    cache.delete(id);
-  },
 };
 
 /** Reads the current cursor position from the editor and returns it as

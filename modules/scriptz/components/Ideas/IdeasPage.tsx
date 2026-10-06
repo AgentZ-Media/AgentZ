@@ -23,7 +23,6 @@ import { K, isModKey } from "@agentz/kit/platform";
 import { ideasStore } from "../../stores/ideas";
 import { navStore } from "../../stores/nav";
 import { uiStore } from "../../stores/ui";
-import { settingsStore } from "../../stores/settings";
 import { pushToast } from "@agentz/kit/stores";
 import { localeCompare } from "@agentz/kit/i18n";
 import { t, tPlural } from "../../i18n";
@@ -1305,5 +1304,3 @@ export function IdeasPage() {
     </div>
   );
 }
-
-export default IdeasPage;

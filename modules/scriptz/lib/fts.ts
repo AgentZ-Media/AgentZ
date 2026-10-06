@@ -13,11 +13,8 @@ import { getDb } from "./db";
  *  `granularity: "word"` and the `isWordLike` filter.
  *
  *  CJK twist: V8/JSC's segmenter does dictionary-based grouping of Han
- *  ideographs ("中文" → one token), but UAX #29 (and the SQLite
- *  `unicode61` tokenizer the FTS index uses) splits them per character.
- *  We pre-isolate each Han char with whitespace so the segmenter
- *  produces the same per-char tokens Rust does - otherwise CJK queries
- *  would never match any indexed row. */
+ *  ideographs ("中文" → one token). We pre-isolate each Han char with
+ *  whitespace so the query consists of per-char tokens. */
 export function sanitizeFtsQuery(input: string): string {
   const s = input.trim().toLowerCase();
   if (s.length === 0) return "";
@@ -47,7 +44,7 @@ export function sanitizeFtsQuery(input: string): string {
 }
 
 /** Replace the FTS row for one script with the given title + content text.
- *  Mirrors Rust's `upsert_script_fts` - DELETE then INSERT, no UPSERT
+ *  DELETE then INSERT, no UPSERT
  *  because FTS5 contentless tables don't support ON CONFLICT. */
 export async function upsertScriptFts(
   scriptId: string,
@@ -68,9 +65,8 @@ export async function deleteScriptFts(scriptId: string): Promise<void> {
 }
 
 /** Convenience: read the script's title and content_json from the DB,
- *  derive plain text via the shared lex walker, and upsert. Same shape
- *  as Rust's `commands::scripts::refresh_fts_for_script`. Silently noops
- *  if the script no longer exists. */
+ *  derive plain text via the shared lex walker, and upsert. Silently
+ *  noops if the script no longer exists. */
 export async function refreshFtsForScript(scriptId: string): Promise<void> {
   const db = await getDb();
   const rows = await db.select<{ title: string; content_json: string }[]>(

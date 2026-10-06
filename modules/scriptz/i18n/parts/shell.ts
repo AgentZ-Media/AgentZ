@@ -102,8 +102,6 @@ export const shellDe = {
   "shell.cmd.inspector": "Inspector ein/aus",
   "shell.cmd.focus": "Fokus-Modus ein/aus",
   "shell.cmd.stage": "Stufe → {stage}",
-
-  // ---------- update indicator (desktop sidebar) ----------
 } as const;
 
 export const shellEn: Record<keyof typeof shellDe, string> = {
@@ -206,6 +204,4 @@ export const shellEn: Record<keyof typeof shellDe, string> = {
   "shell.cmd.inspector": "Toggle inspector",
   "shell.cmd.focus": "Toggle focus mode",
   "shell.cmd.stage": "Stage → {stage}",
-
-  // ---------- update indicator (desktop sidebar) ----------
 };

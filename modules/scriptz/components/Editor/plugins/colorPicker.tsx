@@ -94,7 +94,7 @@ export function installColorPicker(
     try {
       await api.setCharacterColor(upper, color);
       // Bump the bus so every other view of this script (lists, inspector)
-      // refetch their script. The active tab updated optimistically and
+      // refetch their script. The open editor updated optimistically and
       // does NOT need to wait for the refetch — the value will match.
       scriptsBus.bump();
     } catch (err) {
@@ -112,7 +112,7 @@ export function installColorPicker(
       // the in-editor colour: the Editor's `liveCharacters` is local and
       // doesn't auto-sync from the parent's refetch (that would fight
       // the optimistic-typing path). The bus bump still fires so other
-      // open tabs / the file browser refresh.
+      // views (lists, inspector) refresh.
       const fresh = await api.getScript(getArgs().scriptId);
       getArgs().setCharacters(fresh.characters);
       // Sync the swatch cache too — same reason as in the optimistic-set
@@ -145,9 +145,6 @@ export function installColorPicker(
 
   let caretBlock: HTMLElement | null = null;
   let hoverBlock: HTMLElement | null = null;
-  // Deduplicate "still the same anchor" repositions so we don't fight the
-  // browser layout for every frame of a smooth scroll.
-  let lastAnchorBlock: HTMLElement | null = null;
 
   const editorRoot = (): HTMLElement | null =>
     host.querySelector(".editor-root");
@@ -156,7 +153,6 @@ export function installColorPicker(
     const target = hoverBlock ?? caretBlock;
     if (!target || !document.body.contains(target)) {
       if (swatchVisible()) setSwatchVisible(false);
-      lastAnchorBlock = null;
       return;
     }
     const root = editorRoot();
@@ -177,7 +173,6 @@ export function installColorPicker(
     setSwatchColor(colorForName(name));
     setSwatchName(name);
     setSwatchVisible(true);
-    lastAnchorBlock = target;
   };
 
   const onCaretChange = () => {
@@ -389,7 +384,6 @@ export function installColorPicker(
       if (overlay.parentNode) overlay.parentNode.removeChild(overlay);
       caretBlock = null;
       hoverBlock = null;
-      lastAnchorBlock = null;
     },
   };
 }

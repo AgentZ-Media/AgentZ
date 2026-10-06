@@ -72,8 +72,8 @@ export interface ColorRecord {
 }
 
 /** Load every per-name colour record into a map keyed by uppercase name.
- *  Used by the Phase-7 script create/update paths to avoid re-querying
- *  per character on every save. */
+ *  Used by the script create/update paths to avoid re-querying per
+ *  character on every save. */
 export async function loadColorRecords(): Promise<Map<string, ColorRecord>> {
   const db = await getDb();
   const rows = await db.select<
@@ -258,7 +258,6 @@ export async function clearCharacterColor(
 
 interface AffectedRow {
   id: string;
-  content_json: string;
   characters_meta: string;
 }
 
@@ -267,13 +266,12 @@ interface AffectedRow {
  *  deserialising them. The case-insensitive collation matches the same
  *  rows the post-filter `eqIgnoreAsciiCase` would have kept anyway. */
 async function affectedScripts(nameUpper: string): Promise<AffectedRow[]> {
-  // Doubling `"` matches Rust's defensive escape; character names are
-  // uppercase Latin in practice so this is effectively a no-op, but
-  // mirrors the on-disk LIKE pattern byte-for-byte either way.
+  // Defensive escape; character names are uppercase Latin in practice,
+  // so this is effectively a no-op.
   const like = `%"${nameUpper.replaceAll('"', '""')}"%`;
   const db = await getDb();
   return db.select<AffectedRow[]>(
-    `SELECT id, content_json, characters_meta FROM scripts
+    `SELECT id, characters_meta FROM scripts
      WHERE characters_meta LIKE $1 COLLATE NOCASE`,
     [like],
   );

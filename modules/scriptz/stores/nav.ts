@@ -78,11 +78,8 @@ export const navStore = {
     const current = navigation.route();
     return current.kind === "script" ? current.scriptId : null;
   },
-  isScript: () => navigation.route().kind === "script",
   isIdeas: () => navigation.route().kind === "ideas",
   isScripts: () => navigation.route().kind === "scripts",
-  isInbox: () => navigation.route().kind === "inbox",
-  isTrash: () => navigation.route().kind === "trash",
   isAgent: () => navigation.route().kind === "agent",
   /** Chat id of the agent mode on screen, else null. */
   activeAgentChatId(): string | null {

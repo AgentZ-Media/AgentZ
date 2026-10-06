@@ -181,7 +181,7 @@ export interface ScriptzStorage {
   exportPdf(input: ExportPdfRequest): Promise<ExportResult>;
   exportPlaintext(input: ExportPlaintextRequest): Promise<ExportResult>;
   /** Writes the script as a .scriptz file (blob download on web,
-   *  save dialog on desktop). Phase G. */
+   *  save dialog on desktop). */
   exportScriptz(scriptId: string): Promise<ExportResult>;
   /** Reads a .scriptz file from the user (open dialog) and creates a new
    *  script from it. Returns null if the user cancels. */

@@ -8,7 +8,7 @@
 // API in JS, so multi-statement operations run as independent
 // auto-committed steps. Effects:
 //   - createSnapshot: a crash between INSERT and the trim DELETE
-//     could leave a 51st row briefly; the next create_snapshot trims
+//     could leave a 51st row briefly; the next createSnapshot trims
 //     it. No data loss either way.
 //   - restoreSnapshot: backup INSERT + content UPDATE (incl. derived
 //     metadata) + FTS refresh are sequential. A crash mid-flow leaves

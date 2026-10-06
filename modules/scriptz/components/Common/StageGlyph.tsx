@@ -39,5 +39,3 @@ export function StageGlyph(props: StageGlyphProps) {
     />
   );
 }
-
-export default StageGlyph;

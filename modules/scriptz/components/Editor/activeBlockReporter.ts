@@ -24,8 +24,7 @@ export interface ActiveBlockReporterHandle {
   updateEmptyMarker: () => void;
 }
 
-/** Selection / empty-state observers extracted from the Editor onMount
- *  closure. The reporter holds the `lastActiveBlock` cache so consecutive
+/** Selection / empty-state observers of the editor. The reporter holds the `lastActiveBlock` cache so consecutive
  *  selection changes inside the same block don't spam the parent.
  *
  *  Both functions read the editor state synchronously — they MUST stay

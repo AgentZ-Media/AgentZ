@@ -1,6 +1,5 @@
 // Tests for the inline editing on the ideas page
-// (components/Ideas/IdeasPage.tsx): rows open in place instead of a
-// side panel, only one row is open at a time, the open editor survives a
+// (components/Ideas/IdeasPage.tsx): rows open in place, only one row is open at a time, the open editor survives a
 // store refresh, and the capture field expands for notes + folder.
 
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from "vitest";
@@ -111,12 +110,6 @@ function input(el: HTMLInputElement | HTMLTextAreaElement, value: string) {
 }
 
 describe("IdeasPage inline editing", () => {
-  it("has no side panel any more", async () => {
-    const { container } = render(() => <IdeasPage />);
-    await settle();
-    expect(container.querySelector(".idet, aside")).toBeNull();
-  });
-
   it("opens a clicked row in place and keeps only one row open", async () => {
     const { container } = render(() => <IdeasPage />);
     await settle();

@@ -89,11 +89,6 @@
   flex-wrap: wrap;
   justify-content: flex-end;
 }
-.set-error {
-  margin: 6px 0 0;
-  color: var(--warn);
-  font-size: 12.5px;
-}
 
 /* ---------- shortcuts ---------- */
 .set-keys {

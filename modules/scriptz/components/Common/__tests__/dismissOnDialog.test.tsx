@@ -1,6 +1,6 @@
 // Regression tests for menus closing when a dialog opens on top
-// (components/Common/dismissOnDialog.ts): the context menu, the folder
-// picker and the sort picker must not stay open (and keep handling keys)
+// (dismissOnDialog from @agentz/kit/ui): the context menu and the folder
+// picker must not stay open (and keep handling keys)
 // behind ⌘I / ⌘K or a legacy modal.
 
 import { afterEach, describe, expect, it, vi } from "vitest";
