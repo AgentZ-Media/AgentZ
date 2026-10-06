@@ -10,8 +10,8 @@
 
 import { createSignal } from "solid-js";
 import { render } from "solid-js/web";
-import { $getSelection, $isRangeSelection, type LexicalEditor, type LexicalNode } from "lexical";
-import { $isScriptzCharacterNode } from "../nodes";
+import { $getSelection, $isRangeSelection, type LexicalEditor } from "lexical";
+import { $isScriptzCharacterNode, findScriptzAncestor } from "../nodes";
 import { ColorPickerPopover } from "../ColorPickerPopover";
 import { api } from "../../../lib/api";
 import { scriptsBus } from "../../../lib/scriptsBus";
@@ -180,14 +180,10 @@ export function installColorPicker(
     editor.getEditorState().read(() => {
       const sel = $getSelection();
       if (!$isRangeSelection(sel)) return;
-      let cur: LexicalNode | null = sel.anchor.getNode();
-      while (cur) {
-        if ($isScriptzCharacterNode(cur)) {
-          const dom = editor.getElementByKey(cur.getKey());
-          if (dom) block = dom as HTMLElement;
-          break;
-        }
-        cur = cur.getParent();
+      const node = findScriptzAncestor(sel.anchor.getNode());
+      if ($isScriptzCharacterNode(node)) {
+        const dom = editor.getElementByKey(node.getKey());
+        if (dom) block = dom as HTMLElement;
       }
     });
     caretBlock = block;

@@ -7,11 +7,11 @@ import {
   KEY_BACKSPACE_COMMAND,
   KEY_ENTER_COMMAND,
   type LexicalEditor,
-  type LexicalNode,
 } from "lexical";
 import { mergeRegister } from "@lexical/utils";
 import {
   BaseScriptzNode,
+  findScriptzAncestor,
   $createScriptzActionNode,
   $createScriptzCharacterNode,
   $createScriptzDialogNode,
@@ -21,15 +21,7 @@ import {
   $isScriptzParentheticalNode,
 } from "../nodes";
 import type { ScriptCharacter } from "../../../lib/types";
-
-function findScriptzAncestor(node: LexicalNode | null): BaseScriptzNode | null {
-  let cur: LexicalNode | null = node;
-  while (cur) {
-    if (cur instanceof BaseScriptzNode) return cur;
-    cur = cur.getParent();
-  }
-  return null;
-}
+import { previousCharacterFrom } from "../predict";
 
 // Smart-Enter state machine (four block types):
 //   Action        (text)  -> new Character below
@@ -65,18 +57,6 @@ function replaceBlockWith(
 
 /** Walk back from a Dialog block to find the most recent Character block
  * above it. Returns its uppercase trimmed name, or null if none found. */
-function previousCharacterName(block: BaseScriptzNode): string | null {
-  let prev: LexicalNode | null = block.getPreviousSibling();
-  while (prev) {
-    if ($isScriptzCharacterNode(prev)) {
-      const name = prev.getTextContent().trim().toUpperCase();
-      return name || null;
-    }
-    prev = prev.getPreviousSibling();
-  }
-  return null;
-}
-
 export interface SmartEnterArgs {
   /** Reactive getter for the quick-mode toggle. */
   isQuickModeOn?: () => boolean;
@@ -136,7 +116,7 @@ export function installSmartEnter(
           if (args.isQuickModeOn?.()) {
             const chars = args.getCharacters?.() ?? [];
             if (chars.length === 2) {
-              const prev = previousCharacterName(block);
+              const prev = previousCharacterFrom(block);
               const other = chars.find(
                 (c) => c.name.toUpperCase() !== (prev ?? "").toUpperCase(),
               );

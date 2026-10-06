@@ -7,44 +7,18 @@ import {
   COMMAND_PRIORITY_HIGH,
   KEY_TAB_COMMAND,
   type LexicalEditor,
-  type LexicalNode,
 } from "lexical";
 import {
-  BaseScriptzNode,
   BLOCK_HOTKEYS,
   BLOCK_TYPES,
   blockLabel,
-  $createScriptzActionNode,
-  $createScriptzCharacterNode,
-  $createScriptzDialogNode,
-  $createScriptzParentheticalNode,
+  BLOCK_FACTORY,
+  findScriptzAncestor,
 } from "../nodes";
 import type { BlockType } from "../../../lib/types";
 import { K } from "@agentz/kit/platform";
 import { t } from "../../../i18n";
 import { dismissOnDialog, focusWithin } from "@agentz/kit/ui";
-
-function findScriptzAncestor(node: LexicalNode | null): BaseScriptzNode | null {
-  let cur: LexicalNode | null = node;
-  while (cur) {
-    if (cur instanceof BaseScriptzNode) return cur;
-    cur = cur.getParent();
-  }
-  return null;
-}
-
-function createBlockOfType(type: BlockType): BaseScriptzNode {
-  switch (type) {
-    case "scriptz-action":
-      return $createScriptzActionNode();
-    case "scriptz-character":
-      return $createScriptzCharacterNode();
-    case "scriptz-dialog":
-      return $createScriptzDialogNode();
-    case "scriptz-parenthetical":
-      return $createScriptzParentheticalNode();
-  }
-}
 
 interface DropdownProps {
   x: number;
@@ -189,7 +163,7 @@ export function installBlockDropdown(
         const block = findScriptzAncestor(sel.anchor.getNode());
         if (!block) return;
         if (block.getType() === type) return;
-        const next = createBlockOfType(type);
+        const next = BLOCK_FACTORY[type]();
         // Move all children into the new block (preserve text/format).
         // CLAUDE.md: empty blocks must stay CHILDLESS — Lexical injects a
         // managed <br> placeholder; pre-seeding $createTextNode("") breaks

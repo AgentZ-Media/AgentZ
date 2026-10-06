@@ -10,20 +10,12 @@ import {
 } from "lexical";
 import {
   BaseScriptzNode,
+  findScriptzAncestor,
   $createScriptzDialogNode,
   $createScriptzParentheticalNode,
   $isScriptzDialogNode,
   $isScriptzParentheticalNode,
 } from "../nodes";
-
-function findScriptzAncestor(node: LexicalNode | null): BaseScriptzNode | null {
-  let cur: LexicalNode | null = node;
-  while (cur) {
-    if (cur instanceof BaseScriptzNode) return cur;
-    cur = cur.getParent();
-  }
-  return null;
-}
 
 /**
  * State machine, intercepted at keydown so the browser/Lexical default text
