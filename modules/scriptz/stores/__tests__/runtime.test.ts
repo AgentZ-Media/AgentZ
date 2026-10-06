@@ -204,7 +204,8 @@ describe("explicit singleton runtimes", () => {
     expect([
       settingsStore.highlightingDefault(), settingsStore.quickModeAutoEnable(),
       settingsStore.focusModeDefault(), settingsStore.darkPaper(), settingsStore.pruneUnusedCharacters(),
-    ]).toEqual([false, false, false, false, false]);
+      settingsStore.openInPanel(),
+    ]).toEqual([false, false, false, false, false, false]);
     expect(settingsStore.showWritingStats()).toBe(true);
     expect(settingsStore.exportTitlePageDefault()).toBe(true);
     expect(settingsStore.dialogWpm()).toBe(210);
