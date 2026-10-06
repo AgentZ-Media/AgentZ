@@ -27,7 +27,7 @@ built at most every three hours and clearly marked by a night sky in the app.
 
 ```text
 apps/<app>/          Thin Tauri app: identity, icons, capabilities, migrations
-apps/site/           Static Astro website (German/English)
+apps/site/           Astro website (German/English) and account (Convex)
 modules/<app>/       Product module: UI, logic and storage of one app
 packages/kit/        Product-neutral shell, UI, i18n, settings, navigation
 packages/desktop/    Tauri host: platform adapter, updater, app lifecycle
@@ -54,6 +54,7 @@ pnpm install --frozen-lockfile
 pnpm dev:scriptz             # run ScriptZ
 pnpm build:scriptz           # native app and installer (target/release/bundle/)
 pnpm dev:site                # website
+pnpm dev:site:backend        # account backend (Convex dev deployment)
 pnpm lint && pnpm typecheck && pnpm test
 pnpm check:colors && pnpm check:astro
 cargo check --workspace --locked

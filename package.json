@@ -15,6 +15,7 @@
     "build:frontends": "pnpm --filter './apps/*' --if-present build",
     "release:bump": "node tooling/release/bump.mjs",
     "dev:site": "pnpm --filter @agentz/site dev",
+    "dev:site:backend": "pnpm --filter @agentz/site dev:backend",
     "build:site": "pnpm --filter @agentz/site build",
     "check:astro": "node tooling/checks/astro.mjs",
     "new-app": "node tooling/new-app/index.mjs create",

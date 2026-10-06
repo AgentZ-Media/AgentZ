@@ -7,7 +7,7 @@ import Apps from "./Apps.astro";
 import Download from "./Download.astro";
 import Icon from "./Icon.astro";
 import appIcon from "@agentz/design/assets/scriptz-app-icon.svg?url";
-import { catalogs, type Language } from "../i18n";
+import { catalogs, homePaths, type Language } from "../i18n";
 interface Props { lang: Language }
 const { lang } = Astro.props;
 const t = catalogs[lang];
@@ -19,7 +19,7 @@ const stars = Array.from({ length: 34 }, (_, i) => ({
   s: i % 5 === 0 ? 3 : 2,
 }));
 ---
-<Base lang={lang} home>
+<Base lang={lang} paths={homePaths}>
   <section class="hero" data-theme="dark" aria-labelledby="hero-title">
     <div class="hero-sky" aria-hidden="true">
       {stars.map((star) => <i style={`--x:${star.x}%;--y:${star.y}%;--d:${star.d}s;--s:${star.s}px`}></i>)}

@@ -8,6 +8,11 @@ packages:
 catalog:
   "astro": "7.3.5"
   "@astrojs/check": "0.9.10"
+  "@convex-dev/better-auth": "0.12.5"
+  "@convex-dev/resend": "0.2.8"
+  "better-auth": "1.6.33"
+  "convex": "1.46.0"
+  "convex-helpers": "0.1.127"
   "@lexical/history": "0.44.0"
   "@lexical/rich-text": "0.44.0"
   "@lexical/utils": "0.44.0"

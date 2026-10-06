@@ -8,15 +8,17 @@ import "../styles/site.css";
 import suiteIcon from "@agentz/design/assets/suite-app-icon.svg?url";
 import Header from "../components/Header.astro";
 import Footer from "../components/Footer.astro";
-import { catalogs, type Language } from "../i18n";
+import { catalogs, type Language, type PagePaths } from "../i18n";
 
 interface Props {
   lang?: Language;
   title?: string;
   description?: string;
-  home?: boolean;
+  /** Paths of this page in every language; enables the language switch. */
+  paths?: PagePaths;
+  noindex?: boolean;
 }
-const { lang = "de", title = "AgentZ Suite", home = false } = Astro.props;
+const { lang = "de", title = "AgentZ Suite", paths, noindex = false } = Astro.props;
 const t = catalogs[lang];
 const description = Astro.props.description ?? t.description;
 const canonical = new URL(Astro.url.pathname, Astro.site);
@@ -31,7 +33,8 @@ const canonical = new URL(Astro.url.pathname, Astro.site);
     <title>{title === "AgentZ Suite" ? title : `${title} - AgentZ Suite`}</title>
     <link rel="canonical" href={canonical} />
     <link rel="icon" type="image/svg+xml" href={suiteIcon} />
-    {home && <><link rel="alternate" hreflang="de" href={new URL("/", Astro.site)} /><link rel="alternate" hreflang="en" href={new URL("/en/", Astro.site)} /><link rel="alternate" hreflang="x-default" href={new URL("/", Astro.site)} /></>}
+    {noindex && <meta name="robots" content="noindex" />}
+    {paths && <><link rel="alternate" hreflang="de" href={new URL(paths.de, Astro.site)} /><link rel="alternate" hreflang="en" href={new URL(paths.en, Astro.site)} /><link rel="alternate" hreflang="x-default" href={new URL(paths.de, Astro.site)} /></>}
     <meta property="og:title" content={title} />
     <meta property="og:description" content={description} />
     <meta property="og:type" content="website" />
@@ -40,9 +43,9 @@ const canonical = new URL(Astro.url.pathname, Astro.site);
   </head>
   <body>
     <a class="skip-link btn" href="#content">{t.skip}</a>
-    <Header lang={lang} home={home} />
+    <Header lang={lang} paths={paths} />
     <main id="content"><slot /></main>
-    <Footer lang={lang} home={home} />
+    <Footer lang={lang} paths={paths} />
     <script>import "../scripts/site";</script>
   </body>
 </html>
