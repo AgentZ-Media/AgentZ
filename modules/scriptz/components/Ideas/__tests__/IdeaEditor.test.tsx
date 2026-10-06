@@ -253,7 +253,6 @@ describe("IdeaEditor autosave", () => {
     expect(updates).toEqual([{ id: "a", notes: "From elsewhere!" }]);
   });
 
-
   it("retains a failed collapsed draft and releases its registration after a successful retry", async () => {
     const p = renderPanel("a");
     type(p.notes(), "Retry this draft");

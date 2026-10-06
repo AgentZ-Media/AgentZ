@@ -101,11 +101,9 @@ export function Editor(props: EditorProps) {
   let hostRef: HTMLDivElement | undefined;
 
   // Live character list seeded from storage, then updated in memory as
-  // the writer adds/renames Charakter blocks. We deliberately stop refetching
-  // the whole script after every save (that was disrupting contentEditable
-  // focus mid-keystroke); instead, walk the Lexical state ourselves. Names
-  // already persisted keep their assigned palette color; freshly-
-  // typed names get a neutral placeholder until the script is reloaded.
+  // the writer adds/renames character blocks. The script is not refetched
+  // after a save (that would disrupt contentEditable focus mid-keystroke);
+  // instead, walk the Lexical state ourselves.
   const [liveCharacters, setLiveCharacters] = createSignal<ScriptCharacter[]>(
     props.characters ?? [],
   );
@@ -413,5 +411,3 @@ export function Editor(props: EditorProps) {
     </div>
   );
 }
-
-export default Editor;

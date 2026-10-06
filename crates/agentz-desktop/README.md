@@ -8,7 +8,7 @@ Apps may add their own plugins and commands, then call
 same name the frontend host (`@agentz/desktop`) opens. Window config,
 identifier, updater key and product migrations stay in the app.
 
-- New apps use `KIT_BASELINE_SQL` (`settings`, `app_state`) as migration 1.
+- New apps use `src/baseline.sql` (`settings`, `app_state`) as migration 1.
   Published migrations are never replaced.
 - Standard plugins are registered here, single-instance first. Every app
   also lists them as direct Cargo dependencies: Tauri reads their

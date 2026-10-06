@@ -6,8 +6,6 @@ import { t } from "../../i18n";
 import { Icon, Modal, Row, SectionHead, Switch } from "../../ui";
 import { NightSky } from "../NightSky";
 
-
-
 /** Auto-update (desktop only - the dialog hides this section when no
  *  updates store is registered). */
 export function SettingsUpdates(props: {

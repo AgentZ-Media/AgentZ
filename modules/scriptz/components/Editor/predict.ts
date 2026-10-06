@@ -101,19 +101,3 @@ export function rankNextSpeakers(
 
   return [...others, ...self];
 }
-
-/** Pick the single most plausible next speaker. Convenience wrapper —
- * shares the ranking logic, just returns the head (or null if the only
- * remaining candidate is the previous speaker). */
-export function predictNextSpeaker(
-  prev: string | null,
-  candidates: ScriptCharacter[],
-): ScriptCharacter | null {
-  if (candidates.length === 0) return null;
-  const prevUpper = (prev ?? "").toUpperCase();
-  const ranked = rankNextSpeakers(prev, candidates);
-  // Skip past the previous speaker (rankNextSpeakers keeps them at the
-  // tail) — the predicted "next" must not be the one who just spoke.
-  const head = ranked.find((c) => c.name.toUpperCase() !== prevUpper);
-  return head ?? null;
-}

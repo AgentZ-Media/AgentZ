@@ -16,8 +16,6 @@ export interface ContextMenuItem {
   disabled?: boolean;
   /** Presence of `children` turns the row into a submenu trigger. */
   children?: ContextMenuItem[];
-  /** Optional; `children` alone already makes the row a submenu trigger. */
-  hasSubmenu?: boolean;
   /** Leading icon from the design set, or any element (e.g. a stage glyph). */
   icon?: IconName | JSX.Element;
   /** Shows a check mark on the right (current sort / group / stage). */
@@ -140,9 +138,6 @@ export function ContextMenu(props: ContextMenuProps) {
     </Portal>
   );
 }
-
-/** Alias of `ContextMenu`. */
-export const ScriptContextMenu = ContextMenu;
 
 function ItemIcon(props: { icon: IconName | JSX.Element | undefined }) {
   return (
@@ -297,5 +292,3 @@ function MenuRow(props: { item: ContextMenuItem; onChoose: () => void; width: nu
     </>
   );
 }
-
-export default ContextMenu;

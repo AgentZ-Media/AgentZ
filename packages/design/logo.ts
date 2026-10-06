@@ -117,7 +117,7 @@ const suiteMark: LogoDefinition = {
   accent: "#ffe14d",
 };
 
-/** Product marks rendered by shared chrome; ScriptZ keeps its original geometry. */
+/** Product marks rendered by shared chrome; ScriptZ uses the suite mark. */
 export const LOGOS = {
   suite: suiteMark,
   scriptz: suiteMark,

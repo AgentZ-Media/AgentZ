@@ -167,5 +167,3 @@ export function StageChip(props: StageChipProps) {
     </div>
   );
 }
-
-export default StageChip;

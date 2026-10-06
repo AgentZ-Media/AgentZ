@@ -132,7 +132,6 @@ export function CommandPalette(props: CommandPaletteProps) {
       e.preventDefault();
       if (n) setActive((i) => (i - 1 + n) % n);
     } else if (e.key === "Enter") {
-      if (e.isComposing) return;
       e.preventDefault();
       runItem(items()[active()]);
     } else if (e.key === "Tab") {

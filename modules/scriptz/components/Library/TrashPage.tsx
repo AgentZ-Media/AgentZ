@@ -17,7 +17,7 @@ function fail(e: unknown): void {
   pushToast(t("common.errorPrefix", { message: e instanceof Error ? e.message : String(e) }), "error");
 }
 
-/** Trash (former TrashView in the browser): restore, purge, empty,
+/** Trash: restore, purge, empty,
  *  restore all. Restoring the last item leads back to the library, so the
  *  user sees where the script went. */
 export function TrashPage() {
@@ -165,5 +165,3 @@ export function TrashPage() {
     </div>
   );
 }
-
-export default TrashPage;

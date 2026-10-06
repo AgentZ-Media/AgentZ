@@ -17,8 +17,8 @@ import { t } from "../i18n";
 /** Sentinel folder id for the virtual "Inbox" chip: scripts and ideas that
  *  sit in no folder (`folder_id IS NULL`). Not a UUID, so it can never
  *  collide with a real folder id (those are UUIDv4). Used as `folderId` in
- *  list queries to mean "ungrouped only" - distinct from `null`, which the
- *  Browser uses for the "All" chip (every item, grouped or not). */
+ *  list queries to mean "ungrouped only" - distinct from `null`, which means
+ *  every item, grouped or not. */
 export const INBOX_FOLDER_ID = "__inbox__";
 
 interface FolderRow {

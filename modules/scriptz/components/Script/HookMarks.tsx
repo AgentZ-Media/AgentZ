@@ -173,5 +173,3 @@ export function HookMarks(props: HookMarksProps) {
     </Show>
   );
 }
-
-export default HookMarks;

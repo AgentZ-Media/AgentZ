@@ -15,16 +15,6 @@ const LAYOUT_KEY = "ui.layout";
 const SECTIONS_KEY = "sidebar.sections";
 const FOCUS_KEY = (scriptId: string) => `script.${scriptId}.focus_mode`;
 
-export type SettingsSection =
-  | "appearance"
-  | "writing"
-  | "library"
-  | "folders"
-  | "characters"
-  | "shortcuts"
-  | "updates"
-  | "about";
-
 // ---- panels (persisted) ----
 const layout = createLayoutStore({
   key: LAYOUT_KEY,
@@ -49,7 +39,7 @@ const [collapsedSections, setCollapsedSections] = createSignal<Record<SidebarSec
   folders: false,
 });
 
-// ---- focus mode (per script override, like before) ----
+// ---- focus mode (per script override) ----
 const [focusMode, setFocusMode] = createSignal(false);
 const focusOverride = new Map<string, boolean>();
 
@@ -114,9 +104,6 @@ export const uiStore = {
   },
   toggleTimeline() {
     layout.update({ timeline: !timelineOpen() });
-  },
-  setTimelineOpen(v: boolean) {
-    layout.update({ timeline: v });
   },
 
   // sidebar sections

@@ -5,7 +5,7 @@
 // already-existing tutorial script text retroactively, because that's
 // already user content (the user can edit the text).
 //
-// Hotkeys run through K() / formatHotkey() from lib/keys, so
+// Hotkeys run through K() from @agentz/kit/platform, so
 // Windows / Linux users see "Ctrl+N" instead of "Cmd+N" - otherwise
 // the tutorial would give wrong instructions there.
 

@@ -52,7 +52,7 @@ const TINT_BOTTOM_OFFSET_MM = 1.4;
 const TINT_RADIUS_MM = 1.2;
 const TINT_ALPHA_FACTOR = 0.28;
 
-// 1 mm in PDF-Punkten (1pt = 1/72 inch, 1 inch = 25.4 mm).
+// 1 mm in PDF points (1pt = 1/72 inch, 1 inch = 25.4 mm).
 const MM_TO_PT = 72 / 25.4;
 const mm = (v: number) => v * MM_TO_PT;
 
@@ -139,7 +139,7 @@ class Layout {
     const charsPerLine = Math.max(20, Math.trunc(widthMm / CHAR_W_MM));
     const hasInlineFormat = !!runs && runs.some((r) => r.bold || r.italic || r.underline);
 
-    // Fast path: no inline format → render the plain text as before.
+    // Fast path: no inline format → render the plain text.
     // Avoids the tokenizer's overhead for the 95% case where a block has
     // a single uniform run.
     if (!hasInlineFormat) {
@@ -342,13 +342,13 @@ function roundedRectPath(wPt: number, hPt: number, rPt: number): string {
 }
 
 function countChars(s: string): number {
-  // Counts Unicode scalars, mirrors Rust `chars().count()`.
+  // Counts Unicode scalars, not UTF-16 code units.
   let n = 0;
   for (const _ of s) n++;
   return n;
 }
 
-// Mirrors Rust `simple_wrap`: splits at '\n', then whitespace wrap
+// Splits at '\n', then whitespace wrap
 // by char count. Empty chunks emit an empty line; an empty
 // input still yields one empty line.
 function simpleWrap(text: string, width: number): string[] {
@@ -377,13 +377,10 @@ function simpleWrap(text: string, width: number): string[] {
   return out;
 }
 
-// Lightens RGB hex toward white by `(1 - alphaFactor)`. Mirrors
-// Rust `hex_to_rgb_tint(hex, 0.28)`.
+// Lightens RGB hex toward white by `(1 - alphaFactor)`.
 function hexToRgbTint(hex: string, alphaFactor: number): [number, number, number] {
-  // Neutral grey fallback for any malformed hex. Rust had two
-  // different greys here (240,240,240 vs 160,160,160) - merged into one
-  // here because both paths are dead in practice (character
-  // colors come from DEFAULT_PALETTE, always well-formed).
+  // Neutral grey fallback for any malformed hex (character colors come
+  // from DEFAULT_PALETTE and are well-formed in practice).
   const FALLBACK: [number, number, number] = [160, 160, 160];
   const s = hex.startsWith("#") ? hex.slice(1) : hex;
   if (s.length !== 6) return FALLBACK;

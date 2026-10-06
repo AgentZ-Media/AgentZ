@@ -3,7 +3,7 @@ import { api } from "../lib/api";
 import { dailyStatsBus } from "../lib/dailyStatsBus";
 import type { DailyStatsSummary } from "../lib/types";
 
-// Heatmap and streak bar expect dailyWords with a fixed length of 365
+// The heatmap expects dailyWords with a fixed length of 365
 // (one entry per day for the last 12 months). An empty array would
 // reduce the heatmap grid to 0 cells and "grow it back" on refetch -
 // cosmetically unclean, hence the fallback with zeros.
@@ -56,8 +56,4 @@ export const dailyStatsStore = {
   /** Current statistics. Returns `EMPTY` while the first roundtrip
    *  is running - the UI just shows 0/0 instead of blocking. */
   stats,
-  /** Manual trigger - e.g. after re-hydrate on app start. */
-  refresh() {
-    dailyStatsBus.bump();
-  },
 };

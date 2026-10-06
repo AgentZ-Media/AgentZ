@@ -1,8 +1,7 @@
 // Global save-status indicator. The "Gespeichert" label in the script top bar reads
 // this so the user always sees whether the editor's auto-save is
 // healthy. Without a visible indicator a failing save would silently
-// accumulate unsaved keystrokes — the original audit's most dangerous
-// finding.
+// accumulate unsaved keystrokes.
 //
 // States:
 //   - "idle"   : nothing pending, last save succeeded (or no save yet)

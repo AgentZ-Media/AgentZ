@@ -9,8 +9,7 @@
    paint the surface. `.scrim` and `.toast-host` are fixed overlays.
 
    Compatibility aliases for older class names (`.btn-primary`,
-   `.btn-ghost`, `.btn-danger`, `.btn-sm`, `.btn--sm`, `.btn-icon`,
-   `.btn-block`, `.kbd`) sit next to their counterpart so markup that
+   `.btn-danger`, `.kbd`) sit next to their counterpart so markup that
    uses them renders the same way.
    ========================================================================= */
 
@@ -130,14 +129,12 @@ kbd,
   color: inherit;
 }
 
-.btn.ghost,
-.btn-ghost {
+.btn.ghost {
   border-color: transparent;
   background: transparent;
   color: var(--muted);
 }
-.btn.ghost:hover,
-.btn-ghost:hover {
+.btn.ghost:hover {
   background: var(--fill);
   border-color: transparent;
   color: var(--fg);
@@ -159,32 +156,26 @@ kbd,
   color: inherit;
 }
 
-.btn.icon,
-.btn-icon {
+.btn.icon {
   width: 28px;
   height: 28px;
   padding: 0;
   justify-content: center;
 }
-.btn.icon.is-on,
-.btn-icon.is-on {
+.btn.icon.is-on {
   background: var(--fill);
   border-color: var(--fill);
 }
-.btn.icon.is-on svg.i,
-.btn-icon.is-on svg.i {
+.btn.icon.is-on svg.i {
   color: var(--fg);
 }
 
-.btn.sm,
-.btn-sm,
-.btn--sm {
+.btn.sm {
   min-height: 24px;
   padding: 0 8px;
   font-size: 12px;
 }
-.btn.icon.sm,
-.btn-icon.btn-sm {
+.btn.icon.sm {
   width: 24px;
   height: 24px;
 }
@@ -192,8 +183,7 @@ kbd,
   min-height: 34px;
   padding: 0 14px;
 }
-.btn.wide,
-.btn-block {
+.btn.wide {
   width: 100%;
   min-height: 34px;
   justify-content: center;
@@ -330,7 +320,6 @@ kbd,
 }
 .menu-it:hover,
 .menu-it.on,
-.menu-it.is-active,
 .menu-it[aria-selected="true"] {
   background: var(--fill);
 }
@@ -625,9 +614,7 @@ textarea.field {
   border-color: var(--line-strong);
 }
 :is(input, textarea, select).field:focus,
-.field-box:focus-within,
-.field-box.focus,
-.field.focus {
+.field-box:focus-within {
   border-color: var(--fg);
   box-shadow: 0 0 0 3px var(--fill);
   color: var(--fg);

@@ -427,5 +427,3 @@ export function Timeline(props: TimelineProps) {
     </section>
   );
 }
-
-export default Timeline;

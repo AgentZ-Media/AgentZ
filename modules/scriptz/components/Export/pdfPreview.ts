@@ -1,5 +1,5 @@
 // HTML preview layout for the export dialog: computes where every line of
-// the PDF lands, page by page, so the dialog can render page 1 and say how
+// the PDF lands, page by page, so the dialog can render the pages and say how
 // many pages the PDF will have - without loading pdf-lib (~1 MB).
 //
 // Mirrors the geometry and wrapping rules of lib/exportPdf.ts (A4, iA
@@ -20,8 +20,6 @@ const MARGIN_RIGHT_MM = 27;
 export const LINE_HEIGHT_MM = 6.2;
 const PARA_GAP_MM = 1.6;
 const CHAR_W_MM = 2.3;
-/** 11 pt in mm - the PDF's font size. */
-export const FONT_SIZE_MM = (11 / 72) * 25.4;
 const DIALOG_INSET_MM = 25;
 const PAREN_INSET_MM = 35;
 

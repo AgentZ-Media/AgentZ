@@ -179,13 +179,12 @@ export function extractTeleprompterText(contentJson: string): string {
  */
 export function wordTokenSet(text: string): Set<string> {
   const out = new Set<string>();
-  // Mirrors Rust's `c.is_alphanumeric()` (Unicode Alphabetic | Numeric).
+  // Unicode Alphabetic | Numeric.
   const parts = text.split(/[^\p{Alphabetic}\p{N}]+/u);
   for (const raw of parts) {
     if (raw.length === 0) continue;
     const token = raw.toLowerCase();
-    // Count Unicode scalar values, not UTF-16 code units, to mirror
-    // Rust's `chars().count() >= 3`.
+    // Count Unicode scalar values, not UTF-16 code units.
     if (codePointCount(token) >= 3) out.add(token);
   }
   return out;
@@ -253,8 +252,7 @@ function isObject(v: unknown): v is Record<string, unknown> {
   return typeof v === "object" && v !== null && !Array.isArray(v);
 }
 
-// Mirrors `b.text.trim_matches(|c| c == '(' || c == ')')`: strip ALL
-// leading/trailing parens (not just one pair).
+// Strips ALL leading/trailing parens (not just one pair).
 function trimParens(s: string): string {
   let start = 0;
   let end = s.length;

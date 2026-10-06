@@ -124,7 +124,7 @@ export function findChrome() {
     "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe",
     "/usr/bin/google-chrome",
     "/usr/bin/chromium",
-  ].filter(Boolean);
+  ];
   return candidates.find((c) => existsSync(c));
 }
 

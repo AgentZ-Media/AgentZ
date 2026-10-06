@@ -12,16 +12,14 @@ export interface HeatmapProps {
  *  columns of 7 days each, oldest column on the left, "today" at the
  *  bottom right. Tooltip per cell shows the date + word count. */
 export function Heatmap(props: HeatmapProps) {
+  const grid = createMemo(() => buildGrid(props.dailyWords));
   // Read language() so language switches re-render weekday / month labels
   // immediately (memo tracks the signal).
-  const grid = createMemo(() => buildGrid(props.dailyWords));
   const monthLabels = createMemo(() => {
     void language();
     return buildMonthLabels(grid());
   });
-  // Weekday labels: only every other column is visible (Mon/Wed/Fri/Sun);
-  // the aria variant lists all seven for screen readers, so the grid
-  // structure stays readable.
+  // Weekday labels: only every other column is visible (Mon/Wed/Fri/Sun).
   const dayLabelsVisible = createMemo(() => {
     void language();
     return [

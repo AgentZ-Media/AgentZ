@@ -18,8 +18,7 @@ import { api, registerSqlStorageAdapter } from "../api";
 // produced via `vi.fn()`. Tests override individual methods with
 // real values; the rest is enough as "won't be called".
 function stubAdapter(overrides: Partial<ScriptzStorage> = {}): ScriptzStorage {
-  // Eager-eval default fields per required interface key.
-  // We use a proxy: anything that isn't overridden becomes a
+  // Anything that isn't overridden becomes a
   // `vi.fn()` that returns an empty result.
   return new Proxy({} as ScriptzStorage, {
     get(_, prop: string) {

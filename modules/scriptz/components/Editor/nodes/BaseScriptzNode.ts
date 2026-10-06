@@ -71,7 +71,7 @@ export abstract class BaseScriptzNode extends ElementNode {
     } as SerializedScriptzNode;
   }
 
-  // Subclasses can override to read extra fields. Default just calls super.
+  // Every subclass overrides this.
   static importJSON(_serialized: SerializedScriptzNode): BaseScriptzNode {
     throw new Error("BaseScriptzNode subclass must override importJSON()");
   }
@@ -93,8 +93,7 @@ export abstract class BaseScriptzNode extends ElementNode {
     return true;
   }
 
-  // Helper used by smart-Enter: insert a sibling block of any concrete type.
-  // Subclasses do not need to override this — the plugin uses concrete factories.
+  // Smart-Enter inserts sibling blocks itself via concrete factories.
   insertNewAfter(_selection: unknown, _restoreSelection?: boolean): LexicalNode | null {
     return null;
   }
