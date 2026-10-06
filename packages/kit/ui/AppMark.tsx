@@ -17,6 +17,12 @@ export interface AppMarkProps {
   title?: string;
 }
 
+/** Deterministic offset (-24..24) per dot and axis, for entrance motion. */
+function scatter(index: number, axis: number): number {
+  const v = Math.sin((index + 1) * 12.9898 * axis + axis * 78.233) * 43758.5453;
+  return Math.round((v - Math.floor(v) - 0.5) * 48);
+}
+
 /** A product mark selected from the design registry, on a rounded tile. */
 export function AppMark(props: AppMarkProps) {
   const logo = () => LOGOS[props.logo];
@@ -35,15 +41,17 @@ export function AppMark(props: AppMarkProps) {
     >
       <svg viewBox={logo().viewBox} width={glyphW()} height={glyphH()} aria-hidden="true">
         <For each={logo().dots}>
-          {(d) => (
+          {(d, i) => (
             // Tone colours come from `.app-mark .z1/.z2` in components.css;
             // fill="currentColor" is the fallback without the stylesheet.
+            // `--i` and the scatter offsets let shells animate single dots.
             <circle
               class={d.tone === "main" ? "z1" : "z2"}
               cx={d.cx}
               cy={d.cy}
               r={logo().dotRadius}
               fill="currentColor"
+              style={{ "--i": String(i()), "--fx": `${scatter(i(), 1)}px`, "--fy": `${scatter(i(), 2)}px` }}
             />
           )}
         </For>

@@ -134,7 +134,7 @@ kbd,
   color: var(--accent-fg);
   border-color: var(--accent-lo);
   box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.55),
+    inset 0 1px 0 var(--glint),
     inset 0 -1px 0 var(--accent-edge),
     0 1px 2px var(--hair),
     0 8px 18px -10px var(--accent-glow);
@@ -143,7 +143,7 @@ kbd,
   background: linear-gradient(180deg, var(--accent-hi), var(--accent-hi) 20%, var(--accent));
   border-color: var(--accent-lo);
   box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.55),
+    inset 0 1px 0 var(--glint),
     inset 0 -1px 0 var(--accent-edge),
     0 1px 2px var(--hair),
     0 10px 24px -8px var(--accent-glow);
@@ -510,6 +510,10 @@ kbd,
 .toast:has(.undo) {
   padding-right: 5px;
 }
+.toast.is-leaving {
+  pointer-events: none;
+  animation: ds-toast-out 240ms var(--ease-sheet) both;
+}
 /* Status dot instead of a coloured edge: reads well on a capsule. */
 .toast.ok::before,
 .toast.error::before {
@@ -794,11 +798,11 @@ textarea.field {
   flex: none;
   border-radius: 28%;
   background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.28), rgba(255, 255, 255, 0) 55%),
+    linear-gradient(180deg, var(--glint-soft), transparent 55%),
     var(--logo-accent, var(--accent));
   color: var(--accent-fg);
   --z2o: 0.5;
-  box-shadow: inset 0 0.5px 0 rgba(255, 255, 255, 0.6), inset 0 -1.5px 0 rgba(0, 0, 0, 0.14);
+  box-shadow: inset 0 0.5px 0 var(--glint), inset 0 -1.5px 0 rgba(0, 0, 0, 0.14);
 }
 .app-mark.is-light {
   background: #ffffff;
@@ -852,6 +856,12 @@ textarea.field {
   to {
     opacity: 1;
     transform: translateY(0) scale(1);
+  }
+}
+@keyframes ds-toast-out {
+  to {
+    opacity: 0;
+    transform: translateY(10px) scale(0.9);
   }
 }
 @keyframes ds-menu-in {

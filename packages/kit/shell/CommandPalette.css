@@ -24,6 +24,12 @@
   border-bottom: 1px solid var(--line-soft);
   color: var(--muted);
 }
+.pal-in svg.i {
+  transition: color var(--t-fast);
+}
+.pal-in:focus-within svg.i {
+  color: var(--fg);
+}
 .pal-input,
 .pal-input:hover,
 .pal-input:focus {
@@ -65,9 +71,14 @@
   border-radius: var(--r-3);
   color: var(--fg);
   cursor: pointer;
+  transition: background 90ms linear;
 }
 .pal-it.on {
   background: var(--fill);
+  box-shadow: inset 0 0 0 0.5px var(--hair);
+}
+.pal-it.on .pal-ic {
+  color: var(--fg);
 }
 .pal-ic {
   width: 16px;

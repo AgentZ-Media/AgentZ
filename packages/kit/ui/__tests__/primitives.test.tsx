@@ -2,7 +2,8 @@ import { cleanup, fireEvent, render, waitFor } from "@solidjs/testing-library";
 import { createSignal } from "solid-js";
 import { LOGOS, type LogoId } from "@agentz/design/logo";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { AppMark, BootErrorScreen, DialogFrame, Modal, dismissOnDialog } from "../index";
+import { AppMark, BootErrorScreen, DialogFrame, Modal, ToastHost, dismissOnDialog } from "../index";
+import { clearToasts, dismissToast, pushToast } from "../../stores";
 
 afterEach(() => {
   cleanup();
@@ -87,5 +88,23 @@ describe("product-neutral UI primitives", () => {
     const { getByRole } = render(() => <AppMark logo={Object.keys(LOGOS)[0] as LogoId} appName="Example app" />);
     expect(getByRole("img").getAttribute("aria-label")).toBe("Example app");
     expect(document.querySelectorAll("circle").length).toBeGreaterThan(0);
+  });
+
+  it("lets a dismissed toast play its exit before it leaves the DOM", async () => {
+    vi.useFakeTimers();
+    try {
+      render(() => <ToastHost />);
+      const id = pushToast("Gespeichert", "ok", 0);
+      await vi.advanceTimersByTimeAsync(0);
+      expect(document.querySelector(".toast")?.textContent).toBe("Gespeichert");
+      dismissToast(id);
+      await vi.advanceTimersByTimeAsync(0);
+      expect(document.querySelector(".toast")?.classList.contains("is-leaving")).toBe(true);
+      await vi.advanceTimersByTimeAsync(300);
+      expect(document.querySelector(".toast")).toBeNull();
+    } finally {
+      clearToasts();
+      vi.useRealTimers();
+    }
   });
 });

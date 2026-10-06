@@ -151,12 +151,17 @@
   --accent: #ffe14d;
   --accent-fg: #14161b;
   --accent-soft: #fff6c2;
-  /* Lit highlighter: lighter top, deeper base, glow and a readable ink. */
-  --accent-hi: #ffec85;
-  --accent-lo: #ffd21a;
-  --accent-glow: rgba(255, 210, 10, 0.45);
-  --accent-ink: #8a6a00;
-  --accent-edge: rgba(120, 90, 0, 0.2);
+  /* Lit highlighter: lighter top, deeper base, glow and a readable ink.
+     Derived from --accent, so an app that re-themes the accent gets its
+     own light. */
+  --accent-hi: color-mix(in oklab, var(--accent) 62%, #ffffff);
+  --accent-lo: color-mix(in oklab, var(--accent) 90%, #000000);
+  --accent-glow: color-mix(in srgb, var(--accent) 48%, transparent);
+  --accent-ink: color-mix(in oklab, var(--accent) 45%, #000000);
+  --accent-edge: color-mix(in oklab, var(--accent) 30%, rgba(0, 0, 0, 0.3));
+  /* Light edge on lit surfaces (accent buttons, tiles). */
+  --glint: rgba(255, 255, 255, 0.6);
+  --glint-soft: rgba(255, 255, 255, 0.28);
   --warn: #d2452f;
   --warn-soft: #fdebe7;
   --ok: #3fae74;
@@ -215,7 +220,7 @@
   --desk-vignette: rgba(0, 0, 0, 0.35);
 
   --accent-soft: rgba(255, 225, 77, 0.12);
-  --accent-ink: #ffe14d;
+  --accent-ink: var(--accent);
   --warn: #ff7a66;
   --warn-soft: rgba(255, 122, 102, 0.12);
   --ok: #5cc48d;
