@@ -1,6 +1,7 @@
 import { JSX, Show, createEffect, onCleanup, onMount } from "solid-js";
 import { Portal } from "solid-js/web";
 import { t } from "../i18n";
+import { FOCUSABLE, trapTab } from "./focusTrap";
 import "./Modal.css";
 
 export interface ModalProps {
@@ -43,35 +44,7 @@ export function Modal(props: ModalProps) {
       return;
     }
     if (e.key === "Tab" && modalRef) {
-      const focusables = Array.from(
-        modalRef.querySelectorAll<HTMLElement>(
-          'a[href], button:not([disabled]), textarea:not([disabled]), input:not([disabled]), select:not([disabled]), [tabindex]:not([tabindex="-1"])',
-        ),
-      ).filter((el) => !el.hasAttribute("disabled"));
-      if (focusables.length === 0) {
-        e.preventDefault();
-        return;
-      }
-      const first = focusables[0];
-      const last = focusables[focusables.length - 1];
-      // Single focusable: trap on it, no movement.
-      if (first === last) {
-        e.preventDefault();
-        first.focus();
-        return;
-      }
-      const active = document.activeElement as HTMLElement | null;
-      if (e.shiftKey) {
-        if (active === first || !modalRef.contains(active)) {
-          e.preventDefault();
-          last.focus();
-        }
-      } else {
-        if (active === last) {
-          e.preventDefault();
-          first.focus();
-        }
-      }
+      trapTab(e, modalRef, Array.from(modalRef.querySelectorAll<HTMLElement>(FOCUSABLE)));
     }
   };
 
@@ -92,9 +65,7 @@ export function Modal(props: ModalProps) {
         // ignored for elements inserted while something else has focus.
         const first =
           modalRef.querySelector<HTMLElement>("[autofocus]:not([disabled])") ??
-          modalRef.querySelector<HTMLElement>(
-            'a[href], button:not([disabled]), textarea:not([disabled]), input:not([disabled]), select:not([disabled]), [tabindex]:not([tabindex="-1"])',
-          );
+          modalRef.querySelector<HTMLElement>(FOCUSABLE);
         first?.focus();
       });
     } else if (!isOpen && lastOpen) {
