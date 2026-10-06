@@ -44,7 +44,9 @@ The build calls no GitHub API and shows no version number.
 Planned address: `https://agentz-suite.com` (`astro.config.mjs`). Domain,
 Vercel project and DNS are set up manually. With `apps/site` as the Vercel root
 directory, `vercel.json` skips builds unless the site, `packages/design`, the
-root `package.json`, `pnpm-workspace.yaml` or `pnpm-lock.yaml` changed.
+root `package.json`, `pnpm-workspace.yaml` or `pnpm-lock.yaml` changed since
+the last successful deployment. Without one (first deployment) it always
+builds.
 
 Before going live, verify the provider details in the legal pages and match
 the privacy policy against the actual hosting setup (processing agreement,
