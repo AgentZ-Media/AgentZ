@@ -33,19 +33,31 @@
   align-items: center;
   gap: 9px;
   padding: 0 9px;
-  border-radius: var(--r-2);
+  border-radius: var(--r-3);
   color: var(--muted);
   font-weight: 500;
   text-align: left;
+  transition: background var(--t-fast), color var(--t-fast), box-shadow var(--t-med);
 }
 .set-it:hover {
   background: var(--fill);
   color: var(--fg);
 }
+/* The open section sits on a small raised plate; its icon is lit. */
 .set-it.on {
-  background: var(--fill);
+  background: var(--surface);
   color: var(--fg);
   font-weight: 600;
+  box-shadow: var(--shadow-1), var(--hi);
+}
+.set-it.on svg.i {
+  color: var(--accent-ink);
+}
+.dlg.set > .set-body {
+  animation: set-body-in 320ms var(--ease-out);
+}
+@keyframes set-body-in {
+  from { opacity: 0; translate: 6px 0; }
 }
 .set-sep {
   height: 1px;
