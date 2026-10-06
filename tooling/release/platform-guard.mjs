@@ -3,6 +3,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { execFileSync } from 'node:child_process';
 import { parseTag, platformComplete } from './core.mjs';
+import { github } from './github.mjs';
 
 // Runs immediately before each build, including GitHub's "rerun failed jobs".
 // A published updater signature must always match the exact versioned binary.
@@ -11,7 +12,7 @@ const tag = process.env.RELEASE_TAG;
 const { version } = parseTag(tag);
 const platform = process.env.RELEASE_PLATFORM;
 if (!['darwin-aarch64', 'windows-x86_64'].includes(platform)) throw new Error('Unknown release platform');
-const release = JSON.parse(execFileSync('gh', ['api', `repos/${repository}/releases/tags/${tag}`], { encoding: 'utf8' }));
+const release = github(repository).api(`releases/tags/${tag}`);
 let complete = false;
 if (release.assets.some(asset => asset.name === 'latest.json')) {
   const dir = mkdtempSync(join(tmpdir(), 'agentz-platform-'));
