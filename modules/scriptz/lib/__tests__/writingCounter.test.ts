@@ -1,7 +1,7 @@
 // Tests for the adaptive writing counter (lib/writingCounter.ts).
 
 import { describe, expect, it } from "vitest";
-import { pickWritingWindow } from "../writingCounter";
+import { pickWritingWindow, recentDayLevels } from "../writingCounter";
 import type { DailyStatsSummary } from "../types";
 
 /** Builds a 365-day series ending at `now` with words on the given
@@ -91,5 +91,17 @@ describe("pickWritingWindow", () => {
       NOW,
     );
     expect(r.window).toBe("none");
+  });
+});
+
+describe("recentDayLevels", () => {
+  it("scales the last days to the busiest one, today last", () => {
+    expect(recentDayLevels([999, 0, 100, 200, 0, 400, 50, 400], 7, 5)).toEqual([0, 1, 3, 0, 5, 1, 5]);
+  });
+
+  it("pads short series and keeps empty days dark", () => {
+    expect(recentDayLevels([10], 4, 5)).toEqual([0, 0, 0, 5]);
+    expect(recentDayLevels([], 3, 5)).toEqual([0, 0, 0]);
+    expect(recentDayLevels([0, Number.NaN, -5], 3, 5)).toEqual([0, 0, 0]);
   });
 });

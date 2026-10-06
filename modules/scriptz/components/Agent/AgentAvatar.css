@@ -26,8 +26,15 @@
   opacity: 0.13;
 }
 .ag-av.on-dark {
-  background: var(--side-hover);
-  box-shadow: 0 0 0 1px color-mix(in srgb, var(--side-strong) 6%, transparent);
+  background: var(--side-bg);
+  box-shadow:
+    inset 0 0.5px 0 var(--side-edge-hi),
+    0 0 0 0.5px var(--side-edge-lo);
+}
+/* Lit dots glow faintly, like an LED matrix. */
+.ag-av.on-dark svg,
+.ag-av.lifted svg {
+  filter: drop-shadow(0 0 1.5px color-mix(in srgb, var(--accent) 55%, transparent));
 }
 .ag-av.lifted {
   box-shadow: 0 0 0 1px color-mix(in srgb, var(--side-strong) 6%, transparent), var(--shadow-dlg);

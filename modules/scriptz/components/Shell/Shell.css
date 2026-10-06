@@ -102,15 +102,17 @@
   flex: none;
   display: grid;
   place-items: center;
-  border-radius: var(--r-1);
+  border-radius: var(--r-2);
   color: var(--side-muted);
   opacity: 0;
-  transition: opacity var(--t-fast), background var(--t-fast), color var(--t-fast);
+  transform: scale(0.6);
+  transition: opacity var(--t-fast), background var(--t-fast), color var(--t-fast), transform var(--t-pop);
 }
 .side-open-item:hover .side-open-x,
 .side-open-item:focus-within .side-open-x,
 .side-open-item.is-on .side-open-x {
   opacity: 1;
+  transform: none;
 }
 .side-open-item .side-open-x:hover {
   background: var(--side-active);
@@ -118,4 +120,17 @@
 }
 .side-open-item.is-on .side-open-x:hover {
   background: var(--side-hover);
+}
+
+/* Folder dots get a soft ring of their own colour (`--dot`, set inline). */
+.side .nav .dot[style*="--dot"] {
+  box-shadow: 0 0 0 2.5px color-mix(in srgb, var(--dot) 24%, transparent);
+}
+
+/* New entries of the "Open" list slide in. */
+.side-open-list > .side-open-item {
+  animation: side-open-in var(--t-slow) var(--ease-out) both;
+}
+@keyframes side-open-in {
+  from { opacity: 0; translate: -6px 0; }
 }
