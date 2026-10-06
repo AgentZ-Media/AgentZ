@@ -399,6 +399,30 @@
   gap: 10px;
   min-width: 0;
 }
+/* Runtime against the target: a small ring next to the length. */
+.tl .tl-ring {
+  width: 18px;
+  height: 18px;
+  flex: none;
+  margin-right: -4px;
+  transform: rotate(-90deg);
+  fill: none;
+  stroke-width: 2.4;
+}
+.tl .tl-ring-track {
+  stroke: var(--fill);
+}
+.tl .tl-ring-fill {
+  stroke: var(--accent-lo);
+  stroke-linecap: round;
+  transition: stroke var(--t-slow);
+}
+.tl .tl-ring.is-in .tl-ring-fill {
+  stroke: var(--ok);
+}
+.tl .tl-ring.is-over .tl-ring-fill {
+  stroke: var(--warn);
+}
 .tl .tl-jobs {
   display: flex;
   gap: 4px;

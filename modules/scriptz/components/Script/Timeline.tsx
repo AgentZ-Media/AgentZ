@@ -167,6 +167,16 @@ export function Timeline(props: TimelineProps) {
   };
 
   // ---------- labels ----------
+  // Runtime against the target as a small ring: filled to the upper bound
+  // (or 1.5 x the lower one), green inside the range, red when over.
+  const ringFill = () => {
+    const r = props.range;
+    const target = r?.maxSec ?? (r?.minSec ? r.minSec * 1.5 : null);
+    if (!target) return null;
+    return Math.min(1, Math.max(0, shownSec() / target));
+  };
+  const RING_C = 2 * Math.PI * 7;
+
   const lenLabel = (expanded: boolean) => (
     <span class="tl-len" title={t("script.tl.estimate", { wpm: props.wpm })}>
       <b classList={{ over: status().state === "over" }}>{formatClock(shownSec())}</b>
@@ -296,6 +306,19 @@ export function Timeline(props: TimelineProps) {
                 {t("agent.job.tempo")}
               </button>
             </div>
+          </Show>
+          <Show when={ringFill() !== null}>
+            <svg class="tl-ring" classList={{ [`is-${status().state}`]: true }} viewBox="0 0 18 18" aria-hidden="true">
+              <circle class="tl-ring-track" cx="9" cy="9" r="7" />
+              <circle
+                class="tl-ring-fill"
+                cx="9"
+                cy="9"
+                r="7"
+                stroke-dasharray={RING_C.toFixed(2)}
+                stroke-dashoffset={(RING_C * (1 - (ringFill() ?? 0))).toFixed(2)}
+              />
+            </svg>
           </Show>
           {lenLabel(props.open)}
         </div>
