@@ -49,12 +49,11 @@ root `package.json`, `pnpm-workspace.yaml` or `pnpm-lock.yaml` changed.
 Before going live, verify the provider details in the legal pages and match
 the privacy policy against the actual hosting setup (processing agreement,
 log retention, any extra services). The policy describes Vercel hosting; it
-does not claim a deployment exists. Never add analytics.
-
-- [EU icons for labelling AI-generated content](https://digital-strategy.ec.europa.eu/en/policies/eu-icons-labelling-ai-generated-content) The EU online
+does not claim a deployment exists. Never add analytics. The EU online
 dispute resolution platform was shut down on 20 July 2025, so its link is
 intentionally missing.
 
 - [Vercel privacy notice](https://vercel.com/legal/privacy-notice)
 - [Vercel DPA](https://vercel.com/legal/dpa)
 - [EU ODR platform shutdown](https://consumer-redress.ec.europa.eu/site-relocation_en)
+- [EU icons for labelling AI-generated content](https://digital-strategy.ec.europa.eu/en/policies/eu-icons-labelling-ai-generated-content)

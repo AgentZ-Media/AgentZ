@@ -483,3 +483,13 @@ img { max-width: 100%; height: auto; }
   .footer-cols { grid-template-columns: 1fr 1fr; }
   .legal { padding-top: 120px; }
 }
+
+/* Reduced motion: the global rule finishes every animation at once, so show
+   the demos in a still, visible end state instead of their hidden frames. */
+@media (prefers-reduced-motion: reduce) {
+  .hero-tilt { animation: none; }
+  .fmt-layer, .cap-text, .cap-toast, .ag-reply p, .ag-option, .ag-option .ag-insert { animation: none; }
+  .fmt-layer:first-of-type { opacity: 1; }
+  .cap-text { clip-path: none; }
+  .cap-toast { opacity: 1; }
+}
