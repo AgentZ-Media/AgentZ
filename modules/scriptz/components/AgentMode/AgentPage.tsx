@@ -52,6 +52,15 @@ function useCharacterColors(): (name: string) => string {
   return (name) => registry().get(name.trim().toUpperCase()) ?? "var(--muted)";
 }
 
+/** Moves the light spot of a preset card to the pointer (`.am-preset::before`).
+ *  Bound with `on:` so Solid adds no delegated document listener at import. */
+function spotlight(e: PointerEvent) {
+  const card = e.currentTarget as HTMLElement;
+  const r = card.getBoundingClientRect();
+  card.style.setProperty("--mx", `${((e.clientX - r.left) / r.width) * 100}%`);
+  card.style.setProperty("--my", `${((e.clientY - r.top) / r.height) * 100}%`);
+}
+
 /** Route `agent`: the agent mode. */
 export function AgentPage() {
   const chatId = () => navStore.activeAgentChatId();
@@ -493,7 +502,7 @@ function StartScreen(props: {
         <div class="am-presets">
           <For each={presets()}>
             {(preset) => (
-              <button type="button" class="am-preset" classList={{ "is-hot": !!preset.hot }} onClick={(e) => preset.run(e)}>
+              <button type="button" class="am-preset" classList={{ "is-hot": !!preset.hot }} onClick={(e) => preset.run(e)} on:pointermove={spotlight}>
                 <span class="am-preset-ic"><Icon name={preset.icon} size={14} /></span>
                 <b>{preset.title}</b>
                 <small>{preset.body}</small>
