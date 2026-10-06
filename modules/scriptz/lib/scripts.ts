@@ -31,7 +31,7 @@ import {
 import { characterUsageBus, dropsCharacterNames } from "./characterUsage";
 import { countWordsInContent, recordWordDelta } from "./dailyWords";
 import { getDb } from "./db";
-import { INBOX_FOLDER_ID } from "./folders";
+import { assertFolderExists, INBOX_FOLDER_ID } from "./folders";
 import { deleteScriptFts, refreshFtsForScript } from "./fts";
 import { dialogWordsByCharacter, extractCharacterNames } from "./lex";
 import {
@@ -220,15 +220,7 @@ export async function createScript(
   }
   const charsJson = serializeCharsMeta(chars);
 
-  if (folderId !== null) {
-    const exists = await db.select<{ n: number }[]>(
-      "SELECT COUNT(*) AS n FROM folders WHERE id = $1",
-      [folderId],
-    );
-    if ((exists[0]?.n ?? 0) === 0) {
-      throw new Error(`not found: folder ${folderId}`);
-    }
-  }
+  if (folderId !== null) await assertFolderExists(db, folderId);
 
   // Initial word count of the seed content. We don't want the
   // first real save to count the full welcome text as "written today";

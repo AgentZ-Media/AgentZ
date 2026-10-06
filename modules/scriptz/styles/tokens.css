@@ -2,7 +2,7 @@
    ScriptZ - app-specific tokens.
 
    Colours, type, spacing, radii, motion and the light/dark/dark-paper
-   themes come from @agentz/design (tokens.css + legacy.css), which every
+   themes come from @agentz/design (tokens.css), which every
    app shell imports before the module styles. This file only holds what
    is specific to ScriptZ:
 

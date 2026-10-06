@@ -11,22 +11,9 @@ import {
   type LexicalEditor,
   type LexicalNode,
 } from "lexical";
-import {
-  BaseScriptzNode,
-  $createScriptzActionNode,
-  $createScriptzCharacterNode,
-  $createScriptzDialogNode,
-  $createScriptzParentheticalNode,
-} from "../Editor/nodes";
-import { blockTypeOf, type AgentBlock, type AgentBlockType } from "../../lib/agent/scriptText";
+import { BLOCK_FACTORY, BaseScriptzNode } from "../Editor/nodes";
+import { blockTypeOf, type AgentBlock } from "../../lib/agent/scriptText";
 import { resolveTarget, type ProposalTarget } from "../../lib/agent/proposals";
-
-const FACTORY: Record<AgentBlockType, () => BaseScriptzNode> = {
-  action: $createScriptzActionNode,
-  character: $createScriptzCharacterNode,
-  dialog: $createScriptzDialogNode,
-  parenthetical: $createScriptzParentheticalNode,
-};
 
 const editors = new Map<string, LexicalEditor>();
 
@@ -85,7 +72,7 @@ export function readSelection(scriptId: string | null): BlockSelection | null {
 }
 
 function buildNode(block: AgentBlock): BaseScriptzNode {
-  const node = FACTORY[block.type]();
+  const node = BLOCK_FACTORY[`scriptz-${block.type}`]();
   // Empty blocks stay childless (WebKit caret invariant, see CLAUDE.md).
   if (block.text) node.append($createTextNode(block.text));
   return node;

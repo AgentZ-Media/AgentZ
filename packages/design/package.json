@@ -2,14 +2,13 @@
   "name": "@agentz/design",
   "private": true,
   "version": "0.0.0",
-  "description": "AgentZ suite design system: semantic tokens, legacy aliases, component primitives, fonts, icons and the logo mark.",
+  "description": "AgentZ suite design system: semantic tokens, component primitives, fonts, icons and the logo mark.",
   "type": "module",
   "sideEffects": [
     "*.css"
   ],
   "exports": {
     "./tokens.css": "./tokens.css",
-    "./legacy.css": "./legacy.css",
     "./components.css": "./components.css",
     "./fonts.css": "./fonts.css",
     "./icons": "./icons.ts",

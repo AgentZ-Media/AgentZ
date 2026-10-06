@@ -3,11 +3,11 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { parse } from "@astrojs/compiler-rs";
 import { createArchitectureRule } from "./architecture.mjs";
-import { findTokenViolations, readLegacyTokens } from "./tokens.mjs";
+import { COLOR_LITERAL, IGNORED_NAMES, lineColumn, sourceFiles } from "./shared.mjs";
 
 const defaultRoot = fileURLToPath(new URL("../../", import.meta.url));
-const ignored = new Set(["node_modules", "dist", ".astro", "target", "coverage", "src-tauri"]);
-const color = /#[\da-f]{3}(?:[\da-f]{1}|[\da-f]{3}|[\da-f]{5})?\b|\brgba?\s*\(/gi;
+const ignored = new Set([...IGNORED_NAMES, ".astro"]);
+const color = new RegExp(COLOR_LITERAL, "gi");
 const blank = (value) => value.replace(/[^\r\n]/g, " ");
 
 function walk(node, visit) {
@@ -21,15 +21,11 @@ function walk(node, visit) {
 
 // Use Astro's own parser, including JavaScript inside template expressions and
 // attributes. A text-only frontmatter extractor would leave those imports open.
-export function findAstroViolations(root, filename, contents, legacyTokens = readLegacyTokens(root)) {
+export function findAstroViolations(root, filename, contents) {
   filename = filename.split(path.sep).join("/");
   if (!/^apps\/site\/.+\.astro$/.test(filename)) return [];
   const violations = [];
-  const add = (offset, kind, value, message) => {
-    const before = contents.slice(0, offset);
-    violations.push({ file: filename, line: before.split("\n").length,
-      column: offset - before.lastIndexOf("\n"), kind, value, message });
-  };
+  const add = (offset, kind, value, message) => violations.push({ file: filename, ...lineColumn(contents, offset), kind, value, message });
   const { ast, diagnostics } = parse(contents);
   for (const diagnostic of diagnostics) {
     if (diagnostic.severity === "error") add(diagnostic.labels?.[0]?.start ?? 0, "parse", "", diagnostic.text);
@@ -45,10 +41,6 @@ export function findAstroViolations(root, filename, contents, legacyTokens = rea
   const checkSpecifier = (node) => {
     if (!node) return;
     visitors.ImportDeclaration({ source: node });
-    const value = node.value ?? (node.type === "TemplateLiteral" && node.expressions.length === 0 ? node.quasis[0].value.cooked : null);
-    if (typeof value === "string" && /(?:^|\/)legacy\.css(?:[?#].*)?$/.test(value)) {
-      add(node.start, "import", value, "Legacy styles are ScriptZ-only.");
-    }
   };
   const checkColors = (text, offset) => {
     for (const match of text.matchAll(color)) add(offset + match.index, "color", match[0], "Use a semantic design color token.");
@@ -86,35 +78,17 @@ export function findAstroViolations(root, filename, contents, legacyTokens = rea
       else if (src?.value?.type === "JSXExpressionContainer") checkSpecifier(src.value.expression);
     }
   });
-  // Existing HTML guard covers var(), custom property definitions, CSS imports,
-  // link hrefs and inline style APIs; comments retain their original line offsets.
-  violations.push(...findTokenViolations(`${filename}.html`, contents, legacyTokens).map((violation) => ({
-    ...violation, file: filename, message: "Use semantic tokens; legacy compatibility is ScriptZ-only.",
-  })));
   return violations.sort((a, b) => a.line - b.line || a.column - b.column);
 }
 
 export function checkAstro(root = defaultRoot) {
-  const legacyTokens = readLegacyTokens(root);
-  const violations = [];
-  function visit(directory) {
-    if (!fs.existsSync(directory)) return;
-    for (const entry of fs.readdirSync(directory, { withFileTypes: true })) {
-      if (ignored.has(entry.name)) continue;
-      const filename = path.join(directory, entry.name);
-      if (entry.isDirectory()) visit(filename);
-      else if (entry.isFile() && filename.endsWith(".astro")) {
-        violations.push(...findAstroViolations(root, path.relative(root, filename), fs.readFileSync(filename, "utf8"), legacyTokens));
-      }
-    }
-  }
-  visit(path.join(root, "apps/site"));
-  return violations;
+  return sourceFiles(root, ["apps/site"], /\.astro$/, ignored)
+    .flatMap((filename) => findAstroViolations(root, path.relative(root, filename), fs.readFileSync(filename, "utf8")));
 }
 
 if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
   const violations = checkAstro();
   for (const violation of violations) console.error(`${violation.file}:${violation.line}:${violation.column}: ${violation.message} ${violation.value}`);
   if (violations.length) process.exitCode = 1;
-  else console.log("Astro check passed (site architecture, semantic tokens and style colors).");
+  else console.log("Astro check passed (site architecture and style colors).");
 }

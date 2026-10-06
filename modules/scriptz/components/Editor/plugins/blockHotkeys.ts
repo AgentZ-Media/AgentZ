@@ -5,23 +5,9 @@ import {
   COMMAND_PRIORITY_HIGH,
   KEY_DOWN_COMMAND,
   type LexicalEditor,
-  type LexicalNode,
 } from "lexical";
-import {
-  BaseScriptzNode,
-  $createScriptzActionNode,
-  $createScriptzCharacterNode,
-  $createScriptzDialogNode,
-  $createScriptzParentheticalNode,
-} from "../nodes";
+import { BLOCK_FACTORY, findScriptzAncestor } from "../nodes";
 import type { BlockType } from "../../../lib/types";
-
-const FACTORY: Record<BlockType, () => BaseScriptzNode> = {
-  "scriptz-action": $createScriptzActionNode,
-  "scriptz-character": $createScriptzCharacterNode,
-  "scriptz-dialog": $createScriptzDialogNode,
-  "scriptz-parenthetical": $createScriptzParentheticalNode,
-};
 
 // ⌘1 Action, ⌘2 Character, ⌘3 Dialog, ⌘4 Parenthetical. ⌘5..⌘7 are
 // deliberately NOT handled: the editor
@@ -33,15 +19,6 @@ const DIGIT_TO_BLOCK: Record<string, BlockType> = {
   "3": "scriptz-dialog",
   "4": "scriptz-parenthetical",
 };
-
-function findScriptzAncestor(node: LexicalNode | null): BaseScriptzNode | null {
-  let cur: LexicalNode | null = node;
-  while (cur) {
-    if (cur instanceof BaseScriptzNode) return cur;
-    cur = cur.getParent();
-  }
-  return null;
-}
 
 /**
  * Switches the block at the cursor to the given type (⌘1..⌘4 hotkeys),
@@ -59,7 +36,7 @@ export function setBlockType(editor: LexicalEditor, target: BlockType): boolean 
     if (!block) return;
     if (block.getBlockType() === target) return;
 
-    const fresh = FACTORY[target]();
+    const fresh = BLOCK_FACTORY[target]();
     const text = block.getTextContent();
     // CLAUDE.md invariant: empty blocks must stay CHILDLESS — Lexical's
     // reconciler injects a managed <br> placeholder and WebKit can place

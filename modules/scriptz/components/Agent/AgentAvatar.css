@@ -1,0 +1,46 @@
+/* ---------------------------------------------------------------------
+   Avatar (5x5 dot matrix)
+   --------------------------------------------------------------------- */
+.ag-av {
+  --av-size: 28px;
+  width: var(--av-size);
+  height: var(--av-size);
+  flex: none;
+  display: inline-grid;
+  place-items: center;
+  border-radius: calc(var(--av-size) * 0.3);
+  background: var(--side-bg);
+  box-shadow: inset 0 -1.5px 0 color-mix(in srgb, var(--side-strong) 5%, transparent);
+}
+.ag-av svg {
+  width: 80%;
+  height: 80%;
+  overflow: visible;
+}
+.ag-av circle {
+  fill: var(--accent);
+  transform-box: fill-box;
+  transform-origin: center;
+}
+.ag-av circle.dim {
+  opacity: 0.13;
+}
+.ag-av.on-dark {
+  background: var(--side-hover);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--side-strong) 6%, transparent);
+}
+.ag-av.lifted {
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--side-strong) 6%, transparent), var(--shadow-dlg);
+}
+.ag-av-idle circle.lit { animation: ag-breathe 3.2s var(--ease) infinite; animation-delay: calc(var(--r) * 140ms); }
+.ag-av-idle circle.eye { animation: ag-blink 5s infinite; }
+.ag-av-think circle { animation: ag-wave 1.15s ease-in-out infinite; animation-delay: calc(var(--d) * 85ms); }
+.ag-av-learn circle { animation: ag-ripple 1.7s var(--ease) infinite; animation-delay: calc(var(--r) * 170ms); }
+.ag-av-talk circle.mouth { animation: ag-talk 0.42s ease-in-out infinite alternate; animation-delay: calc(var(--d) * 50ms); }
+.ag-av-talk circle.eye { animation: ag-blink 3.4s infinite; }
+.ag-av-talk:not(.has-mouth) circle.lit { animation: ag-breathe 0.7s ease-in-out infinite; animation-delay: calc(var(--d) * 60ms); }
+@keyframes ag-breathe { 0%, 100% { opacity: 1; } 50% { opacity: 0.55; } }
+@keyframes ag-blink { 0%, 93%, 100% { transform: scaleY(1); } 96% { transform: scaleY(0.12); } }
+@keyframes ag-wave { 0%, 100% { opacity: 0.16; transform: scale(0.78); } 40% { opacity: 1; transform: scale(1.14); } }
+@keyframes ag-ripple { 0%, 100% { opacity: 0.22; transform: scale(0.7); } 30% { opacity: 1; transform: scale(1.28); } 60% { opacity: 0.65; transform: scale(1); } }
+@keyframes ag-talk { from { transform: scale(1, 1); } to { transform: scale(1.25, 0.45); } }

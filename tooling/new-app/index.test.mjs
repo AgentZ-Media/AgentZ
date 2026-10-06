@@ -4,8 +4,6 @@ import { mkdtempSync, mkdirSync, writeFileSync, readFileSync, rmSync, existsSync
 import { tmpdir } from "node:os";
 import { join, dirname } from "node:path";
 import { newApp, removeApp, nextPort, validateId, lockDrift } from "./index.mjs";
-import { templates } from "./templates.mjs";
-import { findTokenViolations } from "../checks/tokens.mjs";
 import { validateAppId } from "../release/core.mjs";
 
 function fixture(t) {
@@ -139,12 +137,6 @@ test("rejects manual registry IDs and dangling symlinks before changes", (t) => 
   const f = fixture(t);
   symlinkSync(join(f.root, "missing"), join(f.root, "apps/sandbox"));
   assert.throws(() => newApp(f.root, "sandbox", "Sandbox", { run: f.run }), /Symlink/);
-});
-
-test("generated app sources use semantic tokens without legacy compatibility", () => {
-  const files = templates({ id: "sandbox", name: "Sandbox", port: 1430, pubkey: "test", baseline: "" });
-  const violations = Object.entries(files).flatMap(([path, content]) => findTokenViolations(path, content));
-  assert.deepEqual(violations, []);
 });
 
 test("rejects existing native Cargo package names before any mutation", (t) => {
