@@ -27,10 +27,12 @@ export class FlushCoordinator {
     return () => { this.flushers.delete(id); };
   }
 
-  async flush(timeoutMs = 2000): Promise<FlushResult> {
+  /** `kinds` limits the pass to those flushers: navigation and reads of
+   *  content only wait for content, not for UI state writes. */
+  async flush(timeoutMs = 2000, kinds?: readonly FlushKind[]): Promise<FlushResult> {
     // Each call takes a fresh snapshot so later edits cannot accidentally
     // share an older flush pass. Individual savers serialize their writes.
-    const entries = [...this.flushers.values()];
+    const entries = [...this.flushers.values()].filter(({ kind }) => !kinds || kinds.includes(kind));
     if (!entries.length) return { ok: true, failed: [], contentFailed: [] };
     const states: Array<"pending" | "ok" | "failed"> = entries.map(() => "pending");
     const tasks = entries.map(({ fn }, index) => Promise.resolve().then(() => fn(timeoutMs)).then(
@@ -58,4 +60,5 @@ export class FlushCoordinator {
 export const flushCoordinator = new FlushCoordinator();
 export const registerFlusher = (fn: Flusher, name?: string, kind?: FlushKind): (() => void) =>
   flushCoordinator.register(fn, name, kind);
-export const flushAll = (timeoutMs = 2000): Promise<FlushResult> => flushCoordinator.flush(timeoutMs);
+export const flushAll = (timeoutMs = 2000, kinds?: readonly FlushKind[]): Promise<FlushResult> =>
+  flushCoordinator.flush(timeoutMs, kinds);

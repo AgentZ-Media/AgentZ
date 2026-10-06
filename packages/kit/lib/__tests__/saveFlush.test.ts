@@ -92,3 +92,18 @@ describe("FlushCoordinator", () => {
     expect(stored).toEqual(["first", "second"]);
   });
 });
+
+describe("flush kinds", () => {
+  it("runs only the requested kinds", async () => {
+    const coordinator = new FlushCoordinator();
+    const content = vi.fn();
+    const state = vi.fn();
+    coordinator.register(content, "editor", "content");
+    coordinator.register(state, "layout", "state");
+    expect(await coordinator.flush(100, ["content"])).toEqual({ ok: true, failed: [], contentFailed: [] });
+    expect(content).toHaveBeenCalledTimes(1);
+    expect(state).not.toHaveBeenCalled();
+    await coordinator.flush(100);
+    expect(state).toHaveBeenCalledTimes(1);
+  });
+});
