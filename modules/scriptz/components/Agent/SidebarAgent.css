@@ -5,31 +5,60 @@
   position: relative;
   display: flex;
   align-items: center;
-  gap: 9px;
+  gap: 10px;
   width: 100%;
-  margin: 0 0 10px;
-  padding: 7px 8px 7px 7px;
+  margin: 0 0 12px;
+  padding: 8px 9px 8px 8px;
   border: 0;
-  border-radius: var(--r-3);
-  background: var(--side-hover);
+  border-radius: 11px;
+  /* A pane of glass: lighter at the top, a light edge, a soft drop. */
+  background: linear-gradient(180deg, color-mix(in srgb, var(--side-strong) 6%, transparent), color-mix(in srgb, var(--side-strong) 2.5%, transparent));
+  box-shadow:
+    inset 0 0.5px 0 var(--side-edge-hi),
+    0 0 0 0.5px color-mix(in srgb, var(--side-strong) 5%, transparent),
+    0 4px 14px -6px var(--side-edge-lo);
   color: var(--side-fg);
-  font: 13px/1.2 var(--ui);
+  font: 13px/1.25 var(--ui);
   text-align: left;
   cursor: pointer;
+  transition: background var(--t-med), box-shadow var(--t-med), transform var(--t-glide);
 }
-.side-agent:hover,
+.side-agent:hover {
+  background: linear-gradient(180deg, color-mix(in srgb, var(--side-strong) 9%, transparent), color-mix(in srgb, var(--side-strong) 4%, transparent));
+}
+.side-agent:active {
+  transform: scale(0.98);
+  transition-duration: 110ms;
+}
+/* Agent mode open: the pane takes on the highlighter. */
 .side-agent.is-on {
-  background: var(--side-active);
+  background: linear-gradient(180deg, color-mix(in srgb, var(--accent) 15%, transparent), color-mix(in srgb, var(--accent) 5%, transparent));
+  box-shadow:
+    inset 0 0.5px 0 color-mix(in srgb, var(--accent) 30%, transparent),
+    0 0 0 0.5px color-mix(in srgb, var(--accent) 24%, transparent),
+    0 6px 20px -8px color-mix(in srgb, var(--accent) 40%, transparent);
 }
-.side-agent.is-on::before {
+/* A soft halo behind the face; it breathes while Ida works or learns. */
+.side-agent .ag-av {
+  position: relative;
+  isolation: isolate;
+}
+.side-agent .ag-av::before {
   content: "";
   position: absolute;
-  left: -10px;
-  top: 10px;
-  bottom: 10px;
-  width: 3px;
-  border-radius: 0 3px 3px 0;
-  background: var(--accent);
+  inset: -8px;
+  z-index: -1;
+  border-radius: 50%;
+  background: radial-gradient(closest-side, color-mix(in srgb, var(--accent) 32%, transparent), transparent);
+  opacity: 0.55;
+  transition: opacity var(--t-slow);
+}
+.side-agent.is-learning .ag-av::before {
+  opacity: 1;
+  animation: side-agent-halo 2.6s ease-in-out infinite;
+}
+@keyframes side-agent-halo {
+  50% { transform: scale(1.18); opacity: 0.6; }
 }
 .side-agent:focus-visible {
   outline: 2px solid var(--accent);
@@ -53,20 +82,46 @@
   text-overflow: ellipsis;
 }
 .side-agent.is-learning small {
-  color: var(--accent);
+  /* Status shimmers in the highlighter while work is going on. */
+  color: transparent;
+  background: linear-gradient(90deg, var(--accent) 0%, var(--accent) 38%, var(--accent-hi) 50%, var(--accent) 62%, var(--accent) 100%) 0 0 / 250% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  animation: side-agent-shimmer 2.4s linear infinite;
+}
+@keyframes side-agent-shimmer {
+  from { background-position: 125% 0; }
+  to { background-position: -125% 0; }
 }
 .side-agent-badge {
   flex: none;
-  height: 18px;
-  padding: 0 6px;
+  height: 19px;
+  padding: 0 7px 0 6px;
+  gap: 5px;
   border-radius: var(--r-pill);
-  background: color-mix(in srgb, var(--accent) 16%, transparent);
-  color: var(--accent);
+  background: linear-gradient(180deg, var(--accent-hi), var(--accent-lo));
+  color: var(--accent-fg);
   font-size: 10.5px;
-  font-weight: 700;
+  font-weight: 750;
   display: inline-flex;
   align-items: center;
   white-space: nowrap;
+  box-shadow: inset 0 0.5px 0 var(--glint), 0 2px 8px -2px var(--accent-glow);
+  animation: side-agent-badge-in var(--t-pop) both;
+}
+.side-agent-badge::before {
+  content: "";
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--accent-fg);
+  animation: side-agent-pulse 1.8s ease-in-out infinite;
+}
+@keyframes side-agent-badge-in {
+  from { transform: scale(0.6); opacity: 0; }
+}
+@keyframes side-agent-pulse {
+  50% { opacity: 0.35; }
 }
 .side-agent kbd {
   flex: none;

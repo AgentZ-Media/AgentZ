@@ -1,12 +1,15 @@
-import { Show, createMemo } from "solid-js";
+import { For, Show, createMemo } from "solid-js";
 import { dailyStatsStore } from "../../stores/dailyStats";
 import { settingsStore } from "../../stores/settings";
 import { uiStore } from "../../stores/ui";
-import { pickWritingWindow } from "../../lib/writingCounter";
+import { pickWritingWindow, recentDayLevels } from "../../lib/writingCounter";
 import { K } from "@agentz/kit/platform";
 import { getCurrentLocale } from "@agentz/kit/i18n";
 import { t, tPlural } from "../../i18n";
 import "./WritingCounter.css";
+
+/** Dot rows per day column. */
+const LEVEL_ROWS = [0, 1, 2, 3, 4] as const;
 
 /** Adaptive writing counter for the sidebar footer: words in the smallest
  *  window that has any (this week -> month -> year -> last 12 months), a
@@ -15,6 +18,7 @@ import "./WritingCounter.css";
  *  overlay, also reachable from the command palette). */
 export function WritingCounter() {
   const pick = createMemo(() => pickWritingWindow(dailyStatsStore.stats()));
+  const days = createMemo(() => recentDayLevels(dailyStatsStore.stats().dailyWords ?? [], 7, LEVEL_ROWS.length));
   const fmt = (n: number) => n.toLocaleString(getCurrentLocale());
 
   const windowText = () => {
@@ -61,8 +65,18 @@ export function WritingCounter() {
               </>
             }
           >
-            <b class="num">{tPlural("counter.words", pick().words, { count: fmt(pick().words) })}</b>
-            <span>{windowText()}</span>
+            {/* The last seven days as dot columns, today on the right. */}
+            <span class="wcount-days" aria-hidden="true">
+              <For each={days()}>{(level, i) =>
+                <span class="wcount-day" classList={{ "is-today": i() === days().length - 1 }}>
+                  <For each={LEVEL_ROWS}>{(row) => <i classList={{ on: row < level }} />}</For>
+                </span>
+              }</For>
+            </span>
+            <span class="wcount-t">
+              <b class="num">{tPlural("counter.words", pick().words, { count: fmt(pick().words) })}</b>
+              <span>{windowText()}</span>
+            </span>
           </Show>
         </button>
       </Show>

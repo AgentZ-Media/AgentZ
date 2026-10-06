@@ -57,3 +57,14 @@ export function pickWritingWindow(
   if (total > 0) return { words: total, window: "total", all };
   return { words: 0, window: "none", all };
 }
+
+/** Rhythm of the last `days` days as levels 0..`levels` (today last), for
+ *  the dot columns next to the counter. Scaled to the busiest of these
+ *  days; any day with words shows at least one dot. */
+export function recentDayLevels(series: readonly number[], days = 7, levels = 5): number[] {
+  const tail = series.slice(-days).map((v) => (Number.isFinite(v) && v > 0 ? v : 0));
+  while (tail.length < days) tail.unshift(0);
+  const max = Math.max(0, ...tail);
+  if (max === 0) return tail.map(() => 0);
+  return tail.map((v) => (v === 0 ? 0 : Math.max(1, Math.round((v / max) * levels))));
+}

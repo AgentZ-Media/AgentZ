@@ -201,7 +201,7 @@ export function Sidebar() {
                     sub
                     on={isFolderOn(f.id)}
                     drop={dropTarget() === f.id}
-                    icon={<span class="dot" style={{ background: folderColor(f.id) }} />}
+                    icon={<span class="dot" style={{ background: folderColor(f.id), "--dot": folderColor(f.id) }} />}
                     label={f.name}
                     count={library.folderCounts().get(f.id) ?? 0}
                     onClick={() => navStore.openScripts({ folderId: f.id })}
