@@ -13,7 +13,6 @@
     "test:tooling": "node --test tooling/checks/*.test.mjs tooling/release/*.test.mjs tooling/new-app/*.test.mjs",
     "check:colors": "node tooling/checks/colors.mjs",
     "build:frontends": "pnpm --filter './apps/*' --if-present build",
-    "check:tokens": "node tooling/checks/tokens.mjs",
     "release:bump": "node tooling/release/bump.mjs",
     "dev:site": "pnpm --filter @agentz/site dev",
     "build:site": "pnpm --filter @agentz/site build",
