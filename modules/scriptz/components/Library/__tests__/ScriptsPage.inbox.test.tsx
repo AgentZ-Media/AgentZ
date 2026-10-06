@@ -87,6 +87,16 @@ describe("inbox", () => {
     expect(view.getByRole("heading", { level: 1 }).textContent).toBe(t("shell.nav.inbox"));
   });
 
+  it("lays idea rows out in the same grid columns as script rows", async () => {
+    const view = render(() => <ScriptsPage />);
+    const ideaRow = await view.findByRole("button", { name: "Fresh idea" });
+    const scriptRow = view.getByRole("button", { name: `Script ${stageIds()[0]}` });
+    const columns = (row: HTMLElement) =>
+      [...row.children].map((c) => c.className.split(" ")[0]).filter((c) => c !== "lrow-act");
+    expect(columns(ideaRow).length).toBe(columns(scriptRow).length);
+    expect(columns(ideaRow).indexOf("lrow-t")).toBe(columns(scriptRow).indexOf("lrow-t"));
+  });
+
   it("shows the empty state once everything reached the last stage", async () => {
     scripts = [script("done", "Done", finalStageId())];
     ideas = [];

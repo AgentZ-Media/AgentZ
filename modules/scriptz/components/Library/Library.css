@@ -742,7 +742,8 @@ button.grp-act:hover {
     grid-template-columns: 18px minmax(0, 1fr) 72px 82px;
   }
   .lrow-cast,
-  .lrow-thumb {
+  .lrow-thumb,
+  .lrow-thumb-gap {
     display: none;
   }
   .lib-head {
