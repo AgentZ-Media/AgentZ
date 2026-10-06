@@ -85,9 +85,11 @@ Domain, Vercel project and DNS are set up manually. With `apps/site` as the
 Vercel root directory, the `buildCommand` in `vercel.json` deploys `convex/`
 to the production deployment and builds the site in one step
 (`convex deploy --cmd`) when it runs for production with `CONVEX_DEPLOY_KEY`
-set; otherwise it only builds the site, with `PUBLIC_CONVEX_SITE_URL` cleared
-so the account page never talks to a backend this build did not deploy. Vercel production needs
-`CONVEX_DEPLOY_KEY` (sensitive) and `PUBLIC_CONVEX_SITE_URL`. `vercel.json` skips builds unless the site, `packages/design`, the
+set, and hands the deployed backend's `CONVEX_SITE_URL` to the site build as
+`PUBLIC_CONVEX_SITE_URL`; otherwise it only builds the site, with
+`PUBLIC_CONVEX_SITE_URL` cleared so the account page never talks to a backend
+this build did not deploy. Vercel production only needs `CONVEX_DEPLOY_KEY`
+(sensitive). `vercel.json` skips builds unless the site, `packages/design`, the
 root `package.json`, `pnpm-workspace.yaml` or `pnpm-lock.yaml` changed since
 the last successful deployment. Without one (first deployment) it always
 builds.
