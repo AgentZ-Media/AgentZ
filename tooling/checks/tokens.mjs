@@ -2,10 +2,10 @@ import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import ts from "typescript";
+import { lineColumn, sourceFiles } from "./shared.mjs";
 
 const sourceExtension = /\.(?:css|scss|less|[cm]?[jt]sx?|html)$/;
 const scriptExtension = /\.[cm]?[jt]sx?$/;
-const ignoredDirectories = new Set(["node_modules", "dist", "target", "coverage", "src-tauri"]);
 const defaultRoot = fileURLToPath(new URL("../../", import.meta.url));
 
 const blankComment = (comment) => comment.replace(/[^\r\n]/g, " ");
@@ -31,11 +31,7 @@ export function findTokenViolations(filename, contents, legacyTokens = readLegac
   filename = filename.split(path.sep).join("/");
   if (!guarded(filename)) return [];
   const violations = [];
-  const add = (offset, value, kind) => {
-    const before = contents.slice(0, offset);
-    violations.push({ file: filename, line: before.split("\n").length,
-      column: offset - before.lastIndexOf("\n"), value, kind });
-  };
+  const add = (offset, value, kind) => violations.push({ file: filename, ...lineColumn(contents, offset), value, kind });
   const uncommented = withoutComments(contents);
   // Scan complete identifiers, never prefixes: --fg-muted-extra is distinct
   // from --fg-muted. This covers var(), definitions and JS style APIs alike.
@@ -81,20 +77,8 @@ export function findTokenViolations(filename, contents, legacyTokens = readLegac
 
 export function checkTokens(root) {
   const legacyTokens = readLegacyTokens(root);
-  const violations = [];
-  const walk = (directory) => {
-    if (!fs.existsSync(directory)) return;
-    for (const entry of fs.readdirSync(directory, { withFileTypes: true })) {
-      if (ignoredDirectories.has(entry.name)) continue;
-      const filename = path.join(directory, entry.name);
-      if (entry.isDirectory()) walk(filename);
-      else if (entry.isFile() && sourceExtension.test(entry.name)) {
-        violations.push(...findTokenViolations(path.relative(root, filename), fs.readFileSync(filename, "utf8"), legacyTokens));
-      }
-    }
-  };
-  for (const group of ["apps", "modules", "packages"]) walk(path.join(root, group));
-  return violations;
+  return sourceFiles(root, ["apps", "modules", "packages"], sourceExtension)
+    .flatMap((filename) => findTokenViolations(path.relative(root, filename), fs.readFileSync(filename, "utf8"), legacyTokens));
 }
 
 if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {

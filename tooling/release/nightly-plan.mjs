@@ -1,6 +1,7 @@
 import { appendFileSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
 import { appMetadata, compareVersions, validateAppId } from './core.mjs';
+import { github, releaseByTag } from './github.mjs';
 import { desktopApps, nightlyRelevant, nightlyTag, nightlyVersion, parseNightlyMarker } from './nightly.mjs';
 
 // Decides which apps get a nightly build. Builds the newest commit on main
@@ -10,20 +11,12 @@ const root = process.cwd();
 const repository = process.env.GITHUB_REPOSITORY;
 const force = process.env.INPUT_FORCE === 'true';
 const git = (...args) => execFileSync('git', args, { encoding: 'utf8' }).trim();
-const api = path => JSON.parse(execFileSync('gh', ['api', `repos/${repository}/${path}`], { encoding: 'utf8' }));
+const { api } = github(repository);
 const output = (key, value) => appendFileSync(process.env.GITHUB_OUTPUT, `${key}=${value}\n`);
 
 function ciPassed(sha) {
   const runs = api(`commits/${sha}/check-runs?check_name=${encodeURIComponent('CI passed')}&filter=latest`).check_runs ?? [];
   return runs.some(run => run.status === 'completed' && run.conclusion === 'success');
-}
-function release(tag) {
-  try { return api(`releases/tags/${tag}`); }
-  catch (error) {
-    // Do not treat an authentication or network error as "no nightly yet".
-    if (String(error.stderr).includes('HTTP 404')) return null;
-    throw error;
-  }
 }
 const isAncestor = (ancestor, sha) => {
   try { execFileSync('git', ['merge-base', '--is-ancestor', ancestor, sha]); return true; }
@@ -41,7 +34,7 @@ if (!sha) {
   const apps = process.env.INPUT_APP ? [validateAppId(process.env.INPUT_APP)] : desktopApps(root);
   for (const app of apps) {
     const meta = appMetadata(root, app);
-    const marker = parseNightlyMarker(release(nightlyTag(app))?.body);
+    const marker = parseNightlyMarker(releaseByTag(api, nightlyTag(app))?.body);
     const previous = marker.commit && isAncestor(marker.commit, sha) ? marker.commit : '';
     if (!force && marker.commit === sha) { console.log(`${app}: ${sha.slice(0, 7)} already has a nightly.`); continue; }
     if (!force && previous) {
