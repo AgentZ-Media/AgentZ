@@ -7,6 +7,7 @@ import { SettingsAppearance } from "./settings/SettingsAppearance";
 import { SettingsUpdates } from "./settings/SettingsUpdates";
 import { SettingsAbout } from "./settings/SettingsAbout";
 import { SettingsShortcuts } from "./settings/SettingsShortcuts";
+import { AccountSettings } from "../account/AccountSettings";
 import type { AppModule, KitSectionId, ModuleSettings, SettingsSection, ShellControls, ShortcutDef } from "./types";
 import "./settings/SettingsDialog.css";
 
@@ -16,8 +17,10 @@ export interface SettingsDialogProps {
   shell: ShellControls;
   shortcuts: readonly ShortcutDef[];
   hasOnboarding?: boolean;
+  /** Shows the account section (the host has a cloud backend). */
+  account?: boolean;
 }
-const KIT_IDS = new Set(["appearance", "shortcuts", "updates", "about"]);
+const KIT_IDS = new Set(["account", "appearance", "shortcuts", "updates", "about"]);
 
 /** Shared preferences frame, composed from neutral and product-owned sections. */
 export function SettingsDialog(props: SettingsDialogProps) {
@@ -32,6 +35,7 @@ export function SettingsDialog(props: SettingsDialogProps) {
       ids.add(section.id);
     }
     const sections: Array<SettingsSection & { sep?: boolean }> = [
+      ...(props.account ? [{ id: "account", icon: "user" as const, label: () => t("prefs.account.title"), component: () => <><AccountSettings appName={props.module.name} onClose={close} />{extensions("account")}</> }] : []),
       { id: "appearance", icon: "sun", label: () => t("prefs.appearance.title"), component: () => <SettingsAppearance appName={props.module.name} onClose={close} extension={extensions("appearance")} /> },
       ...product,
       { id: "shortcuts", icon: "keyboard", label: () => t("prefs.shortcuts.title"), component: () => <><SettingsShortcuts onClose={close} shortcuts={props.shortcuts} />{extensions("shortcuts")}</> },

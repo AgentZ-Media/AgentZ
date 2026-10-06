@@ -11,6 +11,7 @@ import { flushAll } from "@agentz/kit/lib";
 import { language, t } from "@agentz/kit/i18n";
 import { baseSettingsStore, pushToast, shellUi } from "@agentz/kit/stores";
 import { BootErrorScreen } from "@agentz/kit/ui";
+import { readCloudConfig } from "@agentz/kit/account";
 import { createDesktopPlatform } from "./lib/platform";
 import { createEditingLock } from "./lib/editingLock";
 import { startDesktopLifecycle } from "./lib/lifecycle";
@@ -40,6 +41,8 @@ export function bootDesktopApp(options: DesktopAppOptions): DesktopApp {
   const platform = createDesktopPlatform(options.id);
   const kv = createSqlKvStore(() => platform.getDb());
   const lock = createEditingLock(root);
+  // Public backend addresses; VITE_AGENTZ_* overrides point a build elsewhere.
+  const cloud = readCloudConfig(import.meta.env) ?? undefined;
   let disposed = false;
   let disposeRender: (() => void) | undefined;
   let stopLifecycle: (() => void) | undefined;
@@ -117,7 +120,7 @@ export function bootDesktopApp(options: DesktopAppOptions): DesktopApp {
           }
         });
         onCleanup(() => updates.store.stopBackgroundPolling());
-        return <SuiteShell module={module} platform={platform} kv={kv} services={options.services}
+        return <SuiteShell module={module} platform={platform} kv={kv} services={options.services} cloud={cloud}
           footer={<UpdateIndicator store={updates.store} />} />;
       }
       disposeRender = render(() => <App />, root);

@@ -17,8 +17,10 @@ interface Props {
   /** Paths of this page in every language; enables the language switch. */
   paths?: PagePaths;
   noindex?: boolean;
+  /** Full-screen page without header and footer (app sign-in). */
+  bare?: boolean;
 }
-const { lang = "de", title = "AgentZ Suite", paths, noindex = false } = Astro.props;
+const { lang = "de", title = "AgentZ Suite", paths, noindex = false, bare = false } = Astro.props;
 const t = catalogs[lang];
 const description = Astro.props.description ?? t.description;
 const canonical = new URL(Astro.url.pathname, Astro.site);
@@ -41,11 +43,13 @@ const canonical = new URL(Astro.url.pathname, Astro.site);
     <meta property="og:url" content={canonical} />
     <script is:inline>document.documentElement.classList.add("js")</script>
   </head>
-  <body>
-    <a class="skip-link btn" href="#content">{t.skip}</a>
-    <Header lang={lang} paths={paths} />
-    <main id="content"><slot /></main>
-    <Footer lang={lang} paths={paths} />
+  <body class:list={[bare && "is-bare"]}>
+    {bare ? <main id="content"><slot /></main> : <>
+      <a class="skip-link btn" href="#content">{t.skip}</a>
+      <Header lang={lang} paths={paths} />
+      <main id="content"><slot /></main>
+      <Footer lang={lang} paths={paths} />
+    </>}
     <script>import "../scripts/site";</script>
   </body>
 </html>

@@ -8,7 +8,8 @@ Apps may add their own plugins and commands, then call
 same name the frontend host (`@agentz/desktop`) opens. Window config,
 identifier, updater key and product migrations stay in the app.
 
-- New apps use `src/baseline.sql` (`settings`, `app_state`) as migration 1.
+- New apps use `src/baseline.sql` (`settings`, `app_state`, `sync_records`) as migration 1.
+- Accounts: `secret_get`/`secret_set`/`secret_delete` keep the session and the sync key in the OS credential store (permission set `agentz-desktop:account`); the deep-link plugin receives `agentz-<id>://` sign-in links.
   Published migrations are never replaced.
 - Standard plugins are registered here, single-instance first. Every app
   also lists them as direct Cargo dependencies: Tauri reads their

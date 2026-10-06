@@ -70,7 +70,7 @@ die Befehlspalette, deshalb setzt das Modul `revealsSidebar: true`.
 
 ## Migrationen
 
-`001_baseline` bis `013_large_library_indexes` in
+`001_baseline` bis `014_cloud_sync` in
 `apps/scriptz/src-tauri/migrations/` sind veröffentlicht und unveränderlich. `007` ergänzt `scripts.status`,
 `status_changed_at` und den Ordner-Zielbereich. `008_agent` legt
 `agent_memory`, `agent_chats` und `agent_learned` an. `009_local_changes`
@@ -91,6 +91,9 @@ Spalten der Skriptliste (`idx_scripts_summary`, sie liegen in der Zeile hinter
 (`lib/fts.ts` löscht darüber statt per Vollscan über `script_id`). Eine neue
 Spalte der Skriptliste gehört in eine neue Migration mit erweitertem
 Covering-Index (`lib/__tests__/queryPlans.test.ts` schlägt sonst fehl).
+`014_cloud_sync` ist rein additiv: `sync_records` (Buchführung der
+Synchronisierung, keine Inhaltstabelle) und `daily_word_log_remote`
+(Schreibstatistik anderer Geräte).
 Jede neue Spalte einer Inhaltstabelle braucht dasselbe: Trigger neu anlegen
 und `CONTENT_ENTITIES` ergänzen (Tests in `lib/__tests__/localChanges.test.ts`
 schlagen sonst fehl). Die Umwandlung von Kamera/Caption/SFX in Action ist bewusst keine SQL-Migration
@@ -298,3 +301,14 @@ Sidebar, `Mod+L` außerhalb eines Skripts, `Mod+Shift+L` überall, ⌘K, Ideen-S
 - Suche (⌘K): `api.globalSearch` -> FTS5 BM25 -> Treffer mit `<mark>`.
 - PDF: `exportPdf.ts` (pdf-lib, A4, Widow/Orphan) mit den TTFs aus
   `assets/fonts/` per `?url`; gespeichert über `PlatformAdapter.saveAs`.
+
+## Synchronisierung
+
+Konto und Abgleich gehören dem Kit ([`cloud-sync.md`](../../docs/cloud-sync.md)).
+ScriptZ liefert `lib/sync/adapter.ts` (Tabellen, Reihenfolge, Fremdschlüssel,
+Konfliktkopien für Skripte und Ideen, `SYNCED_SETTINGS`) und `stores/sync.ts`
+(Busse, Agent-Store, Settings neu laden). Eingehende Skripte laden ein offenes
+Skript über `remoteScriptBus` neu. Im Sidebar-Fuß sitzt der Konto-Button des
+Kits an der Stelle des Schreibzählers; die Aktivität bleibt über ⌘K erreichbar.
+Der letzte Onboarding-Schritt fragt „nur dieses Gerät“ oder „Anmelden oder
+kostenlos registrieren“.

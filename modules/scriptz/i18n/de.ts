@@ -204,7 +204,7 @@ export const de = {
   // ---------- settings ----------
   "settings.characters.colorAria": "Farbe von {name} ändern",
   "settings.characters.reset": "Zurücksetzen",
-  "settings.about.sub": "Schnell. Lokal. Ohne Konto.",
+  "settings.about.sub": "Schnell. Lokal. Konto optional.",
   "settings.about.license": "Lizenz: MIT",
   "settings.about.developer.linkText": "AgentZ",
   "settings.about.repository.linkText": "github.com/AgentZ-Media/AgentZ-Suite",
@@ -235,6 +235,7 @@ export const de = {
 
   // ---------- boot / errors ----------
   "boot.loadingScript": "Lade Skript…",
+  "sync.conflictCopy": "Konfliktkopie",
   "boot.error.title": "ScriptZ konnte nicht starten",
   "boot.error.lede": "Die Datenbank-Datei konnte nicht geöffnet werden. Deine Skripte sind vermutlich nicht verloren - die Datei liegt unverändert im App-Datenverzeichnis. Bitte den Fehler unten kopieren und an uns weiterleiten.",
 

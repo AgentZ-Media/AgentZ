@@ -2,7 +2,7 @@ import { createClient, type GenericCtx } from "@convex-dev/better-auth";
 import { convex, crossDomain } from "@convex-dev/better-auth/plugins";
 import { requireRunMutationCtx } from "@convex-dev/better-auth/utils";
 import { betterAuth } from "better-auth/minimal";
-import { components } from "./_generated/api";
+import { components, internal } from "./_generated/api";
 import type { DataModel } from "./_generated/dataModel";
 import { query } from "./_generated/server";
 import authConfig from "./auth.config";
@@ -17,12 +17,24 @@ const extraOrigins = (process.env.TRUSTED_ORIGINS ?? "")
   .map((origin) => origin.trim())
   .filter(Boolean);
 
+/** WebView origins of the desktop apps (macOS/Linux, Windows) and of their
+ * development servers (`pnpm dev:<app>`, ports 1420, 1430, ...). They use the
+ * auth API with a bearer token from the app sign-in (appLink.ts), never cookies. */
+export const APP_ORIGINS = [
+  "tauri://localhost",
+  "http://tauri.localhost",
+  ...Array.from({ length: 8 }, (_, i) => `http://localhost:${1420 + i * 10}`),
+];
+
 export const authComponent = createClient<DataModel>(components.betterAuth);
 
 export const createAuth = (ctx: GenericCtx<DataModel>) =>
   betterAuth({
     baseURL: process.env.CONVEX_SITE_URL,
-    trustedOrigins: [siteUrl, ...extraOrigins],
+    trustedOrigins: [siteUrl, ...extraOrigins, ...APP_ORIGINS],
+    // Desktop apps stay signed in while they are used at least every two
+    // months; every use extends the session (at most once a day).
+    session: { expiresIn: 60 * 24 * 60 * 60, updateAge: 24 * 60 * 60 },
     database: authComponent.adapter(ctx),
     emailAndPassword: {
       enabled: true,
@@ -38,7 +50,15 @@ export const createAuth = (ctx: GenericCtx<DataModel>) =>
       sendVerificationEmail: async ({ user, url, token }) =>
         sendAccountEmail(requireRunMutationCtx(ctx), "verify", { to: user.email, name: user.name, url, token }),
     },
-    user: { deleteUser: { enabled: true } },
+    user: {
+      deleteUser: {
+        enabled: true,
+        // The encrypted cloud copy of all apps goes with the account.
+        afterDelete: async (user) => {
+          await requireRunMutationCtx(ctx).runMutation(internal.sync.purge, { userId: user.id, keepKey: false });
+        },
+      },
+    },
     // Convex functions share no memory between requests, so limits live in the database.
     rateLimit: { enabled: true, storage: "database" },
     plugins: [crossDomain({ siteUrl }), convex({ authConfig })],

@@ -9,13 +9,15 @@ Architektur und Datenfluss: [`scriptz-architecture.md`](../../.claude/rules/scri
 
 ## Daten schützen
 
-Identifier `de.agent-z.scriptz`, `scriptz.db`, die Migrationen `001` bis
-`013` sowie alle Settings- und `app_state`-Schlüssel sind fix. Neue
+Identifier `de.agent-z.scriptz`, `scriptz.db`, das URL-Schema `agentz-scriptz`,
+die Migrationen `001` bis `014` sowie alle Settings- und `app_state`-Schlüssel sind fix. Neue
 Schemaänderungen nur als neue Migration in `src-tauri/migrations/`, registriert
 in `src-tauri/src/lib.rs`, und im `.scriptz`-Import/Export mitdenken. Neue
 Spalten einer Inhaltstabelle brauchen außerdem neu angelegte Update-Trigger
 des Änderungsfeeds und einen Eintrag in `CONTENT_ENTITIES`
-([`local-storage.md`](../../docs/local-storage.md)).
+([`local-storage.md`](../../docs/local-storage.md)) und gehören in den
+Sync-Adapter `lib/sync/adapter.ts` (Fremdschlüssel in `REFS`, siehe
+[`cloud-sync.md`](../../docs/cloud-sync.md)).
 
 `pnpm dev:scriptz` nutzt dieselbe Datenbank wie die installierte App. Vor
 Arbeit an Speicher, Migrationen oder Boot sichern (App vorher beenden):
@@ -66,8 +68,10 @@ Kein `cp` der laufenden DB (WAL). Wiederherstellen bei beendeter App:
   freiwillig. Details: Abschnitt „Agent" in `scriptz-architecture.md`.
 - Netzwerkanfragen: der Updater
   (`releases/download/scriptz-latest/latest.json`, mit Nightly-Kanal zusätzlich
-  `scriptz-nightly/latest.json`) und, nur wenn der Agent eingeschaltet ist, der
-  lokale Codex-Prozess. Keine Telemetrie.
+  `scriptz-nightly/latest.json`), nur wenn der Agent eingeschaltet ist der
+  lokale Codex-Prozess und nur mit Anmeldung das Convex-Backend (Sitzung,
+  Ende-zu-Ende verschlüsselter Sync). Keine Telemetrie. Die CSP erlaubt dafür
+  ausschließlich `*.convex.cloud` und `*.convex.site`.
 - **Nightly-Sicherungen** liegen unter
   `~/Library/Application Support/de.agent-z.scriptz/backups/` (Windows:
   `%APPDATA%\de.agent-z.scriptz\backups\`), die letzten fünf bleiben.

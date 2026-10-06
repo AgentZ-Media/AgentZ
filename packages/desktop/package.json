@@ -23,6 +23,7 @@
     "vite": "catalog:",
     "vite-plugin-solid": "catalog:",
     "@tauri-apps/api": "catalog:",
+    "@tauri-apps/plugin-deep-link": "catalog:",
     "@tauri-apps/plugin-dialog": "catalog:",
     "@tauri-apps/plugin-fs": "catalog:",
     "@tauri-apps/plugin-opener": "catalog:",

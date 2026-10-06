@@ -39,6 +39,8 @@ const [memoryVersion, setMemoryVersion] = createSignal(0);
 export { memoryVersion };
 /** Notifies memory consumers after a successful persistence operation. */
 const bump = () => setMemoryVersion((v) => v + 1);
+/** Memory rows changed outside these functions (cloud sync). */
+export const notifyMemoryChanged = bump;
 
 /** Collapses whitespace and normalizes character names for memory scope matching. */
 export function normalizeCharacter(name: string): string {

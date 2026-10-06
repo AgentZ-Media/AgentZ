@@ -10,9 +10,11 @@ paths:
   (Einblenden, Tipp-Demo, Kopieren, Plattform-Erkennung); ohne JavaScript ist
   alles im Endzustand lesbar, `prefers-reduced-motion` stoppt die Demo. Nur
   `@agentz/design` als internes Paket; keine Kit- oder Produktmodule importieren.
-- Einzige Ausnahme ist das Konto (`/konto/`, `/en/account/`): Better Auth auf
-  Convex über `@convex-dev/better-auth`, Backend in `convex/`. Nur
-  `src/scripts/account.ts` spricht mit dem Server und speichert die Sitzung im
+- Einzige Ausnahme ist das Konto (`/konto/`, `/en/account/`) samt
+  Vollbild-Anmeldung für Apps (`/konto/app/`, `/en/account/app/`, ohne Header
+  und Footer): Better Auth auf Convex über `@convex-dev/better-auth`, Backend in
+  `convex/`. Nur `src/scripts/account.ts`, `appSignIn.ts` und das gemeinsame
+  `authForms.ts` sprechen mit dem Server und speichern die Sitzung im
   `localStorage` (Cross-Domain-Plugin); `site.ts` und alle anderen Seiten
   bleiben ohne Requests und Speicher. Kein React, kein Convex-Websocket auf der
   Website. Ohne `PUBLIC_CONVEX_SITE_URL` zeigt die Seite „nicht erreichbar“.
@@ -20,7 +22,10 @@ paths:
   von Hand ändern, Konfigurationsänderungen (`convex/auth.ts`) erst gegen das
   Dev-Deployment (`pnpm dev:site:backend`) testen. Production deployt nur der
   Vercel-Build (`convex deploy --cmd`) nach dem Merge auf `main`.
-  `convex/_generated/` wird committet. Neue Datenverarbeitung im Konto immer
+  `convex/_generated/` wird committet. Sync-Daten der Apps
+  (`schema.ts`, `sync.ts`, `keys.ts`, `appLink.ts`) sind Ende-zu-Ende
+  verschlüsselt; jede App hat eine eigene Record-Tabelle
+  ([`docs/cloud-sync.md`](../../docs/cloud-sync.md)). Neue Datenverarbeitung im Konto immer
   in der Datenschutzerklärung nachziehen.
 - Konto-E-Mails (Reset, Bestätigung) über Resend in `convex/emails.ts`, Absender
   `info@agentz-suite.com`, Texte dort in DE und EN. E-Mails tragen die

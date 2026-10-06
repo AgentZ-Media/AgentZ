@@ -23,6 +23,7 @@ import {
   renameFolder,
 } from "../Library/actions";
 import { WritingCounter } from "../Activity/WritingCounter";
+import { AccountChip, account } from "@agentz/kit/account";
 import { openAgentMode } from "../AgentMode/actions";
 import { closeOpenScript, closeOtherOpenScripts } from "./openActions";
 import { folderColor } from "../Common/folderColor";
@@ -297,7 +298,11 @@ export function SidebarFooter() {
     <>
       <div class="side-foot">
         <div class="side-foot-counter">
-          <WritingCounter />
+          {/* With accounts the footer shows who is signed in; the writing
+              statistics stay one ⌘K away (Activity). */}
+          <Show when={account.enabled()} fallback={<WritingCounter />}>
+            <AccountChip />
+          </Show>
         </div>
         <button
           type="button"

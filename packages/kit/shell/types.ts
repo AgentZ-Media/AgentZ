@@ -4,8 +4,9 @@ import type { PlatformAdapter, KvStore } from "../platform";
 import type { FlushResult } from "../lib";
 import type { IconName } from "../ui";
 import type { Catalog } from "../i18n";
+import type { CloudConfig, SyncAdapter } from "../account/types";
 
-export type KitSectionId = "appearance" | "shortcuts" | "updates" | "about";
+export type KitSectionId = "account" | "appearance" | "shortcuts" | "updates" | "about";
 export interface SettingsSectionProps { onClose(): void }
 export interface SettingsSection {
   id: string;
@@ -127,6 +128,8 @@ export interface ModuleRuntime {
   /** Defaults to shell. Dialog detection always overrides this. */
   shortcutContext?: Accessor<Exclude<ShortcutContext, "dialog">>;
   onboarding?: OnboardingDefinition;
+  /** Local data the account syncs to the cloud. Without it an account only signs in. */
+  sync?: SyncAdapter;
   flushPending?(timeoutMs: number): Promise<FlushResult>;
   /** Called once, including when setup resolves after the shell was disposed. */
   dispose?(): void;
@@ -147,4 +150,6 @@ export interface SuiteShellProps {
   kv?: KvStore;
   services?: Readonly<Record<string, unknown>>;
   footer?: JSX.Element;
+  /** Suite backend for accounts and sync; without it the app stays local only. */
+  cloud?: CloudConfig;
 }

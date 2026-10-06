@@ -143,6 +143,7 @@
   color: var(--accent-fg); background: var(--accent);
 }
 .soon-badge.is-planned { color: var(--side-fg); background: var(--side-active); }
+.soon-badge.is-live { color: var(--on-swatch); background: var(--ok); }
 
 .acct-danger { align-content: start; }
 .acct-danger > .btn { justify-self: start; }

@@ -31,6 +31,7 @@ import { createScriptzCommands } from "./components/Palette/commands";
 import { agentSettings, startAgentSettingsRuntime } from "./stores/agentSettings";
 import { startAgentUiRuntime } from "./stores/agentUi";
 import { agentStore, startAgentRuntime } from "./stores/agent";
+import { createScriptzSync } from "./stores/sync";
 import { AgentOnboarding } from "./components/Agent/AgentOnboarding";
 import { MemoryDialog } from "./components/Agent/MemoryDialog";
 import { AgentPage } from "./components/AgentMode/AgentPage";
@@ -139,6 +140,7 @@ async function setupScriptz(ctx: ModuleContext): Promise<ModuleRuntime> {
     shortcuts: getScriptzShortcuts(),
     shortcutContext: () => currentScriptId() ? "editor" : "list",
     onboarding: { key: ONBOARDING_KEY, component: Onboarding },
+    sync: createScriptzSync(),
   };
 }
 

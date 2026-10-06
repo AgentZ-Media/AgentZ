@@ -144,6 +144,20 @@ export const agentStore = {
     await deleteChat(chatId);
     await refreshSessionList();
   },
+  /** Chats replaced by the cloud sync: idle ones that are not on screen are
+   *  unloaded, so the next lookup reads the new row. A chat in use keeps its
+   *  state; its next write wins (chats sync as a whole). */
+  remoteChatsChanged(chatIds: Iterable<string>): void {
+    const ids = new Set(chatIds);
+    for (const chat of liveChats()) {
+      const id = chat.chatId();
+      if (!id || !ids.has(id) || inUse(chat)) continue;
+      unregisterChat(chat);
+      void chat.unload();
+    }
+    chatsChanged();
+    void refreshSessionList();
+  },
   scheduleLearning,
   bootstrap,
   startBootstrap,
