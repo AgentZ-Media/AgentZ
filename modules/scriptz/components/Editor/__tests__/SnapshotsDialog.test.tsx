@@ -1,6 +1,5 @@
 // The version dialog previews a snapshot with the real editor in read-only
-// mode (same Lexical nodes, same CSS classes as the script screen) instead
-// of a plain-text dump.
+// mode (same Lexical nodes, same CSS classes as the script screen).
 
 import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 import { registerFlusher } from "@agentz/kit/lib";

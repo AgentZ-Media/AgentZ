@@ -36,5 +36,3 @@ export function FocusPill(props: FocusPillProps) {
     </div>
   );
 }
-
-export default FocusPill;

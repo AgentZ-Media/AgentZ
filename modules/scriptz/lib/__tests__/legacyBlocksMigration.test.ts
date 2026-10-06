@@ -76,7 +76,7 @@ describe("migrateLegacyBlocksOnce", () => {
     expect(scripts.a).toContain("scriptz-action");
     expect(scripts.c).toContain("scriptz-action");
     expect(scripts.b).toBe(content("scriptz-action", "Normal"));
-    // Parenthetical is a live block type again - never rewritten.
+    // Parenthetical is a live block type - never rewritten.
     expect(scripts.d).toBe(content("scriptz-parenthetical", "(leise)"));
     expect(m.appState.get(LEGACY_BLOCKS_MIGRATION_FLAG)).toBeTruthy();
   });

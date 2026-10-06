@@ -17,7 +17,7 @@
 // stores/dailyStats.ts caches the result and invalidates via the
 // dailyStatsBus as soon as a save has recorded words.
 
-import { extractBlocks } from "./lex";
+import { extractBlocks, wordCount } from "./lex";
 import { getDb } from "./db";
 import type { DailyStatsSummary, DailyWordEntry } from "./types";
 import { dailyStatsBus } from "./dailyStatsBus";
@@ -30,17 +30,12 @@ export function localDateKey(d: Date = new Date()): string {
   return `${y}-${m}-${dd}`;
 }
 
-/** Word count of a Lexical script. Mirrors the v3 logic:
- *  splitting on whitespace, empty tokens are dropped.
+/** Word count of a Lexical script: splitting on whitespace, empty tokens are dropped.
  *  Block type is irrelevant - every text block counts. */
 export function countWordsInContent(contentJson: string): number {
   const blocks = extractBlocks(contentJson);
   let total = 0;
-  for (const b of blocks) {
-    const text = b.text.trim();
-    if (!text) continue;
-    total += text.split(/\s+/).filter(Boolean).length;
-  }
+  for (const b of blocks) total += wordCount(b.text);
   return total;
 }
 
@@ -97,11 +92,6 @@ function streakFromSeries(words: number[]): number {
   while (i >= 0 && words[i] > 0) {
     streak++;
     i--;
-  }
-  // Add today (with words) as well, if it already counts.
-  if (words[last] > 0) {
-    // We already started at the last element above, so
-    // it's already counted.
   }
   return streak;
 }

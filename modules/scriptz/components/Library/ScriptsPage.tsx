@@ -169,7 +169,7 @@ export function ScriptsPage() {
     return scope !== null && libraryPrefs.viewMode(scope) === "board";
   };
 
-  // Normally already loaded during boot (AppShell); a no-op then.
+  // Normally already loaded during module setup; a no-op then.
   onMount(() => void libraryPrefs.load());
 
   // ---- filter ----
@@ -1189,5 +1189,3 @@ function IdeasTeaser() {
     </button>
   );
 }
-
-export default ScriptsPage;

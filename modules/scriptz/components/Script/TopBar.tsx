@@ -307,5 +307,3 @@ function TipToggle(props: TipToggleProps) {
     </>
   );
 }
-
-export default TopBar;

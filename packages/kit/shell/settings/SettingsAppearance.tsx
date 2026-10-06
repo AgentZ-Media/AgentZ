@@ -1,9 +1,7 @@
 import { For, type JSX } from "solid-js";
 import { baseSettingsStore, type Theme } from "../../stores";
-import { type LanguagePref } from "../../i18n";
-import { t } from "../../i18n";
-import { Row, SectionHead, Switch } from "../../ui";
-
+import { t, type LanguagePref } from "../../i18n";
+import { Row, SectionHead } from "../../ui";
 
 export function SettingsAppearance(props: { onClose(): void; appName: string; extension?: JSX.Element }) {
   const themes = (): Array<{ id: Theme; label: string }> => [

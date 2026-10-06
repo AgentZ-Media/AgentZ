@@ -351,7 +351,7 @@ const sqlBackedAdapter: ScriptzStorage = {
     return { scriptId: created.id, title: created.title };
   },
 
-  // Ideas inbox - standalone table, no contact with the script CRUD.
+  // Ideas inbox.
   async listIdeas(): Promise<Idea[]> {
     return ideasList();
   },
@@ -381,7 +381,7 @@ const sqlBackedAdapter: ScriptzStorage = {
     return ideasConvert(input);
   },
 
-  // Daily writing statistics (streak / heatmap / daily goal progress).
+  // Daily writing statistics (heatmap / writing counter).
   async loadDailyWords(days?: number): Promise<DailyWordEntry[]> {
     return dwLoadEntries(days);
   },

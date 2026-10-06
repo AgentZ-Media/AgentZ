@@ -16,6 +16,7 @@ import { draftStates, parseItems, summarizeSession, type ChatItem } from "../cha
 import { ideaNotes, parseIdeaCards, parseReplies } from "../sessionTools";
 import { describeTarget, dialogWordsFor, writingTarget } from "../writingContext";
 import { extractBlocks } from "../../lex";
+import { runtimeSeconds, runtimeStatsFromContent } from "../../runtime";
 import type { Folder } from "../../types";
 
 const DRAFT = `Hier ist der erste Entwurf.
@@ -142,6 +143,21 @@ describe("agent mode drafts", () => {
     expect(draftRuntime(blocks, 210)).toBe(62);
     expect(draftRuntime([], 210)).toBe(0);
     expect(draftWords(blocks)).toBe(212);
+  });
+
+  it("counts every action block like the script runtime", () => {
+    const blocks = [
+      { type: "action" as const, text: "" },
+      { type: "character" as const, text: "TIMO" },
+      { type: "dialog" as const, text: ` ${"wort  ".repeat(10)}` },
+    ];
+    const json = JSON.stringify({
+      root: { type: "root", children: blocks.map((b) => ({ type: `scriptz-${b.type}`, children: [{ type: "text", text: b.text }] })) },
+    });
+    // 10 words at 60 WPM = 10 s, plus 2 s for the empty action line.
+    expect(draftRuntime(blocks, 60)).toBe(12);
+    expect(draftRuntime(blocks, 60)).toBe(runtimeSeconds(runtimeStatsFromContent(json), 60));
+    expect(draftWords(blocks)).toBe(10);
   });
 
   it("round-trips blocks as draft text and exports plain text", () => {

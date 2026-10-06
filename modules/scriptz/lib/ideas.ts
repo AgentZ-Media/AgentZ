@@ -239,7 +239,7 @@ export async function convertIdeaToScript(input: {
     console.warn("[scriptz] convertIdeaToScript: script_id backref failed", err);
   }
 
-  // Bump both buses: the new script appears in the browser list,
+  // Bump all three buses: the new script appears in the browser list,
   // the idea disappears from "open" and appears in "used".
   scriptsBus.bump();
   foldersBus.bump();

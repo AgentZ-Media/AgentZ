@@ -14,12 +14,6 @@ export function agentModeAvailable(): boolean {
   return agentStore.available();
 }
 
-/** Ready to work: set up and switched on. Otherwise entries lead to the
- *  agent mode, which explains what is missing. */
-export function agentModeUsable(): boolean {
-  return agentStore.available() && agentSettings.onboarded() && agentSettings.enabled();
-}
-
 function existingFolder(id: string | null | undefined): string | null {
   return id && library.folder(id) ? id : null;
 }

@@ -134,5 +134,3 @@ function TitleInputField(props: TitleInputProps) {
     </span>
   );
 }
-
-export default TitleInput;

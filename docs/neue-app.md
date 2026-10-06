@@ -29,7 +29,7 @@ Anschließend laufen `pnpm install --no-frozen-lockfile`, der Icon-Build und `ca
 - `AppModule` in `modules/mein-tool/module.tsx` ergänzen: Routen, Sidebar, Befehle, Produkt-Einstellungen, optionale Overlays und Aufräumen in `dispose`/`context.onDispose`.
 - Produkttexte in beiden Katalogen ergänzen. Gemeinsame Oberflächen kommen aus dem Kit, CSS verwendet semantische Design-Tokens. Keine Imports aus anderen Produkten und kein `legacy.css`.
 - Für persistente Änderungen die Kit-Speicher- und Flush-Verträge verwenden; keine unregistrierten Hintergrundschreibvorgänge. Asynchrone Initialisierung beachtet `context.signal`; reaktive Ressourcen nach `await` entstehen über `context.runOwned`.
-- Eigene Tabellen als nächste Migration in `apps/mein-tool/src-tauri/migrations` anlegen und in `src/lib.rs` registrieren. Migration 1 ist eine beim Generieren eingefrorene Kopie von `KIT_BASELINE_SQL`; ausgelieferte Migrationen nicht nachträglich ändern.
+- Eigene Tabellen als nächste Migration in `apps/mein-tool/src-tauri/migrations` anlegen und in `src/lib.rs` registrieren. Migration 1 ist eine beim Generieren eingefrorene Kopie von `crates/agentz-desktop/src/baseline.sql`; ausgelieferte Migrationen nicht nachträglich ändern.
 - Zusätzliche native Plugins direkt im App-`Cargo.toml` deklarieren und ihre Berechtigungen ausdrücklich ergänzen. Systemweite Tastenkürzel sind keine Basisfunktion.
 - `apps/mein-tool/CLAUDE.md` um produktspezifische Regeln ergänzen.
 

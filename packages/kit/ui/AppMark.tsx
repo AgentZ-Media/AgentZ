@@ -51,5 +51,3 @@ export function AppMark(props: AppMarkProps) {
     </span>
   );
 }
-
-export default AppMark;

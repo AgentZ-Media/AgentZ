@@ -44,10 +44,8 @@ function findScriptzAncestor(node: LexicalNode | null): BaseScriptzNode | null {
 }
 
 /**
- * Switches the block at the cursor to the given type. Used both by the
- * editor toolbar (block-pill click) and by the ⌘1..⌘4 hotkey
- * — one shared source of truth, so toolbar click and
- * hotkey behave identically (incl. caret placement at the end of the block).
+ * Switches the block at the cursor to the given type (⌘1..⌘4 hotkeys),
+ * incl. caret placement at the end of the block.
  *
  * Returns true when a block was actually switched, otherwise false
  * (no cursor in a scriptz block, or the block is already of this type).

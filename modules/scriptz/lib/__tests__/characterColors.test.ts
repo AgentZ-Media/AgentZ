@@ -1,9 +1,5 @@
 // Sanity tests for the pure character-color helpers (parse/serialise +
 // the case-insensitive name matching that drives reconciliation).
-//
-// The async DB-backed flows in characterColors.ts (listCharacterColors,
-// setCharacterColor, etc.) need a fake DbConnection and are covered
-// separately when we add the storage-adapter mock in Phase C.
 
 import { describe, it, expect } from "vitest";
 import {
@@ -50,11 +46,10 @@ describe("eqIgnoreAsciiCase", () => {
     expect(eqIgnoreAsciiCase("", "X")).toBe(false);
   });
 
-  it("does not case-fold non-ASCII (matches Rust semantics)", () => {
-    // German umlauts intentionally stay distinct from their ASCII
-    // counterparts: 'ä' !== 'Ä' here by design - the reconciliation
-    // pipeline upper-cases names elsewhere before comparing.
-    // We only verify the function does not crash and stays deterministic.
+  it("does not case-fold non-ASCII", () => {
+    // 'ä' !== 'Ä' here by design - the reconciliation pipeline
+    // upper-cases names elsewhere before comparing.
     expect(eqIgnoreAsciiCase("Müller", "Müller")).toBe(true);
+    expect(eqIgnoreAsciiCase("Müller", "MÜLLER")).toBe(false);
   });
 });

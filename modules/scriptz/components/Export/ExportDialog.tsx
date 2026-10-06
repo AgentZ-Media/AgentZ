@@ -337,5 +337,3 @@ export function ExportDialog() {
     </DialogFrame>
   );
 }
-
-export default ExportDialog;

@@ -21,7 +21,7 @@ export interface RangeFieldsProps {
  *  parse and min < max; otherwise shows the reason under the fields and
  *  keeps the typed text so it can be fixed. Empty = bound unset.
  *
- *  Commits are serialized (lib/serialSave.ts) and diffed against the last
+ *  Commits are serialized (`serialSave` from @agentz/kit/lib) and diffed against the last
  *  acknowledged pair, and after a commit a field is only rewritten to its
  *  canonical `m:ss` form if it still holds the text that commit used - so
  *  tabbing from "von" to "bis" and typing while the first save runs never

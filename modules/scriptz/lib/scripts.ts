@@ -8,13 +8,13 @@
 // FK behaviour: tauri-plugin-sql opens connections via sqlx-sqlite,
 // which sets `PRAGMA foreign_keys = ON` by default. DELETEs on
 // `scripts` therefore cascade into `snapshots` (declared ON DELETE
-// CASCADE in migration v2) without an explicit pre-delete here.
+// CASCADE in migration 001) without an explicit pre-delete here.
 //
 // Transaction caveat: plugin-sql exposes no JS transaction API, so
 // multi-statement updates run as independent auto-committed
 // statements. For update_script that means a concurrent save can
 // interleave field writes - in practice all callers go through the
-// debounced save in Editor.tsx, so the race window is small. FTS
+// debounced save in Editor/persistence.ts, so the race window is small. FTS
 // refresh runs after the row update; a search hit landing in the
 // micro-window between can show stale snippets, which the next save
 // corrects.
@@ -366,8 +366,7 @@ export interface UpdateScriptInput {
   id: string;
   title?: string;
   /** `null` clears the override (= follow global default). `undefined` =
-   *  no change. The Rust `Option<Option<i64>>` shape collapses to this
-   *  in JS because `undefined` simply isn't sent. */
+   *  no change. */
   highlightingEnabled?: number | null;
   contentJson?: string;
   /** Caller-supplied override of the per-script character list (e.g.
@@ -375,7 +374,7 @@ export interface UpdateScriptInput {
    *  bypassing the reconcile step. */
   characters?: ScriptCharacter[];
   /** Internal rewrite (legacy-block migration): no daily-word booking,
-   *  `updated_at` untouched. See `UpdateScriptInput`. */
+   *  `updated_at` untouched. */
   internalRewrite?: boolean;
 }
 
@@ -437,7 +436,7 @@ export async function updateScript(input: UpdateScriptInput): Promise<ScriptSumm
       const charsJson = await reconcileCharsMeta(prevMeta, contentJson, records, now);
       droppedNames = dropsCharacterNames(parseCharsMeta(prevMeta), parseCharsMeta(charsJson));
 
-      // last_word_count === -1 is the sentinel from migration 003 for
+      // last_word_count === -1 is the sentinel from migration 004 for
       // existing scripts: the first save after the update only normalizes
       // the count without booking the entire prior word total as "written
       // today".
@@ -469,7 +468,7 @@ export async function updateScript(input: UpdateScriptInput): Promise<ScriptSumm
         break;
       }
       // Retry limit as emergency brake: in practice the
-      // 250 ms debounce in Editor.tsx serializes all saves of the same script -
+      // save debounce in Editor/persistence.ts serializes all saves of the same script -
       // a conflict here should occur at most once.
       if (attempts >= 5) {
         // Fallback: write content unconditionally so the user's keystrokes
@@ -659,8 +658,7 @@ export async function emptyTrash(): Promise<void> {
 // ---------- internal helpers ----------
 
 /** Lexical state for a brand-new script: a single empty character
- *  block. Mirrors the JSON Rust's `empty_lexical_state` builds. The
- *  exact byte-shape is irrelevant - Lexical re-serialises on the next
+ *  block. The exact byte-shape is irrelevant - Lexical re-serialises on the next
  *  save in its own key order. */
 function emptyLexicalState(): string {
   return JSON.stringify({
@@ -716,8 +714,7 @@ async function reconcileCharsMeta(
  *  Returns the new chars list plus a list of `[name, color]` pairs
  *  whose `default_color` is still NULL in the registry alongside the
  *  colour they should be back-filled to. Callers must persist these
- *  so the global default converges. Literal port of Rust's
- *  `reconcile_chars_from_content`. */
+ *  so the global default converges. */
 function reconcileCharsFromContent(
   existing: ScriptCharacter[],
   contentJson: string,
@@ -765,8 +762,7 @@ function reconcileCharsFromContent(
     ) {
       newDefaults.push([upper, chosen]);
     }
-    const upperName = name.toUpperCase();
-    const words = wordsByChar[upperName] ?? 0;
+    const words = wordsByChar[upper] ?? 0;
     const share = totalDialog > 0 ? words / totalDialog : 0;
     out.push({ name, color: chosen, share });
   }

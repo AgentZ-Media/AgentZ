@@ -69,5 +69,3 @@ export function WritingCounter() {
     </>
   );
 }
-
-export default WritingCounter;

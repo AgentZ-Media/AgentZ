@@ -92,16 +92,6 @@ export function flyInto(from: DOMRect, target: Element | null, text: string): vo
   run.oncancel = () => card.remove();
 }
 
-/** Briefly highlights elements, e.g. lines a proposal just inserted. */
-export function flash(elements: ReadonlyArray<Element | null | undefined>, cls = "mo-flash", ms = 2600): void {
-  if (prefersReducedMotion()) return;
-  const live = elements.filter((el): el is Element => !!el);
-  for (const el of live) replayClass(el, cls);
-  setTimeout(() => {
-    for (const el of live) el.classList.remove(cls);
-  }, ms);
-}
-
 // The row or card the writer just clicked: the element the opening script
 // grows out of. Only valid for a moment after the click.
 let openSource: { el: Element; at: number } | null = null;

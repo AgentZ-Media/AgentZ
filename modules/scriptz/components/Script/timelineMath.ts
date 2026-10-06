@@ -7,15 +7,9 @@
 // from them. Runtime numbers follow lib/runtime.ts exactly.
 
 import type { LengthRange } from "../../lib/lengthGoal";
-import {
-  MIN_RUNTIME_SEC,
-  SECONDS_PER_DIRECTION_BLOCK,
-  wordCount,
-} from "../../lib/runtime";
+import { wordCount } from "../../lib/lex";
+import { MIN_RUNTIME_SEC, SECONDS_PER_DIRECTION_BLOCK } from "../../lib/runtime";
 import type { TimelineSegment, TimingBlock } from "../../lib/timing";
-
-/** Hook zone at the start of every short-form video. */
-export const HOOK_SEC = 3;
 
 /** The three hook marks after the first line of dialog, by priority:
  *  3 s decide whether anyone stays, 5 s whether it is clear what this is

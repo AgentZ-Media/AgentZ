@@ -6,7 +6,7 @@
 // react to "the user pressed the platform modifier + a letter" should
 // go through isModKey() instead of checking metaKey or ctrlKey directly.
 //
-// Display strings ("⌘B", "Ctrl+B") run through formatHotkey() / K(),
+// Display strings ("⌘B", "Ctrl+B") run through K(),
 // which take a logical spec like "Mod+B", "Mod+Shift+T", "Mod+Alt+ArrowLeft"
 // and render the platform-correct symbols.
 //
@@ -102,11 +102,11 @@ const LABELS: Record<Platform, Labels> = {
  * on Windows/Linux they are joined with `+` (`Ctrl+B`).
  *
  * @example
- *   formatHotkey("Mod+B")              -> "⌘B"        / "Ctrl+B"
- *   formatHotkey("Mod+Shift+S")        -> "⌘⇧S"       / "Ctrl+Shift+S"
- *   formatHotkey("Mod+Alt+ArrowLeft")  -> "⌘⌥←"       / "Ctrl+Alt+←"
+ *   K("Mod+B")              -> "⌘B"        / "Ctrl+B"
+ *   K("Mod+Shift+S")        -> "⌘⇧S"       / "Ctrl+Shift+S"
+ *   K("Mod+Alt+ArrowLeft")  -> "⌘⌥←"       / "Ctrl+Alt+←"
  */
-export function formatHotkey(spec: string): string {
+export function K(spec: string): string {
   const lbl = LABELS[getPlatform()];
   return spec
     .split("+")
@@ -137,6 +137,3 @@ export function formatHotkey(spec: string): string {
     })
     .join(lbl.sep);
 }
-
-/** Convenience alias - shorter to read inline in JSX. */
-export const K = formatHotkey;

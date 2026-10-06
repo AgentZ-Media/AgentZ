@@ -40,7 +40,6 @@
 }
 
 /* Lines a proposal just put on the paper glow yellow and fade. */
-.mo-flash,
 [data-ag-new] {
   border-radius: 4px;
   animation: mo-flash 2.4s ease both;

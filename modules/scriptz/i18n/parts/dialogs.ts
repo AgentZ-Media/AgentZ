@@ -114,7 +114,6 @@ export const dialogsDe = {
   "exportDialog.preview.blocks_other": "{count} Blöcke",
 
   // ---------- settings ----------
-  "prefs.appearance.sub": "Wie ScriptZ aussieht und spricht.",
   "prefs.darkPaper.label": "Dunkles Papier",
   "prefs.darkPaper.help": "Auch die Schreibfläche wird dunkel. Standardmäßig bleibt sie hell wie ein Ausdruck.",
   "prefs.darkPaper.helpLight": "Greift nur im dunklen Theme - dann wird auch die Schreibfläche dunkel.",
@@ -219,7 +218,6 @@ export const dialogsDe = {
   "prefs.shortcuts.ideasDelete": "Idee löschen",
   "prefs.shortcuts.ideasFilter": "Ideen filtern",
   "prefs.shortcuts.listsSelectAll": "Alle auswählen (Skripte und Ideen)",
-  "prefs.about.title": "Über ScriptZ",
 
   // ---------- onboarding ----------
   "onb.aria": "Willkommen bei ScriptZ",
@@ -385,7 +383,6 @@ export const dialogsEn: Record<keyof typeof dialogsDe, string> = {
   "exportDialog.preview.blocks_other": "{count} blocks",
 
   // ---------- settings ----------
-  "prefs.appearance.sub": "How ScriptZ looks and which language it speaks.",
   "prefs.darkPaper.label": "Dark paper",
   "prefs.darkPaper.help": "The writing surface turns dark too. By default it stays light, like a printout.",
   "prefs.darkPaper.helpLight": "Only applies in the dark theme - then the writing surface turns dark too.",
@@ -490,7 +487,6 @@ export const dialogsEn: Record<keyof typeof dialogsDe, string> = {
   "prefs.shortcuts.ideasDelete": "Delete the idea",
   "prefs.shortcuts.ideasFilter": "Filter ideas",
   "prefs.shortcuts.listsSelectAll": "Select all (scripts and ideas)",
-  "prefs.about.title": "About ScriptZ",
 
   // ---------- onboarding ----------
   "onb.aria": "Welcome to ScriptZ",

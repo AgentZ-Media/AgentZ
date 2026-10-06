@@ -1,5 +1,3 @@
-// Mirror of src-tauri/src/models.rs
-
 export interface ScriptCharacter {
   name: string;
   color: string;
@@ -31,7 +29,7 @@ export interface ScriptSummary {
   archived_at: number | null;
   page_count: number;
   /** Last calculated word count. -1 = sentinel "never counted"
-   *  (newly created or migrated before the word-count backfill).
+   *  (set by migration 004, normalized by the next save).
    *  Consumers should treat negative values as 0. */
   word_count: number;
   /** Dialog words at the last save - input for the runtime formula
@@ -120,7 +118,7 @@ export interface DailyWordEntry {
   words_added: number;
 }
 
-/** Aggregated writing statistics for the home strip + activity modal. */
+/** Aggregated writing statistics for the writing counter + activity modal. */
 export interface DailyStatsSummary {
   /** Words added today (local midnight until now). */
   wordsToday: number;

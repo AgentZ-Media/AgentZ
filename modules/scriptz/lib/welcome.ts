@@ -52,7 +52,7 @@ async function seed(kv: KvStore, storage: ScriptzStorage, signal?: AbortSignal):
     if (signal?.aborted) return;
     // Remember the welcome script id so the onboarding CTA can open
     // it directly. If the user deletes the script later, the id stays
-    // but `openWelcomeOrNull` rechecks existence before returning it.
+    // but `getWelcomeScript` rechecks existence before returning it.
     await kv.setAppState(WELCOME_ID_KEY, created.id);
     if (signal?.aborted) return;
     scriptsBus.bump();

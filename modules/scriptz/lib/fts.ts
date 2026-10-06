@@ -12,42 +12,37 @@ import { getDb } from "./db";
  *  Word segmentation follows UAX #29 via `Intl.Segmenter` with
  *  `granularity: "word"` and the `isWordLike` filter.
  *
- *  CJK twist: V8/JSC's segmenter does dictionary-based grouping of Han
- *  ideographs ("中文" → one token), but UAX #29 (and the SQLite
- *  `unicode61` tokenizer the FTS index uses) splits them per character.
- *  We pre-isolate each Han char with whitespace so the segmenter
- *  produces the same per-char tokens Rust does - otherwise CJK queries
- *  would never match any indexed row. */
+ *  The `unicode61` tokenizer of the index only splits at separators, so
+ *  a run without separators ("我喜欢中文", "abc中文") is ONE indexed
+ *  token. The segmenter splits such runs by dictionary, so adjacent
+ *  word-like segments are joined again - otherwise CJK queries would
+ *  never match. */
 export function sanitizeFtsQuery(input: string): string {
   const s = input.trim().toLowerCase();
   if (s.length === 0) return "";
 
-  // Force Han ideographs to be their own segments. Hangul / Hiragana /
-  // Katakana could theoretically diverge too, but the app targets
-  // German users and isn't tested against those scripts; documenting
-  // the gap here in case it ever surfaces.
-  const prepared = s.replace(/(\p{Script=Han})/gu, " $1 ");
-
   const seg = new Intl.Segmenter(undefined, { granularity: "word" });
-  const words: string[] = [];
-  for (const piece of seg.segment(prepared)) {
-    if (!piece.isWordLike) continue;
-    if (piece.segment.length === 0) continue;
-    const escaped = piece.segment.replaceAll('"', '""');
-    words.push(`"${escaped}"`);
+  const tokens: string[] = [];
+  let tokenEnd = -1;
+  for (const piece of seg.segment(s)) {
+    if (!piece.isWordLike || piece.segment.length === 0) continue;
+    if (piece.index === tokenEnd) tokens[tokens.length - 1] += piece.segment;
+    else tokens.push(piece.segment);
+    tokenEnd = piece.index + piece.segment.length;
   }
-  if (words.length === 0) return "";
+  if (tokens.length === 0) return "";
 
-  const lastIdx = words.length - 1;
-  const out: string[] = [];
-  for (let i = 0; i < words.length; i++) {
-    out.push(i === lastIdx ? `${words[i]}*` : words[i]);
-  }
-  return out.join(" ");
+  const lastIdx = tokens.length - 1;
+  return tokens
+    .map((token, i) => {
+      const quoted = `"${token.replaceAll('"', '""')}"`;
+      return i === lastIdx ? `${quoted}*` : quoted;
+    })
+    .join(" ");
 }
 
 /** Replace the FTS row for one script with the given title + content text.
- *  Mirrors Rust's `upsert_script_fts` - DELETE then INSERT, no UPSERT
+ *  DELETE then INSERT, no UPSERT
  *  because FTS5 contentless tables don't support ON CONFLICT. */
 export async function upsertScriptFts(
   scriptId: string,
@@ -68,9 +63,8 @@ export async function deleteScriptFts(scriptId: string): Promise<void> {
 }
 
 /** Convenience: read the script's title and content_json from the DB,
- *  derive plain text via the shared lex walker, and upsert. Same shape
- *  as Rust's `commands::scripts::refresh_fts_for_script`. Silently noops
- *  if the script no longer exists. */
+ *  derive plain text via the shared lex walker, and upsert. Silently
+ *  noops if the script no longer exists. */
 export async function refreshFtsForScript(scriptId: string): Promise<void> {
   const db = await getDb();
   const rows = await db.select<{ title: string; content_json: string }[]>(

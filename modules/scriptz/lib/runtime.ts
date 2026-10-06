@@ -4,13 +4,12 @@
 // dividing the TOTAL word count (incl. character names, parentheticals)
 // would systematically overestimate the runtime. This file defines the
 // formula once, scripts.ts persists the two input values on save, and
-// every display calls `runtimeSeconds` / `formatRuntime`.
+// every display calls `runtimeSeconds`.
 //
 // WPM stays a live setting - it is NOT persisted, so a setting change takes
 // effect everywhere immediately without re-saving every script.
 
-import { extractBlocks, type ExtractedBlock } from "./lex";
-import { t } from "../i18n";
+import { extractBlocks, wordCount, type ExtractedBlock } from "./lex";
 
 /** Input values of the runtime formula. Stored on save in the
  *  `dialog_word_count` and `direction_block_count` columns. */
@@ -43,14 +42,6 @@ function isDirectionBlock(b: ExtractedBlock): boolean {
   return b.kind === "scriptz-action";
 }
 
-/** Whitespace-separated word count. Shared with lib/timing.ts so the
- *  timeline and the total use the exact same tokenization. */
-export function wordCount(text: string): number {
-  const t = text.trim();
-  if (!t) return 0;
-  return t.split(/\s+/).filter(Boolean).length;
-}
-
 export function runtimeStatsFromBlocks(blocks: ExtractedBlock[]): RuntimeStats {
   let dialogWords = 0;
   let directionBlocks = 0;
@@ -74,23 +65,4 @@ export function runtimeSeconds(stats: RuntimeStats, wpm: number): number {
   const safeWpm = Math.max(1, wpm);
   const sec = (dialog / safeWpm) * 60 + dir * SECONDS_PER_DIRECTION_BLOCK;
   return Math.max(MIN_RUNTIME_SEC, Math.round(sec));
-}
-
-/** "5 s" / "1:23 Min" / "3 Min" - identical format to the rail
- *  since v0.6. */
-export function formatRuntime(sec: number): string {
-  if (sec < 60) return t("runtime.seconds", { n: sec });
-  const m = Math.floor(sec / 60);
-  const r = sec % 60;
-  return r === 0
-    ? t("runtime.minutes", { m })
-    : t("runtime.minutesSeconds", { m, s: String(r).padStart(2, "0") });
-}
-
-/** Ready-rendered label from persisted stats. `null` on sentinel
- *  or truly empty script - the caller then omits the field. */
-export function runtimeLabelFromStats(stats: RuntimeStats, wpm: number): string | null {
-  if (stats.dialogWords < 0 || stats.directionBlocks < 0) return null;
-  if (stats.dialogWords === 0 && stats.directionBlocks === 0) return null;
-  return formatRuntime(runtimeSeconds(stats, wpm));
 }

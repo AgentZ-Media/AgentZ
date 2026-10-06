@@ -1,4 +1,4 @@
-// Adaptive writing counter (replaces weekly goal + streak).
+// Adaptive writing counter.
 //
 // Shows the smallest time window that actually contains written words:
 // this week -> this month -> this year -> total. A quiet week therefore
