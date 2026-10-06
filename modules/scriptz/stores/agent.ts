@@ -2,16 +2,18 @@ import { createEffect, createRoot, createSignal, on, type Accessor } from "solid
 import { createStore, produce, reconcile, type SetStoreFunction } from "solid-js/store";
 import { language } from "@agentz/kit/i18n";
 import { registerFlusher } from "@agentz/kit/lib";
-import { t } from "../i18n";
+import { pushToast } from "@agentz/kit/stores";
+import { t, tPlural } from "../i18n";
 import { api } from "../lib/api";
 import { scriptStages } from "../lib/stages";
 import type { Folder } from "../lib/types";
 import { CodexProvider, effortOrDefault, type CodexHostLike } from "../lib/agent/codex/provider";
 import { learnStageIds } from "../lib/agent/learnStage";
-import { draftStates, getChat, latestChat, learnedHash, listSessions, markLearned, saveChat, deleteChat, type ChatItem, type ChatKind, type ChatRecord, type SavedIdeaRef, type SessionSummary } from "../lib/agent/chats";
+import { learnChange, worthRelearning } from "../lib/agent/learnChange";
+import { draftStates, getChat, latestChat, learnedState, listSessions, markLearned, saveChat, deleteChat, type ChatItem, type ChatKind, type ChatRecord, type SavedIdeaRef, type SessionSummary } from "../lib/agent/chats";
 import { listMemory, selectRelevantMemory, deleteMemory, restoreMemory, updateMemory } from "../lib/agent/memory";
 import { buildInstructions, contextBlock, LEARN_RULES, memoryBlock, personaBlock, type InstructionMode } from "../lib/agent/prompt";
-import { blocksFromContent, charactersIn, hashBlocks } from "../lib/agent/scriptText";
+import { blocksFromContent, charactersIn, hashBlocks, learnText } from "../lib/agent/scriptText";
 import { createChatTools, createMemoryTools, stageNames, type MemoryChange, type ToolHost } from "../lib/agent/tools";
 import type { AgentEvent, AgentModel, AgentProvider, AgentThread, AgentTool, ProviderState } from "../lib/agent/types";
 import { createSessionTools, existingFolder, ideaNotes, type IdeaBoardRef, type SessionToolHost } from "../lib/agent/sessionTools";
@@ -19,6 +21,7 @@ import { describeTarget, writingTarget, type Pace } from "../lib/agent/writingCo
 import { settingsStore } from "./settings";
 import { agentSettings } from "./agentSettings";
 import { agentUi } from "./agentUi";
+import { navStore } from "./nav";
 import { scriptsBus } from "../lib/scriptsBus";
 import { foldersBus } from "../lib/foldersBus";
 import { applyBlocks, liveBlocks, readSelection, revealBlock, targetIndex } from "../components/Agent/editorBridge";
@@ -34,7 +37,17 @@ export type AgentStatus = ProviderState | { state: "checking" } | { state: "unav
 const [status, setStatus] = createSignal<AgentStatus>({ state: "checking" });
 const [models, setModels] = createSignal<AgentModel[]>([]);
 const [modelsLoading, setModelsLoading] = createSignal(false);
-const [learning, setLearning] = createSignal<{ title: string } | null>(null);
+/** The script the agent is learning from right now. */
+const [learning, setLearning] = createSignal<LearnRef | null>(null);
+/** Scripts due for learning once their editing has settled. */
+const [waiting, setWaiting] = createSignal<LearnRef[]>([]);
+/** Bumps after a script was marked as learned (inspector reloads). */
+const [learnedVersion, setLearnedVersion] = createSignal(0);
+
+export interface LearnRef {
+  id: string;
+  title: string;
+}
 
 function isCodexHost(value: unknown): value is CodexHostLike {
   const v = value as Partial<CodexHostLike> | null;
@@ -853,6 +866,8 @@ function finishStreaming(setState: SetStoreFunction<{ items: ChatItem[] }>): voi
 
 let learnTimer: ReturnType<typeof setTimeout> | null = null;
 let learnRunning = false;
+/** A run was requested while one was going; it runs again afterwards. */
+let learnAgain = false;
 let learnGeneration = 0;
 const learnFailures = new Map<string, number>();
 let activeLearnThread: AgentThread | null = null;
@@ -862,6 +877,11 @@ interface LearnTarget {
   title: string;
   folderId: string | null;
   hash: string;
+  /** `learnText` of the blocks, stored with the hash once learned. */
+  text: string;
+  /** Set when an earlier version was learned already: what is new since
+   *  (both lists empty for markers from before the text was stored). */
+  revision: { lines: string[]; newCharacters: string[] } | null;
 }
 
 export interface BootstrapState {
@@ -891,25 +911,46 @@ function scheduleLearning(delayMs = 6000): void {
   learnTimer = setTimeout(() => { learnTimer = null; void runLearning(); }, delayMs);
 }
 
+/** The script as a learning target, or null when there is nothing to learn:
+ *  too short, unchanged since the last learning turn, or only changed a
+ *  little (typos, small rewordings - see lib/agent/learnChange.ts). */
 async function learnTargetFor(id: string): Promise<LearnTarget | null> {
   const script = await api.getScript(id).catch(() => null);
   if (!script) return null;
   const blocks = blocksFromContent(script.content_json);
   if (blocks.length < 3) return null;
   const hash = hashBlocks(blocks);
-  if ((await learnedHash(script.id)) === hash) return null;
-  return { id: script.id, title: script.title, folderId: script.folder_id, hash };
+  const text = learnText(blocks);
+  const learned = await learnedState(script.id);
+  if (learned?.hash === hash) return null;
+  let revision: LearnTarget["revision"] = null;
+  if (learned) {
+    if (learned.text === null) {
+      revision = { lines: [], newCharacters: [] };
+    } else {
+      const change = learnChange(learned.text, text);
+      if (!worthRelearning(change)) return null;
+      revision = { lines: change.changedLines, newCharacters: change.newCharacters };
+    }
+  }
+  return { id: script.id, title: script.title, folderId: script.folder_id, hash, text, revision };
 }
 
 async function runLearning(): Promise<void> {
-  if (learnRunning || bootstrap().running) return;
-  if (!agentSettings.enabled() || !agentSettings.onboarded() || !agentSettings.learnFromScripts()) return;
-  if (status().state !== "ready") return;
+  if (learnRunning) {
+    learnAgain = true;
+    return;
+  }
   // Only scripts finished after the agent was set up; older ones are
   // learned only through the explicit retroactive action.
   const since = agentSettings.learnSince();
-  if (since <= 0) return;
+  if (bootstrap().running || !agentSettings.enabled() || !agentSettings.onboarded() || !agentSettings.learnFromScripts()
+    || status().state !== "ready" || since <= 0) {
+    setWaiting([]);
+    return;
+  }
   learnRunning = true;
+  learnAgain = false;
   const generation = learnGeneration;
   try {
     const now = Date.now();
@@ -918,8 +959,16 @@ async function runLearning(): Promise<void> {
       .filter((s) => Math.max(s.status_changed_at ?? 0, s.updated_at) > since)
       .sort((a, b) => b.updated_at - a.updated_at);
     // A finished script that is still being edited is learned once it has
-    // been quiet for a while, not after every keystroke.
-    const settling = finished.filter((s) => s.updated_at > now - SETTLE_MS);
+    // been quiet for a while, not after every keystroke. Until then it is
+    // shown as waiting.
+    const settling: LearnRef[] = [];
+    for (const summary of finished) {
+      if (summary.updated_at <= now - SETTLE_MS || (learnFailures.get(summary.id) ?? 0) >= 2) continue;
+      const target = await learnTargetFor(summary.id);
+      if (target) settling.push({ id: target.id, title: target.title });
+    }
+    if (generation !== learnGeneration) return;
+    setWaiting(settling);
     if (settling.length) scheduleLearning(SETTLE_MS + 5000);
     for (const summary of finished) {
       if (summary.updated_at > now - SETTLE_MS) continue;
@@ -927,11 +976,13 @@ async function runLearning(): Promise<void> {
       if ((learnFailures.get(summary.id) ?? 0) >= 2) continue;
       const target = await learnTargetFor(summary.id);
       if (!target) continue;
-      setLearning({ title: target.title });
+      setLearning({ id: target.id, title: target.title });
       try {
         const changes = await learnBatch([target], "finished");
-        await markLearned(target.id, target.hash);
+        await markLearned(target.id, target.hash, target.text);
+        setLearnedVersion((v) => v + 1);
         if (changes.length) await appendLearnedToChat(target.id, changes);
+        if (generation === learnGeneration) announceLearned(target, changes);
       } catch (error) {
         if (error instanceof LearnInterrupted) break;
         learnFailures.set(target.id, (learnFailures.get(target.id) ?? 0) + 1);
@@ -943,7 +994,29 @@ async function runLearning(): Promise<void> {
   } finally {
     setLearning(null);
     learnRunning = false;
+    if (learnAgain && generation === learnGeneration) scheduleLearning(1000);
+    learnAgain = false;
   }
+}
+
+/** A short note after a learning turn: what changed in memory, with a way
+ *  to the script's chat where each entry can be undone. */
+function announceLearned(target: LearnTarget, changes: MemoryChange[]): void {
+  const name = agentSettings.displayName();
+  const title = target.title || t("common.untitled");
+  if (changes.length === 0) {
+    pushToast(t("agent.learned.nothing", { name, title }), "info", 4000);
+    return;
+  }
+  pushToast(tPlural("agent.learned.toast", changes.length, { name, title }), "ok", undefined, {
+    action: {
+      label: t("agent.learned.show"),
+      run: async () => {
+        await navStore.openScript(target.id, target.title);
+        agentUi.setChatOpen(target.id, true);
+      },
+    },
+  });
 }
 
 /** A learning turn that did not finish (cancelled, agent switched off,
@@ -983,10 +1056,17 @@ async function learnBatch(targets: LearnTarget[], kind: "finished" | "existing",
       const folder = target.folderId ? folders.get(target.folderId)?.name ?? null : null;
       return `- "${target.title}" (id ${target.id})${folder ? ` in folder "${folder}"` : " (no folder)"}`;
     });
-    const intro = kind === "finished"
-      ? "This script was just finished:"
-      : "These are existing scripts the user wrote before you were set up. Look at them once to get to know the characters, folders and style:";
-    const result = await thread.run(`${intro}\n${lines.join("\n")}`, {
+    const revision = kind === "finished" ? targets[0].revision : null;
+    const intro = kind === "existing"
+      ? "These are existing scripts the user wrote before you were set up. Look at them once to get to know the characters, folders and style:"
+      : revision
+        ? "This script was revised since you last learned from it. Your memory already holds what you learned from the earlier version; only store what is genuinely new:"
+        : "This script was just finished:";
+    const details: string[] = [];
+    if (revision?.newCharacters.length) details.push(`New characters: ${revision.newCharacters.join(", ")}`);
+    if (revision?.lines.length) details.push(`New or rewritten lines (excerpt):\n${revision.lines.join("\n")}`);
+    const message = [`${intro}\n${lines.join("\n")}`, ...details].join("\n\n");
+    const result = await thread.run(message, {
       model: model?.id ?? "",
       effort: effortOrDefault(model, agentSettings.learnEffort()),
     }, () => {});
@@ -1029,7 +1109,8 @@ async function startBootstrap(): Promise<void> {
       setBootstrap((s) => ({ ...s, current: batch.map((b) => b.title) }));
       try {
         await learnBatch(batch, "existing", (change) => setBootstrap((s) => ({ ...s, recent: [change, ...s.recent].slice(0, 6) })));
-        for (const target of batch) await markLearned(target.id, target.hash);
+        for (const target of batch) await markLearned(target.id, target.hash, target.text);
+        setLearnedVersion((v) => v + 1);
       } catch (error) {
         // Outer handler resets the progress state (timeout, agent off).
         if (error instanceof LearnInterrupted) throw error;
@@ -1128,6 +1209,8 @@ export const agentStore = {
   models,
   modelsLoading,
   learning,
+  waiting,
+  learnedVersion,
   available: () => codexHost !== null,
   refreshStatus,
   refreshModels,
@@ -1206,6 +1289,7 @@ function shutdownProvider(): void {
   if (learnTimer) clearTimeout(learnTimer);
   learnTimer = null;
   setLearning(null);
+  setWaiting([]);
   for (const session of liveChats()) session.release();
   const p = provider;
   provider = null;
@@ -1257,6 +1341,8 @@ export function startAgentRuntime(services: Readonly<Record<string, unknown>>): 
     setBootstrap(IDLE_BOOTSTRAP);
     if (learnTimer) clearTimeout(learnTimer);
     learnTimer = null;
+    setLearning(null);
+    setWaiting([]);
     // Keep the chats: teardown is not "New chat". Disposing the provider below
     // ends running turns; pending writes still go out.
     for (const session of liveChats()) {

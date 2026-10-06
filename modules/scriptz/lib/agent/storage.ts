@@ -1,4 +1,4 @@
-import type { ChatRecord } from "./chats";
+import type { ChatRecord, LearnedState } from "./chats";
 import type { MemoryEntry, MemoryScope } from "./memory";
 
 /** Typed persistence boundary for user-created agent data. The public memory
@@ -16,8 +16,8 @@ export interface AgentStorage {
   /** Sessions (kind 'session') with at least one item, newest first. A
    *  non-empty `query` matches the title or the stored conversation. */
   listSessions(options: { limit: number; offset: number; query: string }): Promise<ChatRecord[]>;
-  learnedHash(scriptId: string): Promise<string | null>;
-  markLearned(scriptId: string, hash: string): Promise<void>;
+  learnedState(scriptId: string): Promise<LearnedState | null>;
+  markLearned(scriptId: string, hash: string, text: string): Promise<void>;
   listMemory(): Promise<MemoryEntry[]>;
   getMemoryEntry(id: string): Promise<MemoryEntry | null>;
   countMemoryScope(scope: MemoryScope): Promise<number>;

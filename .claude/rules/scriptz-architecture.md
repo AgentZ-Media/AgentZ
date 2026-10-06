@@ -65,7 +65,7 @@ die Befehlspalette, deshalb setzt das Modul `revealsSidebar: true`.
 
 ## Migrationen
 
-`001_baseline` bis `011_track_agent_sessions` in
+`001_baseline` bis `012_agent_learned_text` in
 `apps/scriptz/src-tauri/migrations/` sind veröffentlicht und unveränderlich. `007` ergänzt `scripts.status`,
 `status_changed_at` und den Ordner-Zielbereich. `008_agent` legt
 `agent_memory`, `agent_chats` und `agent_learned` an. `009_local_changes`
@@ -77,10 +77,11 @@ Vertrag und Grenzen: [`local-storage.md`](../../docs/local-storage.md).
 gespeichert), rein additiv, plus den Trigger `agent_sessions_outlive_script`:
 endgültiges Löschen eines Skripts löst Sitzungen atomar davon, statt sie per
 Kaskade mitzulöschen. `011_track_agent_sessions` nimmt diese Spalten in die
-Update-Trigger des Änderungsfeeds auf. Jede neue Spalte einer Inhaltstabelle
-braucht dasselbe: Trigger neu anlegen und `CONTENT_ENTITIES` ergänzen (Tests
-in `lib/__tests__/localChanges.test.ts` schlagen sonst fehl). Die
-Umwandlung von Kamera/Caption/SFX in Action ist bewusst keine SQL-Migration
+Update-Trigger des Änderungsfeeds auf. `012_agent_learned_text` ergänzt
+`agent_learned.learned_text` (zuletzt gelernter Text) samt Update-Trigger.
+Jede neue Spalte einer Inhaltstabelle braucht dasselbe: Trigger neu anlegen
+und `CONTENT_ENTITIES` ergänzen (Tests in `lib/__tests__/localChanges.test.ts`
+schlagen sonst fehl). Die Umwandlung von Kamera/Caption/SFX in Action ist bewusst keine SQL-Migration
 (siehe unten).
 
 ## Stufen und Zielbereich
@@ -187,9 +188,15 @@ Persönlicher Schreib-Agent mit eigenem Namen, Look und Persona.
   Einträge sind gedeckelt (`MEMORY_LIMITS`). Pro Thread wird ein Schnappschuss
   in die Instruktionen eingefroren. Lernen ist immer optional: aus dem Chat
   (abschaltbar), aus abgeschlossenen Skripten nach `agent.learn_since` und
-  90 s Ruhe, rückwirkend nur per Button. Als abgeschlossen gilt ein Skript ab
-  der Lern-Stufe `agent.learn_stage` (leer = letzte Stufe, spätere Stufen
-  zählen mit, `lib/agent/learnStage.ts`). Eine gewählte Stufe liegt immer
+  90 s Ruhe, rückwirkend nur per Button. Ein schon gelerntes Skript lernt er
+  erst nach einer nennenswerten Änderung erneut (`lib/agent/learnChange.ts`:
+  ein Zehntel der Wörter, mindestens 6, höchstens 25, oder eine neue Figur);
+  der Lern-Turn bekommt dann die neuen Zeilen als Ausschnitt. Sichtbar ist
+  das Lernen in Sidebar und Chat-Kopf („lernt gleich aus …“ während der
+  Ruhezeit, „lernt aus …“ währenddessen), danach als Toast mit dem Weg in den
+  Chat des Skripts und als Abschnitt „Lernstand“ im Inspector. Als
+  abgeschlossen gilt ein Skript ab der Lern-Stufe `agent.learn_stage` (leer =
+  letzte Stufe, spätere Stufen zählen mit, `lib/agent/learnStage.ts`). Eine gewählte Stufe liegt immer
   zwischen erster und letzter: Wird sie gelöscht, rückt sie auf die nächste
   vor; landet sie vorn oder hinten, gilt wieder der Standard. Unbekannte IDs
   fallen beim Lesen auf die letzte Stufe zurück. Gedächtnis ist nicht Teil des
@@ -197,8 +204,8 @@ Persönlicher Schreib-Agent mit eigenem Namen, Look und Persona.
 - **Storage-Grenze:** `agent/chats.ts` und `agent/memory.ts` delegieren an
   `ScriptzStorage.agent`; SQL liegt in `agent/sqlStorage.ts`.
 - **Chats** pro Skript in `agent_chats` (`items_json`), Lernstand in
-  `agent_learned` (Inhalts-Hash). Rohes JSON wird nie angezeigt; Tool-Aufrufe
-  laufen über `components/Agent/labels.ts`.
+  `agent_learned` (Inhalts-Hash und gelernter Text). Rohes JSON wird nie
+  angezeigt; Tool-Aufrufe laufen über `components/Agent/labels.ts`.
 - **Settings** unter `agent.*` (siehe `stores/agentSettings.ts`), Effort
   überall standardmäßig `medium`. `agent.enabled = false` startet keinen
   Prozess.

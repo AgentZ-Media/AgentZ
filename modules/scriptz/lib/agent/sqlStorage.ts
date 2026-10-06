@@ -1,6 +1,6 @@
 // Local SQL implementation of agent persistence. No I/O runs on import.
 import { getDb } from "../db";
-import { parseItems, type ChatRecord } from "./chats";
+import { parseItems, type ChatRecord, type LearnedState } from "./chats";
 import type { MemoryEntry, MemoryKind, MemorySource, MemoryScope } from "./memory";
 import type { AgentStorage } from "./storage";
 
@@ -87,20 +87,26 @@ async function listSessions({ limit, offset, query }: { limit: number; offset: n
   return rows.map(rowToChat);
 }
 
-/** Reads the content fingerprint last learned for this script, or null when absent. */
-async function learnedHash(scriptId: string): Promise<string | null> {
+/** Reads what was last learned from this script, or null when absent. The
+ *  text is null for rows learned before migration 012. */
+async function learnedState(scriptId: string): Promise<LearnedState | null> {
   const db = await getDb();
-  const rows = await db.select<{ content_hash: string }[]>("SELECT content_hash FROM agent_learned WHERE script_id = $1", [scriptId]);
-  return rows[0]?.content_hash ?? null;
+  const rows = await db.select<{ content_hash: string; learned_text: string | null; learned_at: number }[]>(
+    "SELECT content_hash, learned_text, learned_at FROM agent_learned WHERE script_id = $1",
+    [scriptId],
+  );
+  const row = rows[0];
+  return row ? { hash: row.content_hash, text: row.learned_text, learnedAt: row.learned_at } : null;
 }
 
-/** Upserts the learned fingerprint and records the current local completion time. */
-async function markLearned(scriptId: string, hash: string): Promise<void> {
+/** Upserts the learned fingerprint and text and records the current local completion time. */
+async function markLearned(scriptId: string, hash: string, text: string): Promise<void> {
   const db = await getDb();
   await db.execute(
-    `INSERT INTO agent_learned (script_id, content_hash, learned_at) VALUES ($1, $2, $3)
-     ON CONFLICT(script_id) DO UPDATE SET content_hash = excluded.content_hash, learned_at = excluded.learned_at`,
-    [scriptId, hash, Date.now()],
+    `INSERT INTO agent_learned (script_id, content_hash, learned_at, learned_text) VALUES ($1, $2, $3, $4)
+     ON CONFLICT(script_id) DO UPDATE SET content_hash = excluded.content_hash, learned_at = excluded.learned_at,
+       learned_text = excluded.learned_text`,
+    [scriptId, hash, Date.now(), text],
   );
 }
 
@@ -205,7 +211,7 @@ async function clearMemory(): Promise<void> {
 }
 
 export const sqlAgentStorage: AgentStorage = {
-  latestChat, getChat, saveChat, deleteChat, listSessions, learnedHash, markLearned,
+  latestChat, getChat, saveChat, deleteChat, listSessions, learnedState, markLearned,
   listMemory, getMemoryEntry, countMemoryScope, insertMemory,
   updateMemory, deleteMemory, restoreMemory, clearMemory,
 };

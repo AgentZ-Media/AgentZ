@@ -76,6 +76,8 @@ function PanelHead(props: { running: boolean; onClose(): void; session?: ChatSes
     if (props.running) return t("agent.status.working");
     if (learning) return t("agent.status.learning", { title: learning.title });
     if (!agentSettings.enabled()) return t("agent.status.off");
+    const waiting = agentStore.waiting()[0];
+    if (waiting && agentStore.status().state === "ready") return t("agent.status.learnSoon", { title: waiting.title });
     const state = agentStore.status().state;
     if (state === "checking") return t("agent.status.checking");
     if (state !== "ready") return t("agent.status.offline");

@@ -10,7 +10,7 @@ Architektur und Datenfluss: [`scriptz-architecture.md`](../../.claude/rules/scri
 ## Daten schützen
 
 Identifier `de.agent-z.scriptz`, `scriptz.db`, die Migrationen `001` bis
-`011` sowie alle Settings- und `app_state`-Schlüssel sind fix. Neue
+`012` sowie alle Settings- und `app_state`-Schlüssel sind fix. Neue
 Schemaänderungen nur als neue Migration in `src-tauri/migrations/`, registriert
 in `src-tauri/src/lib.rs`, und im `.scriptz`-Import/Export mitdenken. Neue
 Spalten einer Inhaltstabelle brauchen außerdem neu angelegte Update-Trigger

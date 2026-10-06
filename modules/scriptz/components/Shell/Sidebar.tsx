@@ -334,6 +334,8 @@ function SidebarAgent() {
     if (working()) return t("agent.status.working");
     const learning = agentStore.learning();
     if (learning) return t("agent.status.learning", { title: learning.title });
+    const waiting = agentStore.waiting()[0];
+    if (waiting) return t("agent.status.learnSoon", { title: waiting.title });
     const state = agentStore.status().state;
     if (state === "ready") return t("agentMode.side.ready");
     if (state === "checking") return t("agent.status.checking");
@@ -348,7 +350,7 @@ function SidebarAgent() {
       <button
         type="button"
         class="side-agent"
-        classList={{ "is-learning": busy() || working(), "is-on": on() }}
+        classList={{ "is-learning": busy() || working() || agentStore.waiting().length > 0, "is-on": on() }}
         aria-current={on() ? "page" : undefined}
         title={agentSettings.onboarded() ? t("agentMode.side.title", { name: agentSettings.displayName(), hotkey: hotkey() }) : t("agent.state.setup.action")}
         onClick={() => {

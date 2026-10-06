@@ -57,7 +57,8 @@ ihr Inhalt, ihre IDs und Zeitstempel werden dabei nicht umgeschrieben.
 Die Update-Trigger nennen ihre Spalten einzeln, damit Speichern mit
 identischen Werten keinen Marker erzeugt. `010_agent_sessions.sql` ergänzt
 Spalten an `agent_chats` und `ideas`; `011_track_agent_sessions.sql` legt die
-beiden Update-Trigger mit diesen Spalten neu an. **Jede künftige Spalte einer
+beiden Update-Trigger mit diesen Spalten neu an, `012_agent_learned_text.sql`
+ebenso für `agent_learned.learned_text`. **Jede künftige Spalte einer
 Inhaltstabelle braucht dasselbe:** Trigger in einer neuen Migration neu anlegen
 und `CONTENT_ENTITIES` (`lib/localChanges/entities.ts`) ergänzen. Die Tests
 gleichen Tabellen, Spalten und Trigger mit dem vollständigen Schema ab und

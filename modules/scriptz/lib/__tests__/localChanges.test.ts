@@ -16,6 +16,7 @@ const migrations = new URL("../../../../apps/scriptz/src-tauri/migrations/", imp
 const migration009 = readFileSync(new URL("009_local_changes.sql", migrations), "utf8");
 const migration010 = readFileSync(new URL("010_agent_sessions.sql", migrations), "utf8");
 const migration011 = readFileSync(new URL("011_track_agent_sessions.sql", migrations), "utf8");
+const migration012 = readFileSync(new URL("012_agent_learned_text.sql", migrations), "utf8");
 let db: SQLiteDatabase;
 let tempDir: string;
 let dbPath: string;
@@ -33,6 +34,7 @@ function migrateTracking() {
   db.exec(migration009);
   db.exec(migration010);
   db.exec(migration011);
+  db.exec(migration012);
 }
 
 /** Seeds each tracked content type plus settings and UI state excluded from the feed. */
@@ -47,7 +49,7 @@ function seedContent() {
     INSERT INTO agent_chats (id, script_id, provider, thread_id, items_json, created_at, updated_at)
       VALUES ('chat', 'script', 'codex', 'local-thread', '[{"kind":"user","id":"message","text":"Hello"}]', 1, 2);
     INSERT INTO agent_memory VALUES ('memory', 'character', 'folder', 'TIMO', 'Profile', 'user', 'script', 1, 2);
-    INSERT INTO agent_learned VALUES ('script', 'hash', 4);
+    INSERT INTO agent_learned (script_id, content_hash, learned_at) VALUES ('script', 'hash', 4);
     INSERT INTO daily_word_log VALUES ('2026-10-05', 42);
     INSERT INTO settings VALUES ('language', 'de');
     INSERT INTO app_state VALUES ('nav.state', '{"route":"scripts"}');
@@ -88,6 +90,9 @@ describe("local content change feed", () => {
     expect(contentSnapshot()).toEqual(before);
     db.exec(migration010);
     db.exec(migration011);
+    db.exec(migration012);
+    // 012 only adds a column: the learned marker keeps its values.
+    expect(db.prepare("SELECT * FROM agent_learned").all()).toEqual([{ script_id: "script", content_hash: "hash", learned_at: 4, learned_text: null }]);
     expect(db.prepare("SELECT * FROM settings").all()).toEqual([{ key: "language", value: "de" }]);
     expect(db.prepare("SELECT * FROM app_state").all()).toEqual([{ key: "nav.state", value: '{"route":"scripts"}' }]);
     const page = await sqlLocalChanges.readChanges();
@@ -138,6 +143,7 @@ describe("local content change feed", () => {
     db.exec("UPDATE agent_chats SET kind = 'session', title = 'Session', script_id = NULL");
     db.exec(migration009);
     db.exec(migration011);
+    db.exec(migration012);
     const triggers = () => db.prepare("SELECT name, sql FROM sqlite_master WHERE type = 'trigger' ORDER BY name").all();
     const devOrder = triggers();
     const seeded = await sqlLocalChanges.readChanges();

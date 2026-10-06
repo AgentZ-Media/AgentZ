@@ -176,12 +176,20 @@ export async function listSessions(limit = 40, offset = 0, query = ""): Promise<
   return chats.map(summarizeSession);
 }
 
-/** Returns the last learned content hash, or null when the script has not been learned. */
-export async function learnedHash(scriptId: string): Promise<string | null> {
-  return getStorageAdapter().agent.learnedHash(scriptId);
+/** What the agent last learned from a script. */
+export interface LearnedState {
+  hash: string;
+  /** Learned text (`learnText`), null for rows from before migration 012. */
+  text: string | null;
+  learnedAt: number;
 }
 
-/** Records the content hash only after the caller has completed a learning turn. */
-export async function markLearned(scriptId: string, hash: string): Promise<void> {
-  return getStorageAdapter().agent.markLearned(scriptId, hash);
+/** Returns what was last learned from a script, or null when it has not been learned. */
+export async function learnedState(scriptId: string): Promise<LearnedState | null> {
+  return getStorageAdapter().agent.learnedState(scriptId);
+}
+
+/** Records hash and text only after the caller has completed a learning turn. */
+export async function markLearned(scriptId: string, hash: string, text: string): Promise<void> {
+  return getStorageAdapter().agent.markLearned(scriptId, hash, text);
 }

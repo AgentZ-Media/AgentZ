@@ -13,6 +13,8 @@ const MIGRATION_009_LOCAL_CHANGES: &str = include_str!("../migrations/009_local_
 const MIGRATION_010_AGENT_SESSIONS: &str = include_str!("../migrations/010_agent_sessions.sql");
 const MIGRATION_011_TRACK_AGENT_SESSIONS: &str =
     include_str!("../migrations/011_track_agent_sessions.sql");
+const MIGRATION_012_AGENT_LEARNED_TEXT: &str =
+    include_str!("../migrations/012_agent_learned_text.sql");
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
@@ -81,6 +83,12 @@ pub fn run() {
             version: 11,
             description: "track agent session columns in local changes",
             sql: MIGRATION_011_TRACK_AGENT_SESSIONS,
+            kind: MigrationKind::Up,
+        },
+        Migration {
+            version: 12,
+            description: "agent: learned script text",
+            sql: MIGRATION_012_AGENT_LEARNED_TEXT,
             kind: MigrationKind::Up,
         },
     ];
