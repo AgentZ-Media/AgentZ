@@ -8,13 +8,14 @@ import { getCurrentLocale } from "@agentz/kit/i18n";
 import { t, tPlural } from "../../i18n";
 import "./WritingCounter.css";
 
+/** Dot rows per day column. */
+const LEVEL_ROWS = [0, 1, 2, 3, 4] as const;
+
 /** Adaptive writing counter for the sidebar footer: words in the smallest
  *  window that has any (this week -> month -> year -> last 12 months), a
  *  nudge for brand-new users, nothing at all when switched off in the
  *  settings. No goal, no streak. Click opens the activity dialog (a module
  *  overlay, also reachable from the command palette). */
-const LEVEL_ROWS = [0, 1, 2, 3, 4] as const;
-
 export function WritingCounter() {
   const pick = createMemo(() => pickWritingWindow(dailyStatsStore.stats()));
   const days = createMemo(() => recentDayLevels(dailyStatsStore.stats().dailyWords ?? [], 7, LEVEL_ROWS.length));
