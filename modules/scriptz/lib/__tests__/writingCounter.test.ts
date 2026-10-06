@@ -1,7 +1,7 @@
 // Tests for the adaptive writing counter (lib/writingCounter.ts).
 
 import { describe, expect, it } from "vitest";
-import { pickWritingWindow, recentDayLevels } from "../writingCounter";
+import { countPerDay, currentWeekDays, dayLevels, pickWritingWindow, recentDayLevels } from "../writingCounter";
 import type { DailyStatsSummary } from "../types";
 
 /** Builds a 365-day series ending at `now` with words on the given
@@ -103,5 +103,27 @@ describe("recentDayLevels", () => {
     expect(recentDayLevels([10], 4, 5)).toEqual([0, 0, 0, 5]);
     expect(recentDayLevels([], 3, 5)).toEqual([0, 0, 0]);
     expect(recentDayLevels([0, Number.NaN, -5], 3, 5)).toEqual([0, 0, 0]);
+  });
+});
+
+describe("week helpers", () => {
+  // Wednesday, 7 October 2026
+  const wed = new Date(2026, 9, 7, 15, 0);
+
+  it("lays the series onto Monday..Sunday and leaves the future empty", () => {
+    expect(currentWeekDays([9, 9, 1, 2, 3], wed)).toEqual([1, 2, 3, null, null, null, null]);
+    expect(currentWeekDays([4], wed)).toEqual([0, 0, 4, null, null, null, null]);
+    const sunday = new Date(2026, 9, 11, 9, 0);
+    expect(currentWeekDays([1, 2, 3, 4, 5, 6, 7, 8], sunday)).toEqual([2, 3, 4, 5, 6, 7, 8]);
+  });
+
+  it("counts timestamps per local day, today last", () => {
+    const at = (d: number, h: number) => new Date(2026, 9, d, h).getTime();
+    expect(countPerDay([at(7, 1), at(7, 23), at(5, 12), at(1, 12), Number.NaN], 3, wed)).toEqual([1, 0, 2]);
+  });
+
+  it("scales levels and keeps null days", () => {
+    expect(dayLevels([0, 2, 4, null], 4)).toEqual([0, 2, 4, null]);
+    expect(dayLevels([0, null], 5)).toEqual([0, null]);
   });
 });

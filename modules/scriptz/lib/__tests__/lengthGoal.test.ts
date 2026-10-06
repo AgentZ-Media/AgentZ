@@ -9,6 +9,7 @@ import {
   lengthStatus,
   parseClock,
   resolveLengthRange,
+  runtimeBar,
 } from "../lengthGoal";
 import type { Folder } from "../types";
 
@@ -143,5 +144,25 @@ describe("formatClock / formatRange / parseClock", () => {
     expect(parseClock("90")).toBe(90);
     expect(parseClock("1:75")).toBeUndefined();
     expect(parseClock("abc")).toBeUndefined();
+  });
+});
+
+describe("runtimeBar", () => {
+  it("places runtime and target on one scale", () => {
+    const bar = runtimeBar(42, { minSec: 45, maxSec: 60 })!;
+    expect(bar.from).toBeCloseTo(45 / 69);
+    expect(bar.to).toBeCloseTo(60 / 69);
+    expect(bar.fill).toBeCloseTo(42 / 69);
+  });
+
+  it("stretches the scale for overlong scripts and handles open ranges", () => {
+    expect(runtimeBar(120, { minSec: null, maxSec: 60 })!.fill).toBeCloseTo(1 / 1.15);
+    expect(runtimeBar(30, { minSec: 40, maxSec: null })).toEqual({ fill: 30 / 69, from: 40 / 69, to: 1 });
+  });
+
+  it("returns null without a usable range", () => {
+    expect(runtimeBar(30, null)).toBeNull();
+    expect(runtimeBar(30, { minSec: null, maxSec: null })).toBeNull();
+    expect(runtimeBar(0, { minSec: 0, maxSec: 0 })).toBeNull();
   });
 });

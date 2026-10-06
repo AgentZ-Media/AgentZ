@@ -68,3 +68,37 @@ export function recentDayLevels(series: readonly number[], days = 7, levels = 5)
   if (max === 0) return tail.map(() => 0);
   return tail.map((v) => (v === 0 ? 0 : Math.max(1, Math.round((v / max) * levels))));
 }
+
+/** Monday..Sunday of the current ISO week from a per-day series that ends
+ *  today (oldest first). Days still ahead are null. */
+export function currentWeekDays(series: readonly number[], now: Date = new Date()): (number | null)[] {
+  const elapsed = now.getDay() === 0 ? 7 : now.getDay();
+  const tail = series.slice(-elapsed).map((v) => (Number.isFinite(v) && v > 0 ? v : 0));
+  while (tail.length < elapsed) tail.unshift(0);
+  return [...tail, ...Array<null>(7 - elapsed).fill(null)];
+}
+
+/** How many timestamps (ms) fall on each of the last `days` local days,
+ *  oldest first, today last. */
+export function countPerDay(timestamps: readonly number[], days: number, now: Date = new Date()): number[] {
+  const counts = Array<number>(days).fill(0);
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  for (const ts of timestamps) {
+    if (!Number.isFinite(ts)) continue;
+    const d = new Date(ts);
+    const day = new Date(d.getFullYear(), d.getMonth(), d.getDate());
+    const ago = Math.round((today.getTime() - day.getTime()) / 86_400_000);
+    if (ago >= 0 && ago < days) counts[days - 1 - ago]++;
+  }
+  return counts;
+}
+
+/** Scales values to 0..`levels` like `recentDayLevels`; null stays null. */
+export function dayLevels(values: readonly (number | null)[], levels = 5): (number | null)[] {
+  const max = Math.max(0, ...values.map((v) => v ?? 0));
+  return values.map((v) => {
+    if (v === null) return null;
+    if (max === 0 || v <= 0) return 0;
+    return Math.max(1, Math.round((v / max) * levels));
+  });
+}
