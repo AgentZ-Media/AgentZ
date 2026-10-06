@@ -43,16 +43,12 @@
   gap: 10px;
   padding: 0 14px 0 calc(12px + var(--shell-inset-left, 0px));
   transition: padding-left 340ms var(--ease-sheet);
-  /* Floats over the desk: the paper scrolls away underneath it. */
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
+  /* Stays in the flow above the scrolling desk: Lexical's caret scrolling
+     only knows the canvas bounds, so nothing may cover them. */
+  position: relative;
   z-index: 6;
-  background: color-mix(in srgb, var(--bg) 72%, transparent);
-  -webkit-backdrop-filter: blur(20px) saturate(1.8);
-  backdrop-filter: blur(20px) saturate(1.8);
-  box-shadow: 0 1px 0 var(--hair);
+  background: var(--bg);
+  box-shadow: 0 1px 0 var(--hair), 0 6px 14px -12px var(--hair);
   user-select: none;
 }
 
@@ -283,9 +279,8 @@
    --------------------------------------------------------------------- */
 .paper-canvas.ss-canvas {
   position: relative;
-  /* The top bar floats above (48px), so the desk starts underneath it. */
-  padding: calc(48px + 26px) 24px 64px;
-  scroll-padding-top: calc(48px + 40px);
+  padding: 26px 24px 64px;
+  scroll-padding-top: 40px;
   scroll-padding-bottom: 40px;
   /* The desk: a quiet dot grid with a soft vignette. */
   background:
