@@ -29,7 +29,7 @@ import { K } from "@agentz/kit/platform";
 import { t } from "../../i18n";
 import type { ScriptCharacter } from "../../lib/types";
 import { applyCursor, type CursorAddress } from "../../lib/scriptViewCache";
-import { createActiveBlockReporter } from "./activeBlockReporter";
+import { updateEmptyMarker } from "./emptyMarker";
 import { createCharacterReconcile } from "./characterReconcile";
 import { createPersistence } from "./persistence";
 import { installCanvasFocus } from "./canvasFocus";
@@ -54,7 +54,6 @@ export interface EditorProps {
    * + a fresh Dialog block, so two-hander dialogue flows without manual
    * character-name entry. Read reactively (called on each Enter). */
   quickModeEnabled?: () => boolean;
-  onSavingChange?: (saving: boolean) => void;
   /** Fires whenever the live character list changes — used by the parent
    * to drive the quick-mode availability check (need exactly 2). */
   onCharactersChange?: (chars: ScriptCharacter[]) => void;
@@ -66,10 +65,6 @@ export interface EditorProps {
    *  script screen uses it for the live timeline, the gutter label and
    *  jumping to a block. */
   onEditorReady?: (editor: LexicalEditor) => void;
-  /** Fires whenever the cursor moves into a different block type (or out
-   *  of any Scriptz block, in which case the value is `null`). Drives the
-   *  block-type indicator of the parent. */
-  onActiveBlockChange?: (blockType: string | null) => void;
   /** Hands the parent a function that opens the character colour picker
    *  for a name, anchored at a viewport point (the script inspector's cast
    *  dots use it). Not called in read-only mode. */
@@ -317,26 +312,14 @@ export function Editor(props: EditorProps) {
           initialContentJson: props.initialContentJson,
           knownColors,
           mergeAfterSave: (summary) => charReconcile.mergeAfterSave(summary),
-          onSavingChange: props.onSavingChange,
         });
 
-    // Active-block reporter (block-type indicator + empty marker).
-    const reporter = createActiveBlockReporter({
-      editor,
-      getRootEl: () => rootRef,
-      onActiveBlockChange: props.onActiveBlockChange,
-    });
-    requestAnimationFrame(reporter.reportActiveBlock);
-    requestAnimationFrame(reporter.updateEmptyMarker);
+    requestAnimationFrame(() => updateEmptyMarker(editor, rootRef));
 
     const teardownUpdate = editor.registerUpdateListener(
       ({ dirtyElements, dirtyLeaves }) => {
-        // Selection tracking independent of the dirty state — the cursor
-        // can move without anything being typed.
-        reporter.reportActiveBlock();
-
         if (dirtyElements.size === 0 && dirtyLeaves.size === 0) return;
-        reporter.updateEmptyMarker();
+        updateEmptyMarker(editor, rootRef);
         // Reconcile the character list IMMEDIATELY (not only after save
         // debounce) so the tint stays on character / dialog as soon as
         // the user presses Enter after the name — even when typing
