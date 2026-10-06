@@ -105,3 +105,25 @@ export function parseClock(input: string): number | null | undefined {
   if (/^\d{1,5}$/.test(s)) return Number(s);
   return undefined;
 }
+
+/** Geometry of the small runtime bar in lists, all values 0..1: `fill` is
+ *  the runtime, `from`/`to` the target range. The scale reaches a little
+ *  past the target (or the runtime, when that is longer). Null without a
+ *  usable range. */
+export function runtimeBar(
+  runtimeSec: number,
+  range: LengthRange | null,
+): { fill: number; from: number; to: number } | null {
+  const r = range ? sanitize(range) : null;
+  if (!r || !Number.isFinite(runtimeSec)) return null;
+  const sec = Math.max(0, runtimeSec);
+  const target = r.maxSec ?? Math.round((r.minSec ?? 0) * 1.5);
+  const scale = Math.max(sec, target) * 1.15;
+  if (scale <= 0) return null;
+  const clamp = (v: number) => Math.min(1, Math.max(0, v));
+  return {
+    fill: clamp(sec / scale),
+    from: clamp((r.minSec ?? 0) / scale),
+    to: clamp((r.maxSec ?? scale) / scale),
+  };
+}

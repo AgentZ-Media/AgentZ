@@ -160,6 +160,8 @@
   --accent-glow: rgba(255, 210, 10, 0.45);
   --accent-ink: #8a6a00;
   --accent-edge: rgba(120, 90, 0, 0.2);
+  /* Text and marks on a coloured swatch (character faces). */
+  --on-swatch: #ffffff;
   /* Light edge on lit surfaces (accent buttons, tiles). */
   --glint: rgba(255, 255, 255, 0.6);
   --glint-soft: rgba(255, 255, 255, 0.28);

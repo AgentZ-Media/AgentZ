@@ -17,6 +17,7 @@ import { t, tPlural } from "../../i18n";
 import { StageGlyph } from "../Common/StageGlyph";
 import { folderColor } from "../Common/folderColor";
 import { defaultLengthRange, isoWeekStart, library } from "../Shell/libraryData";
+import { countPerDay, currentWeekDays } from "../../lib/writingCounter";
 import { ContextMenu, type ContextMenuItem } from "../Common/ContextMenu";
 import { Board } from "./Board";
 import { openIdea } from "./InboxIdeas";
@@ -173,13 +174,33 @@ export function ScriptsPage() {
     const start = isoWeekStart();
     // Scripts that reached the last stage ("done") this week.
     const done = finalStageId();
-    const finished = library
+    const finishedAt = library
       .scripts()
-      .filter((s) => s.status === done && (s.status_changed_at ?? 0) >= start).length;
+      .filter((s) => s.status === done && (s.status_changed_at ?? 0) >= start)
+      .map((s) => s.status_changed_at ?? 0);
     const words = dailyStatsStore.stats().wordsThisWeek;
-    const ideas = (ideasStore.ideas() ?? []).filter((i) => i.created_at >= start).length;
-    return { finished, words, ideas };
+    const ideasAt = (ideasStore.ideas() ?? []).filter((i) => i.created_at >= start).map((i) => i.created_at);
+    // Monday..Sunday per stat, for the dot rhythm of the week tiles.
+    const days = {
+      finished: currentWeekDays(countPerDay(finishedAt, 7)),
+      words: currentWeekDays(dailyStatsStore.stats().dailyWords ?? []),
+      ideas: currentWeekDays(countPerDay(ideasAt, 7)),
+    };
+    return { finished: finishedAt.length, words, ideas: ideasAt.length, days };
   });
+
+  // Rows rise in, staggered, when the page or its scope changes.
+  const [entering, setEntering] = createSignal(true);
+  createEffect(
+    on(
+      () => [isInbox(), status(), folderId()] as const,
+      () => {
+        setEntering(true);
+        const timer = setTimeout(() => setEntering(false), 900);
+        onCleanup(() => clearTimeout(timer));
+      },
+    ),
+  );
 
   const folderRange = () => {
     const f = library.folder(folderId());
@@ -344,7 +365,7 @@ export function ScriptsPage() {
   };
 
   return (
-    <div class="lib-page" classList={{ "has-peek": peekStore.scriptId() !== null }}>
+    <div class="lib-page" classList={{ "has-peek": peekStore.scriptId() !== null, "is-entering": entering() }}>
       <PageBar />
 
       <div class="lib-scroll" classList={{ "has-selbar": selectMode() }}>

@@ -1,7 +1,7 @@
 import { For, Show, createMemo, createSignal } from "solid-js";
 import type { ScriptCharacter, ScriptSummary } from "../../lib/types";
 import { relativeTime } from "@agentz/kit/lib";
-import { formatClock, formatRange, lengthStatus } from "../../lib/lengthGoal";
+import { formatClock, formatRange, lengthStatus, runtimeBar } from "../../lib/lengthGoal";
 import { isValidHexColor } from "../../lib/colors";
 import { K } from "@agentz/kit/platform";
 import { StageGlyph } from "../Common/StageGlyph";
@@ -37,15 +37,37 @@ function castOf(chars: ScriptCharacter[]): ScriptCharacter[] {
   return [...chars].sort((a, b) => (b.share ?? 0) - (a.share ?? 0));
 }
 
-/** Character chip colours: the character colour mixed onto the surface
- *  (like the paper highlight) and a darker ink of the same hue. Colours are
+/** Face of a character: its colour as a small lit disc. Colours are
  *  content data, validated before they reach a style attribute. */
-function chipStyle(color: string): Record<string, string> | undefined {
+function faceStyle(color: string): Record<string, string> | undefined {
   if (!isValidHexColor(color)) return undefined;
-  return {
-    background: `color-mix(in srgb, ${color} 26%, var(--surface))`,
-    color: `color-mix(in srgb, ${color} 72%, var(--fg))`,
-  };
+  return { "--who": color };
+}
+
+/** First letter of a character name, for its face. */
+function initial(name: string): string {
+  return Array.from(name.trim())[0]?.toLocaleUpperCase() ?? "?";
+}
+
+type ThumbLine = { kind: "act" | "who" | "say"; color?: string };
+
+/** A tiny page for the row: action lines, speakers in their colour and
+ *  their dialogue, in a rhythm derived from the script id. Decorative. */
+function thumbLines(id: string, cast: ScriptCharacter[]): ThumbLine[] {
+  let h = 2166136261;
+  for (let i = 0; i < id.length; i++) h = Math.imul(h ^ id.charCodeAt(i), 16777619);
+  const colors = cast.map((c) => c.color).filter(isValidHexColor);
+  const lines: ThumbLine[] = [];
+  let speaker = 0;
+  while (lines.length < 6) {
+    h = Math.imul(h ^ (h >>> 13), 1274126177);
+    if (colors.length && (h & 3) !== 0 && lines.length < 5) {
+      lines.push({ kind: "who", color: colors[speaker++ % colors.length] }, { kind: "say" });
+    } else {
+      lines.push({ kind: "act" });
+    }
+  }
+  return lines.slice(0, 6);
 }
 
 /** Row of the scripts overview: stage glyph, title +
@@ -69,7 +91,7 @@ export function ScriptRow(props: ScriptRowProps) {
     if (st.state === "over") title = t("shell.length.over", { delta: st.deltaSec, range: rangeLabel });
     else if (st.state === "under") title = t("shell.length.under", { delta: st.deltaSec, range: rangeLabel });
     else if (st.state === "in") title = t("shell.length.in", { range: rangeLabel });
-    return { label: formatClock(sec), over: st.state === "over", title };
+    return { label: formatClock(sec), over: st.state === "over", title, bar: runtimeBar(sec, range) };
   });
 
   const activate = (e?: MouseEvent | KeyboardEvent) =>
@@ -132,6 +154,11 @@ export function ScriptRow(props: ScriptRowProps) {
           </span>
         </Show>
       </span>
+      <span class="lrow-thumb" aria-hidden="true">
+        <For each={thumbLines(s().id, cast())}>
+          {(line) => <i class={`is-${line.kind}`} style={line.color ? { "--who": line.color } : undefined} />}
+        </For>
+      </span>
       <div class="lrow-t">
         <span class="lrow-title">
           <span classList={{ "mo-marker": library.justFinished(s().id) }}>{title()}</span>
@@ -151,8 +178,8 @@ export function ScriptRow(props: ScriptRowProps) {
       <div class="lrow-cast">
         <For each={cast().slice(0, MAX_CAST)}>
           {(c) => (
-            <span class="who" style={chipStyle(c.color)}>
-              {c.name}
+            <span class="who" style={faceStyle(c.color)} title={c.name}>
+              {initial(c.name)}
             </span>
           )}
         </For>
@@ -165,7 +192,16 @@ export function ScriptRow(props: ScriptRowProps) {
         classList={{ over: runtime()?.over ?? false }}
         title={runtime()?.title || undefined}
       >
-        {runtime()?.label ?? ""}
+        <span class="lrow-rt-t">{runtime()?.label ?? ""}</span>
+        <Show when={runtime()?.bar}>
+          {(bar) => (
+            <span class="lrow-rt-bar" aria-hidden="true" style={{
+              "--rt-from": bar().from.toFixed(3), "--rt-to": bar().to.toFixed(3), "--rt-fill": bar().fill.toFixed(3),
+            }}>
+              <i />
+            </span>
+          )}
+        </Show>
       </div>
       <div class="lrow-u">{relativeTime(s().updated_at)}</div>
       <Show when={!props.selectMode}>

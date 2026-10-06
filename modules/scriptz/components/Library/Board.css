@@ -17,17 +17,18 @@
   min-width: 0;
   display: flex;
   flex-direction: column;
-  border-radius: var(--r-pop);
+  border-radius: var(--r-4);
   background: var(--fill);
+  box-shadow: inset 0 0 0 0.5px var(--hair);
   padding: 8px;
-  transition: background var(--t-fast), box-shadow var(--t-fast);
+  transition: background var(--t-med), box-shadow var(--t-med);
 }
 .board.is-dragging .bcol.is-target {
   box-shadow: inset 0 0 0 1px var(--line-strong);
 }
 .bcol.is-drop {
   background: var(--accent-soft);
-  box-shadow: inset 0 0 0 1.5px var(--accent);
+  box-shadow: inset 0 0 0 1.5px var(--accent), 0 8px 24px -12px var(--accent-glow);
 }
 
 .bcol-h {
@@ -96,17 +97,22 @@
 .bcard {
   position: relative;
   padding: 10px 12px;
-  border-radius: var(--r-3);
-  border: 1px solid var(--line);
+  border-radius: var(--r-4);
+  border: 1px solid transparent;
   background: var(--surface);
   color: var(--fg);
+  box-shadow: var(--shadow-1), var(--hi);
   cursor: default;
   outline: none;
-  transition: border-color var(--t-fast), box-shadow var(--t-fast);
+  transition: border-color var(--t-fast), box-shadow var(--t-med), transform var(--t-glide);
 }
 .bcard:hover {
-  border-color: var(--line-strong);
-  box-shadow: var(--shadow-raise);
+  box-shadow: var(--shadow-2), var(--hi);
+  transform: translateY(-2px);
+}
+.bcard:active {
+  transform: scale(0.985);
+  transition-duration: 110ms;
 }
 .bcard:focus-visible {
   border-color: var(--fg);
@@ -117,6 +123,7 @@
 }
 .bcard.is-dragging {
   opacity: 0.45;
+  transform: scale(0.97);
 }
 .bcard.is-idea {
   background: var(--surface-2);
