@@ -179,13 +179,12 @@ export function extractTeleprompterText(contentJson: string): string {
  */
 export function wordTokenSet(text: string): Set<string> {
   const out = new Set<string>();
-  // Mirrors Rust's `c.is_alphanumeric()` (Unicode Alphabetic | Numeric).
+  // Unicode Alphabetic | Numeric.
   const parts = text.split(/[^\p{Alphabetic}\p{N}]+/u);
   for (const raw of parts) {
     if (raw.length === 0) continue;
     const token = raw.toLowerCase();
-    // Count Unicode scalar values, not UTF-16 code units, to mirror
-    // Rust's `chars().count() >= 3`.
+    // Count Unicode scalar values, not UTF-16 code units.
     if (codePointCount(token) >= 3) out.add(token);
   }
   return out;
@@ -202,6 +201,14 @@ export function jaccardSimilarity(a: Set<string>, b: Set<string>): number {
   const union = a.size + b.size - inter;
   if (union === 0) return 1.0;
   return inter / union;
+}
+
+/** Whitespace-separated word count. The one tokenization behind the
+ *  word count, the runtime, the timeline and drafts. */
+export function wordCount(text: string): number {
+  const t = text.trim();
+  if (!t) return 0;
+  return t.split(/\s+/).filter(Boolean).length;
 }
 
 /** Dialog words per character - same algorithm as the Inspector cast
@@ -223,8 +230,7 @@ export function dialogWordsByCharacter(contentJson: string): Record<string, numb
       last = b.text.trim().toUpperCase();
       if (last && !(last in out)) out[last] = 0;
     } else if (b.kind === "scriptz-dialog" && last) {
-      const w = b.text.trim().split(/\s+/).filter(Boolean).length;
-      out[last] = (out[last] ?? 0) + w;
+      out[last] = (out[last] ?? 0) + wordCount(b.text);
     }
   }
   return out;
@@ -253,8 +259,7 @@ function isObject(v: unknown): v is Record<string, unknown> {
   return typeof v === "object" && v !== null && !Array.isArray(v);
 }
 
-// Mirrors `b.text.trim_matches(|c| c == '(' || c == ')')`: strip ALL
-// leading/trailing parens (not just one pair).
+// Strips ALL leading/trailing parens (not just one pair).
 function trimParens(s: string): string {
   let start = 0;
   let end = s.length;

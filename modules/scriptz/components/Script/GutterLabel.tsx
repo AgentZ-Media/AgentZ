@@ -132,5 +132,3 @@ function textStartX(el: HTMLElement): number {
   const r = el.getBoundingClientRect();
   return r.left + (parseFloat(getComputedStyle(el).paddingLeft) || 0);
 }
-
-export default GutterLabel;

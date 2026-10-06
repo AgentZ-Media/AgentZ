@@ -103,7 +103,6 @@ async function desktopWriteFileTo(path: string, bytes: Uint8Array): Promise<void
   await writeFile(path, bytes);
 }
 
-
 /** Set by the nightly workflow at build time (see `.github/workflows/nightly.yml`).
  *  Local builds and stable releases leave them empty. */
 export function readBuildInfo(env: Record<string, unknown> = import.meta.env): BuildInfo {

@@ -217,5 +217,3 @@ export function Inspector(props: InspectorProps) {
     </aside>
   );
 }
-
-export default Inspector;

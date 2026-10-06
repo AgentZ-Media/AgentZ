@@ -71,5 +71,3 @@ export function ActivityModal() {
     </DialogFrame>
   );
 }
-
-export default ActivityModal;

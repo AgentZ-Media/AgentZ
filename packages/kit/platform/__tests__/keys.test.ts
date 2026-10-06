@@ -1,6 +1,6 @@
 // Sanity tests for the platform-aware keyboard helpers.
 //
-// formatHotkey() / K() / isModKey() read the active platform from the
+// K() / isModKey() read the active platform from the
 // PlatformAdapter via getPlatform(). For the tests to run deterministically,
 // we register a stub adapter before each block.
 
@@ -10,7 +10,7 @@ import {
   type PlatformAdapter,
   type Platform,
 } from "../platform";
-import { K, formatHotkey, getPlatform, isMac, isModKey } from "../keys";
+import { K, getPlatform, isMac, isModKey } from "../keys";
 
 function stubAdapter(platform: Platform): PlatformAdapter {
   return {
@@ -69,7 +69,7 @@ describe("isModKey", () => {
   });
 });
 
-describe("formatHotkey / K", () => {
+describe("K", () => {
   it("renders macOS symbols without separator", () => {
     setPlatformAdapter(stubAdapter("macos"));
     expect(K("Mod+B")).toBe("⌘B");
@@ -95,9 +95,5 @@ describe("formatHotkey / K", () => {
     setPlatformAdapter(stubAdapter("macos"));
     expect(K("Mod+,")).toBe("⌘,");
     expect(K("Mod+0")).toBe("⌘0");
-  });
-
-  it("formatHotkey is the same function as K", () => {
-    expect(formatHotkey).toBe(K);
   });
 });

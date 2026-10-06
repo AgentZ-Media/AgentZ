@@ -4,7 +4,7 @@
 // booking the restored words in daily_word_log.
 //
 // Runs against a tiny fake DbConnection that understands exactly the
-// statements involved (no SQLite engine in the test environment).
+// statements involved.
 
 import { afterEach, describe, expect, it } from "vitest";
 import { characterUsageBus } from "../characterUsage";

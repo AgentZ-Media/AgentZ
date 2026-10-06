@@ -6,8 +6,8 @@ import { isStageId } from "../lib/stages";
 
 /**
  * Agent preferences (Settings > Agent and the agent onboarding). All keys
- * live under `agent.` in the settings table. Migration 002 removed the old
- * `ai.*` keys of a retired feature; never reuse that prefix.
+ * live under `agent.` in the settings table. Never use the `ai.*` prefix
+ * (cleared by migration 002).
  */
 
 export type AgentLook = "eyes" | "z" | "diamond" | "spark";

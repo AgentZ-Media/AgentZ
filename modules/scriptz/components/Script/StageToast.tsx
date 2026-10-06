@@ -65,5 +65,3 @@ export function StageUndoToast() {
     </Portal>
   );
 }
-
-export default StageUndoToast;

@@ -14,10 +14,7 @@
     "updater:default",
     "process:default",
     "sql:default",
-    "sql:allow-load",
-    "sql:allow-close",
     "sql:allow-execute",
-    "sql:allow-select",
     "opener:default",
     "fs:default",
     {
@@ -40,28 +37,6 @@
         { "path": "/Volumes/**" }
       ]
     },
-    "dialog:default",
-    "dialog:allow-save",
-    "dialog:allow-open",
-    "dialog:allow-message",
-    "dialog:allow-ask",
-    "dialog:allow-confirm",
-    {
-      "identifier": "opener:allow-open-url",
-      "allow": [
-        { "url": "https://github.com/AgentZ-Media/**" },
-        { "url": "https://linktr.ee/deragentz" }
-      ]
-    },
-    {
-      "identifier": "opener:allow-open-path",
-      "allow": [
-        { "path": "$HOME/**" },
-        { "path": "$DOWNLOAD/**" },
-        { "path": "$DOCUMENT/**" },
-        { "path": "$DESKTOP/**" },
-        { "path": "/Volumes/**" }
-      ]
-    }
+    "dialog:default"
   ]
 }

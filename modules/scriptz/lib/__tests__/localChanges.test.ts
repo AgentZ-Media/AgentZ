@@ -244,7 +244,7 @@ describe("local content change feed", () => {
   it("captures cascaded memory deletion and idea folder unlinking", async () => {
     seedContent();
     migrateTracking();
-    // Matches the existing folder delete workflow (scripts have RESTRICT).
+    // Matches the existing folder delete workflow.
     db.exec("UPDATE scripts SET folder_id = NULL; DELETE FROM folders WHERE id = 'folder'");
     const page = await sqlLocalChanges.readChanges();
     expect(page.changes.find((c) => c.entity === "agent_memory")).toMatchObject({ operation: "delete", record: null });

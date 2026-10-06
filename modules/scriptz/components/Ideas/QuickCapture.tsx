@@ -194,5 +194,3 @@ export function QuickCapture() {
     </DialogFrame>
   );
 }
-
-export default QuickCapture;

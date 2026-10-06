@@ -4,8 +4,7 @@
 // Deliberately NOT in the format:
 //   - `folder_id` (doesn't exist on the target device; import lands in
 //      the root, user files it themselves).
-//   - Snapshots (current state only). Can be added later as
-//      `script.snapshots: [...]` without breaking the format (version: 2).
+//   - Snapshots (current state only).
 //   - Global character color overrides (`character_colors` table).
 //      The `characters[].color` shipped with the file is enough for
 //      rendering - app-wide overrides stay app-wide.
@@ -183,17 +182,12 @@ function validateScriptzObject(raw: unknown): ScriptzFileV1 {
     characters.push(entry);
   }
   // Date fields are nice-to-have; on errors be tolerant -
-  // our app doesn't use them on import (see applyScriptzFile),
+  // our app doesn't use them on import (see importScriptz),
   // it sets its own timestamps.
   const exportedAt = typeof r.exportedAt === "string" ? r.exportedAt : new Date().toISOString();
   const createdAt = typeof s.createdAt === "string" ? s.createdAt : exportedAt;
   const updatedAt = typeof s.updatedAt === "string" ? s.updatedAt : exportedAt;
-  const highlightingEnabled =
-    typeof s.highlightingEnabled === "number"
-      ? s.highlightingEnabled
-      : s.highlightingEnabled === null
-        ? null
-        : null;
+  const highlightingEnabled = typeof s.highlightingEnabled === "number" ? s.highlightingEnabled : null;
   return {
     format: "scriptz",
     version: 1,

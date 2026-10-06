@@ -1111,7 +1111,6 @@ function liveChats(): ChatSession[] {
 }
 
 const [sessionList, setSessionList] = createSignal<SessionSummary[]>([]);
-const [sessionListReady, setSessionListReady] = createSignal(false);
 let sessionListGeneration = 0;
 
 async function refreshSessionList(): Promise<void> {
@@ -1121,8 +1120,6 @@ async function refreshSessionList(): Promise<void> {
     if (generation === sessionListGeneration) setSessionList(list);
   } catch (error) {
     console.warn("[agent] listing sessions failed", error);
-  } finally {
-    if (generation === sessionListGeneration) setSessionListReady(true);
   }
 }
 
@@ -1176,12 +1173,9 @@ export const agentStore = {
   },
   /** Sessions for the start screen and the session menu, newest first. */
   sessions: sessionList,
-  sessionsReady: sessionListReady,
   refreshSessions: refreshSessionList,
   /** Open drafts over all recent sessions (sidebar badge). */
   openDrafts: () => sessionList().reduce((sum, s) => sum + s.openDrafts, 0),
-  /** A chat of this id is answering right now. */
-  isRunning: (chatId: string) => liveChats().some((chat) => chat.chatId() === chatId && chat.running()),
   anyRunning: () => liveChats().some((chat) => chat.running()),
   async deleteSession(chatId: string): Promise<void> {
     const live = liveChats().find((chat) => chat.chatId() === chatId);
@@ -1275,7 +1269,6 @@ export function startAgentRuntime(services: Readonly<Record<string, unknown>>): 
     chatsChanged();
     sessionListGeneration += 1;
     setSessionList([]);
-    setSessionListReady(false);
     if (sessionsBump) clearTimeout(sessionsBump);
     sessionsBump = null;
     const p = provider;

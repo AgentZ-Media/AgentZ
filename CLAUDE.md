@@ -11,7 +11,7 @@ Creator. Repository `AgentZ-Media/AgentZ`. Aktuell einzige App: ScriptZ.
 | `modules/<app>/` | `@agentz/<app>` | Produkt: Routen, UI, Fachlogik, Storage, eigene i18n. Exportiert ein `AppModule`. |
 | `packages/kit/` | `@agentz/kit` | Produktneutral: `SuiteShell`, UI, i18n-Engine, Basis-Settings, Navigation, Shortcuts, Toasts, `KvStore`, Speicherkoordination. |
 | `packages/desktop/` | `@agentz/desktop` | Tauri-Host: Plattformadapter, Updater, Fenster-/Quit-Lebenszyklus, `@agentz/desktop/vite`. |
-| `crates/agentz-desktop/` | Rust | Standard-Plugins, macOS-Menü, Single-Instance, Quit-Handshake, `KIT_BASELINE_SQL`. |
+| `crates/agentz-desktop/` | Rust | Standard-Plugins, macOS-Menü, Single-Instance, Quit-Handshake, Kit-Baseline-SQL (`src/baseline.sql`). |
 | `packages/design/` | `@agentz/design` | Tokens, CSS-Primitive, Schriften, Icons, Logos. Kein Framework. |
 | `apps/site/` | `@agentz/site` | Statische Astro-Website (DE/EN) mit App-Liste. |
 | `tooling/` | | Generator (`new-app`), Release-Skripte, Prüfungen, Test-Preset. |

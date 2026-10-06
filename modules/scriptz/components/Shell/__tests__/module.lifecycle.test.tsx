@@ -100,7 +100,7 @@ describe("ScriptZ module lifecycle", () => {
     storage.getSetting.mockImplementation(async (key) => key === "theme" ? settings.promise : null);
     const normalRead = storage.getAppState.getMockImplementation()!;
     storage.getAppState.mockImplementation((key) => key === MIGRATION ? migration.promise : normalRead(key));
-    const { AppShell, uiStore } = await loadShell(storage);
+    const { AppShell } = await loadShell(storage);
     const onboarding = vi.spyOn((await import("@agentz/kit/stores")).shellUi, "openOnboarding");
     const view = render(() => <AppShell />);
     await settleBoot();
@@ -126,7 +126,7 @@ describe("ScriptZ module lifecycle", () => {
   it("shows boot failure without starting data resources or onboarding", async () => {
     const storage = testStorage();
     storage.getSetting.mockRejectedValue(new Error("Storage unavailable"));
-    const { AppShell, uiStore } = await loadShell(storage);
+    const { AppShell } = await loadShell(storage);
     const onboarding = vi.spyOn((await import("@agentz/kit/stores")).shellUi, "openOnboarding");
     const error = vi.spyOn(console, "error").mockImplementation(() => {});
     const view = render(() => <AppShell />);
@@ -146,7 +146,7 @@ describe("ScriptZ module lifecycle", () => {
       const normalRead = storage.getAppState.getMockImplementation()!;
       storage.getAppState.mockImplementation((key) => key === MIGRATION ? pending.promise : normalRead(key));
     }
-    const { AppShell, uiStore } = await loadShell(storage);
+    const { AppShell } = await loadShell(storage);
     const onboarding = vi.spyOn((await import("@agentz/kit/stores")).shellUi, "openOnboarding");
     const view = render(() => <AppShell />);
     await settleBoot();

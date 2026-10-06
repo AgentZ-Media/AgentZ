@@ -8,9 +8,6 @@ mod updates;
 use tauri::{plugin::TauriPlugin, Manager, Wry};
 use tauri_plugin_sql::Migration;
 
-/// Baseline for new apps only. Existing apps must preserve migration checksums.
-pub const KIT_BASELINE_SQL: &str = include_str!("baseline.sql");
-
 pub struct Config {
     /// App ID; the database is `sqlite:<id>.db`, matching the frontend host.
     pub id: &'static str,
@@ -30,7 +27,6 @@ pub fn builder(config: Config) -> tauri::Builder<Wry> {
             lifecycle::show_main(app);
         }))
         .plugin(tauri_plugin_window_state::Builder::default().build())
-        .plugin(tauri_plugin_clipboard_manager::init())
         .plugin(tauri_plugin_os::init())
         .plugin(tauri_plugin_updater::Builder::new().build())
         .plugin(tauri_plugin_process::init())

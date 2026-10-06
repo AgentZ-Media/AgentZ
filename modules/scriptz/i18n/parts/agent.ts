@@ -42,7 +42,6 @@ export const agentDe = {
   "agent.metric.conflict": "Konflikt nach {after} statt {before}",
   "agent.metric.conflictNow": "Konflikt sofort statt nach {before}",
   "agent.metric.sec": "{n} s",
-  "agent.metric.now": "sofort",
   "agent.preview.tag": "Vorschau",
 
   // ---------- status ----------
@@ -139,7 +138,6 @@ export const agentDe = {
   "agent.state.loggedOut.title": "Codex ist nicht angemeldet",
   "agent.state.loggedOut.body": "Melde dich einmal im Terminal mit {command} an. Danach hier erneut prüfen.",
   "agent.state.error.title": "Codex konnte nicht starten",
-  "agent.state.error.body": "{message}",
   "agent.state.unavailable": "In dieser Umgebung gibt es keinen Agenten.",
   "agent.state.retry": "Erneut prüfen",
   "agent.state.off.title": "{name} ist ausgeschaltet",
@@ -284,7 +282,6 @@ export const agentDe = {
   "agent.onb.next": "Weiter",
   "agent.onb.later": "Später",
   "agent.onb.finish": "Los geht's",
-  "agent.onb.finishNote": "{name} schaut sich deine fertigen Skripte im Hintergrund an, wenn du das Lernen eingeschaltet lässt.",
   "agent.onb.learn.eyebrow": "Einlernen",
   "agent.onb.learn.title_one": "Ein Skript ist schon da.",
   "agent.onb.learn.title_other": "Schon {count} Skripte da.",
@@ -386,7 +383,6 @@ export const agentEn: Record<keyof typeof agentDe, string> = {
   "agent.metric.conflict": "Conflict after {after} instead of {before}",
   "agent.metric.conflictNow": "Conflict right away instead of after {before}",
   "agent.metric.sec": "{n} s",
-  "agent.metric.now": "right away",
   "agent.preview.tag": "Preview",
 
   // ---------- status ----------
@@ -483,7 +479,6 @@ export const agentEn: Record<keyof typeof agentDe, string> = {
   "agent.state.loggedOut.title": "Codex is not signed in",
   "agent.state.loggedOut.body": "Sign in once in the terminal with {command}. Then check again here.",
   "agent.state.error.title": "Codex could not start",
-  "agent.state.error.body": "{message}",
   "agent.state.unavailable": "There is no agent in this environment.",
   "agent.state.retry": "Check again",
   "agent.state.off.title": "{name} is switched off",
@@ -628,7 +623,6 @@ export const agentEn: Record<keyof typeof agentDe, string> = {
   "agent.onb.next": "Next",
   "agent.onb.later": "Later",
   "agent.onb.finish": "Let's go",
-  "agent.onb.finishNote": "{name} looks at your finished scripts in the background as long as learning stays on.",
   "agent.onb.learn.eyebrow": "Learn",
   "agent.onb.learn.title_one": "There's already one script.",
   "agent.onb.learn.title_other": "{count} scripts already.",

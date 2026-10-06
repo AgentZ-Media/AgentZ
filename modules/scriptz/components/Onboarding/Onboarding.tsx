@@ -421,5 +421,3 @@ function PreviewKeys() {
     </div>
   );
 }
-
-export default Onboarding;

@@ -12,6 +12,7 @@
 // or a chat moved into a script all show the same drafts. A draft only
 // becomes a real script through the finish dialog.
 
+import { wordCount } from "../lex";
 import { runtimeSeconds } from "../runtime";
 import type { AgentBlock } from "./scriptText";
 
@@ -290,21 +291,19 @@ export function contentJsonFromBlocks(blocks: readonly AgentBlock[]): string {
 export function draftWords(blocks: readonly AgentBlock[]): number {
   let n = 0;
   for (const block of blocks) {
-    if (block.type === "character") continue;
-    const text = block.text.trim();
-    if (text) n += text.split(/\s+/).length;
+    if (block.type !== "character") n += wordCount(block.text);
   }
   return n;
 }
 
-/** Runtime of a draft with the timeline formula (lib/runtime.ts). */
+/** Runtime of a draft with the timeline formula (lib/runtime.ts): every
+ *  action block counts, like in a script. */
 export function draftRuntime(blocks: readonly AgentBlock[], wpm: number): number {
   let dialogWords = 0;
   let directionBlocks = 0;
   for (const block of blocks) {
-    const text = block.text.trim();
-    if (block.type === "dialog" && text) dialogWords += text.split(/\s+/).length;
-    else if (block.type === "action" && text) directionBlocks += 1;
+    if (block.type === "dialog") dialogWords += wordCount(block.text);
+    else if (block.type === "action") directionBlocks += 1;
   }
   if (dialogWords === 0 && directionBlocks === 0) return 0;
   return runtimeSeconds({ dialogWords, directionBlocks }, wpm);

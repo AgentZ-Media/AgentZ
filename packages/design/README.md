@@ -54,8 +54,8 @@ import { LOGOS, createLogo, type LogoId } from "@agentz/design/logo";
 ## Logo and app icon
 
 `logo.ts` is the registry of product marks (`LOGOS[id]`), including the
-independent `suite` entry for AgentZ and `scriptz` with its own dot
-geometry. New apps receive `createLogo(initial, accent?)`,
+independent `suite` entry for AgentZ and `scriptz`, which uses the suite
+mark. New apps receive `createLogo(initial, accent?)`,
 a letter in the same dot-matrix family. The shared Kit `AppMark` selects a
 registry entry and exposes the supplied app name as its accessible label.
 

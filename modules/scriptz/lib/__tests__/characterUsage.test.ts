@@ -3,8 +3,7 @@
 // the debounced automatic pass.
 //
 // The SQL tests run against a tiny fake DbConnection that understands
-// exactly the statements involved (no SQLite engine in the test
-// environment); its LIKE emulation follows SQLite's rules for `%`, `_`
+// exactly the statements involved; its LIKE emulation follows SQLite's rules for `%`, `_`
 // and `ESCAPE '\'`, case-insensitive for ASCII.
 
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";

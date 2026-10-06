@@ -21,5 +21,3 @@ export function ToastHost() {
     </div>
   );
 }
-
-export default ToastHost;

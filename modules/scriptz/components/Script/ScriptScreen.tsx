@@ -799,5 +799,3 @@ export function ScriptScreen(props: ScriptScreenProps) {
     </div>
   );
 }
-
-export default ScriptScreen;

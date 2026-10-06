@@ -31,5 +31,3 @@ export function RecoveryPanel(props: RecoveryPanelProps) {
     </div>
   );
 }
-
-export default RecoveryPanel;

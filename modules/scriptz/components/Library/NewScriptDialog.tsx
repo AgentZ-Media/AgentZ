@@ -226,5 +226,3 @@ function FolderNameInput(props: { onCommit(value: string): void; onCancel(): voi
     </label>
   );
 }
-
-export default NewScriptDialog;

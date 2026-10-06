@@ -61,7 +61,7 @@ export function Sidebar() {
 
   createEffect(() => {
     if (!uiStore.sidebarOpen() || uiStore.focusMode()) {
-      // The shell now keeps the sidebar mounted for its slide transition.
+      // The shell keeps the sidebar mounted for its slide transition.
       // Clear transient controls (including portalled menus); inline cleanup saves edits.
       setCreatingFolder(false);
       setRenamingId(null);
