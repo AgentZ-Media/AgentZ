@@ -1,18 +1,55 @@
 /* Motion helpers (motion.tsx) and the shared "done" moment. Tokens only;
    reduced motion is handled globally in tokens.css. */
 
-/* A count that changed pops once. */
+/* A count that changed rolls its changed digits like a counter and pops
+   a little. */
 .mo-bump {
   display: inline-block;
+  white-space: nowrap;
   font-variant-numeric: tabular-nums;
 }
 .mo-bump.is-bump {
-  animation: mo-bump var(--t-slow) var(--ease);
+  animation: mo-bump var(--t-slow) var(--ease-out);
 }
 @keyframes mo-bump {
-  0% { transform: scale(1); }
-  35% { transform: scale(1.28); color: var(--fg); }
-  100% { transform: scale(1); }
+  35% { transform: scale(1.14); }
+}
+.mo-digit {
+  position: relative;
+  display: inline-block;
+  vertical-align: top;
+}
+.mo-digit.is-rolling {
+  overflow: hidden;
+  -webkit-mask-image: linear-gradient(180deg, transparent, black 25%, black 75%, transparent);
+  mask-image: linear-gradient(180deg, transparent, black 25%, black 75%, transparent);
+}
+.mo-digit-old {
+  position: absolute;
+  inset: 0;
+  animation: mo-digit-out 520ms var(--ease-out) both;
+}
+.mo-digit.is-rolling .mo-digit-now {
+  display: inline-block;
+  animation: mo-digit-in 560ms var(--spring) both;
+}
+.is-down > .mo-digit .mo-digit-old {
+  animation-name: mo-digit-out-down;
+}
+.is-down > .mo-digit.is-rolling .mo-digit-now {
+  animation-name: mo-digit-in-down;
+}
+@keyframes mo-digit-out {
+  to { transform: translateY(-100%); opacity: 0; }
+}
+@keyframes mo-digit-in {
+  from { transform: translateY(100%); opacity: 0; }
+}
+@keyframes mo-digit-out-down {
+  to { transform: translateY(100%); opacity: 0; }
+}
+@keyframes mo-digit-in-down {
+  from { transform: translateY(-100%); opacity: 0; }
 }
 
 /* An idea flying into the sidebar. */
@@ -52,12 +89,61 @@
 /* ---------- a script reaches the last stage ---------- */
 /* The stage ring pops into the filled "done" glyph ... */
 .st.is-finishing {
-  animation: mo-finish 0.75s var(--ease) both;
+  animation: mo-finish 0.8s var(--ease-pop) both;
 }
 @keyframes mo-finish {
-  0% { transform: scale(0.5) rotate(-120deg); opacity: 0.3; }
-  60% { transform: scale(1.3) rotate(0); opacity: 1; }
+  0% { transform: scale(0.4) rotate(-120deg); opacity: 0.3; }
+  60% { transform: scale(1.25) rotate(0); opacity: 1; }
   100% { transform: scale(1); }
+}
+/* ... a ring of light spreads from it and a burst of highlighter dots
+   flies out (one pseudo element, the dots are its shadows). */
+:is(.lrow-glyph, .ss-stage .chip) {
+  position: relative;
+}
+:is(.lrow-glyph, .ss-stage .chip):has(> .st.is-finishing)::before,
+:is(.lrow-glyph, .ss-stage .chip):has(> .st.is-finishing)::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: var(--burst-x, 50%);
+  width: 4px;
+  height: 4px;
+  margin: -2px 0 0 -2px;
+  border-radius: 50%;
+  pointer-events: none;
+}
+.ss-stage .chip {
+  --burst-x: 17px;
+}
+:is(.lrow-glyph, .ss-stage .chip):has(> .st.is-finishing)::before {
+  width: 18px;
+  height: 18px;
+  margin: -9px 0 0 -9px;
+  box-shadow: 0 0 0 2px var(--accent-lo);
+  animation: mo-finish-ring 0.9s var(--ease-out) 0.15s both;
+}
+:is(.lrow-glyph, .ss-stage .chip):has(> .st.is-finishing)::after {
+  animation: mo-finish-burst 1s var(--ease-out) 0.2s both;
+}
+@keyframes mo-finish-ring {
+  from { opacity: 1; transform: scale(0.7); }
+  to { opacity: 0; transform: scale(2.4); }
+}
+@keyframes mo-finish-burst {
+  0% {
+    opacity: 1;
+    box-shadow:
+      0 0 0 0 var(--accent-lo), 0 0 0 0 var(--accent), 0 0 0 0 var(--char-1), 0 0 0 0 var(--accent-hi),
+      0 0 0 0 var(--char-2), 0 0 0 0 var(--accent-lo), 0 0 0 0 var(--char-4), 0 0 0 0 var(--accent);
+  }
+  70% { opacity: 1; }
+  100% {
+    opacity: 0;
+    box-shadow:
+      0 -26px 0 -0.5px var(--accent-lo), 19px -19px 0 0 var(--accent), 27px 0 0 -0.5px var(--char-1), 19px 19px 0 0 var(--accent-hi),
+      0 26px 0 -0.5px var(--char-2), -19px 19px 0 0 var(--accent-lo), -27px 0 0 -0.5px var(--char-4), -19px -19px 0 0 var(--accent);
+  }
 }
 /* ... and a highlighter stroke runs over the title, then wipes away. */
 .mo-marker {

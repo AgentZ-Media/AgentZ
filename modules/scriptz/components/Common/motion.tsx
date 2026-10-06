@@ -3,7 +3,7 @@
 // user asked for reduced motion; tokens.css additionally cuts all CSS
 // animations short in that case.
 
-import { createEffect, createSignal, on, onCleanup, type Accessor } from "solid-js";
+import { For, Show, createEffect, createSignal, on, onCleanup, type Accessor } from "solid-js";
 import "./motion.css";
 
 export function prefersReducedMotion(): boolean {
@@ -50,13 +50,64 @@ export function replayClass(el: Element | null | undefined, cls: string): void {
   el.classList.add(cls);
 }
 
-/** A number that pops briefly whenever it changes (not on first render). */
+interface RollDigit {
+  now: string;
+  /** The digit this place showed before the change; null when unchanged. */
+  old: string | null;
+}
+
+/** Digits of `now`, right-aligned against `before`, marking the places
+ *  that changed so only those roll. */
+export function rollDigits(now: string, before: string | null): RollDigit[] {
+  const len = Math.max(now.length, before?.length ?? 0);
+  const a = now.padStart(len, " ");
+  const b = before === null ? null : before.padStart(len, " ");
+  return Array.from(a, (digit, i) => ({ now: digit, old: b !== null && b[i] !== digit ? b[i] : null }));
+}
+
+/** A number that rolls like a counter when it changes (only the digits
+ *  that changed, upwards when it grows, downwards when it shrinks) and
+ *  pops a little. Nothing moves on first render or with reduced motion. */
 export function BumpNumber(props: { value: number; class?: string; title?: string }) {
   let el: HTMLSpanElement | undefined;
-  createEffect(on(() => props.value, () => replayClass(el, "is-bump"), { defer: true }));
+  const [before, setBefore] = createSignal<string | null>(null);
+  const [down, setDown] = createSignal(false);
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  createEffect(
+    on(
+      () => props.value,
+      (value, previous) => {
+        clearTimeout(timer);
+        if (previous === undefined || prefersReducedMotion()) {
+          setBefore(null);
+          return;
+        }
+        setDown(value < previous);
+        setBefore(String(previous));
+        replayClass(el, "is-bump");
+        timer = setTimeout(() => setBefore(null), 560);
+      },
+      { defer: true },
+    ),
+  );
+  onCleanup(() => clearTimeout(timer));
   return (
-    <span ref={el} class={props.class ? `mo-bump ${props.class}` : "mo-bump"} title={props.title}>
-      {props.value}
+    <span
+      ref={el}
+      class={props.class ? `mo-bump ${props.class}` : "mo-bump"}
+      classList={{ "is-down": down() }}
+      title={props.title}
+    >
+      {/* Inline digits keep the plain number as text; only the digit that
+          rolls away is hidden from assistive tech. */}
+      <For each={rollDigits(String(props.value), before())}>
+        {(d) => (
+          <span class="mo-digit" classList={{ "is-rolling": d.old !== null }}>
+            <Show when={d.old !== null}><span class="mo-digit-old" aria-hidden="true">{d.old}</span></Show>
+            <span class="mo-digit-now">{d.now === " " ? "" : d.now}</span>
+          </span>
+        )}
+      </For>
     </span>
   );
 }
@@ -116,7 +167,7 @@ export function openScriptAnimated(open: () => void | Promise<void>): void {
 }
 
 type ViewTransitionDocument = Document & {
-  startViewTransition?: (update: () => Promise<void> | void) => { finished: Promise<void> };
+  startViewTransition?: (update: () => Promise<void> | void) => { finished: Promise<void>; ready?: Promise<void> };
 };
 
 /** Morphs `source` into the paper of the script that opens (View
@@ -154,5 +205,8 @@ export function openWithTransition(
     paper = ready() as HTMLElement | null;
     paper?.style.setProperty("view-transition-name", "scriptz-open");
   });
+  // A skipped transition (another one started, the window hid) rejects
+  // `ready`; that is expected and must not surface as an unhandled error.
+  transition.ready?.catch(() => {});
   void transition.finished.finally(() => paper?.style.removeProperty("view-transition-name"));
 }
