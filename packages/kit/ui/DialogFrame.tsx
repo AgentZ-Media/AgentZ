@@ -1,10 +1,8 @@
 import { JSX, Show, createEffect, onCleanup } from "solid-js";
 import { Portal } from "solid-js/web";
+import { FOCUSABLE } from "./focusTrap";
 
 // Product-neutral dialog frame with nested-overlay, keyboard and focus handling.
-
-const FOCUSABLE =
-  'a[href], button:not([disabled]), textarea:not([disabled]), input:not([disabled]), select:not([disabled]), [tabindex]:not([tabindex="-1"])';
 
 export interface DialogFrameProps {
   open: boolean;

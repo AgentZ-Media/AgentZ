@@ -14,7 +14,6 @@ for (const [owner, name] of Object.entries({
   fs.writeFileSync(path.join(root, owner, "package.json"), JSON.stringify({ name }));
   fs.writeFileSync(path.join(root, owner, "index.ts"), "export const value = 1;");
 }
-fs.writeFileSync(path.join(root, "packages/design/legacy.css"), ":root { --fg-muted: var(--text-muted); }");
 fs.writeFileSync(path.join(root, "apps/site/tsconfig.json"), JSON.stringify({ compilerOptions: {
   baseUrl: ".", paths: { "hidden-kit": ["../../packages/kit/index.ts"], "~/*": ["./*"] },
 } }));
@@ -56,18 +55,6 @@ test("template expressions, attributes, scripts, type imports and require cannot
     frontmatter("import(`@agentz/kit`);"),
   ]) assert.equal(check(content)[0].kind, "boundary", content);
   assert.equal(check(`{import('@agentz/' + moduleName)}`)[0].kind, "dynamic");
-});
-
-test("Astro checks semantic tokens and legacy imports in all relevant surfaces", () => {
-  for (const content of [
-    frontmatter("import '@agentz/design/legacy.css';"),
-    `<style>@import '@agentz/design/legacy.css';</style>`,
-    `<link href="/legacy.css" rel="stylesheet" />`,
-    `<div style="color: var(--fg-muted)" />`,
-    `<style>:root { --fg-muted: var(--text-muted); }</style>`,
-    `<script>document.body.style.setProperty('--fg-muted', 'inherit');</script>`,
-  ]) assert.ok(check(content).some((item) => ["token", "import"].includes(item.kind)), content);
-  assert.deepEqual(check(`<!-- var(--fg-muted) -->\n<style>/* --fg-muted: #fff; */ p {color: var(--text-muted)}</style>`), []);
 });
 
 test("Astro colors are checked in declaration values and static or expression styles", () => {

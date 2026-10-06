@@ -1,0 +1,148 @@
+/* ---------------------------------------------------------------------
+   Settings > Agent
+   --------------------------------------------------------------------- */
+.ag-prov-row {
+  grid-template-columns: minmax(0, 1fr);
+  gap: 8px;
+}
+.ag-prov {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 7px;
+}
+.ag-prov-it {
+  display: grid;
+  grid-template-columns: 16px minmax(0, 1fr);
+  gap: 9px;
+  align-items: start;
+  padding: 10px 11px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-pop);
+}
+.ag-prov-it b {
+  display: block;
+  font-weight: 600;
+}
+.ag-prov-it small {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  margin-top: 2px;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.35;
+}
+.ag-prov-it small i {
+  display: none;
+}
+.ag-prov-it small.is-ready i {
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  flex: none;
+  border-radius: 50%;
+  background: var(--ok);
+}
+.ag-prov-it.is-on {
+  border-color: var(--fg);
+  box-shadow: inset 0 0 0 1px var(--fg);
+}
+.ag-prov-it.is-off {
+  opacity: 0.5;
+  border-style: dashed;
+}
+.ag-prov-rd {
+  width: 16px;
+  height: 16px;
+  margin-top: 1px;
+  border-radius: 50%;
+  border: 1.5px solid var(--line-strong);
+  background: var(--surface);
+}
+.ag-prov-it.is-on .ag-prov-rd {
+  border: 5px solid var(--fg);
+}
+.ag-prov-retry {
+  display: flex;
+}
+
+/* Shared Codex installation and sign-in instructions. */
+.ag-codex-setup {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  width: 100%;
+  min-width: 0;
+  text-align: left;
+  font-size: 12px;
+  line-height: 1.5;
+}
+.ag-onb .ag-codex-setup {
+  margin-top: 18px;
+}
+.ag-codex-setup p {
+  margin: 0;
+  max-width: none;
+  color: var(--fg);
+  font-size: inherit;
+}
+.ag-codex-setup .seg {
+  align-self: flex-start;
+}
+.ag-codex-setup a {
+  color: var(--fg);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  align-self: flex-start;
+}
+.ag-codex-command {
+  min-width: 0;
+}
+.ag-codex-command-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 5px;
+}
+.ag-codex-command code {
+  display: block;
+  padding: 9px 10px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-pop);
+  background: var(--fill);
+  color: var(--fg);
+  font: 12px/1.5 var(--type);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  user-select: text;
+}
+.ag-codex-copy-status:empty {
+  display: none;
+}
+.ag-gate:has(.ag-codex-setup) {
+  justify-content: flex-start;
+  min-height: 0;
+  overflow-y: auto;
+}
+.ag-model-ctl {
+  display: inline-flex;
+  gap: 6px;
+  align-items: center;
+}
+.ag-select {
+  width: 200px;
+  height: 30px;
+  font: 600 12.5px/1 var(--type);
+  cursor: pointer;
+}
+.ag-row-btns {
+  display: inline-flex;
+  gap: 6px;
+}
+@media (max-width: 900px) {
+  .ag-prov {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}

@@ -44,8 +44,8 @@ zwischen Produkten. Details: [`suite-architecture.md`](.claude/rules/suite-archi
   (`content`, Standard) blockiert Navigation, Export und Snapshots, UI-Zustand
   (`state`) nie. Schließen und Beenden warten auf beides.
 - **Farben nur als `var(--token)`** außerhalb von `packages/design`.
-  Ausnahmen: Inhaltsfarben als Daten (Charakter-Palette) und OS-Nachbauten.
-  Kit und neue Apps nutzen kein `legacy.css` (`check:colors`, `check:tokens`).
+  Ausnahmen: Inhaltsfarben als Daten (Charakter-Palette) und OS-Nachbauten
+  (`check:colors`).
 - **Jeder sichtbare Text in DE und EN** (siehe [`i18n.md`](.claude/rules/i18n.md)).
 - **Neue Apps nur über `pnpm new-app`**, Releases nur über
   `pnpm release:bump` und Tags `<app>-vX.Y.Z` (siehe [`release.md`](.claude/rules/release.md)).
@@ -67,7 +67,7 @@ pnpm build:scriptz                    # native App und Installer bauen
 pnpm dev:site                         # Website lokal
 pnpm build:site                       # Website bauen
 pnpm lint && pnpm typecheck && pnpm test
-pnpm check:colors && pnpm check:tokens && pnpm check:astro
+pnpm check:colors && pnpm check:astro
 pnpm build:frontends                  # Vite-Builds ohne native Bundles
 cargo check --workspace --locked
 pnpm new-app <id> "<Name>"            # neue App erzeugen

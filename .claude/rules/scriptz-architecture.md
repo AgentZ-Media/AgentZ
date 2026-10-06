@@ -235,7 +235,8 @@ Sidebar, `Mod+L` außerhalb eines Skripts, `Mod+Shift+L` überall, ⌘K, Ideen-S
 
 - **Sitzungen** sind Zeilen in `agent_chats` mit `kind = 'session'`; eine neue
   Sitzung wird erst mit der ersten Nachricht gespeichert. `stores/agent.ts`
-  hält jeden Chat genau einmal (`byScript`/`byChat`): das Panel löst seinen
+  (Teile unter `stores/agent/`) hält jeden Chat genau einmal (`byScript`/`byChat`
+  in `stores/agent/registry.ts`): das Panel löst seinen
   Chat über `sessionFor(scriptId)` (neueste Zeile zuerst) auf, damit Panel,
   Agent-Modus und Lernen dasselbe Objekt und dieselbe Schreibwarteschlange
   nutzen. Gelöschte Skripte und Ordner gleicht `reconcileLiveChats` nach;

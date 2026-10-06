@@ -23,11 +23,6 @@ Plain CSS + a few typed data modules - no framework code, so any app
    `.field` / `.field-box`, `.num-f`, `.rng-f`, `.srow`, `.app-mark`,
    `svg.i` / `svg.st`.
 
-`legacy.css` is an alias layer that maps older token names (`--fg-muted`,
-`--bg-elev-1`, `--brand-500`, ...) onto the semantic tokens for ScriptZ
-components that reference them. New code must not use those names; delete
-aliases once nothing references them.
-
 ## Usage
 
 Import in this order, before any app CSS:
@@ -35,7 +30,6 @@ Import in this order, before any app CSS:
 ```ts
 import "@agentz/design/fonts.css";      // Schibsted Grotesk, bundled offline
 import "@agentz/design/tokens.css";
-// legacy.css: only ScriptZ loads it; never in new apps or the Kit.
 import "@agentz/design/components.css";
 ```
 
@@ -103,7 +97,7 @@ raster exports by hand.
 **No hex (or rgb) colour values outside this package.** Apps reference
 `var(--token)` only. That is what makes the system portable: to start a new
 app of the suite, add `@agentz/design` as a dependency, import `fonts.css`,
-`tokens.css` and `components.css` (never `legacy.css` in new apps), set
+`tokens.css` and `components.css`, set
 `data-theme` on `<html>`, override `--accent` if the app needs its own
 highlighter colour - done. Exceptions are content colours that are data,
 not UI (e.g. a user's character palette) and OS chrome replicas (macOS
