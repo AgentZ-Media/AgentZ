@@ -1,15 +1,13 @@
 // View state and derived lists of the ideas page: the session-level filter,
-// sort and paging signals, the folder and script resources, and the memos
-// built on them (scope, folder counts, time groups, the rendered page).
-// `createIdeasSources` and `createIdeasLists` are called once from
-// IdeasPage, so their resources, memos and effect live in the page's owner.
+// sort and paging signals, the folders and scripts of the shared library
+// data, and the memos built on them (scope, folder counts, time groups, the
+// rendered page). `createIdeasSources` and `createIdeasLists` are called once
+// from IdeasPage, so their memos and effect live in the page's owner.
 
-import { createEffect, createMemo, createResource, createSignal, on, type Accessor } from "solid-js";
+import { createEffect, createMemo, createSignal, on, type Accessor } from "solid-js";
 import { localeCompare } from "@agentz/kit/i18n";
-import { api } from "../../lib/api";
-import { foldersBus } from "../../lib/foldersBus";
-import { scriptsBus } from "../../lib/scriptsBus";
 import type { Folder, Idea, ScriptSummary } from "../../lib/types";
+import { library } from "../Shell/libraryData";
 import {
   countNewThisWeek,
   folderCounts,
@@ -34,24 +32,12 @@ export const [groupOpen, setGroupOpen] = createSignal<Record<string, boolean>>({
 /** How many rows (across open groups, in display order) are rendered. */
 export const [rowLimit, setRowLimit] = createSignal(PAGE_SIZE);
 
-/** Every folder (chips, pickers) and the live scripts by id (links of
- *  converted ideas), refetched when their bus bumps. */
+/** Every folder (chips, pickers) and every live script by id (links of
+ *  converted ideas), from the shared library data: no own queries, and no
+ *  cut-off for links to scripts beyond the newest thousand. */
 export function createIdeasSources() {
-  const [folders] = createResource(() => foldersBus.version(), () => api.listFolders(), {
-    initialValue: [] as Folder[],
-  });
-  const [scripts] = createResource(
-    () => scriptsBus.version(),
-    async () => {
-      try {
-        const list = await api.listScripts({ limit: 1000 });
-        return new Map(list.map((s) => [s.id, s]));
-      } catch {
-        return new Map<string, ScriptSummary>();
-      }
-    },
-    { initialValue: new Map<string, ScriptSummary>() },
-  );
+  const folders = (): Folder[] => library.folderList();
+  const scripts = (): ReadonlyMap<string, ScriptSummary> => library.byId();
   return { folders, scripts };
 }
 

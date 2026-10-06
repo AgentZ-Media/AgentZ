@@ -45,6 +45,37 @@ export function localeCompare(a: string, b: string): number {
   return a.localeCompare(b, getCurrentLocale());
 }
 
+// Intl formatters are expensive to construct (`toLocaleDateString` builds
+// one per call, about 60x the cost of reusing one), and lists, heatmaps and
+// relative times format thousands of values. One instance per locale and
+// options.
+const intlCache = new Map<string, Intl.DateTimeFormat | Intl.NumberFormat | Intl.PluralRules>();
+
+function cachedIntl<T extends Intl.DateTimeFormat | Intl.NumberFormat | Intl.PluralRules>(
+  kind: string,
+  options: object | undefined,
+  make: (locale: string) => T,
+): T {
+  const locale = getCurrentLocale();
+  const key = `${kind}|${locale}|${options ? JSON.stringify(options) : ""}`;
+  let hit = intlCache.get(key) as T | undefined;
+  if (!hit) intlCache.set(key, (hit = make(locale)));
+  return hit;
+}
+
+/** Date and/or time in the active language (`Intl.DateTimeFormat`). */
+export function formatDate(value: Date | number, options: Intl.DateTimeFormatOptions): string {
+  const date = typeof value === "number" ? new Date(value) : value;
+  // `Intl` throws on an invalid date where `toLocaleString` returned text.
+  if (Number.isNaN(date.getTime())) return String(date);
+  return cachedIntl("date", options, (locale) => new Intl.DateTimeFormat(locale, options)).format(date);
+}
+
+/** A number in the active language (`Intl.NumberFormat`). */
+export function formatNumber(value: number, options?: Intl.NumberFormatOptions): string {
+  return cachedIntl("number", options, (locale) => new Intl.NumberFormat(locale, options)).format(value);
+}
+
 function interpolate(template: string, params?: Params): string {
   if (!params) return template;
   return template.replace(/\{(\w+)\}/g, (full, name: string) =>
@@ -62,7 +93,7 @@ export function createI18n<const C extends Catalog>(catalogs: Catalogs<C>) {
   }
 
   function tPlural(baseKey: PluralKey<C>, count: number, params?: Params): string {
-    const rule = new Intl.PluralRules(getCurrentLocale()).select(count);
+    const rule = cachedIntl("plural", undefined, (locale) => new Intl.PluralRules(locale)).select(count);
     const pluralKey = `${baseKey}_${rule}`;
     const otherKey = `${baseKey}_other`;
     const catalog: Catalog = catalogs[language()];

@@ -1,4 +1,4 @@
-import { For, Show, createMemo, createSignal, onCleanup } from "solid-js";
+import { For, Index, Show, createMemo, createSignal, onCleanup } from "solid-js";
 import { relativeTime, requireSuccessfulFlush } from "@agentz/kit/lib";
 import { pushToast } from "@agentz/kit/stores";
 import { Icon } from "@agentz/kit/ui";
@@ -82,6 +82,11 @@ export function Board(props: BoardProps) {
     droppedTimer = setTimeout(() => setDropped(null), 900);
   };
 
+  // "Show more" per column key: survives list reloads (the columns are
+  // rebuilt on every change) and the columns are matched by position.
+  const [limits, setLimits] = createSignal<Readonly<Record<string, number>>>({});
+  const limitOf = (key: string) => limits()[key] ?? COLUMN_PAGE;
+
   const accepts = (col: BoardColumn, e: DragEvent) => {
     if (col.stage === null || !e.dataTransfer) return false;
     const types = Array.from(e.dataTransfer.types);
@@ -109,35 +114,36 @@ export function Board(props: BoardProps) {
 
   return (
     <div class="board" classList={{ "is-dragging": dragKind() !== null }}>
-      <For each={props.columns}>
+      <Index each={props.columns}>
         {(col) => {
-          const [limit, setLimit] = createSignal(COLUMN_PAGE);
-          const count = () => (col.stage === null ? col.ideas.length : col.scripts.length);
-          const isFirst = () => col.stage !== null && col.stage === firstStageId();
+          const limit = () => limitOf(col().key);
+          const setLimit = (n: number) => setLimits((cur) => ({ ...cur, [col().key]: n }));
+          const count = () => (col().stage === null ? col().ideas.length : col().scripts.length);
+          const isFirst = () => col().stage !== null && col().stage === firstStageId();
           return (
             <section
               class="bcol"
               classList={{
-                "is-drop": dropOn() === col.key,
-                "is-target": dragKind() !== null && col.stage !== null,
+                "is-drop": dropOn() === col().key,
+                "is-target": dragKind() !== null && col().stage !== null,
               }}
-              aria-label={col.label}
+              aria-label={col().label}
               onDragOver={(e) => {
-                if (!accepts(col, e)) return;
+                if (!accepts(col(), e)) return;
                 e.preventDefault();
                 if (e.dataTransfer) e.dataTransfer.dropEffect = "move";
-                setDropOn(col.key);
+                setDropOn(col().key);
               }}
               onDragLeave={(e) => {
                 const next = e.relatedTarget as Node | null;
                 if (next && e.currentTarget.contains(next)) return;
-                setDropOn((cur) => (cur === col.key ? null : cur));
+                setDropOn((cur) => (cur === col().key ? null : cur));
               }}
-              onDrop={(e) => onDrop(col, e)}
+              onDrop={(e) => onDrop(col(), e)}
             >
               <header class="bcol-h">
-                <StageGlyph stage={col.stage ?? "idea"} />
-                <span class="bcol-t">{col.label}</span>
+                <StageGlyph stage={col().stage ?? "idea"} />
+                <span class="bcol-t">{col().label}</span>
                 <BumpNumber class="bcol-n num" value={count()} />
                 <Show when={isFirst()}>
                   <button
@@ -152,8 +158,8 @@ export function Board(props: BoardProps) {
                 </Show>
               </header>
               <div class="bcol-cards">
-                <Show when={col.stage === null}>
-                  <For each={col.ideas.slice(0, limit())}>
+                <Show when={col().stage === null}>
+                  <For each={col().ideas.slice(0, limit())}>
                     {(idea) => (
                       <IdeaCard
                         idea={idea}
@@ -164,7 +170,7 @@ export function Board(props: BoardProps) {
                     )}
                   </For>
                 </Show>
-                <For each={col.scripts.slice(0, limit())}>
+                <For each={col().scripts.slice(0, limit())}>
                   {(s) => (
                     <ScriptCard
                       script={s}
@@ -178,18 +184,18 @@ export function Board(props: BoardProps) {
                   )}
                 </For>
                 <Show when={count() > limit()}>
-                  <button type="button" class="bcol-more" onClick={() => setLimit((n) => n + COLUMN_PAGE)}>
+                  <button type="button" class="bcol-more" onClick={() => setLimit(limit() + COLUMN_PAGE)}>
                     {t("shell.board.more", { n: Math.min(COLUMN_PAGE, count() - limit()) })}
                   </button>
                 </Show>
                 <Show when={count() === 0}>
-                  <div class="bcol-empty">{col.stage === null ? t("shell.board.noIdeas") : t("shell.board.empty")}</div>
+                  <div class="bcol-empty">{col().stage === null ? t("shell.board.noIdeas") : t("shell.board.empty")}</div>
                 </Show>
               </div>
             </section>
           );
         }}
-      </For>
+      </Index>
     </div>
   );
 }

@@ -308,6 +308,21 @@ describe("agent store registry", () => {
     expect(withoutFolder.ok).toBe(false);
   });
 
+  it("unloads the least recently used idle chats and loads them again from storage", async () => {
+    const ids = Array.from({ length: 12 }, (_, i) => `lru-${i}`);
+    for (const id of ids) await saveChat(session(id, null, `Chat ${id}`));
+    const oldest = agentStore.chat(ids[0]);
+    const chats = ids.slice(1).map((id) => agentStore.chat(id));
+    await new Promise((r) => setTimeout(r, 1200));
+    // The newest stay the same objects; the oldest left the registry.
+    expect(agentStore.chat(ids[11])).toBe(chats[10]);
+    const again = agentStore.chat(ids[0]);
+    expect(again).not.toBe(oldest);
+    await new Promise((r) => setTimeout(r, 0));
+    expect(again.items.map((i) => i.id)).toEqual([`u-${ids[0]}`]);
+    expect(agentStore.chat(ids[0])).toBe(again);
+  });
+
   it("does not store a deleted session again", async () => {
     await saveChat(session("gone", null));
     const chat = agentStore.chat("gone");

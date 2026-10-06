@@ -192,32 +192,65 @@ interface MessageLike {
   streaming?: boolean;
 }
 
+interface ParsedDraft {
+  attrs: DraftAttrs;
+  blocks: AgentBlock[];
+  complete: boolean;
+}
+
+/** Parsed drafts per message id. A message is parsed again only when its
+ *  text or streaming state changed, so a streamed token re-parses just the
+ *  message being written. The text is compared in full (equal strings from
+ *  the store are usually the same reference). */
+const parsedMessages = new Map<string, { text: string; streaming: boolean; drafts: ParsedDraft[] }>();
+const PARSED_MESSAGES_MAX = 2000;
+
+function draftsOf(id: string, text: string, streaming: boolean): ParsedDraft[] {
+  const hit = parsedMessages.get(id);
+  if (hit && hit.streaming === streaming && hit.text === text) return hit.drafts;
+  const drafts: ParsedDraft[] = [];
+  if (hasDraft(text)) {
+    for (const segment of splitDraftSegments(text)) {
+      if (segment.kind !== "draft") continue;
+      drafts.push({
+        attrs: segment.attrs,
+        blocks: parseDraftBody(segment.body, !segment.complete && streaming),
+        // A message that stopped (interrupted, crashed) without the closing
+        // fence still leaves a usable draft.
+        complete: segment.complete || !streaming,
+      });
+    }
+  }
+  parsedMessages.delete(id);
+  parsedMessages.set(id, { text, streaming, drafts });
+  // Oldest first in insertion order.
+  if (parsedMessages.size > PARSED_MESSAGES_MAX) parsedMessages.delete(parsedMessages.keys().next().value as string);
+  return drafts;
+}
+
 /** All drafts of a chat in order of first appearance, each with its
  *  versions in chat order. */
 export function collectDrafts(items: readonly MessageLike[]): DraftThread[] {
   const bySlug = new Map<string, DraftThread>();
   for (const item of items) {
-    if (item.kind !== "assistant" || typeof item.text !== "string" || !hasDraft(item.text)) continue;
+    if (item.kind !== "assistant" || typeof item.text !== "string") continue;
     let n = 0;
-    for (const segment of splitDraftSegments(item.text)) {
-      if (segment.kind !== "draft") continue;
+    for (const draft of draftsOf(item.id, item.text, item.streaming === true)) {
       const id = `${item.id}#${n++}`;
-      let thread = bySlug.get(segment.attrs.slug);
+      let thread = bySlug.get(draft.attrs.slug);
       if (!thread) {
-        thread = { slug: segment.attrs.slug, versions: [] };
-        bySlug.set(segment.attrs.slug, thread);
+        thread = { slug: draft.attrs.slug, versions: [] };
+        bySlug.set(draft.attrs.slug, thread);
       }
       const previous = thread.versions[thread.versions.length - 1];
       thread.versions.push({
         id,
         itemId: item.id,
         // A revision without a title keeps the previous one.
-        title: segment.attrs.title || previous?.title || "",
-        ideaId: segment.attrs.ideaId ?? previous?.ideaId ?? null,
-        blocks: parseDraftBody(segment.body, !segment.complete && item.streaming === true),
-        // A message that stopped (interrupted, crashed) without the closing
-        // fence still leaves a usable draft.
-        complete: segment.complete || item.streaming !== true,
+        title: draft.attrs.title || previous?.title || "",
+        ideaId: draft.attrs.ideaId ?? previous?.ideaId ?? null,
+        blocks: draft.blocks,
+        complete: draft.complete,
       });
     }
   }

@@ -13,6 +13,7 @@ const LIT: readonly (readonly [number, number, number, number])[] = [
 export function SideDots() {
   return (
     <div class="side-dots" aria-hidden="true">
+      <span class="side-dots-sweep" />
       <For each={LIT}>{([x, y, cycle, phase]) =>
         <i class="side-dot" style={{ "--gx": String(x), "--gy": String(y), "--dur": `${cycle}s`, "--dl": `-${phase}s` }} />
       }</For>

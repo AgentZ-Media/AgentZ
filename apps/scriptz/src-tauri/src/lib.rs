@@ -15,6 +15,8 @@ const MIGRATION_011_TRACK_AGENT_SESSIONS: &str =
     include_str!("../migrations/011_track_agent_sessions.sql");
 const MIGRATION_012_AGENT_LEARNED_TEXT: &str =
     include_str!("../migrations/012_agent_learned_text.sql");
+const MIGRATION_013_LARGE_LIBRARY_INDEXES: &str =
+    include_str!("../migrations/013_large_library_indexes.sql");
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
@@ -89,6 +91,12 @@ pub fn run() {
             version: 12,
             description: "agent: learned script text",
             sql: MIGRATION_012_AGENT_LEARNED_TEXT,
+            kind: MigrationKind::Up,
+        },
+        Migration {
+            version: 13,
+            description: "indexes for large libraries, search index map",
+            sql: MIGRATION_013_LARGE_LIBRARY_INDEXES,
             kind: MigrationKind::Up,
         },
     ];

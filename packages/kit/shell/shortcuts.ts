@@ -12,12 +12,16 @@ export function createShortcutRegistry(
 ) {
   const handle = (event: KeyboardEvent): void => {
     if (event.defaultPrevented || event.isComposing) return;
-    const activeContext = isDialogOpen() ? "dialog" : context();
+    // Resolved only for a key that matches a shortcut: plain typing never
+    // pays for the context (the dialog check may query the whole page).
+    let activeContext: ShortcutContext | null = null;
     for (const definition of definitions()) {
       if (!definition.run || !definition.matches || definition.enabled?.() === false) continue;
+      if (!definition.matches(event)) continue;
+      activeContext ??= isDialogOpen() ? "dialog" : context();
       const inContext = definition.contexts.includes(activeContext)
         || (activeContext !== "dialog" && definition.contexts.includes("shell"));
-      if (!inContext || !definition.matches(event)) continue;
+      if (!inContext) continue;
       event.preventDefault();
       definition.run(event);
       return;

@@ -13,9 +13,10 @@ import { agentUi } from "../../stores/agentUi";
 import { library } from "../Shell/libraryData";
 import { AgentAvatar, type AvatarState } from "./AgentAvatar";
 import type { ItemContext } from "./ChatItems";
-import { ChatList, createDraftIndex, lastReplies } from "./ChatList";
+import { ChatList, createDraftIndex, lastReplies, tailKey } from "./ChatList";
 import { RepliesBar } from "./ModeItems";
 import { agentEditor, clearProposalPreview, liveBlocks } from "./editorBridge";
+import type { AgentBlock } from "../../lib/agent/scriptText";
 import { AGENT_JOBS, jobInstruction, type AgentJobId } from "../../lib/agent/jobs";
 import { formatClock, formatRange, type LengthRange } from "../../lib/lengthGoal";
 import { measureBlocks } from "./proposalMetrics";
@@ -40,6 +41,9 @@ export function avatarStateFor(running: boolean, talking = false): AvatarState {
   if (agentStore.learning()) return "learn";
   return "idle";
 }
+
+/** Quiet time after the last editor update before cards measure again. */
+const BLOCKS_SETTLE_MS = 150;
 
 /** The agent's chat next to the paper (replaces the inspector while open). */
 export function ChatPanel(props: ChatPanelProps) {
@@ -240,6 +244,24 @@ function ChatBody(props: ChatPanelProps & { session: ChatSession }) {
   let inputRef: HTMLTextAreaElement | undefined;
   let stick = true;
 
+  // The paper's blocks for the cards, read once per settled edit (not per
+  // keystroke) and only when a card asks.
+  const [settled, setSettled] = createSignal(0);
+  let settleTimer: ReturnType<typeof setTimeout> | undefined;
+  createEffect(on(() => props.tick?.() ?? 0, () => {
+    clearTimeout(settleTimer);
+    settleTimer = setTimeout(() => setSettled((n) => n + 1), BLOCKS_SETTLE_MS);
+  }, { defer: true }));
+  onCleanup(() => clearTimeout(settleTimer));
+  let blocksCache: { version: number; scriptId: string; blocks: AgentBlock[] | null } | null = null;
+  const paperBlocks = (): AgentBlock[] | null => {
+    const version = settled();
+    if (!blocksCache || blocksCache.version !== version || blocksCache.scriptId !== props.scriptId) {
+      blocksCache = { version, scriptId: props.scriptId, blocks: liveBlocks(props.scriptId) };
+    }
+    return blocksCache.blocks;
+  };
+
   const draftIndex = createDraftIndex(() => session().items);
   const ctx = (): ItemContext => ({
     session: session(),
@@ -257,7 +279,7 @@ function ChatBody(props: ChatPanelProps & { session: ChatSession }) {
     scriptId: props.scriptId,
     range: props.range,
     wpm: props.wpm,
-    tick: () => props.tick?.() ?? 0,
+    blocks: paperBlocks,
   });
 
   const running = () => session().running();
@@ -268,7 +290,7 @@ function ChatBody(props: ChatPanelProps & { session: ChatSession }) {
     if (!listRef) return;
     stick = listRef.scrollHeight - listRef.scrollTop - listRef.clientHeight < 60;
   };
-  createEffect(on(() => [session().items.length, JSON.stringify(session().items[session().items.length - 1] ?? null).length, running()], () => {
+  createEffect(on(() => [tailKey(session().items), running()], () => {
     if (!stick || !listRef) return;
     requestAnimationFrame(() => { if (listRef) listRef.scrollTop = listRef.scrollHeight; });
   }));

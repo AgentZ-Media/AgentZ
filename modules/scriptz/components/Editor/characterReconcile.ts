@@ -68,8 +68,9 @@ function collectCharacterNames(editor: LexicalEditor): string[] {
         cur = cur.getParent();
       }
     }
-    const root = $getRoot();
-    for (const child of root.getChildren()) {
+    // Sibling walk instead of getChildren(): runs on every keystroke and
+    // must not allocate the block list of a long script.
+    for (let child = $getRoot().getFirstChild(); child; child = child.getNextSibling()) {
       if (
         $isScriptzCharacterNode(child) &&
         child.getKey() !== editedCharKey

@@ -17,6 +17,7 @@ const migration009 = readFileSync(new URL("009_local_changes.sql", migrations), 
 const migration010 = readFileSync(new URL("010_agent_sessions.sql", migrations), "utf8");
 const migration011 = readFileSync(new URL("011_track_agent_sessions.sql", migrations), "utf8");
 const migration012 = readFileSync(new URL("012_agent_learned_text.sql", migrations), "utf8");
+const migration013 = readFileSync(new URL("013_large_library_indexes.sql", migrations), "utf8");
 let db: SQLiteDatabase;
 let tempDir: string;
 let dbPath: string;
@@ -35,6 +36,7 @@ function migrateTracking() {
   db.exec(migration010);
   db.exec(migration011);
   db.exec(migration012);
+  db.exec(migration013);
 }
 
 /** Seeds each tracked content type plus settings and UI state excluded from the feed. */
