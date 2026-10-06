@@ -1,0 +1,104 @@
+/* ---------------------------------------------------------------------
+   Retroactive learning (onboarding step 4 + settings)
+   --------------------------------------------------------------------- */
+.ag-learn {
+  margin-top: 22px;
+}
+.ag-learn-start {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+}
+.ag-learn-start .btn {
+  min-height: 34px;
+  padding: 0 14px;
+}
+.ag-learn-prog {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.ag-bar {
+  height: 6px;
+  overflow: hidden;
+  border-radius: 3px;
+  background: var(--fill);
+}
+.ag-bar i {
+  display: block;
+  height: 100%;
+  border-radius: 3px;
+  background: var(--accent);
+  transition: width var(--t-slow);
+}
+.ag-learn-t {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  color: var(--muted);
+  font-size: 12.5px;
+}
+.ag-learn-t span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.ag-learn-t b {
+  flex: none;
+  color: var(--fg);
+  font-variant-numeric: tabular-nums;
+}
+.ag-learn-cancel {
+  align-self: flex-start;
+}
+.ag-feed {
+  width: 100%;
+  max-width: 340px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.ag-feed-empty {
+  color: var(--side-muted);
+  font-size: 12.5px;
+  text-align: center;
+}
+.ag-feed-it {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 8px 10px;
+  border-radius: var(--r-3);
+  background: color-mix(in srgb, var(--side-strong) 5%, transparent);
+  color: var(--side-fg);
+  font-size: 12px;
+  line-height: 1.4;
+  animation: ag-feed-in 0.5s var(--ease) both;
+}
+.ag-feed-it svg {
+  flex: none;
+  margin-top: 2px;
+  color: var(--accent);
+}
+.ag-feed-it b {
+  display: block;
+  color: var(--side-strong);
+  font-size: 11px;
+  font-weight: 700;
+}
+.ag-feed-it span {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+@keyframes ag-feed-in { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+.ag-relearn-n {
+  align-self: center;
+  color: var(--muted);
+  font-size: 12.5px;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}

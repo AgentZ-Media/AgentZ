@@ -1,0 +1,75 @@
+/* ---------------------------------------------------------------------
+   Sidebar agent row
+   --------------------------------------------------------------------- */
+.side-agent {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  width: 100%;
+  margin: 0 0 10px;
+  padding: 7px 8px 7px 7px;
+  border: 0;
+  border-radius: var(--r-3);
+  background: var(--side-hover);
+  color: var(--side-fg);
+  font: 13px/1.2 var(--ui);
+  text-align: left;
+  cursor: pointer;
+}
+.side-agent:hover,
+.side-agent.is-on {
+  background: var(--side-active);
+}
+.side-agent.is-on::before {
+  content: "";
+  position: absolute;
+  left: -10px;
+  top: 10px;
+  bottom: 10px;
+  width: 3px;
+  border-radius: 0 3px 3px 0;
+  background: var(--accent);
+}
+.side-agent:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+.side-agent-t {
+  flex: 1;
+  min-width: 0;
+}
+.side-agent-t b {
+  display: block;
+  color: var(--side-strong);
+  font-weight: 700;
+}
+.side-agent-t small {
+  display: block;
+  color: var(--side-muted);
+  font-size: 11.5px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.side-agent.is-learning small {
+  color: var(--accent);
+}
+.side-agent-badge {
+  flex: none;
+  height: 18px;
+  padding: 0 6px;
+  border-radius: var(--r-pill);
+  background: color-mix(in srgb, var(--accent) 16%, transparent);
+  color: var(--accent);
+  font-size: 10.5px;
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  white-space: nowrap;
+}
+.side-agent kbd {
+  flex: none;
+  background: color-mix(in srgb, var(--side-strong) 7%, transparent);
+  color: var(--side-muted);
+}
