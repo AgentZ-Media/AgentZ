@@ -747,7 +747,7 @@
 /* Sidebar hidden: the chip sits next to the traffic lights and the main
    column's top bars make room for it. */
 [data-build="nightly"] .shell.is-bare:not(.is-focus) {
-  --shell-inset-left: calc(var(--titlebar-traffic-width) + 84px);
+  --shell-inset-left: calc(var(--titlebar-traffic-width) + 92px);
 }
 .shell-main > .shell-night-chip {
   position: absolute;

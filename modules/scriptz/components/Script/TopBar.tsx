@@ -1,6 +1,7 @@
 import { Show, createEffect, createSignal, on, onCleanup, untrack, type JSX } from "solid-js";
 import { Icon, type IconName } from "@agentz/kit/ui";
 import { navStore } from "../../stores/nav";
+import { uiStore } from "../../stores/ui";
 import { saveStatusStore } from "../../stores/saveStatus";
 import { INBOX_FOLDER_ID } from "../../lib/folders";
 import type { Folder, ScriptStatus } from "../../lib/types";
@@ -44,7 +45,9 @@ export interface TopBarProps {
 }
 
 /** Top bar of the script screen. Back and forward
- *  are ⌘[ / ⌘] only; the folder crumb leads back to the list. */
+ *  are ⌘[ / ⌘] only; the folder crumb leads back to the list. While the
+ *  sidebar is hidden it leads with the toggle to bring it back (the module
+ *  sets `revealsSidebar`, so the shell does not render its own). */
 export function TopBar(props: TopBarProps) {
   const openFolder = () => {
     navStore.openScripts({ folderId: props.folder?.id ?? INBOX_FOLDER_ID });
@@ -52,6 +55,18 @@ export function TopBar(props: TopBarProps) {
 
   return (
     <header class="ss-bar" classList={{ "is-peek": !!props.peek }} aria-label={t("script.bar.aria")}>
+      <Show when={!props.peek && !uiStore.sidebarOpen()}>
+        <button
+          type="button"
+          class="btn ghost icon"
+          title={t("shell.sidebar.toggle", { hotkey: K("Mod+\\") })}
+          aria-label={t("shell.sidebar.toggleAria")}
+          onMouseDown={(e) => e.preventDefault()}
+          onClick={() => uiStore.toggleSidebar()}
+        >
+          <Icon name="sidebar" />
+        </button>
+      </Show>
       <nav class="ss-crumb">
         <button
           type="button"
