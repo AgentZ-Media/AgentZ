@@ -34,10 +34,10 @@ export function createNavStore<Route>(options: NavStoreOptions<Route>) {
     if (!current?.active) return Promise.resolve();
     current.queue = current.queue.then(async () => {
       if (!current.active) return;
-      const result = await flushAll(2000);
+      const result = await flushAll(2000, ["content"]);
       if (!current.active) return;
-      // Only unsaved content blocks navigation; failed UI state stays queued
-      // in its saver and is retried by the next flush.
+      // Only unsaved content blocks navigation (and is waited for); UI state
+      // keeps its own saver queue and goes out with the next flush.
       if (result.contentFailed.length) { options.onFlushFailed?.(); return; }
       apply();
     }).catch(() => { if (current.active) options.onFlushFailed?.(); });
@@ -119,8 +119,8 @@ export function createNavStore<Route>(options: NavStoreOptions<Route>) {
         }
         const index = safe.findIndex((entry) => sameRoute(entry, current));
         setHistoryIndex(index >= 0 ? index : safe.length - 1);
+        persist();
       }
-      persist();
     },
   };
   return store;

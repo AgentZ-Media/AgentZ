@@ -70,7 +70,7 @@ die Befehlspalette, deshalb setzt das Modul `revealsSidebar: true`.
 
 ## Migrationen
 
-`001_baseline` bis `012_agent_learned_text` in
+`001_baseline` bis `013_large_library_indexes` in
 `apps/scriptz/src-tauri/migrations/` sind veröffentlicht und unveränderlich. `007` ergänzt `scripts.status`,
 `status_changed_at` und den Ordner-Zielbereich. `008_agent` legt
 `agent_memory`, `agent_chats` und `agent_learned` an. `009_local_changes`
@@ -84,6 +84,13 @@ endgültiges Löschen eines Skripts löst Sitzungen atomar davon, statt sie per
 Kaskade mitzulöschen. `011_track_agent_sessions` nimmt diese Spalten in die
 Update-Trigger des Änderungsfeeds auf. `012_agent_learned_text` ergänzt
 `agent_learned.learned_text` (zuletzt gelernter Text) samt Update-Trigger.
+`013_large_library_indexes` ist rein additiv: ein Covering-Index über alle
+Spalten der Skriptliste (`idx_scripts_summary`, sie liegen in der Zeile hinter
+`content_json`), Indizes für Ordnerzählung und Löschpfade sowie
+`scripts_fts_map`, die jedem Skript eine feste rowid im Suchindex gibt
+(`lib/fts.ts` löscht darüber statt per Vollscan über `script_id`). Eine neue
+Spalte der Skriptliste gehört in eine neue Migration mit erweitertem
+Covering-Index (`lib/__tests__/queryPlans.test.ts` schlägt sonst fehl).
 Jede neue Spalte einer Inhaltstabelle braucht dasselbe: Trigger neu anlegen
 und `CONTENT_ENTITIES` ergänzen (Tests in `lib/__tests__/localChanges.test.ts`
 schlagen sonst fehl). Die Umwandlung von Kamera/Caption/SFX in Action ist bewusst keine SQL-Migration
@@ -271,8 +278,16 @@ Sidebar, `Mod+L` außerhalb eines Skripts, `Mod+Shift+L` überall, ⌘K, Ideen-S
 
 - Editor -> 250 ms Debounce (`persistence.ts`) -> `api.updateScript`:
   `content_json`, FTS5, `characters_meta`, Runtime-Statistiken und positive
-  Wort-Deltas ins `daily_word_log`. Ein Teardown-Flush mit leerem Editor
-  überschreibt nie gespeicherten Inhalt.
+  Wort-Deltas ins `daily_word_log`, alles aus einem einzigen Parse des
+  Dokuments. Ein Teardown-Flush mit leerem Editor überschreibt nie
+  gespeicherten Inhalt.
+- Ein Autosave meldet sich über `scriptSavedBus` mit der neuen Zusammenfassung:
+  `libraryData` und das offene Skript ersetzen nur diese eine Zeile, Lernen und
+  Export-Vorschau folgen. `scriptsBus` bleibt für Änderungen an der Liste
+  (anlegen, Stufe, Ordner, Umbenennen, Papierkorb) und lädt neu; dabei behält
+  `keepUnchanged` die Objekte unveränderter Zeilen, damit Listen nur geänderte
+  Zeilen neu rendern. Seiten lesen Skripte und Ordner aus `library`, keine
+  eigenen `listScripts`/`listFolders`-Abfragen.
 - Editor, Titel und Ideen registrieren `content`-Flushes; Layout, Navigation,
   Fokus, Quick-Mode und Einstellungen sind `state`. Navigation, Export und
   Snapshots warten nur auf `content`.

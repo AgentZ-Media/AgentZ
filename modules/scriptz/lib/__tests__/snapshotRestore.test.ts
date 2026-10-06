@@ -50,6 +50,9 @@ function fakeDb(row: Row, snapshotContent: string) {
       if (q.startsWith("SELECT characters_meta FROM scripts")) {
         return [{ characters_meta: row.characters_meta }] as T;
       }
+      if (q.startsWith("SELECT title, characters_meta FROM scripts")) {
+        return [{ title: row.title, characters_meta: row.characters_meta }] as T;
+      }
       if (q.startsWith("SELECT title, content_json FROM scripts")) {
         return [{ title: row.title, content_json: row.content_json }] as T;
       }
@@ -68,7 +71,7 @@ function fakeDb(row: Row, snapshotContent: string) {
           dialog_word_count: dialog,
           direction_block_count: direction,
         });
-      } else if (q.startsWith("INSERT INTO scripts_fts")) {
+      } else if (q.startsWith("INSERT INTO scripts_fts") || q.startsWith("INSERT OR REPLACE INTO scripts_fts")) {
         fts.text = String((params as unknown[])[2] ?? "");
       }
       return { rowsAffected: 1 };

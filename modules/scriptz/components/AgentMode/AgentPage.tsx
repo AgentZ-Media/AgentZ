@@ -16,7 +16,7 @@ import { settingsStore } from "../../stores/settings";
 import { uiStore } from "../../stores/ui";
 import { AgentAvatar } from "../Agent/AgentAvatar";
 import type { ItemContext } from "../Agent/ChatItems";
-import { ChatList, createDraftIndex, lastReplies } from "../Agent/ChatList";
+import { ChatList, createDraftIndexFrom, lastReplies, tailKey } from "../Agent/ChatList";
 import { GateView, avatarStateFor } from "../Agent/ChatPanel";
 import { RepliesBar } from "../Agent/ModeItems";
 import { folderLookup } from "../Agent/labels";
@@ -258,7 +258,7 @@ function SessionView(props: { chatId: string }) {
   });
   const split = () => selected() !== null && !agentUi.draftPanelClosed(props.chatId);
 
-  const draftIndex = createDraftIndex(() => session().items);
+  const draftIndex = createDraftIndexFrom(states);
   const ctx = (): ItemContext => ({
     session: session(),
     lookup: lookup(),
@@ -275,7 +275,7 @@ function SessionView(props: { chatId: string }) {
     scriptId: null,
     range: null,
     wpm: settingsStore.dialogWpm(),
-    tick: () => 0,
+    blocks: () => null,
   });
 
   const replies = createMemo(() => (running() ? [] : lastReplies(session().items)));
@@ -356,7 +356,7 @@ function ThreadColumn(props: {
   let list: HTMLDivElement | undefined;
   let stick = true;
   const items = () => props.session.items;
-  createEffect(on(() => [items().length, JSON.stringify(items()[items().length - 1] ?? null).length, props.session.running()], () => {
+  createEffect(on(() => [tailKey(items()), props.session.running()], () => {
     if (!stick || !list) return;
     requestAnimationFrame(() => { if (list) list.scrollTop = list.scrollHeight; });
   }));

@@ -17,7 +17,7 @@
 // stores/dailyStats.ts caches the result and invalidates via the
 // dailyStatsBus as soon as a save has recorded words.
 
-import { extractBlocks, wordCount } from "./lex";
+import { extractBlocks, wordCount, type ExtractedBlock } from "./lex";
 import { getDb } from "./db";
 import type { DailyStatsSummary, DailyWordEntry } from "./types";
 import { dailyStatsBus } from "./dailyStatsBus";
@@ -33,7 +33,11 @@ export function localDateKey(d: Date = new Date()): string {
 /** Word count of a Lexical script: splitting on whitespace, empty tokens are dropped.
  *  Block type is irrelevant - every text block counts. */
 export function countWordsInContent(contentJson: string): number {
-  const blocks = extractBlocks(contentJson);
+  return countWordsInBlocks(extractBlocks(contentJson));
+}
+
+/** `countWordsInContent` for already extracted blocks (one parse per save). */
+export function countWordsInBlocks(blocks: ExtractedBlock[]): number {
   let total = 0;
   for (const b of blocks) total += wordCount(b.text);
   return total;

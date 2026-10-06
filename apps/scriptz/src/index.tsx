@@ -4,10 +4,13 @@ import { bootDesktopApp, createCodexHost } from "@agentz/desktop";
 const app = bootDesktopApp({
   id: "scriptz",
   async loadModule() {
-    await import("@agentz/scriptz/styles.css");
-    const { registerSqlStorageAdapter } = await import("@agentz/scriptz/storage");
+    // The chunks load side by side; none of them does I/O on import.
+    const [, { registerSqlStorageAdapter }, { scriptzModule }] = await Promise.all([
+      import("@agentz/scriptz/styles.css"),
+      import("@agentz/scriptz/storage"),
+      import("@agentz/scriptz"),
+    ]);
     registerSqlStorageAdapter();
-    const { scriptzModule } = await import("@agentz/scriptz");
     return scriptzModule;
   },
   // Inert until the module calls it; creating the host performs no I/O.

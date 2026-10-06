@@ -1,5 +1,9 @@
 // FTS5 helpers for the `scripts_fts` virtual table (DELETE + INSERT on every
 // content write), used by script saves, snapshot restore and global search.
+//
+// `scripts_fts_map` (migration 013) pins each script to one FTS rowid.
+// `script_id` is UNINDEXED in the FTS table, so `WHERE script_id = ?` scans
+// the whole index on every save; the rowid is a direct lookup.
 
 import { extractPlainText } from "./lex";
 import { getDb } from "./db";
@@ -41,25 +45,29 @@ export function sanitizeFtsQuery(input: string): string {
     .join(" ");
 }
 
+const FTS_ROWID = "(SELECT fts_rowid FROM scripts_fts_map WHERE script_id = $1)";
+
 /** Replace the FTS row for one script with the given title + content text.
- *  DELETE then INSERT, no UPSERT
- *  because FTS5 contentless tables don't support ON CONFLICT. */
+ *  One statement (`OR REPLACE` on the mapped rowid drops the old tokens), so
+ *  a rename and an autosave writing the same script at once cannot
+ *  interleave into a constraint error. */
 export async function upsertScriptFts(
   scriptId: string,
   title: string,
   contentText: string,
 ): Promise<void> {
   const db = await getDb();
-  await db.execute("DELETE FROM scripts_fts WHERE script_id = $1", [scriptId]);
+  await db.execute("INSERT OR IGNORE INTO scripts_fts_map (script_id) VALUES ($1)", [scriptId]);
   await db.execute(
-    "INSERT INTO scripts_fts (script_id, title, content_text) VALUES ($1, $2, $3)",
+    `INSERT OR REPLACE INTO scripts_fts (rowid, script_id, title, content_text) VALUES (${FTS_ROWID}, $1, $2, $3)`,
     [scriptId, title, contentText],
   );
 }
 
 export async function deleteScriptFts(scriptId: string): Promise<void> {
   const db = await getDb();
-  await db.execute("DELETE FROM scripts_fts WHERE script_id = $1", [scriptId]);
+  await db.execute(`DELETE FROM scripts_fts WHERE rowid = ${FTS_ROWID}`, [scriptId]);
+  await db.execute("DELETE FROM scripts_fts_map WHERE script_id = $1", [scriptId]);
 }
 
 /** Convenience: read the script's title and content_json from the DB,

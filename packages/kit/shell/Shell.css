@@ -659,7 +659,7 @@
   .night-layer,
   .night-aurora,
   .side-dot,
-  .side-dots::after {
+  .side-dots-sweep::after {
     animation: none;
   }
 }
@@ -681,18 +681,25 @@
   mask-image: linear-gradient(180deg, black 30%, transparent 100%);
   animation: night-fade-in var(--t-slow);
 }
-.side-dots::after {
-  content: "";
+/* The sweep: a static dot mask over a moving accent band. Only the band's
+   transform animates, so it runs on the compositor instead of repainting
+   the sidebar head for as long as the app is open. */
+.side-dots-sweep {
   position: absolute;
   inset: 0;
-  background: radial-gradient(circle, var(--accent) 1px, transparent 1.5px) 6px 6px / 12px 12px;
-  -webkit-mask-image: linear-gradient(105deg, transparent 35%, black 50%, transparent 65%);
-  mask-image: linear-gradient(105deg, transparent 35%, black 50%, transparent 65%);
-  -webkit-mask-size: 300% 100%;
-  mask-size: 300% 100%;
-  -webkit-mask-position: 120% 0;
-  mask-position: 120% 0;
+  overflow: hidden;
   opacity: 0.5;
+  -webkit-mask: radial-gradient(circle, black 1px, transparent 1.5px) 6px 6px / 12px 12px;
+  mask: radial-gradient(circle, black 1px, transparent 1.5px) 6px 6px / 12px 12px;
+}
+.side-dots-sweep::after {
+  content: "";
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 300%;
+  background: linear-gradient(105deg, transparent 35%, var(--accent) 50%, transparent 65%);
+  transform: translateX(-80%);
+  will-change: transform;
   animation: side-dots-sweep 11s var(--ease-sheet) 1.5s infinite;
 }
 .side-dot {
@@ -707,9 +714,10 @@
   opacity: 0;
   animation: side-dot-lit var(--dur) ease-in-out var(--dl) infinite;
 }
+/* Same path as a 300% wide mask moving from 120% to -20%. */
 @keyframes side-dots-sweep {
-  0% { -webkit-mask-position: 120% 0; mask-position: 120% 0; }
-  55%, 100% { -webkit-mask-position: -20% 0; mask-position: -20% 0; }
+  0% { transform: translateX(-80%); }
+  55%, 100% { transform: translateX(13.333%); }
 }
 @keyframes side-dot-lit {
   0%, 100% { opacity: 0; transform: scale(0.4); }

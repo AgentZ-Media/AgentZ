@@ -50,6 +50,8 @@ export type ScriptViewState = {
   cursor: CursorAddress | null;
 };
 
+/** Scripts remembered per session; the least recently left one goes first. */
+const MAX_ENTRIES = 200;
 const cache = new Map<string, ScriptViewState>();
 
 export const scriptViewCache = {
@@ -57,7 +59,10 @@ export const scriptViewCache = {
     return cache.get(id);
   },
   set(id: string, state: ScriptViewState) {
+    // Re-insert so the Map's order is the order of last use.
+    cache.delete(id);
     cache.set(id, state);
+    if (cache.size > MAX_ENTRIES) cache.delete(cache.keys().next().value as string);
   },
 };
 

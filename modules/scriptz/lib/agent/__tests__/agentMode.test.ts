@@ -98,6 +98,19 @@ describe("agent mode drafts", () => {
     expect(drafts[2].versions[0].complete).toBe(false);
   });
 
+  it("parses only the message that changed and follows a stream to its end", () => {
+    const done: ChatItem = { kind: "assistant", id: "cache-1", text: ':::draft id="a" title="A"\nTIMO: Eins.\n:::' };
+    const first = collectDrafts([done, { kind: "assistant", id: "cache-2", text: ':::draft id="b" title="B"\nTIMO: Zw', streaming: true }]);
+    const second = collectDrafts([done, { kind: "assistant", id: "cache-2", text: ':::draft id="b" title="B"\nTIMO: Zwei.\nAXEL', streaming: true }]);
+    // The finished message keeps its parsed blocks; the streaming one follows.
+    expect(second[0].versions[0].blocks).toBe(first[0].versions[0].blocks);
+    expect(second[1].versions[0].blocks.map((b) => b.text)).toEqual(["TIMO", "Zwei.", "AXEL"]);
+    // Same text, but the stream ended: parsed again as a closed draft.
+    const ended = collectDrafts([done, { kind: "assistant", id: "cache-2", text: ':::draft id="b" title="B"\nTIMO: Zwei.\nAXEL', streaming: false }]);
+    expect(ended[1].versions[0].complete).toBe(true);
+    expect(ended[1].versions[0].blocks.map((b) => b.type)).toEqual(["character", "dialog", "action"]);
+  });
+
   it("derives open, finished and discarded states from the chat", () => {
     const base: ChatItem[] = [
       { kind: "assistant", id: "m1", text: ':::draft id="a" title="A"\nTIMO: Eins.\n:::\n:::draft id="b" title="B"\nTIMO: Zwei.\n:::' },

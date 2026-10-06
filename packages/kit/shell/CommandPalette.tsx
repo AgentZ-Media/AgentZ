@@ -1,4 +1,4 @@
-import { For, Show, createEffect, createMemo, createSignal, on, onCleanup } from "solid-js";
+import { For, Show, createEffect, createMemo, createSelector, createSignal, on, onCleanup } from "solid-js";
 import { Dynamic, Portal } from "solid-js/web";
 import { K } from "../platform";
 import { t } from "../i18n";
@@ -13,11 +13,18 @@ export interface CommandPaletteProps {
   placeholder?: string;
 }
 
+/** Rows rendered at most; nobody scrolls past them, and a broad query over a
+ *  large library must not build thousands of rows per keystroke. */
+const MAX_ROWS = 100;
+
 /** Keyboard/search presentation. Providers own matching, ranking, and result content. */
 export function CommandPalette(props: CommandPaletteProps) {
   const [query, setQuery] = createSignal("");
-  const [items, setItems] = createSignal<Command[]>([]);
+  const [items, setAllItems] = createSignal<Command[]>([]);
+  const setItems = (list: Command[]) => setAllItems(list.length > MAX_ROWS ? list.slice(0, MAX_ROWS) : list);
   const [active, setActive] = createSignal(0);
+  // Moving the selection touches two rows, not every row.
+  const isActive = createSelector(active);
   const [loading, setLoading] = createSignal(false);
   let inputRef: HTMLInputElement | undefined;
   let listRef: HTMLDivElement | undefined;
@@ -50,18 +57,21 @@ export function CommandPalette(props: CommandPaletteProps) {
       controller.abort();
       if (timer !== undefined) clearTimeout(timer);
     });
-    try {
-      setItems(provider.immediate?.(value) ?? []);
-    } catch {
-      setItems([]);
-    }
+    const showImmediate = () => {
+      try {
+        setItems(provider.immediate?.(value) ?? []);
+      } catch {
+        setItems([]);
+      }
+    };
     setLoading(true);
-    const search = () => {
+    const search = (beforeWait?: () => void) => {
       try {
         const result = provider(value, controller.signal);
         if (Array.isArray(result)) {
           if (!controller.signal.aborted) { setItems(result); setLoading(false); }
         } else {
+          beforeWait?.();
           void result.then((next) => {
             if (!controller.signal.aborted) { setItems(next); setLoading(false); }
           }, () => {
@@ -69,12 +79,21 @@ export function CommandPalette(props: CommandPaletteProps) {
           });
         }
       } catch {
-        if (!controller.signal.aborted) setLoading(false);
+        if (!controller.signal.aborted) {
+          beforeWait?.();
+          setLoading(false);
+        }
       }
     };
-    // One-character/local queries stay instant; expensive searches keep the existing delay.
-    if (value.length >= 2) timer = setTimeout(search, 140);
-    else search();
+    // One-character/local queries stay instant; expensive searches keep the
+    // existing delay. The immediate results only show while something is
+    // awaited, never computed and then overwritten in the same tick.
+    if (value.length >= 2) {
+      showImmediate();
+      timer = setTimeout(() => search(), 140);
+    } else {
+      search(showImmediate);
+    }
   });
 
   // Async enrichment may shorten a result list while an arrow-selected row is active.
@@ -185,9 +204,9 @@ export function CommandPalette(props: CommandPaletteProps) {
                             id={`pal-it-${index}`}
                             data-idx={index}
                             class="pal-it"
-                            classList={{ on: active() === index }}
+                            classList={{ on: isActive(index) }}
                             role="option"
-                            aria-selected={active() === index}
+                            aria-selected={isActive(index)}
                             onMouseMove={() => {
                               if (active() !== index) setActive(index);
                             }}

@@ -4,7 +4,7 @@ import { settingsStore } from "../../stores/settings";
 import { uiStore } from "../../stores/ui";
 import { pickWritingWindow, recentDayLevels } from "../../lib/writingCounter";
 import { K } from "@agentz/kit/platform";
-import { getCurrentLocale } from "@agentz/kit/i18n";
+import { formatNumber } from "@agentz/kit/i18n";
 import { t, tPlural } from "../../i18n";
 import "./WritingCounter.css";
 
@@ -19,7 +19,7 @@ const LEVEL_ROWS = [0, 1, 2, 3, 4] as const;
 export function WritingCounter() {
   const pick = createMemo(() => pickWritingWindow(dailyStatsStore.stats()));
   const days = createMemo(() => recentDayLevels(dailyStatsStore.stats().dailyWords ?? [], 7, LEVEL_ROWS.length));
-  const fmt = (n: number) => n.toLocaleString(getCurrentLocale());
+  const fmt = (n: number) => formatNumber(n);
 
   const windowText = () => {
     switch (pick().window) {

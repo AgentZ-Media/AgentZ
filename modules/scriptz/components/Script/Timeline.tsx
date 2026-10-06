@@ -1,10 +1,10 @@
-import { For, Show, createEffect, createMemo, createSignal, on, onCleanup, type JSX } from "solid-js";
+import { For, Index, Show, createEffect, createMemo, createSelector, createSignal, on, onCleanup, type JSX } from "solid-js";
 import { Icon } from "@agentz/kit/ui";
 import { formatClock, formatRange, lengthStatus, type LengthRange } from "../../lib/lengthGoal";
 import type { TimelineSegment } from "../../lib/timing";
 import { createTween } from "../Common/motion";
 import { K } from "@agentz/kit/platform";
-import { getCurrentLocale } from "@agentz/kit/i18n";
+import { formatNumber } from "@agentz/kit/i18n";
 import { t } from "../../i18n";
 import {
   HOOK_MARKS,
@@ -63,6 +63,9 @@ const TIP_WIDTH = 270;
  *  bar with the mini track by default, ⌘J expands one lane per speaker. */
 export function Timeline(props: TimelineProps) {
   const [tip, setTip] = createSignal<TipState | null>(null);
+  // One segment changes its hover class, not every segment of every lane.
+  const hoverKey = createSelector<string | null, string | null | undefined>(() => tip()?.seg.key ?? null);
+  const isHovered = (key: string | null | undefined) => key != null && hoverKey(key);
   let areaRef: HTMLDivElement | undefined;
 
   const win = createMemo(() => timelineWindow(props.runtimeSec, props.range));
@@ -128,7 +131,7 @@ export function Timeline(props: TimelineProps) {
 
   // ---------- hover / tooltip ----------
   const fmtSec = (sec: number) =>
-    sec.toLocaleString(getCurrentLocale(), { minimumFractionDigits: 1, maximumFractionDigits: 1 });
+    formatNumber(sec, { minimumFractionDigits: 1, maximumFractionDigits: 1 });
 
   const onEnter = (seg: TimelineSegment, label: string, el: HTMLElement) => {
     props.onHover(seg);
@@ -289,7 +292,7 @@ export function Timeline(props: TimelineProps) {
         <Show when={!props.open} fallback={<span />}>
           <div class="tl-mini">
             <div class="mini" onMouseDown={(e) => e.preventDefault()} onClick={onMiniClick}>
-              <For each={props.segments}>{(s) => <i class={segClass(s)} style={segStyle(s, null)} />}</For>
+              <Index each={props.segments}>{(s) => <i class={segClass(s())} style={segStyle(s(), null)} />}</Index>
               <Zones withHeadLabel={false} />
             </div>
           </div>
@@ -328,17 +331,17 @@ export function Timeline(props: TimelineProps) {
         <div class="tl-body">
           <div class="tl-names">
             <div />
-            <For each={lanes()}>
+            <Index each={lanes()}>
               {(lane) => (
                 <div
-                  classList={{ "is-action": lane.kind === "action", "is-anon": lane.kind === "unnamed" }}
-                  style={lane.color ? { "--c": lane.color } : undefined}
-                  title={lane.label}
+                  classList={{ "is-action": lane().kind === "action", "is-anon": lane().kind === "unnamed" }}
+                  style={lane().color ? { "--c": lane().color as string } : undefined}
+                  title={lane().label}
                 >
-                  {lane.label}
+                  {lane().label}
                 </div>
               )}
-            </For>
+            </Index>
           </div>
           <div class="tl-area" ref={areaRef}>
             <div class="axis">
@@ -373,25 +376,27 @@ export function Timeline(props: TimelineProps) {
               </Show>
               <span class="last">{formatClock(win())}</span>
             </div>
-            <For each={lanes()}>
+            {/* By position: the segments are recomputed on every edit, and
+                keyed rows would rebuild every segment's DOM each time. */}
+            <Index each={lanes()}>
               {(lane) => (
                 <div class="lane">
-                  <For each={lane.segments}>
+                  <Index each={lane().segments}>
                     {(s, i) => (
                       <i
-                        class={segClass(s)}
-                        classList={{ "is-hover": tip()?.seg === s }}
-                        style={{ ...segStyle(s, lane), "--i": String(i()) }}
-                        onMouseEnter={(e) => onEnter(s, lane.kind === "action" ? t("block.action") : lane.label, e.currentTarget)}
+                        class={segClass(s())}
+                        classList={{ "is-hover": isHovered(s().key) }}
+                        style={{ ...segStyle(s(), lane()), "--i": String(i) }}
+                        onMouseEnter={(e) => onEnter(s(), lane().kind === "action" ? t("block.action") : lane().label, e.currentTarget)}
                         onMouseLeave={onLeave}
                         onMouseDown={(e) => e.preventDefault()}
-                        onClick={() => props.onJump(s)}
+                        onClick={() => props.onJump(s())}
                       />
                     )}
-                  </For>
+                  </Index>
                 </div>
               )}
-            </For>
+            </Index>
             <div class="tl-zones">
               <Zones withHeadLabel={true} />
             </div>

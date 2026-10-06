@@ -1,4 +1,5 @@
-import { For, Show, createEffect, createMemo, createSignal, onCleanup, type Accessor } from "solid-js";
+import { Index, Show, createEffect, createMemo, createSignal, onCleanup, type Accessor } from "solid-js";
+import { sameData } from "@agentz/kit/lib";
 import type { LexicalEditor } from "lexical";
 import { Icon } from "@agentz/kit/ui";
 import type { TimelineSegment, TimingBlock } from "../../lib/timing";
@@ -9,7 +10,7 @@ export interface HookMarksProps {
   editor: Accessor<LexicalEditor | null>;
   blocks: Accessor<TimingBlock[]>;
   segments: Accessor<TimelineSegment[]>;
-  /** Bumps on every editor update (lines may have moved). */
+  /** Bumps on every content change (lines may have moved). */
   tick: Accessor<number>;
   sheet: Accessor<HTMLElement | undefined>;
   /** "Einstieg prüfen" from the chip over the opening; null hides it. */
@@ -45,7 +46,9 @@ interface Layout {
  * chip. Reads the rendered editor, never its state.
  */
 export function HookMarks(props: HookMarksProps) {
-  const [layout, setLayout] = createSignal<Layout | null>(null);
+  // Measuring after a keystroke far below the opening yields the same
+  // layout: keep the old value so nothing re-renders.
+  const [layout, setLayout] = createSignal<Layout | null>(null, { equals: sameData });
   const [hover, setHover] = createSignal(false);
   const marks = createMemo(() => hookMarks(props.blocks(), props.segments()));
   let raf = 0;
@@ -135,26 +138,26 @@ export function HookMarks(props: HookMarksProps) {
     <Show when={layout()}>
       {(box) => (
         <>
-          <For each={box().bars}>
+          <Index each={box().bars}>
             {(bar) => (
               <span
-                class={`hk-bar z${bar.zone}`}
+                class={`hk-bar z${bar().zone}`}
                 aria-hidden="true"
-                style={{ left: `${box().x}px`, top: `${bar.top}px`, height: `${bar.height}px` }}
+                style={{ left: `${box().x}px`, top: `${bar().top}px`, height: `${bar().height}px` }}
               />
             )}
-          </For>
-          <For each={box().ticks}>
+          </Index>
+          <Index each={box().ticks}>
             {(tick) => (
               <span
                 class="hk-tick"
-                title={t("script.hook.title", { n: tick.sec })}
-                style={{ right: `calc(100% - ${box().x - 4}px)`, top: `${tick.top}px` }}
+                title={t("script.hook.title", { n: tick().sec })}
+                style={{ right: `calc(100% - ${box().x - 4}px)`, top: `${tick().top}px` }}
               >
-                {t("script.hook.tick", { n: tick.sec })}
+                {t("script.hook.tick", { n: tick().sec })}
               </span>
             )}
-          </For>
+          </Index>
           <Show when={props.onCheck}>
             <button
               type="button"

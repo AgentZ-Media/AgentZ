@@ -36,3 +36,16 @@ it("keeps toasts with an action longer", () => {
   vi.advanceTimersByTime(4000);
   expect(toastsSignal()).toEqual([]);
 });
+
+it("merges a repeated plain message and keeps at most four toasts", () => {
+  vi.useFakeTimers();
+  const first = pushToast("save failed", "error");
+  vi.advanceTimersByTime(2000);
+  expect(pushToast("save failed", "error")).toBe(first);
+  vi.advanceTimersByTime(2000);
+  // The repeat restarted the timer.
+  expect(toastsSignal().map((t) => t.text)).toEqual(["save failed"]);
+  for (const text of ["a", "b", "c", "d"]) pushToast(text);
+  expect(toastsSignal().map((t) => t.text)).toEqual(["a", "b", "c", "d"]);
+  expect(vi.getTimerCount()).toBe(4);
+});

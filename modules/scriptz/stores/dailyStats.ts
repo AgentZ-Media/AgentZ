@@ -1,4 +1,5 @@
-import { createResource, createRoot, createSignal, type Resource } from "solid-js";
+import { createEffect, createResource, createRoot, createSignal, on, onCleanup, type Resource } from "solid-js";
+import { debounce } from "@agentz/kit/lib";
 import { api } from "../lib/api";
 import { dailyStatsBus } from "../lib/dailyStatsBus";
 import type { DailyStatsSummary } from "../lib/types";
@@ -19,14 +20,21 @@ const EMPTY: DailyStatsSummary = {
 // Stable accessors stay empty until boot explicitly starts this shared cache.
 const [resource, setResource] = createSignal<Resource<DailyStatsSummary>>();
 const stats = () => resource()?.() ?? EMPTY;
+/** Nearly every autosave books words: reload once typing pauses, not after
+ *  each save (365 days per load). */
+const RELOAD_DEBOUNCE_MS = 1500;
 let stopRuntime: (() => void) | undefined;
 
 export function startDailyStatsStore(): () => void {
   if (stopRuntime) return stopRuntime;
   let active = true;
   const disposeRoot = createRoot((dispose) => {
+    const [reload, setReload] = createSignal(0);
+    const bump = debounce(() => setReload((n) => n + 1), RELOAD_DEBOUNCE_MS);
+    createEffect(on(dailyStatsBus.version, () => bump(), { defer: true }));
+    onCleanup(() => bump.cancel());
     const [value] = createResource(
-      () => dailyStatsBus.version(),
+      reload,
       async () => {
         try {
           const result = await api.loadDailyStats();

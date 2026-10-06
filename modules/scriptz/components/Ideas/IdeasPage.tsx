@@ -57,6 +57,7 @@ import { IdeasKeyHints } from "./parts/IdeasKeyHints";
 import { IdeaGroupHeader } from "./parts/IdeaGroupHeader";
 import { IdeasToolbar } from "./parts/IdeasToolbar";
 import { IdeaEditor, type IdeaEditorHandle } from "./parts/IdeaEditor";
+import { library } from "../Shell/libraryData";
 import "./IdeasPage.css";
 
 /** The ideas page (route `{ kind: "ideas", folderId? }`): capture field
@@ -77,7 +78,7 @@ export function IdeasPage() {
     const id = r.kind === "ideas" ? r.folderId ?? null : null;
     if (id === null || id === INBOX_FOLDER_ID) return id;
     // A deleted folder falls back to "all".
-    return (folders() ?? []).some((f) => f.id === id) || folders.loading ? id : null;
+    return folders().some((f) => f.id === id) || !library.foldersLoaded() ? id : null;
   });
   const setFolder = (id: string | null) => {
     if (id === activeFolder()) return;

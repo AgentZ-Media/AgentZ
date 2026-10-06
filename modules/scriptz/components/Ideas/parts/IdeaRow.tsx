@@ -16,7 +16,7 @@ export interface IdeaRowProps {
   primary: boolean;
   selectMode: boolean;
   /** Live scripts by id (link of a converted idea). */
-  scripts: Map<string, ScriptSummary>;
+  scripts: ReadonlyMap<string, ScriptSummary>;
   folderName: (id: string) => string;
   now: number;
   onClick: (e: MouseEvent) => void;

@@ -59,7 +59,7 @@ function renderList(items: ChatItem[], running = false) {
       scriptId: null,
       range: null,
       wpm: 180,
-      tick: () => 0,
+      blocks: () => null,
     };
     return <ChatList items={session.items} running={session.running()} lookup={lookup} ctx={ctx} />;
   });
