@@ -3,8 +3,9 @@ import {
   $getSelection,
   $isRangeSelection,
   type LexicalEditor,
+  type LexicalNode,
 } from "lexical";
-import { $isScriptzCharacterNode, findScriptzAncestor } from "./nodes";
+import { $isScriptzCharacterNode } from "./nodes";
 import { DEFAULT_PALETTE } from "../../lib/characterColors";
 import type { ScriptCharacter } from "../../lib/types";
 
@@ -58,8 +59,14 @@ function collectCharacterNames(editor: LexicalEditor): string[] {
     let editedCharKey: string | null = null;
     const sel = $getSelection();
     if ($isRangeSelection(sel)) {
-      const node = findScriptzAncestor(sel.anchor.getNode());
-      if ($isScriptzCharacterNode(node)) editedCharKey = node.getKey();
+      let cur: LexicalNode | null = sel.anchor.getNode();
+      while (cur) {
+        if ($isScriptzCharacterNode(cur)) {
+          editedCharKey = cur.getKey();
+          break;
+        }
+        cur = cur.getParent();
+      }
     }
     const root = $getRoot();
     for (const child of root.getChildren()) {
