@@ -1,0 +1,258 @@
+/* ---------------------------------------------------------------------
+   Memory dialog
+   --------------------------------------------------------------------- */
+.dlg.ag-memdlg {
+  width: min(920px, calc(100vw - 48px));
+  height: min(660px, calc(100vh - 64px));
+  display: grid;
+  grid-template-columns: 236px minmax(0, 1fr);
+  padding: 0;
+  overflow: hidden;
+}
+.ag-mem-nav {
+  min-height: 0;
+  overflow-y: auto;
+  padding: 16px 10px;
+  border-right: 1px solid var(--line-soft);
+  background: var(--surface-2);
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+.ag-mem-id {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  padding: 2px 8px 16px;
+}
+.ag-mem-id b {
+  display: block;
+  font-size: 17px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  line-height: 1.15;
+}
+.ag-mem-id small {
+  color: var(--faint);
+  font-size: 12px;
+}
+.ag-mem-navh {
+  margin: 12px 0 2px;
+  padding: 0 9px;
+  color: var(--faint);
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.ag-mem-it {
+  min-height: 30px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 9px;
+  border: 0;
+  border-radius: var(--r-2);
+  background: transparent;
+  color: var(--muted);
+  font: 500 13px/1.2 var(--ui);
+  text-align: left;
+  cursor: pointer;
+}
+.ag-mem-it:hover {
+  color: var(--fg);
+}
+.ag-mem-it.on {
+  background: var(--fill);
+  color: var(--fg);
+  font-weight: 600;
+}
+.ag-mem-n {
+  margin-left: auto;
+  color: var(--faint);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+.ag-mem-who {
+  font: 700 11.5px/1 var(--type);
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+.ag-mem-body {
+  min-width: 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+.ag-mem-top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 20px 24px 12px;
+}
+.ag-mem-top h2 {
+  margin: 0;
+  font-size: 20px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+}
+.ag-mem-h-who {
+  font: 700 22px/1 var(--type);
+  letter-spacing: 0.04em;
+}
+.ag-mem-top p {
+  margin: 5px 0 0;
+  color: var(--muted);
+  font-size: 12.5px;
+}
+.ag-mem-scroll {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 0 24px 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.ag-mem-empty {
+  margin: 30px 0;
+  color: var(--muted);
+  text-align: center;
+}
+.ag-mem-pair {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 12px;
+}
+.ag-mem-pair:empty {
+  display: none;
+}
+.ag-mem-sec {
+  padding: 12px 14px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-4);
+  background: var(--surface);
+}
+.ag-mem-sec.is-accent {
+  border-left: 3px solid var(--accent);
+}
+.ag-mem-sec-h {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 7px;
+  margin-bottom: 6px;
+  color: var(--fg);
+  font-size: 13px;
+  font-weight: 700;
+}
+.ag-mem-sec-h svg {
+  color: var(--faint);
+}
+.ag-mem-sec-h small {
+  color: var(--faint);
+  font-size: 12px;
+  font-weight: 500;
+}
+.ag-mem-link {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+}
+.ag-mem-link:hover {
+  text-decoration: underline;
+}
+.ag-mem-none {
+  margin: 2px 0 4px;
+  color: var(--faint);
+  font-size: 12.5px;
+}
+.ag-mem-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.ag-mem-entry {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 7px 0;
+  border-top: 1px solid var(--line-soft);
+}
+.ag-mem-entry:first-child {
+  border-top: 0;
+}
+.ag-mem-entry-b {
+  flex: 1;
+  min-width: 0;
+}
+.ag-mem-entry-b p {
+  margin: 0;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+}
+.ag-mem-entry-b small {
+  color: var(--faint);
+  font-size: 11.5px;
+}
+.ag-mem-entry-scope {
+  display: block;
+  margin-bottom: 2px;
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 700;
+}
+.ag-mem-entry-act {
+  display: flex;
+  gap: 2px;
+  opacity: 0;
+  transition: opacity var(--t-fast);
+}
+.ag-mem-entry:hover .ag-mem-entry-act,
+.ag-mem-entry:focus-within .ag-mem-entry-act {
+  opacity: 1;
+}
+.ag-mem-edit {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 4px;
+}
+.ag-mem-edit textarea {
+  width: 100%;
+  font-size: 13px;
+}
+.ag-mem-edit-f {
+  display: flex;
+  justify-content: flex-end;
+  gap: 6px;
+}
+.ag-mem-add {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  margin-top: 6px;
+  padding: 3px 6px;
+  border: 0;
+  border-radius: var(--r-2);
+  background: transparent;
+  color: var(--muted);
+  font: 600 12px/1.2 var(--ui);
+  cursor: pointer;
+}
+.ag-mem-add:hover {
+  background: var(--fill);
+  color: var(--fg);
+}
+@media (max-width: 760px) {
+  .dlg.ag-memdlg {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .ag-mem-nav {
+    display: none;
+  }
+}

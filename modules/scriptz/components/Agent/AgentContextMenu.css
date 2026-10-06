@@ -1,0 +1,71 @@
+/* ---------------------------------------------------------------------
+   Context menu on selected script text (`.menu` look)
+   --------------------------------------------------------------------- */
+.ag-ctx {
+  position: fixed;
+  z-index: 200;
+  width: 248px;
+  padding: 5px;
+  border-radius: var(--r-pop);
+  background: var(--surface);
+  color: var(--fg);
+  box-shadow: var(--shadow-pop);
+  font: 13px/1.3 var(--ui);
+  animation: ag-pop var(--t-fast);
+}
+.ag-ctx-row {
+  position: relative;
+}
+.ag-ctx-sub {
+  position: absolute;
+  top: -5px;
+  width: 200px;
+}
+@keyframes ag-pop { from { opacity: 0; transform: translateY(-3px); } to { opacity: 1; transform: none; } }
+.ag-ctx-it {
+  position: relative;
+  width: 100%;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 0 9px;
+  border: 0;
+  border-radius: var(--r-2);
+  background: transparent;
+  color: var(--fg);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.ag-ctx-it:hover,
+.ag-ctx-it.is-on,
+.ag-ctx-it:focus-visible {
+  background: var(--fill);
+  outline: none;
+}
+.ag-ctx-it svg {
+  color: var(--muted);
+}
+.ag-ctx-it kbd {
+  margin-left: auto;
+}
+.ag-ctx-chev {
+  margin-left: auto;
+}
+.ag-ctx-sep {
+  height: 1px;
+  margin: 4px 2px;
+  background: var(--line-soft);
+}
+.ag-ctx-h {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 9px 5px;
+  color: var(--faint);
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
