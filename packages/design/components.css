@@ -46,7 +46,7 @@ kbd,
   background: var(--fill);
   color: var(--muted);
   white-space: nowrap;
-  box-shadow: none;
+  box-shadow: inset 0 -1px 0 var(--hair);
 }
 
 /* ---------------- Button ---------------- */
@@ -65,16 +65,21 @@ kbd,
   white-space: nowrap;
   text-decoration: none;
   cursor: pointer;
+  box-shadow: var(--hi), 0 1px 1px var(--hair);
   transition: background var(--t-fast), border-color var(--t-fast), color var(--t-fast),
-    box-shadow var(--t-fast), transform var(--t-fast);
+    box-shadow var(--t-fast), transform var(--t-glide);
 }
 .btn:hover {
   background: var(--surface-2);
   border-color: var(--line-strong);
+  box-shadow: var(--hi), 0 2px 6px -2px var(--hair);
   text-decoration: none;
 }
+/* Pressing gives a little; letting go springs back (--t-glide above). */
 .btn:active {
-  transform: translateY(0.5px);
+  transform: scale(0.97);
+  transition-duration: 110ms;
+  transition-timing-function: var(--ease-out);
 }
 .btn:focus-visible {
   outline: 2px solid var(--focus);
@@ -95,14 +100,22 @@ kbd,
 /* Primary = ink */
 .btn.primary,
 .btn-primary {
-  background: var(--fg);
+  background: linear-gradient(180deg, color-mix(in srgb, var(--fg) 86%, var(--bg)), var(--fg));
   color: var(--bg);
   border-color: var(--fg);
+  box-shadow:
+    inset 0 0.5px 0 color-mix(in srgb, var(--bg) 22%, transparent),
+    0 1px 2px var(--hair),
+    0 6px 14px -8px color-mix(in srgb, var(--fg) 60%, transparent);
 }
 .btn.primary:hover,
 .btn-primary:hover {
-  background: color-mix(in srgb, var(--fg) 86%, var(--bg));
+  background: linear-gradient(180deg, color-mix(in srgb, var(--fg) 78%, var(--bg)), color-mix(in srgb, var(--fg) 92%, var(--bg)));
   border-color: color-mix(in srgb, var(--fg) 86%, var(--bg));
+  box-shadow:
+    inset 0 0.5px 0 color-mix(in srgb, var(--bg) 22%, transparent),
+    0 1px 2px var(--hair),
+    0 10px 20px -10px color-mix(in srgb, var(--fg) 70%, transparent);
 }
 .btn.primary svg.i,
 .btn-primary svg.i {
@@ -117,13 +130,23 @@ kbd,
 
 /* Accent = highlighter (sparingly: "new", onboarding CTA) */
 .btn.accent {
-  background: var(--accent);
+  background: linear-gradient(180deg, var(--accent-hi), var(--accent) 45%, var(--accent-lo));
   color: var(--accent-fg);
-  border-color: var(--accent);
+  border-color: var(--accent-lo);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.55),
+    inset 0 -1px 0 var(--accent-edge),
+    0 1px 2px var(--hair),
+    0 8px 18px -10px var(--accent-glow);
 }
 .btn.accent:hover {
-  background: color-mix(in srgb, var(--accent) 88%, var(--accent-fg));
-  border-color: color-mix(in srgb, var(--accent) 88%, var(--accent-fg));
+  background: linear-gradient(180deg, var(--accent-hi), var(--accent-hi) 20%, var(--accent));
+  border-color: var(--accent-lo);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.55),
+    inset 0 -1px 0 var(--accent-edge),
+    0 1px 2px var(--hair),
+    0 10px 24px -8px var(--accent-glow);
 }
 .btn.accent svg.i {
   color: inherit;
@@ -133,11 +156,13 @@ kbd,
   border-color: transparent;
   background: transparent;
   color: var(--muted);
+  box-shadow: none;
 }
 .btn.ghost:hover {
   background: var(--fill);
   border-color: transparent;
   color: var(--fg);
+  box-shadow: none;
 }
 
 .btn.danger,
@@ -145,6 +170,7 @@ kbd,
   background: transparent;
   color: var(--warn);
   border-color: var(--line);
+  box-shadow: none;
 }
 .btn.danger:hover,
 .btn-danger:hover {
@@ -161,6 +187,9 @@ kbd,
   height: 28px;
   padding: 0;
   justify-content: center;
+}
+.btn.icon:active {
+  transform: scale(0.9);
 }
 .btn.icon.is-on {
   background: var(--fill);
@@ -205,10 +234,14 @@ kbd,
   border-radius: var(--r-2);
   border: 0;
   background: transparent;
+  box-shadow: none;
 }
-.tg-group .btn.icon:hover,
+.tg-group .btn.icon:hover {
+  background: var(--fill);
+}
 .tg-group .btn.icon.is-on {
   background: var(--fill);
+  box-shadow: inset 0 0 0 0.5px var(--hair);
 }
 
 /* ---------------- Chip (status / picker trigger) ---------------- */
@@ -225,10 +258,16 @@ kbd,
   font: 600 13px/1 var(--ui);
   white-space: nowrap;
   cursor: pointer;
-  transition: border-color var(--t-fast), box-shadow var(--t-fast);
+  box-shadow: var(--hi);
+  transition: border-color var(--t-fast), box-shadow var(--t-fast), transform var(--t-glide);
 }
 .chip:hover {
   border-color: var(--line-strong);
+  box-shadow: var(--hi), 0 2px 6px -2px var(--hair);
+}
+.chip:active {
+  transform: scale(0.96);
+  transition-duration: 110ms;
 }
 .chip:focus-visible {
   outline: 2px solid var(--focus);
@@ -259,7 +298,12 @@ kbd,
   font: 600 12px/1 var(--ui);
   white-space: nowrap;
   cursor: pointer;
-  transition: background var(--t-fast), border-color var(--t-fast), color var(--t-fast);
+  transition: background var(--t-fast), border-color var(--t-fast), color var(--t-fast),
+    transform var(--t-glide);
+}
+.fchip:active {
+  transform: scale(0.95);
+  transition-duration: 110ms;
 }
 .fchip:hover {
   color: var(--fg);
@@ -299,8 +343,11 @@ kbd,
   color: var(--fg);
   border-radius: var(--r-pop);
   padding: 5px;
-  box-shadow: var(--shadow-pop);
+  box-shadow: var(--shadow-pop), var(--hi);
   font: 13px/1.45 var(--ui);
+  /* Individual transform properties: consumers may position with
+     `transform` and the entrance must not fight it. */
+  animation: ds-menu-in 170ms var(--ease-out);
 }
 .menu-it {
   width: 100%;
@@ -317,6 +364,7 @@ kbd,
   text-align: left;
   white-space: nowrap;
   cursor: pointer;
+  transition: background 80ms linear;
 }
 .menu-it:hover,
 .menu-it.on,
@@ -388,7 +436,9 @@ kbd,
   display: grid;
   place-items: center;
   padding: 24px;
-  animation: ds-fade-in var(--t-fast);
+  -webkit-backdrop-filter: blur(3px) saturate(1.1);
+  backdrop-filter: blur(3px) saturate(1.1);
+  animation: ds-fade-in var(--t-med);
 }
 /* Capture / palette style: dialog sits in the upper third */
 .scrim.top {
@@ -404,7 +454,7 @@ kbd,
   box-shadow: var(--shadow-dlg);
   max-width: calc(100vw - 48px);
   max-height: calc(100vh - 48px);
-  animation: ds-scale-in var(--t-med);
+  animation: ds-scale-in 380ms var(--spring);
 }
 .dlg-h {
   display: flex;
@@ -439,21 +489,42 @@ kbd,
 .toast {
   display: flex;
   align-items: center;
-  gap: 12px;
-  min-height: 38px;
+  gap: 10px;
+  min-height: 40px;
   max-width: min(560px, calc(100vw - 48px));
-  padding: 8px 14px;
+  padding: 8px 16px;
   border: 0;
-  border-radius: var(--r-pop);
-  background: var(--fg);
+  border-radius: var(--r-pill);
+  background: color-mix(in srgb, var(--fg) 94%, transparent);
+  -webkit-backdrop-filter: blur(20px) saturate(1.6);
+  backdrop-filter: blur(20px) saturate(1.6);
   color: var(--bg);
-  font: 500 13px/1.35 var(--ui);
-  box-shadow: var(--shadow-toast);
+  font: 550 13px/1.35 var(--ui);
+  box-shadow:
+    inset 0 0.5px 0 color-mix(in srgb, var(--bg) 18%, transparent),
+    var(--shadow-toast);
   pointer-events: auto;
-  animation: ds-toast-in var(--t-med);
+  transform-origin: 50% 100%;
+  animation: ds-toast-in 560ms var(--spring) both;
 }
 .toast:has(.undo) {
-  padding-right: 6px;
+  padding-right: 5px;
+}
+/* Status dot instead of a coloured edge: reads well on a capsule. */
+.toast.ok::before,
+.toast.error::before {
+  content: "";
+  width: 8px;
+  height: 8px;
+  flex: none;
+  border-radius: 50%;
+  background: var(--ok);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--ok) 28%, transparent);
+  animation: ds-dot-pop var(--t-pop) 120ms both;
+}
+.toast.error::before {
+  background: var(--warn);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--warn) 28%, transparent);
 }
 .toast svg.st,
 .toast svg.i {
@@ -464,27 +535,29 @@ kbd,
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  padding: 0 9px;
+  padding: 0 11px;
   border: 0;
-  border-radius: var(--r-ctl);
+  border-radius: var(--r-pill);
   background: rgba(127, 127, 127, 0.22);
   color: inherit;
   font: inherit;
   font-weight: 600;
   white-space: nowrap;
   cursor: pointer;
+  transition: background var(--t-fast), transform var(--t-glide);
+}
+.toast .undo:hover {
+  background: rgba(127, 127, 127, 0.32);
+}
+.toast .undo:active {
+  transform: scale(0.95);
+  transition-duration: 110ms;
 }
 .toast .undo kbd {
   background: transparent;
   color: inherit;
   opacity: 0.7;
   padding: 0;
-}
-.toast.error {
-  box-shadow: inset 3px 0 0 var(--warn), var(--shadow-toast);
-}
-.toast.ok {
-  box-shadow: inset 3px 0 0 var(--ok), var(--shadow-toast);
 }
 
 /* ---------------- Switch ----------------
@@ -516,8 +589,8 @@ kbd,
   height: 12px;
   border-radius: 50%;
   background: var(--surface);
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
-  transition: left var(--t-fast);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2), 0 0 0 0.5px rgba(0, 0, 0, 0.04);
+  transition: left var(--t-glide);
 }
 .sw-t.on,
 .sw-t.is-on,
@@ -571,7 +644,7 @@ kbd,
 .seg > [aria-checked="true"] {
   background: var(--surface);
   color: var(--fg);
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 0 0 0.5px var(--hair), 0 1px 3px rgba(0, 0, 0, 0.1), var(--hi);
 }
 
 /* ---------------- Text field ----------------
@@ -720,10 +793,12 @@ textarea.field {
   place-items: center;
   flex: none;
   border-radius: 28%;
-  background: var(--logo-accent, var(--accent));
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.28), rgba(255, 255, 255, 0) 55%),
+    var(--logo-accent, var(--accent));
   color: var(--accent-fg);
   --z2o: 0.5;
-  box-shadow: inset 0 -1.5px 0 rgba(0, 0, 0, 0.14);
+  box-shadow: inset 0 0.5px 0 rgba(255, 255, 255, 0.6), inset 0 -1.5px 0 rgba(0, 0, 0, 0.14);
 }
 .app-mark.is-light {
   background: #ffffff;
@@ -772,10 +847,23 @@ textarea.field {
 @keyframes ds-toast-in {
   from {
     opacity: 0;
-    transform: translateY(14px) scale(0.97);
+    transform: translateY(18px) scale(0.86);
   }
   to {
     opacity: 1;
     transform: translateY(0) scale(1);
+  }
+}
+@keyframes ds-menu-in {
+  from {
+    opacity: 0;
+    scale: 0.97;
+    translate: 0 -3px;
+  }
+}
+@keyframes ds-dot-pop {
+  from {
+    transform: scale(0.2);
+    opacity: 0;
   }
 }

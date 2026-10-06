@@ -68,11 +68,26 @@
   --r-dlg: 14px;
   --r-pill: 999px;
 
-  /* Motion */
+  /* Motion. `--ease` is the calm default; the others give movements their
+     own weight: `--ease-out` lands softly, `--ease-sheet` moves panels and
+     sheets, `--ease-pop` overshoots a little (small elements appearing) and
+     `--spring` settles like a damped spring (things that glide). */
   --ease: cubic-bezier(0.2, 0.8, 0.2, 1);
+  --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-sheet: cubic-bezier(0.32, 0.72, 0, 1);
+  --ease-pop: cubic-bezier(0.34, 1.56, 0.64, 1);
+  --spring: linear(0, 0.006, 0.025 2.8%, 0.101 6.1%, 0.539 18.9%, 0.721 25.3%, 0.849 31.5%,
+    0.937 38.1%, 0.968 41.8%, 0.991 45.7%, 1.006 50.1%, 1.015 55%, 1.017 63.9%, 1.001 85.2%, 1);
   --t-fast: 120ms var(--ease);
   --t-med: 220ms var(--ease);
   --t-slow: 380ms var(--ease);
+  --t-press: 110ms var(--ease-out);
+  --t-glide: 520ms var(--spring);
+  --t-pop: 420ms var(--ease-pop);
+
+  /* Grain for materials (sidebar, paper). Monochrome noise, blended by the
+     consumer; no colour of its own. */
+  --noise: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='3' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 1  0 0 0 0 1  0 0 0 0 1  0 0 0 .55 0'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>");
 }
 
 /* ---------------------------------------------------------------------
@@ -118,10 +133,30 @@
   --shadow-toast: 0 10px 30px rgba(0, 0, 0, 0.2);
   --scrim: rgba(15, 17, 21, 0.32);
 
+  /* Layered elevation: hairline + contact + ambient. `--shadow-1` rests,
+     `--shadow-2` lifts (hover), `--shadow-3` floats (capsules, sheets).
+     `--hi` is the light edge on top of raised surfaces. */
+  --hair: rgba(20, 22, 27, 0.07);
+  --shadow-1: 0 0 0 0.5px rgba(20, 22, 27, 0.08), 0 1px 2px rgba(20, 22, 27, 0.04), 0 2px 8px -3px rgba(20, 22, 27, 0.06);
+  --shadow-2: 0 0 0 0.5px rgba(20, 22, 27, 0.08), 0 4px 10px -4px rgba(20, 22, 27, 0.1), 0 18px 36px -14px rgba(20, 22, 27, 0.18);
+  --shadow-3: 0 0 0 0.5px rgba(20, 22, 27, 0.08), 0 2px 4px rgba(20, 22, 27, 0.04), 0 12px 24px -10px rgba(20, 22, 27, 0.14), 0 40px 70px -30px rgba(20, 22, 27, 0.22);
+  --hi: inset 0 0.5px 0 rgba(255, 255, 255, 0.9);
+
+  /* Desk behind the paper: a quiet dot grid with a soft vignette. */
+  --desk: #eceef1;
+  --desk-dot: rgba(20, 22, 27, 0.07);
+  --desk-vignette: rgba(20, 22, 27, 0.05);
+
   /* Accent ("Textmarker") + signal colours */
   --accent: #ffe14d;
   --accent-fg: #14161b;
   --accent-soft: #fff6c2;
+  /* Lit highlighter: lighter top, deeper base, glow and a readable ink. */
+  --accent-hi: #ffec85;
+  --accent-lo: #ffd21a;
+  --accent-glow: rgba(255, 210, 10, 0.45);
+  --accent-ink: #8a6a00;
+  --accent-edge: rgba(120, 90, 0, 0.2);
   --warn: #d2452f;
   --warn-soft: #fdebe7;
   --ok: #3fae74;
@@ -169,7 +204,18 @@
   --shadow-toast: 0 10px 30px rgba(0, 0, 0, 0.45);
   --scrim: rgba(0, 0, 0, 0.5);
 
+  --hair: rgba(255, 255, 255, 0.07);
+  --shadow-1: 0 0 0 0.5px rgba(255, 255, 255, 0.07), 0 1px 2px rgba(0, 0, 0, 0.3), 0 2px 8px -3px rgba(0, 0, 0, 0.4);
+  --shadow-2: 0 0 0 0.5px rgba(255, 255, 255, 0.09), 0 4px 10px -4px rgba(0, 0, 0, 0.5), 0 18px 36px -14px rgba(0, 0, 0, 0.6);
+  --shadow-3: 0 0 0 0.5px rgba(255, 255, 255, 0.08), 0 2px 4px rgba(0, 0, 0, 0.3), 0 12px 24px -10px rgba(0, 0, 0, 0.5), 0 40px 70px -30px rgba(0, 0, 0, 0.7);
+  --hi: inset 0 0.5px 0 rgba(255, 255, 255, 0.06);
+
+  --desk: #111317;
+  --desk-dot: rgba(255, 255, 255, 0.04);
+  --desk-vignette: rgba(0, 0, 0, 0.35);
+
   --accent-soft: rgba(255, 225, 77, 0.12);
+  --accent-ink: #ffe14d;
   --warn: #ff7a66;
   --warn-soft: rgba(255, 122, 102, 0.12);
   --ok: #5cc48d;
@@ -194,6 +240,17 @@
   --night-star: #ffffff;
   --night-moon: #e9e4ff;
   --night-moon-dim: #b8acf5;
+  --night-aurora: #5eead4;
+  --night-deep: #080a22;
+
+  /* Sidebar material (both themes): light edge, sheen and the dot grid of
+     the stable signature behind the sidebar head. */
+  --side-sheen: rgba(255, 255, 255, 0.035);
+  --side-shade: rgba(0, 0, 0, 0.14);
+  --side-edge-hi: rgba(255, 255, 255, 0.09);
+  --side-edge-lo: rgba(0, 0, 0, 0.4);
+  --side-dot: rgba(255, 255, 255, 0.13);
+  --side-glow: rgba(255, 225, 77, 0.14);
 }
 
 /* Dark paper: only when the resolved theme is dark AND the user enabled
@@ -212,6 +269,9 @@
     --t-fast: 0.01ms linear;
     --t-med: 0.01ms linear;
     --t-slow: 0.01ms linear;
+    --t-press: 0.01ms linear;
+    --t-glide: 0.01ms linear;
+    --t-pop: 0.01ms linear;
   }
   *,
   *::before,

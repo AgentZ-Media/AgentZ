@@ -11,6 +11,18 @@ Plain CSS + a few typed data modules - no framework code, so any app
    colour roles (`--bg`, `--surface`, `--fill`, `--fg`, `--muted`, `--faint`,
    `--line`, `--paper`, `--accent`, `--warn`, `--side-*`, `--shadow-*`, ...).
    Components only ever read these names.
+   - **Motion:** `--ease` (calm default), `--ease-out` (soft landing),
+     `--ease-sheet` (panels), `--ease-pop` (small overshoot) and `--spring`
+     (damped spring for gliding elements), with the durations `--t-fast`,
+     `--t-med`, `--t-slow`, `--t-press`, `--t-glide` and `--t-pop`. Reduced
+     motion collapses all of them.
+   - **Depth:** `--shadow-1` (resting), `--shadow-2` (lifted),
+     `--shadow-3` (floating), the hairline `--hair` and the top light edge
+     `--hi`. `--accent-hi` / `--accent-lo` / `--accent-glow` light the
+     highlighter, `--accent-ink` is accent-coloured text on light surfaces.
+   - **Material:** `--noise` (monochrome grain), `--desk*` (the surface
+     behind the paper) and `--side-sheen` / `--side-dot` / `--side-glow`
+     for the sidebar.
 2. **Theme** - also `tokens.css`
    `:root` / `[data-theme="light"]` and `[data-theme="dark"]` swap values,
    never selectors. The writing surface stays light in the dark theme unless
