@@ -1,13 +1,17 @@
-import { For, Show } from "solid-js";
+import { For, Show, createSignal } from "solid-js";
 import { relativeTime } from "@agentz/kit/lib";
 import { K } from "@agentz/kit/platform";
 import { Icon } from "@agentz/kit/ui";
 import type { Idea } from "../../lib/types";
 import { navStore } from "../../stores/nav";
 import { uiStore } from "../../stores/ui";
-import { t } from "../../i18n";
+import { t, tPlural } from "../../i18n";
 import { StageGlyph } from "../Common/StageGlyph";
 import { library } from "../Shell/libraryData";
+import { libraryPrefs, type IdeaColumns } from "./prefs";
+
+/** Ideas listed before "show more", per column layout. */
+const IDEA_LIMIT: Record<IdeaColumns, number> = { 1: 10, 2: 20 };
 
 /** First non-empty line of the idea notes (row subtitle). */
 function firstLine(notes: string | null | undefined): string {
@@ -26,14 +30,24 @@ export function openIdea(idea: Idea): void {
   void navStore.openIdeas(idea.folder_id);
 }
 
-/** "Ideen" group of the inbox: every open idea as a list row, below the
- *  scripts that are still in progress. */
+/** "Ideen" group of the inbox, below the scripts that are still in
+ *  progress: the newest open ideas as compact rows in one or two columns
+ *  (filled left, right, left, ...), the rest behind "show more". A filter
+ *  lists every match. */
 export function InboxIdeas(props: {
   ideas: Idea[];
   closed: boolean;
   canCollapse: boolean;
+  filtered: boolean;
   onToggle: () => void;
 }) {
+  const [expanded, setExpanded] = createSignal(false);
+  const columns = () => libraryPrefs.ideaColumns();
+  const limit = () => IDEA_LIMIT[columns()];
+  const capped = () => !props.filtered && props.ideas.length > limit();
+  const shown = () => (capped() && !expanded() ? props.ideas.slice(0, limit()) : props.ideas);
+  const hidden = () => props.ideas.length - shown().length;
+
   return (
     <section class="grp" classList={{ "is-closed": props.closed }}>
       <div class="grp-h">
@@ -63,26 +77,54 @@ export function InboxIdeas(props: {
           <span class="n num">{props.ideas.length}</span>
         </button>
         <span class="grp-sp" />
+        <Show when={!props.closed}>
+          <div class="grp-cols" role="group" aria-label={t("shell.inbox.ideasLayout")}>
+            <ColumnsButton columns={1} />
+            <ColumnsButton columns={2} />
+          </div>
+        </Show>
         <button type="button" class="grp-act" onClick={() => void navStore.openIdeas()}>
           {t("shell.teaser.open")}
           <Icon name="right" size={12} />
         </button>
       </div>
       <Show when={!props.closed}>
-        <div class="rows">
-          <For each={props.ideas}>{(idea) => <IdeaRow idea={idea} />}</For>
+        <div class="rows irows" classList={{ "is-two": columns() === 2 }}>
+          <For each={shown()}>{(idea) => <IdeaRow idea={idea} />}</For>
+          <Show when={capped()}>
+            <button type="button" class="irows-more" onClick={() => setExpanded((v) => !v)}>
+              {expanded() ? t("shell.inbox.fewerIdeas") : tPlural("shell.inbox.moreIdeas", hidden())}
+              <Icon name={expanded() ? "up" : "down"} size={12} />
+            </button>
+          </Show>
         </div>
       </Show>
     </section>
   );
 }
 
+function ColumnsButton(props: { columns: IdeaColumns }) {
+  const label = () => (props.columns === 1 ? t("shell.inbox.oneColumn") : t("shell.inbox.twoColumns"));
+  return (
+    <button
+      type="button"
+      title={label()}
+      aria-label={label()}
+      aria-pressed={libraryPrefs.ideaColumns() === props.columns}
+      onClick={() => libraryPrefs.setIdeaColumns(props.columns)}
+    >
+      <Icon name={props.columns === 1 ? "list" : "columns"} size={13} />
+    </button>
+  );
+}
+
+/** Compact idea row: title with the first note line, folder, date. */
 function IdeaRow(props: { idea: Idea }) {
   const title = () => props.idea.title || t("common.untitled");
   const note = () => firstLine(props.idea.notes);
   return (
     <div
-      class="lrow"
+      class="lrow is-idea"
       role="button"
       tabIndex={0}
       aria-label={title()}
@@ -95,12 +137,6 @@ function IdeaRow(props: { idea: Idea }) {
         }
       }}
     >
-      <span class="lrow-glyph">
-        <StageGlyph stage="idea" />
-      </span>
-      {/* Ideas have no page preview; the empty cell keeps the grid columns
-          aligned with the script rows. */}
-      <span class="lrow-thumb-gap" aria-hidden="true" />
       <div class="lrow-t">
         <span class="lrow-title">{title()}</span>
         <Show when={note()}>
@@ -108,8 +144,6 @@ function IdeaRow(props: { idea: Idea }) {
         </Show>
       </div>
       <div class="lrow-f">{library.folder(props.idea.folder_id)?.name ?? ""}</div>
-      <div class="lrow-cast" />
-      <div class="lrow-rt" />
       <div class="lrow-u">{relativeTime(props.idea.created_at)}</div>
       <div class="lrow-act">
         <button

@@ -118,7 +118,11 @@ schlagen sonst fehl). Die Umwandlung von Kamera/Caption/SFX in Action ist bewuss
 - Die letzte Stufe gilt als erledigt (`isFinalStage`). Die Inbox (Route
   `inbox`, ganz oben in der Sidebar und nur sichtbar, solange etwas offen ist)
   zeigt offene Ideen und alle Skripte davor (`library.inProgress`). Eigene
-  Stufen brauchen dort keine Anpassung.
+  Stufen brauchen dort keine Anpassung. Bei Gruppierung nach Stufe trägt nur
+  der Gruppenkopf das Stufen-Symbol. Ideen stehen als kompakte Zeilen
+  darunter: die neuesten 10, zweispaltig (`library.inboxIdeas`, zeilenweise
+  links, rechts) 20, der Rest hinter „weitere anzeigen“; ein Filter zeigt
+  alle Treffer.
 - Zielbereich in Sekunden je Ordner oder global
   (`length_min_default_sec`/`length_max_default_sec`, leer = aus). Auflösung:
   Ordner -> Standard -> keiner (`resolveLengthRange`).

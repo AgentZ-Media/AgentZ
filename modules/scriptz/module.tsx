@@ -63,7 +63,7 @@ async function setupScriptz(ctx: ModuleContext): Promise<ModuleRuntime> {
   await Promise.all([
     settingsStore.load(), agentSettings.load(), ensureWelcomeContent({ kv: ctx.kv, signal: ctx.signal }), navStore.load(),
     uiStore.load(active), libraryPrefs.load(active),
-    uiStore.loadSidebarSections(active), libraryPrefs.loadViewModes(active),
+    uiStore.loadSidebarSections(active), libraryPrefs.loadViewModes(active), libraryPrefs.loadIdeaLayout(active),
     api.backfillRuntimeStats().catch((error) => console.warn("[scriptz] runtime backfill skipped", error)),
   ]);
   ensureActive();

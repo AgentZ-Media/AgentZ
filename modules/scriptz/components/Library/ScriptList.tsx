@@ -29,6 +29,8 @@ export interface ScriptListProps {
   inboxIdeas: Idea[];
   ideasClosed: boolean;
   ideasCanCollapse: boolean;
+  /** A filter is active: every matching idea is listed. */
+  ideasFiltered: boolean;
   /** Script shown in the side panel. */
   peekId: string | null;
   onNewScript: () => void;
@@ -42,10 +44,11 @@ export interface ScriptListProps {
 export function ScriptList(props: ScriptListProps) {
   const sel = props.selection;
 
-  const row = (s: ScriptSummary, snippetHtml?: string) => (
+  const row = (s: ScriptSummary, snippetHtml?: string, hideGlyph = false) => (
     <ScriptRow
       script={s}
       snippetHtml={snippetHtml}
+      hideGlyph={hideGlyph}
       selectMode={sel.selectMode()}
       selected={sel.selected().has(s.id)}
       peek={props.peekId === s.id}
@@ -147,7 +150,7 @@ export function ScriptList(props: ScriptListProps) {
                     </Show>
                     <Show when={grp().items.length > 0}>
                       <div class="rows">
-                        <For each={grp().items}>{(s) => row(s)}</For>
+                        <For each={grp().items}>{(s) => row(s, undefined, grp().status !== undefined)}</For>
                       </div>
                     </Show>
                   </section>
@@ -171,6 +174,7 @@ export function ScriptList(props: ScriptListProps) {
           ideas={props.inboxIdeas}
           closed={props.ideasClosed}
           canCollapse={props.ideasCanCollapse}
+          filtered={props.ideasFiltered}
           onToggle={() => libraryPrefs.toggleCollapsed(props.collapseKey("ideas"))}
         />
       </Show>

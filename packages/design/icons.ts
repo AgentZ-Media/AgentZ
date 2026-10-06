@@ -50,6 +50,7 @@ export type IconName =
   | "inbox"
   | "list"
   | "board"
+  | "columns"
   | "expand"
   | "scissors"
   | "timer"
@@ -93,6 +94,7 @@ export const ICONS: Record<IconName, string> = {
   inbox: '<path d="M4 13.5l2.1-7a2 2 0 0 1 1.9-1.5h8a2 2 0 0 1 1.9 1.5l2.1 7"/><path d="M4 13.5V18a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-4.5h-4.5L14 16h-4l-1.5-2.5z"/>',
   list: '<path d="M9 6.5h11M9 12h11M9 17.5h11"/><path d="M4.5 6.5h.01M4.5 12h.01M4.5 17.5h.01"/>',
   board: '<rect x="3.5" y="4.5" width="17" height="15" rx="2.5"/><path d="M9.2 4.5v15M14.8 4.5v15"/>',
+  columns: '<rect x="3.5" y="4.5" width="17" height="15" rx="2.5"/><path d="M12 4.5v15"/>',
   expand: '<path d="M14 4.5h5.5V10M10 19.5H4.5V14"/><path d="M19.5 4.5L13.5 10.5M4.5 19.5l6-6"/>',
   scissors: '<circle cx="6" cy="6" r="2.6"/><circle cx="6" cy="18" r="2.6"/><path d="M8.2 7.6L20 18M8.2 16.4L20 6"/>',
   timer: '<circle cx="12" cy="13.5" r="7"/><path d="M12 13.5V10M10 3.5h4M18.5 6.5l-1.5 1.5"/>',
