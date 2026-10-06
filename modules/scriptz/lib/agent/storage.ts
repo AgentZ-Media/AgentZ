@@ -1,4 +1,4 @@
-import type { ChatRecord, LearnedState } from "./chats";
+import type { ChatRecord, LearnedState, SessionHead } from "./chats";
 import type { MemoryEntry, MemoryScope } from "./memory";
 
 /** Typed persistence boundary for user-created agent data. The public memory
@@ -9,13 +9,18 @@ export interface AgentStorage {
   latestChat(scriptId: string | null): Promise<ChatRecord | null>;
   getChat(id: string): Promise<ChatRecord | null>;
   /** Upserts a chat. `kind`, `provider` and `createdAt` are fixed by the
-   *  first save; everything else follows the record. */
-  saveChat(chat: ChatRecord): Promise<void>;
+   *  first save; everything else follows the record. `itemsJson`, when
+   *  given, is `chat.items` already serialized and is stored as it is. */
+  saveChat(chat: ChatRecord, itemsJson?: string): Promise<void>;
   /** Deletes a chat; ideas saved from it keep existing without the link. */
   deleteChat(id: string): Promise<void>;
   /** Sessions (kind 'session') with at least one item, newest first. A
    *  non-empty `query` matches the title or the stored conversation. */
   listSessions(options: { limit: number; offset: number; query: string }): Promise<ChatRecord[]>;
+  /** Same rows and order as `listSessions`, without the stored items. */
+  listSessionHeads(options: { limit: number; offset: number; query: string }): Promise<SessionHead[]>;
+  /** Chats by id, in no particular order; unknown ids are skipped. */
+  getChats(ids: readonly string[]): Promise<ChatRecord[]>;
   learnedState(scriptId: string): Promise<LearnedState | null>;
   markLearned(scriptId: string, hash: string, text: string): Promise<void>;
   listMemory(): Promise<MemoryEntry[]>;

@@ -66,10 +66,16 @@ export function groupItems(items: readonly ChatItem[], previous: readonly Group[
 
 /** Every draft version of a chat with its number, state and runtime. */
 export function createDraftIndex(items: Accessor<readonly ChatItem[]>): Accessor<ReadonlyMap<string, DraftRef>> {
+  return createDraftIndexFrom(createMemo(() => draftStates(items())));
+}
+
+/** `createDraftIndex` over draft states a view has already derived (the
+ *  agent mode needs them for its panel, too). */
+export function createDraftIndexFrom(states: Accessor<ReturnType<typeof draftStates>>): Accessor<ReadonlyMap<string, DraftRef>> {
   return createMemo(() => {
     const map = new Map<string, DraftRef>();
     const wpm = settingsStore.dialogWpm();
-    for (const { draft, latest, state } of draftStates(items())) {
+    for (const { draft, latest, state } of states()) {
       draft.versions.forEach((version, i) => {
         const isLatest = version.id === latest.id;
         map.set(version.id, {
@@ -87,6 +93,16 @@ export function createDraftIndex(items: Accessor<readonly ChatItem[]>): Accessor
     }
     return map;
   });
+}
+
+/** What changes on the newest item while a turn streams (text grows, a
+ *  tool finishes): cheap enough to watch per token for auto-scrolling. */
+export function tailKey(items: readonly ChatItem[]): string {
+  const last = items[items.length - 1];
+  if (!last) return "";
+  const length = "text" in last ? last.text.length : 0;
+  const state = last.kind === "tool" || last.kind === "search" ? last.status : last.kind === "thinking" ? String(last.done) : "";
+  return `${items.length}:${last.id}:${length}:${state}`;
 }
 
 /** Quick replies offered at the end of the last turn. */

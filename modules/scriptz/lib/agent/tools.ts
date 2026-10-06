@@ -4,6 +4,7 @@
 // own built-in tool.
 
 import { api } from "../api";
+import { library } from "../../components/Shell/libraryData";
 import { INBOX_FOLDER_ID } from "../folders";
 import { scriptStages, stageLabel, isFinalStage } from "../stages";
 import type { Folder } from "../types";
@@ -57,7 +58,13 @@ async function foldersById(): Promise<Map<string, Folder>> {
 /** Folder "current" stands for: the open script's folder, otherwise the
  *  session's working folder. */
 async function hostFolder(host: Pick<ToolHost, "scriptId" | "folderId">): Promise<string | null> {
-  if (host.scriptId) return (await api.getScript(host.scriptId).catch(() => null))?.folder_id ?? null;
+  if (host.scriptId) {
+    // The shared library list has the folder; reading the whole script is
+    // the fallback before it loaded (or for a script not in it).
+    const known = library.script(host.scriptId);
+    if (known) return known.folder_id;
+    return (await api.getScript(host.scriptId).catch(() => null))?.folder_id ?? null;
+  }
   return host.folderId?.() ?? null;
 }
 
