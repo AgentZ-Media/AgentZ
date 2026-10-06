@@ -1,6 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { COLOR_LITERAL, sourceFiles } from "./shared.mjs";
 
 // Content colors are document data, not interface tokens. Keep exceptions at
 // declaration level so adding a UI literal to the same file still fails.
@@ -26,7 +27,7 @@ export function findColorViolations(filename, contents) {
   const uncommented = contents.replace(/\/\*[\s\S]*?\*\//g, (comment) => comment.replace(/[^\n]/g, " "));
   const violations = [];
   for (const [index, line] of uncommented.split("\n").entries()) {
-    const color = /#[\da-f]{3}(?:[\da-f]{1}|[\da-f]{3}|[\da-f]{5})?\b|\brgba?\s*\(/i.exec(line);
+    const color = COLOR_LITERAL.exec(line);
     if (!color || contentExceptions.some((exception) => exception.file === filename && exception.line.test(line))) continue;
     violations.push({ file: filename, line: index + 1, column: color.index + 1, value: color[0] });
   }
@@ -34,20 +35,8 @@ export function findColorViolations(filename, contents) {
 }
 
 export function checkColors(root) {
-  const violations = [];
-  function walk(directory) {
-    if (!fs.existsSync(directory)) return;
-    for (const entry of fs.readdirSync(directory, { withFileTypes: true })) {
-      if (["node_modules", "dist", "target", "coverage", "src-tauri"].includes(entry.name)) continue;
-      const filename = path.join(directory, entry.name);
-      if (entry.isDirectory()) walk(filename);
-      else if (entry.isFile() && /\.(css|tsx)$/.test(entry.name)) {
-        violations.push(...findColorViolations(path.relative(root, filename), fs.readFileSync(filename, "utf8")));
-      }
-    }
-  }
-  for (const group of ["apps", "modules", "packages"]) walk(path.join(root, group));
-  return violations;
+  return sourceFiles(root, ["apps", "modules", "packages"], /\.(css|tsx)$/)
+    .flatMap((filename) => findColorViolations(path.relative(root, filename), fs.readFileSync(filename, "utf8")));
 }
 
 if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {

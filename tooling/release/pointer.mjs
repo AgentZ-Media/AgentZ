@@ -1,24 +1,15 @@
 import { mkdtempSync, readFileSync, writeFileSync, copyFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { execFileSync } from 'node:child_process';
 import { parseTag, validateRelease, validateManifest, pointerDecision, compareVersions } from './core.mjs';
+import { github, publicRequest, releaseByTag } from './github.mjs';
 
 const { app, version } = parseTag(process.env.RELEASE_TAG);
 const repository = process.env.GITHUB_REPOSITORY;
 const meta = validateRelease(process.cwd(), app, version);
 const pointer = `${app}-latest`;
-const gh = args => execFileSync('gh', [...args, '--repo', repository], { encoding: 'utf8' }).trim();
-const api = path => JSON.parse(execFileSync('gh', ['api', `repos/${repository}/${path}`], { encoding: 'utf8' }));
+const { gh, api } = github(repository);
 const dir = mkdtempSync(join(tmpdir(), 'agentz-pointer-'));
-async function publicRequest(url, method = 'HEAD') {
-  for (let attempt = 0; attempt < 6; attempt++) {
-    const response = await fetch(url, { method, signal: AbortSignal.timeout(30000) });
-    if (response.ok) return response;
-    if (attempt === 5) throw new Error(`Public asset unavailable (${response.status}): ${url}`);
-    await new Promise(resolve => setTimeout(resolve, 5000));
-  }
-}
 try {
   const release = api(`releases/tags/${meta.tag}`);
   if (release.draft) throw new Error('Source release must be published');
@@ -38,9 +29,7 @@ try {
     gh(['release', 'download', meta.tag, '--pattern', asset.name, '--dir', dir]);
     copyFileSync(join(dir, asset.name), join(dir, stable));
   }
-  let currentRelease;
-  try { currentRelease = api(`releases/tags/${pointer}`); }
-  catch (error) { if (!String(error.stderr).includes('HTTP 404')) throw error; }
+  const currentRelease = releaseByTag(api, pointer);
   let current = null;
   if (currentRelease) {
     if (currentRelease.draft || !currentRelease.prerelease) throw new Error('Pointer must be a published prerelease');
@@ -70,7 +59,6 @@ try {
     // Installers first, manifest last. Retrying the same manifest repairs partial uploads.
     for (const [, stable] of installers) gh(['release', 'upload', pointer, join(dir, stable), '--clobber']);
     gh(['release', 'upload', pointer, join(dir, 'latest.json'), '--clobber']);
-    gh(['release', 'edit', pointer, '--prerelease', '--latest=false', '--notes-file', body]);
     for (const name of ['latest.json', ...installers.map(([, stable]) => stable)]) {
       await publicRequest(`https://github.com/${repository}/releases/download/${pointer}/${name}`);
     }
