@@ -4,6 +4,7 @@
 // is defensive and drops what it cannot use instead of throwing.
 
 import { AGENT_BLOCK_TYPES, type AgentBlock, type AgentBlockType } from "./scriptText";
+import { isObj } from "./toolArgs";
 
 /** Where a proposal goes. `anchor` holds the text of the targeted blocks at
  *  proposal time; applying checks it so edits made since then never cause
@@ -51,8 +52,6 @@ const MAX_OPTIONS = 3;
 const MAX_BLOCKS = 60;
 const MAX_TEXT = 2000;
 
-type Obj = Record<string, unknown>;
-const isObj = (v: unknown): v is Obj => typeof v === "object" && v !== null && !Array.isArray(v);
 const str = (v: unknown, max = MAX_TEXT): string => (typeof v === "string" ? v.trim().slice(0, max) : "");
 const int = (v: unknown): number | null => (typeof v === "number" && Number.isInteger(v) && v >= 0 ? v : null);
 

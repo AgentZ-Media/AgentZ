@@ -7,6 +7,7 @@
 // dynamic tools, web search through Codex' built-in search.
 
 import { RpcClient, RpcError, type CodexProcessLike } from "./rpc";
+import { obj, type Obj } from "../toolArgs";
 import {
   DEFAULT_EFFORT,
   isAgentEffort,
@@ -28,8 +29,6 @@ export interface CodexHostLike {
   start(config?: string[]): Promise<CodexProcessLike>;
 }
 
-type Obj = Record<string, unknown>;
-const obj = (v: unknown): Obj => (typeof v === "object" && v !== null && !Array.isArray(v) ? (v as Obj) : {});
 const str = (v: unknown): string => (typeof v === "string" ? v : "");
 
 /** Launch overrides (`codex app-server -c ...`). Web search always on; the
