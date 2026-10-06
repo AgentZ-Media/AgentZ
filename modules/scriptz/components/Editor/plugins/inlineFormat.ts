@@ -6,24 +6,14 @@ import {
   FORMAT_TEXT_COMMAND,
   KEY_DOWN_COMMAND,
   type LexicalEditor,
-  type LexicalNode,
   type TextFormatType,
 } from "lexical";
 import { mergeRegister } from "@lexical/utils";
 import {
-  BaseScriptzNode,
+  findScriptzAncestor,
   $isScriptzActionNode,
   $isScriptzDialogNode,
 } from "../nodes";
-
-function findScriptzAncestor(node: LexicalNode | null): BaseScriptzNode | null {
-  let cur: LexicalNode | null = node;
-  while (cur) {
-    if (cur instanceof BaseScriptzNode) return cur;
-    cur = cur.getParent();
-  }
-  return null;
-}
 
 /** Inline formatting: ⌘B (bold) and ⌘U (underline) in Action and Dialog
  *  blocks (Character and Parenthetical stay unformatted - the
