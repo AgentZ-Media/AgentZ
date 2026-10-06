@@ -18,3 +18,20 @@ export const scriptsBus = createVersionBus();
  * here in addition to `scriptsBus`.
  */
 export const scriptSavedBus = createEventBus<ScriptSummary>();
+
+/**
+ * `row` with the fields an autosave owns: everything derived from the
+ * content. Title, folder and stage come from their own writes, which bump
+ * `scriptsBus`; a summary read before such a write must not roll them back.
+ */
+export function withSavedContent<T extends ScriptSummary>(row: T, saved: ScriptSummary): T {
+  return {
+    ...row,
+    updated_at: Math.max(row.updated_at, saved.updated_at),
+    page_count: saved.page_count,
+    word_count: saved.word_count,
+    dialog_word_count: saved.dialog_word_count,
+    direction_block_count: saved.direction_block_count,
+    characters: saved.characters,
+  };
+}

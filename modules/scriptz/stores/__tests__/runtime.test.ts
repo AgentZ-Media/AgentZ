@@ -121,7 +121,17 @@ describe("explicit singleton runtimes", () => {
 
   it("patches a saved script in place and keeps unchanged rows across reloads", async () => {
     const row = (id: string, updated: number) =>
-      ({ id, title: id, status: "writing", characters: [], updated_at: updated }) as unknown as ScriptSummary;
+      ({
+        id,
+        title: id,
+        status: "writing",
+        characters: [],
+        updated_at: updated,
+        page_count: 1,
+        word_count: 0,
+        dialog_word_count: 0,
+        direction_block_count: 0,
+      }) as unknown as ScriptSummary;
     const listScripts = vi.fn().mockResolvedValue([row("a", 2), row("b", 1)]);
     install({ listScripts, listFolders: vi.fn().mockResolvedValue([]) });
     cleanups.push(startLibraryData());
@@ -145,7 +155,17 @@ describe("explicit singleton runtimes", () => {
 
   it("keeps an autosave that lands while an older list is still loading", async () => {
     const row = (id: string, updated: number) =>
-      ({ id, title: id, status: "writing", characters: [], updated_at: updated }) as unknown as ScriptSummary;
+      ({
+        id,
+        title: id,
+        status: "writing",
+        characters: [],
+        updated_at: updated,
+        page_count: 1,
+        word_count: 0,
+        dialog_word_count: 0,
+        direction_block_count: 0,
+      }) as unknown as ScriptSummary;
     const listScripts = vi.fn().mockResolvedValue([row("a", 2), row("b", 1)]);
     install({ listScripts, listFolders: vi.fn().mockResolvedValue([]) });
     cleanups.push(startLibraryData());

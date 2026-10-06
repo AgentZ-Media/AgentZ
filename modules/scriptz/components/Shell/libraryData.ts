@@ -14,7 +14,7 @@
 import { createEffect, createMemo, createResource, createRoot, createSignal, onCleanup } from "solid-js";
 import { keepUnchanged, sameData } from "@agentz/kit/lib";
 import { api } from "../../lib/api";
-import { scriptSavedBus, scriptsBus } from "../../lib/scriptsBus";
+import { scriptSavedBus, scriptsBus, withSavedContent } from "../../lib/scriptsBus";
 import { foldersBus } from "../../lib/foldersBus";
 import { resolveLengthRange, type LengthRange } from "../../lib/lengthGoal";
 import { runtimeSeconds } from "../../lib/runtime";
@@ -40,7 +40,7 @@ function withNewerSaves(list: ScriptSummary[], saved: ReadonlyMap<string, Script
   const newer = new Map<string, ScriptSummary>();
   for (const row of list) {
     const s = saved.get(row.id);
-    if (s && s.updated_at > row.updated_at) newer.set(row.id, s);
+    if (s && s.updated_at > row.updated_at) newer.set(row.id, withSavedContent(row, s));
   }
   if (newer.size === 0) return list;
   const front = [...newer.values()].sort((a, b) => b.updated_at - a.updated_at);
@@ -94,8 +94,10 @@ function createLibraryData(isActive: () => boolean) {
     savedSinceFetch.set(summary.id, summary);
     const list = scripts.latest ?? [];
     const i = list.findIndex((s) => s.id === summary.id);
-    if (i < 0 || sameData(list[i], summary)) return;
-    mutateScripts([summary, ...list.slice(0, i), ...list.slice(i + 1)]);
+    if (i < 0) return;
+    const row = withSavedContent(list[i], summary);
+    if (sameData(list[i], row)) return;
+    mutateScripts([row, ...list.slice(0, i), ...list.slice(i + 1)]);
   });
   onCleanup(offSaved);
 

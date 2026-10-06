@@ -14,7 +14,7 @@ import { $getNodeByKey, $isElementNode, type LexicalEditor } from "lexical";
 import { Editor } from "../Editor/Editor";
 import { SnapshotsDialog } from "../Editor/SnapshotsDialog";
 import { api } from "../../lib/api";
-import { scriptSavedBus, scriptsBus } from "../../lib/scriptsBus";
+import { scriptSavedBus, scriptsBus, withSavedContent } from "../../lib/scriptsBus";
 import { isModKey } from "@agentz/kit/platform";
 import { requireSuccessfulFlush } from "@agentz/kit/lib";
 import { computeTimeline, type TimelineSegment } from "../../lib/timing";
@@ -113,7 +113,7 @@ export function ScriptScreen(props: ScriptScreenProps) {
       try {
         const fresh = await api.getScript(id);
         const saved = lastSaved;
-        return saved && saved.id === id && saved.updated_at > fresh.updated_at ? { ...fresh, ...saved } : fresh;
+        return saved && saved.id === id && saved.updated_at > fresh.updated_at ? withSavedContent(fresh, saved) : fresh;
       } catch (err) {
         console.warn("[scriptz] script load failed", err);
         const prev = info.value;
@@ -126,7 +126,7 @@ export function ScriptScreen(props: ScriptScreenProps) {
   const offSaved = scriptSavedBus.listen((summary) => {
     lastSaved = summary;
     const prev = script.latest;
-    if (prev && prev.id === summary.id) setScript({ ...summary, content_json: prev.content_json });
+    if (prev && prev.id === summary.id) setScript(withSavedContent(prev, summary));
   });
   onCleanup(offSaved);
 
