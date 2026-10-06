@@ -3,6 +3,8 @@ import { language } from "@agentz/kit/i18n";
 import { api } from "../../lib/api";
 import type { Folder } from "../../lib/types";
 import { draftStates, type ChatItem } from "../../lib/agent/chats";
+import { draftRuntime } from "../../lib/agent/drafts";
+import { formatClock } from "../../lib/lengthGoal";
 import { listMemory, selectRelevantMemory } from "../../lib/agent/memory";
 import { buildInstructions, contextBlock, memoryBlock, type InstructionMode } from "../../lib/agent/prompt";
 import { blocksFromContent, charactersIn } from "../../lib/agent/scriptText";
@@ -71,16 +73,18 @@ export async function chatInstructions(scriptId: string | null, mode: Instructio
 }
 
 /** Context line in front of a session message: folder, target, pace,
- *  drafts and saved ideas, so the model always works with what the user
- *  sees right now. Reads folder and items after the folders arrived. */
+ *  drafts with the runtime the draft panel shows, and saved ideas, so the
+ *  model always works with what the user sees right now. Reads folder and
+ *  items after the folders arrived. */
 export async function sessionPreamble(folderId: Accessor<string | null>, items: () => ChatItem[]): Promise<string> {
   const folders = await foldersMap();
   const folder = folderId() ? folders.get(folderId()!) ?? null : null;
-  const parts = [describeTarget(writingTarget(folder, currentPace()))];
+  const pace = currentPace();
+  const parts = [describeTarget(writingTarget(folder, pace))];
   const drafts = draftStates(items());
   if (drafts.length) {
     parts.push(`Drafts in this session: ${drafts.map(({ draft, latest, state: s }) =>
-      `"${latest.title || draft.slug}" (id ${draft.slug}, version ${draft.versions.length}${s === "finished" ? ", already turned into a script" : s === "discarded" ? ", discarded" : ""})`).join("; ")}.`);
+      `"${latest.title || draft.slug}" (id ${draft.slug}, version ${draft.versions.length}, runtime ${formatClock(draftRuntime(latest.blocks, pace.wpm))}${s === "finished" ? ", already turned into a script" : s === "discarded" ? ", discarded" : ""})`).join("; ")}.`);
   }
   const saved: string[] = [];
   for (const item of items()) {
