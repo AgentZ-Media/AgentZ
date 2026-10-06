@@ -55,7 +55,7 @@ pnpm dev:scriptz             # run ScriptZ
 pnpm build:scriptz           # native app and installer (target/release/bundle/)
 pnpm dev:site                # website
 pnpm lint && pnpm typecheck && pnpm test
-pnpm check:colors && pnpm check:tokens && pnpm check:astro
+pnpm check:colors && pnpm check:astro
 cargo check --workspace --locked
 ```
 

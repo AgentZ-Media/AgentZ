@@ -27,6 +27,28 @@ describe("product-neutral UI primitives", () => {
     expect(document.activeElement).toBe(trigger);
   });
 
+  it("keeps Tab inside a modal and skips disabled elements with a tabindex", async () => {
+    render(() => <Modal open title="Preferences" onClose={() => {}}><input aria-label="Name" /><button disabled tabindex="0">Off</button></Modal>);
+    const close = document.querySelector<HTMLElement>(".modal-close")!;
+    const input = document.querySelector<HTMLElement>("input")!;
+    await waitFor(() => expect(document.activeElement).toBe(close));
+    input.focus();
+    fireEvent.keyDown(input, { key: "Tab" });
+    expect(document.activeElement).toBe(close);
+  });
+
+  it("leaves forward Tab inside a stacked modal to the browser", async () => {
+    render(() => <>
+      <Modal open title="Versions" onClose={() => {}}><button>Restore</button></Modal>
+      <Modal open label="Confirm" onClose={() => {}}><button data-testid="cancel">Cancel</button><button>OK</button></Modal>
+    </>);
+    const cancel = document.querySelector<HTMLElement>("[data-testid=cancel]")!;
+    await waitFor(() => expect(document.activeElement).not.toBe(document.body));
+    cancel.focus();
+    expect(fireEvent.keyDown(cancel, { key: "Tab" })).toBe(true);
+    expect(document.activeElement).toBe(cancel);
+  });
+
   it("lets a marked nested overlay consume Escape before the dialog", () => {
     const close = vi.fn();
     const result = render(() => <DialogFrame open label="Preferences" onClose={close}><div data-dialog-dismiss-layer>Picker</div></DialogFrame>);

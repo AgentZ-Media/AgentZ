@@ -64,7 +64,7 @@ entsteht aus derselben Registry wie die Handler; die Registry respektiert
 - `tsconfig.base.json` nur mit gemeinsamen Optionen; Tests über
   `@agentz/vitest-preset` (`definePackageTest()`).
 - Die Kit-Fixture (`pnpm --filter @agentz/kit test:fixture`, Port 4174) prüft
-  die Shell ohne ScriptZ und ohne `legacy.css`.
+  die Shell ohne ScriptZ.
 
 ## Desktop und Rust
 
