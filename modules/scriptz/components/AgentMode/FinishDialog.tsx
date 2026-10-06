@@ -19,7 +19,7 @@ import { settingsStore } from "../../stores/settings";
 import { StageGlyph } from "../Common/StageGlyph";
 import { FolderMenu } from "../Ideas/parts/FolderMenu";
 import { ContextMenu } from "../Library/ContextMenu";
-import { library } from "../Shell/libraryData";
+import { defaultLengthRange, library } from "../Shell/libraryData";
 import type { DraftState } from "./DraftPanel";
 
 export interface FinishTarget {
@@ -62,10 +62,7 @@ function FinishForm(props: { session: ChatSession; target: FinishTarget; onClose
   const [stageMenu, setStageMenu] = createSignal<{ x: number; y: number } | null>(null);
 
   const folder = () => library.folder(folderId()) ?? null;
-  const range = () => resolveLengthRange(folder(), {
-    minSec: settingsStore.lengthMinDefaultSec(),
-    maxSec: settingsStore.lengthMaxDefaultSec(),
-  });
+  const range = () => resolveLengthRange(folder(), defaultLengthRange());
   const seconds = () => draftRuntime(version().blocks, settingsStore.dialogWpm());
 
   const create = async (open: boolean) => {

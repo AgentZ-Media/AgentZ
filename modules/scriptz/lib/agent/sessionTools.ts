@@ -8,7 +8,8 @@ import { scriptStages, stageLabel } from "../stages";
 import type { Folder, Idea } from "../types";
 import type { IdeaCard, SavedIdeaRef } from "./chats";
 import { targetForTool, writingTarget, type Pace } from "./writingContext";
-import type { AgentTool, JsonSchema, ToolResult } from "./types";
+import { fail, obj, ok } from "./toolArgs";
+import type { AgentTool, JsonSchema } from "./types";
 
 export interface IdeaBoardRef {
   itemId: string;
@@ -32,11 +33,7 @@ export interface SessionToolHost {
   lastBoard(): IdeaBoardRef | null;
 }
 
-type Obj = Record<string, unknown>;
-const obj = (v: unknown): Obj => (typeof v === "object" && v !== null && !Array.isArray(v) ? (v as Obj) : {});
 const text = (v: unknown, max = 400): string => (typeof v === "string" ? v.replace(/\s+/g, " ").trim().slice(0, max) : "");
-const ok = (value: unknown): ToolResult => ({ ok: true, output: typeof value === "string" ? value : JSON.stringify(value) });
-const fail = (message: string): ToolResult => ({ ok: false, output: JSON.stringify({ error: message }) });
 
 export const MAX_IDEAS_PER_BOARD = 12;
 export const MAX_REPLIES = 4;
@@ -51,7 +48,10 @@ export async function existingFolder(id: string | null): Promise<string | null> 
   return (await folders()).some((f) => f.id === id) ? id : null;
 }
 
-/** Folder by id or (case-insensitive) name; "current" = the session's. */
+/** Folder by id or (case-insensitive) name; "current" = the session's.
+ *  Unlike `tools.resolveFolder`, an empty value also means the session's
+ *  folder, and a session folder that no longer exists falls back to "no
+ *  folder" instead of failing. */
 export async function resolveSessionFolder(raw: unknown, current: string | null): Promise<{ id: string | null; error?: string }> {
   const value = text(raw, 200);
   if (!value || value === "current") return { id: await existingFolder(current) };

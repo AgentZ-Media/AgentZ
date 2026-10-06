@@ -9,7 +9,7 @@
 // N independent UPDATEs. A crash mid-loop leaves a partial move; the user
 // can re-issue the action with no data damage - every UPDATE is independent.
 
-import { getDb } from "./db";
+import { getDb, type DbConnection } from "./db";
 import { validateLengthRange } from "./storage";
 import type { Folder } from "./types";
 import { t } from "../i18n";
@@ -20,6 +20,18 @@ import { t } from "../i18n";
  *  list queries to mean "ungrouped only" - distinct from `null`, which means
  *  every item, grouped or not. */
 export const INBOX_FOLDER_ID = "__inbox__";
+
+/** Throws `not found: folder <id>` unless a folder with this id exists.
+ *  Shared guard for every write that points a script or idea at a folder. */
+export async function assertFolderExists(db: DbConnection, folderId: string): Promise<void> {
+  const exists = await db.select<{ n: number }[]>(
+    "SELECT COUNT(*) AS n FROM folders WHERE id = $1",
+    [folderId],
+  );
+  if ((exists[0]?.n ?? 0) === 0) {
+    throw new Error(`not found: folder ${folderId}`);
+  }
+}
 
 interface FolderRow {
   id: string;
@@ -152,15 +164,7 @@ export async function moveScript(
   folderId: string | null,
 ): Promise<void> {
   const db = await getDb();
-  if (folderId !== null) {
-    const exists = await db.select<{ n: number }[]>(
-      "SELECT COUNT(*) AS n FROM folders WHERE id = $1",
-      [folderId],
-    );
-    if ((exists[0]?.n ?? 0) === 0) {
-      throw new Error(`not found: folder ${folderId}`);
-    }
-  }
+  if (folderId !== null) await assertFolderExists(db, folderId);
   const now = Date.now();
   const res = await db.execute(
     "UPDATE scripts SET folder_id = $1, updated_at = $2 WHERE id = $3",
@@ -177,15 +181,7 @@ export async function moveScripts(
 ): Promise<void> {
   if (scriptIds.length === 0) return;
   const db = await getDb();
-  if (folderId !== null) {
-    const exists = await db.select<{ n: number }[]>(
-      "SELECT COUNT(*) AS n FROM folders WHERE id = $1",
-      [folderId],
-    );
-    if ((exists[0]?.n ?? 0) === 0) {
-      throw new Error(`not found: folder ${folderId}`);
-    }
-  }
+  if (folderId !== null) await assertFolderExists(db, folderId);
   const now = Date.now();
   const missing: string[] = [];
   for (const sid of scriptIds) {

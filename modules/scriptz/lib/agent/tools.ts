@@ -4,6 +4,7 @@
 // own built-in tool.
 
 import { api } from "../api";
+import { INBOX_FOLDER_ID } from "../folders";
 import { scriptStages, stageLabel, isFinalStage } from "../stages";
 import type { Folder } from "../types";
 import {
@@ -21,7 +22,8 @@ import {
 } from "./memory";
 import { anchorTarget, parseClaims, parseProposal, type Claim, type Proposal } from "./proposals";
 import { blocksFromContent, charactersIn, numberedScript, type AgentBlock } from "./scriptText";
-import type { AgentTool, JsonSchema, ToolResult } from "./types";
+import { fail, obj, ok } from "./toolArgs";
+import type { AgentTool, JsonSchema } from "./types";
 
 export type MemoryChange =
   | { action: "added"; entry: MemoryEntry }
@@ -45,12 +47,7 @@ export interface ToolHost {
   memorySourceScriptId: string | null;
 }
 
-type Obj = Record<string, unknown>;
-const obj = (v: unknown): Obj => (typeof v === "object" && v !== null && !Array.isArray(v) ? (v as Obj) : {});
 const text = (v: unknown, max = 400): string => (typeof v === "string" ? v.trim().slice(0, max) : "");
-
-const ok = (value: unknown): ToolResult => ({ ok: true, output: typeof value === "string" ? value : JSON.stringify(value) });
-const fail = (message: string): ToolResult => ({ ok: false, output: JSON.stringify({ error: message }) });
 
 async function foldersById(): Promise<Map<string, Folder>> {
   const list = await api.listFolders().catch(() => [] as Folder[]);
@@ -64,6 +61,9 @@ async function hostFolder(host: Pick<ToolHost, "scriptId" | "folderId">): Promis
   return host.folderId?.() ?? null;
 }
 
+/** Folder by id or (case-insensitive) name. Unlike
+ *  `sessionTools.resolveSessionFolder`, an empty value means "no folder" and
+ *  "current" without a current folder is an error. */
 async function resolveFolder(raw: unknown, currentFolderId: string | null): Promise<{ id: string | null; error?: string }> {
   const value = text(raw, 200);
   if (!value || value === "none") return { id: null };
@@ -172,7 +172,7 @@ export function createChatTools(host: ToolHost): AgentTool[] {
         let folderId: string | null | undefined;
         if (a.folder !== undefined) {
           const raw = text(a.folder, 200);
-          if (raw === "none") folderId = "__inbox__";
+          if (raw === "none") folderId = INBOX_FOLDER_ID;
           else {
             const resolved = await resolveFolder(raw, await hostFolder(host));
             if (resolved.error) return fail(resolved.error);

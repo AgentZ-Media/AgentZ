@@ -2,10 +2,10 @@ import { Index, Show, createResource } from "solid-js";
 import { api } from "../../../lib/api";
 import { foldersBus } from "../../../lib/foldersBus";
 import { folderHasLengthRange, formatRange } from "../../../lib/lengthGoal";
-import { settingsStore } from "../../../stores/settings";
 import { t } from "../../../i18n";
 import type { Folder } from "../../../lib/types";
 import { folderColor } from "../../Ideas/folderColor";
+import { defaultLengthRange } from "../../Shell/libraryData";
 import { SectionHead } from "@agentz/kit/ui";
 import { RangeFields } from "./parts";
 
@@ -15,11 +15,7 @@ export function SettingsFolders(props: { onClose(): void }) {
   const [folders] = createResource(() => foldersBus.version(), () => api.listFolders(), {
     initialValue: [] as Folder[],
   });
-  const defaults = () => ({
-    minSec: settingsStore.lengthMinDefaultSec(),
-    maxSec: settingsStore.lengthMaxDefaultSec(),
-  });
-  const defaultText = () => formatRange(defaults());
+  const defaultText = () => formatRange(defaultLengthRange());
   // Empty fields of a folder without own range inherit the default
   // ("Standard"); once one bound is set, the other empty one means "none".
   const placeholder = (f: Folder) =>

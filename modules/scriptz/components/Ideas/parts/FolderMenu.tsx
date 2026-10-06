@@ -8,7 +8,7 @@ import type { Folder } from "../../../lib/types";
 import { folderColor } from "../folderColor";
 import "./FolderMenu.css";
 
-// Folder picker: a trigger (chip or ghost button) plus a `.menu` popover
+// Folder picker: a chip trigger plus a `.menu` popover
 // with "Kein Ordner", every folder (colour dot + check) and optionally
 // "Neuer Ordner…". Used by the open idea row, the capture field, the
 // selection bar, the quick-capture footer and the new-script dialog.
@@ -19,14 +19,9 @@ export interface FolderMenuProps {
   folders: Folder[];
   value: string | null;
   onChange(folderId: string | null): void;
-  /** "chip" shows the current folder; "ghost" shows `label` as a ghost button. */
-  variant?: "chip" | "ghost";
-  /** Fixed trigger text for the ghost variant (e.g. "In Ordner …"). */
-  label?: string;
   class?: string;
-  disabled?: boolean;
-  /** Accessible name of the trigger. */
-  ariaLabel?: string;
+  /** Accessible name of the trigger and the menu. */
+  ariaLabel: string;
   /** Adds a "Neuer Ordner…" entry at the end; the caller asks for the name. */
   onCreate?: () => void;
 }
@@ -64,7 +59,6 @@ export function FolderMenu(props: FolderMenuProps) {
   }
 
   function openMenu() {
-    if (props.disabled) return;
     place();
     const idx = options().findIndex((o) => !o.create && o.id === props.value);
     setActive(Math.max(0, idx));
@@ -141,11 +135,10 @@ export function FolderMenu(props: FolderMenuProps) {
       <button
         ref={trigger}
         type="button"
-        class={`${props.variant === "ghost" ? "btn ghost" : "chip fm-chip"}${props.class ? ` ${props.class}` : ""}`}
+        class={`chip fm-chip${props.class ? ` ${props.class}` : ""}`}
         aria-haspopup="listbox"
         aria-expanded={open()}
         aria-label={props.ariaLabel}
-        disabled={props.disabled}
         onClick={() => (open() ? close() : openMenu())}
         onKeyDown={(e) => {
           if (e.key === "ArrowDown" || e.key === "ArrowUp") {
@@ -154,20 +147,11 @@ export function FolderMenu(props: FolderMenuProps) {
           }
         }}
       >
-        <Show
-          when={props.variant === "ghost"}
-          fallback={
-            <>
-              <Show when={current()} fallback={<Icon name="folder" />}>
-                {(f) => <i class="fdot" style={{ "--dot": folderColor(f().id) }} />}
-              </Show>
-              <span class="fm-name">{current()?.name ?? t("ideasPage.folder.none")}</span>
-              <Icon name="down" />
-            </>
-          }
-        >
-          {props.label ?? t("ideasPage.folder.move")}
+        <Show when={current()} fallback={<Icon name="folder" />}>
+          {(f) => <i class="fdot" style={{ "--dot": folderColor(f().id) }} />}
         </Show>
+        <span class="fm-name">{current()?.name ?? t("ideasPage.folder.none")}</span>
+        <Icon name="down" />
       </button>
       <Show when={open()}>
         <Portal>
@@ -176,7 +160,7 @@ export function FolderMenu(props: FolderMenuProps) {
             class="menu fm-menu" data-dialog-dismiss-layer
             role="listbox"
             tabindex="-1"
-            aria-label={props.ariaLabel ?? t("ideasPage.folder.label")}
+            aria-label={props.ariaLabel}
             style={{
               left: `${pos().left}px`,
               top: pos().top !== undefined ? `${pos().top}px` : undefined,

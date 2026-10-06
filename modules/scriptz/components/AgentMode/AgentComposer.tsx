@@ -7,7 +7,7 @@ import { agentStore } from "../../stores/agent";
 import { settingsStore } from "../../stores/settings";
 import { uiStore } from "../../stores/ui";
 import { FolderMenu } from "../Ideas/parts/FolderMenu";
-import { library } from "../Shell/libraryData";
+import { defaultLengthRange, library } from "../Shell/libraryData";
 
 export interface AgentComposerProps {
   session: ChatSession;
@@ -32,10 +32,7 @@ export function AgentComposer(props: AgentComposerProps) {
   const running = () => props.session.running();
   const attached = () => props.session.scriptId() !== null;
   const folder = () => library.folder(props.session.folderId()) ?? null;
-  const range = () => resolveLengthRange(folder(), {
-    minSec: settingsStore.lengthMinDefaultSec(),
-    maxSec: settingsStore.lengthMaxDefaultSec(),
-  });
+  const range = () => resolveLengthRange(folder(), defaultLengthRange());
   const rangeText = () => formatRange(range());
 
   const resize = () => {
