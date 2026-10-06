@@ -18,9 +18,9 @@ function fixture(t) {
   writeFileSync(join(root, 'docs/release-notes/notes/v0.1.0.md'), 'Notes 0.1.0');
   return root;
 }
-const context = { version: '0.9.0', tag: 'scriptz-v0.9.0', repository: 'AgentZ-Media/AgentZ' };
+const context = { version: '0.9.0', tag: 'scriptz-v0.9.0', repository: 'AgentZ-Media/AgentZ-Suite' };
 function manifest(version = '0.9.0') {
-  return { version, platforms: Object.fromEntries(['darwin-aarch64', 'windows-x86_64'].map(p => [p, { signature: 'signed', url: `https://github.com/AgentZ-Media/AgentZ/releases/download/scriptz-v${version}/${p}.tar.gz` }])) };
+  return { version, platforms: Object.fromEntries(['darwin-aarch64', 'windows-x86_64'].map(p => [p, { signature: 'signed', url: `https://github.com/AgentZ-Media/AgentZ-Suite/releases/download/scriptz-v${version}/${p}.tar.gz` }])) };
 }
 test('strict tags accept dashed app IDs and full semver, reject paths and old tags', () => {
   assert.deepEqual(parseTag('my-notes-v1.2.3-rc.2+build.7'), { app: 'my-notes', version: '1.2.3-rc.2+build.7' });
@@ -102,7 +102,7 @@ test('completed platform retries preserve original signed artifacts', () => {
 });
 test('manifest URL validation rejects traversal and accepts encoded SemVer metadata', () => {
   const m = manifest();
-  m.platforms['darwin-aarch64'].url = 'https://github.com/AgentZ-Media/AgentZ/releases/download/scriptz-v0.9.0/../other/file';
+  m.platforms['darwin-aarch64'].url = 'https://github.com/AgentZ-Media/AgentZ-Suite/releases/download/scriptz-v0.9.0/../other/file';
   assert.throws(() => validateManifest(m, context));
   const tagged = manifest('0.9.0+build.7');
   for (const entry of Object.values(tagged.platforms)) entry.url = entry.url.replace('+', '%2B');

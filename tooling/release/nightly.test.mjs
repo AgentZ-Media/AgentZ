@@ -13,7 +13,7 @@ import {
 
 const at = new Date('2026-10-05T15:04:09.123Z');
 const sha = 'a'.repeat(40);
-const repository = 'AgentZ-Media/AgentZ';
+const repository = 'AgentZ-Media/AgentZ-Suite';
 
 test('nightly versions sit between the released and the next stable version', () => {
   const released = nightlyVersion('0.10.0', true, at);
@@ -76,7 +76,7 @@ test('the release text lists changes, downloads, the footer and the marker', () 
   const body = renderNightlyBody({ app: 'scriptz', product: 'ScriptZ', version, commit: sha, builtAt: at.toISOString(), repository,
     changes: [{ sha: 'b'.repeat(40), subject: 'Sternenhimmel' }], footer: 'Install {{PRODUCT_NAME}}' });
   assert.match(body, /- Sternenhimmel \(bbbbbbb\)/);
-  assert.match(body, /scriptz-nightly-macos-arm64\.dmg\]\(https:\/\/github\.com\/AgentZ-Media\/AgentZ\/releases\/download\/scriptz-nightly\/scriptz-nightly-macos-arm64\.dmg\)/);
+  assert.match(body, /scriptz-nightly-macos-arm64\.dmg\]\(https:\/\/github\.com\/AgentZ-Media\/AgentZ-Suite\/releases\/download\/scriptz-nightly\/scriptz-nightly-macos-arm64\.dmg\)/);
   assert.match(body, /Install ScriptZ/);
   assert.deepEqual(parseNightlyMarker(body), { commit: sha, version });
 });

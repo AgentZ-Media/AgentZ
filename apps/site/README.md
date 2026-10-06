@@ -21,8 +21,8 @@ Icons are `/img/<id>.png`, written by
 `node packages/design/scripts/build-logo.mjs --app <id>`. Download links are
 built from the id and the app's pointer release:
 
-- `https://github.com/AgentZ-Media/AgentZ/releases/download/<id>-latest/<id>-macos-arm64.dmg`
-- `https://github.com/AgentZ-Media/AgentZ/releases/download/<id>-latest/<id>-windows-x64-setup.exe`
+- `https://github.com/AgentZ-Media/AgentZ-Suite/releases/download/<id>-latest/<id>-macos-arm64.dmg`
+- `https://github.com/AgentZ-Media/AgentZ-Suite/releases/download/<id>-latest/<id>-windows-x64-setup.exe`
 
 The build calls no GitHub API and shows no version number.
 

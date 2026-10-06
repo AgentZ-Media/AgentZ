@@ -8,7 +8,7 @@ shares one design system, application kit, desktop host and release pipeline.
 
 | App | Purpose | Platforms | Download |
 |---|---|---|---|
-| **ScriptZ** | Offline script editor for TikTok, Reels, YouTube Shorts and sketches | macOS Apple Silicon, Windows x64 | [macOS](https://github.com/AgentZ-Media/AgentZ/releases/download/scriptz-latest/scriptz-macos-arm64.dmg) · [Windows](https://github.com/AgentZ-Media/AgentZ/releases/download/scriptz-latest/scriptz-windows-x64-setup.exe) |
+| **ScriptZ** | Offline script editor for TikTok, Reels, YouTube Shorts and sketches | macOS Apple Silicon, Windows x64 | [macOS](https://github.com/AgentZ-Media/AgentZ-Suite/releases/download/scriptz-latest/scriptz-macos-arm64.dmg) · [Windows](https://github.com/AgentZ-Media/AgentZ-Suite/releases/download/scriptz-latest/scriptz-windows-x64-setup.exe) |
 
 ScriptZ formats scripts while you type (action, character, dialog,
 parenthetical), with two-speaker Quick Mode, character colors, runtime

@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { github, publicRequest, releaseByTag, unlessNotFound } from './github.mjs';
 
-const repository = 'AgentZ-Media/AgentZ';
+const repository = 'AgentZ-Media/AgentZ-Suite';
 function fakeExec(stdout) {
   const calls = [];
   const exec = (command, args, options) => { calls.push({ command, args, options }); return stdout; };
