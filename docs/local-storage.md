@@ -44,7 +44,8 @@ Es gibt keinen versteckten Rückfall auf die Desktop-Datenbank.
 
 Charaktere sind Teil des Skriptinhalts; es gibt keine globale
 Charaktertabelle. `settings`, `app_state` und der aus Inhalten
-neu aufbaubare FTS-Suchindex sind ausgeschlossen. Die Testabdeckung gleicht diese
+neu aufbaubare FTS-Suchindex samt seiner rowid-Zuordnung (`scripts_fts_map`)
+sind ausgeschlossen. Die Testabdeckung gleicht diese
 Liste mit dem tatsächlichen Datenbankschema ab.
 
 ## Atomare Änderungsverfolgung

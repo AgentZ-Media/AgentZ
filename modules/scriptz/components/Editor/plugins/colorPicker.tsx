@@ -149,6 +149,17 @@ export function installColorPicker(
   const editorRoot = (): HTMLElement | null =>
     host.querySelector(".editor-root");
 
+  // Every trigger (update, scroll, resize, hover) only schedules: the
+  // layout is read once per frame, never right after Lexical wrote the DOM.
+  let repositionRaf: number | null = null;
+  const scheduleReposition = () => {
+    if (repositionRaf !== null) return;
+    repositionRaf = requestAnimationFrame(() => {
+      repositionRaf = null;
+      repositionSwatch();
+    });
+  };
+
   const repositionSwatch = () => {
     const target = hoverBlock ?? caretBlock;
     if (!target || !document.body.contains(target)) {
@@ -191,7 +202,9 @@ export function installColorPicker(
       }
     });
     caretBlock = block;
-    repositionSwatch();
+    // Not on a character line and none hovered: nothing to place.
+    if (!block && !hoverBlock && !swatchVisible()) return;
+    scheduleReposition();
   };
 
   // Hover: track continuously via `mousemove` instead of only on
@@ -216,22 +229,24 @@ export function installColorPicker(
     if (el?.closest(".scriptz-marge-swatch")) return;
     let block = el?.closest(".block-scriptz-character") as HTMLElement | null;
     if (!block) {
+      // In the margin: probe the editor column at the same height instead
+      // of measuring every character block of the script (blocks span the
+      // full column width).
       const root = editorRoot();
       if (root) {
-        const blocks = root.querySelectorAll<HTMLElement>(".block-scriptz-character");
-        for (const b of Array.from(blocks)) {
+        const rootRect = root.getBoundingClientRect();
+        const probeX = Math.min(Math.max(x, rootRect.left + 1), rootRect.right - 1);
+        const probe = document.elementFromPoint(probeX, y) as HTMLElement | null;
+        const b = probe?.closest(".block-scriptz-character") as HTMLElement | null;
+        if (b && root.contains(b)) {
           const r = b.getBoundingClientRect();
-          if (y >= r.top && y <= r.bottom &&
-              x >= r.left - HIT_LEFT_PAD && x <= r.right) {
-            block = b;
-            break;
-          }
+          if (x >= r.left - HIT_LEFT_PAD && x <= r.right) block = b;
         }
       }
     }
     if (block === hoverBlock) return;
     hoverBlock = block;
-    repositionSwatch();
+    scheduleReposition();
   };
 
   const onMouseMove = (ev: MouseEvent) => {
@@ -265,7 +280,7 @@ export function installColorPicker(
        mouseRafId = null;
      }
      hoverBlock = null;
-     repositionSwatch();
+     scheduleReposition();
    };
 
   // Right-click: open the popover at the cursor for the right-clicked
@@ -291,13 +306,13 @@ export function installColorPicker(
 
   // Scroll / resize reposition: paper-canvas (vertical scrolling) +
   // window (resize changes block layout).
-  const onScroll = () => repositionSwatch();
+  const onScroll = () => scheduleReposition();
   canvas?.addEventListener("scroll", onScroll, { passive: true });
   window.addEventListener("resize", onScroll);
 
   // ResizeObserver on the editor root catches block reflows from typing
   // (line wraps) without the cost of a per-keystroke editor listener.
-  const ro = new ResizeObserver(() => repositionSwatch());
+  const ro = new ResizeObserver(() => scheduleReposition());
   const editorEl = editorRoot();
   if (editorEl) ro.observe(editorEl);
 
@@ -375,6 +390,10 @@ export function installColorPicker(
       if (mouseRafId !== null) {
         cancelAnimationFrame(mouseRafId);
         mouseRafId = null;
+      }
+      if (repositionRaf !== null) {
+        cancelAnimationFrame(repositionRaf);
+        repositionRaf = null;
       }
       canvas?.removeEventListener("scroll", onScroll);
       window.removeEventListener("resize", onScroll);

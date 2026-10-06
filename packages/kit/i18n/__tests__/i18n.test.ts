@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { createRoot, createComputed } from "solid-js";
 import {
-  applyResolvedLanguage, createI18n, createModuleI18n, detectSystemLanguage,
+  applyResolvedLanguage, createI18n, createModuleI18n, detectSystemLanguage, formatDate, formatNumber,
   getCurrentLocale, kitDe, kitEn, language, resolveLanguage, t,
 } from "../index";
 
@@ -89,3 +89,16 @@ function assertTypedKeys() {
   translator.tPlural("demo.label", 2);
 }
 void assertTypedKeys;
+
+describe("cached Intl formatting", () => {
+  it("matches the uncached formatters and follows the language", () => {
+    const date = new Date(2026, 9, 6, 14, 5);
+    const options: Intl.DateTimeFormatOptions = { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" };
+    applyResolvedLanguage("de");
+    expect(formatDate(date, options)).toBe(date.toLocaleString("de-DE", options));
+    expect(formatNumber(12345.5)).toBe((12345.5).toLocaleString("de-DE"));
+    applyResolvedLanguage("en");
+    expect(formatDate(date, options)).toBe(date.toLocaleString("en-US", options));
+    expect(formatNumber(0.42, { style: "percent" })).toBe((0.42).toLocaleString("en-US", { style: "percent" }));
+  });
+});

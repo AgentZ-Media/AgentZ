@@ -8,7 +8,7 @@ export interface GutterLabelProps {
   editor: Accessor<LexicalEditor | null>;
   caret: Accessor<CaretBlock | null>;
   focused: Accessor<boolean>;
-  /** Bumps on every editor update (the caret block may have moved). */
+  /** Bumps on every content change (the caret block may have moved). */
   tick: Accessor<number>;
   /** The paper sheet the label is positioned in. */
   sheet: Accessor<HTMLElement | undefined>;

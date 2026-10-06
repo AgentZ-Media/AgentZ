@@ -2,7 +2,7 @@ import { For, createMemo } from "solid-js";
 import { dailyStatsStore } from "../../stores/dailyStats";
 import { uiStore } from "../../stores/ui";
 import { pickWritingWindow } from "../../lib/writingCounter";
-import { getCurrentLocale } from "@agentz/kit/i18n";
+import { formatNumber } from "@agentz/kit/i18n";
 import { t } from "../../i18n";
 import { DialogFrame } from "@agentz/kit/ui";
 import { Heatmap } from "./Heatmap";
@@ -14,7 +14,7 @@ import "./ActivityModal.css";
 export function ActivityModal() {
   const stats = () => dailyStatsStore.stats();
   const pick = createMemo(() => pickWritingWindow(stats()));
-  const fmt = (n: number) => n.toLocaleString(getCurrentLocale());
+  const fmt = (n: number) => formatNumber(n);
   const cards = () => [
     { label: t("activityDialog.week"), value: pick().all.week },
     { label: t("activityDialog.month"), value: pick().all.month },

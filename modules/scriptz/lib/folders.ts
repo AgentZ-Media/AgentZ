@@ -43,7 +43,8 @@ interface FolderRow {
   length_max_sec: number | null;
 }
 
-const FOLDER_SELECT = `SELECT f.id, f.name, f.created_at, f.updated_at,
+/** Folder rows with their live script count (`idx_scripts_folder_live`). */
+export const FOLDER_SELECT = `SELECT f.id, f.name, f.created_at, f.updated_at,
             f.length_min_sec, f.length_max_sec,
             (SELECT COUNT(*) FROM scripts s
               WHERE s.folder_id = f.id AND s.archived_at IS NULL) AS script_count

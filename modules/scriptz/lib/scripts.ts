@@ -29,14 +29,22 @@ import {
   type ColorRecord,
 } from "./characterColors";
 import { characterUsageBus, dropsCharacterNames } from "./characterUsage";
-import { countWordsInContent, recordWordDelta } from "./dailyWords";
+import { countWordsInBlocks, recordWordDelta } from "./dailyWords";
 import { getDb } from "./db";
 import { assertFolderExists, INBOX_FOLDER_ID } from "./folders";
-import { deleteScriptFts, refreshFtsForScript } from "./fts";
-import { dialogWordsByCharacter, extractCharacterNames } from "./lex";
+import { deleteScriptFts, refreshFtsForScript, upsertScriptFts } from "./fts";
+import {
+  characterNamesFromBlocks,
+  dialogWordsByCharacterFromBlocks,
+  extractBlocks,
+  plainTextFromBlocks,
+  type ExtractedBlock,
+} from "./lex";
 import {
   RUNTIME_STATS_SENTINEL,
+  runtimeStatsFromBlocks,
   runtimeStatsFromContent,
+  type RuntimeStats,
 } from "./runtime";
 import { normalizeLegacyContent } from "./legacyBlocks";
 import { firstStageId, isKnownStage, resolveStageId } from "./stages";
@@ -65,7 +73,9 @@ interface SummaryRow {
   status_changed_at: number | null;
 }
 
-const SUMMARY_COLUMNS =
+/** Columns of the script list; all of them sit in `idx_scripts_summary`
+ *  (migration 013, guarded by `__tests__/queryPlans.test.ts`). */
+export const SUMMARY_COLUMNS =
   "id, title, highlighting_enabled, characters_meta, " +
   "created_at, updated_at, archived_at, page_count, " +
   "last_word_count, dialog_word_count, direction_block_count, folder_id, " +
@@ -213,8 +223,9 @@ export async function createScript(
       ? normalizeLegacyContent(initialContentJson).json
       : emptyLexicalState();
 
+  const derived = deriveContent(contentJson);
   const records = await loadColorRecords();
-  const { chars, newDefaults } = reconcileCharsFromContent([], contentJson, records);
+  const { chars, newDefaults } = reconcileCharsFromContent([], derived.blocks, records);
   for (const [n, c] of newDefaults) {
     await upsertDefaultColor(n, c, now);
   }
@@ -229,8 +240,8 @@ export async function createScript(
   // is then also accounted for correctly (the few note words
   // don't count as writing activity because they weren't added during
   // the save).
-  const initialWordCount = countWordsInContent(contentJson);
-  const runtime = runtimeStatsFromContent(contentJson);
+  const initialWordCount = derived.words;
+  const runtime = derived.runtime;
 
   await db.execute(
     `INSERT INTO scripts (id, title, highlighting_enabled, content_json, characters_meta,
@@ -250,7 +261,7 @@ export async function createScript(
       firstStageId(),
     ],
   );
-  await refreshFtsForScript(id);
+  await upsertScriptFts(id, finalTitle, plainTextFromBlocks(derived.blocks));
   return rowToSummary(id);
 }
 
@@ -268,8 +279,9 @@ export async function duplicateScript(id: string): Promise<ScriptSummary> {
   // The copy is a fresh draft: it always starts at the first stage,
   // whatever stage the source is in.
   const contentJson = normalizeLegacyContent(src.content_json).json;
-  const wc = countWordsInContent(contentJson);
-  const runtime = runtimeStatsFromContent(contentJson);
+  const derived = deriveContent(contentJson);
+  const wc = derived.words;
+  const runtime = derived.runtime;
   await db.execute(
     `INSERT INTO scripts (id, title, highlighting_enabled, content_json, characters_meta,
                           created_at, updated_at, page_count, folder_id, last_word_count,
@@ -290,7 +302,7 @@ export async function duplicateScript(id: string): Promise<ScriptSummary> {
       firstStageId(),
     ],
   );
-  await refreshFtsForScript(newId);
+  await upsertScriptFts(newId, newTitle, plainTextFromBlocks(derived.blocks));
   return rowToSummary(newId);
 }
 
@@ -373,14 +385,11 @@ export interface UpdateScriptInput {
 export async function updateScript(input: UpdateScriptInput): Promise<ScriptSummary> {
   const db = await getDb();
   const now = Date.now();
-
-  const existRows = await db.select<{ n: number }[]>(
-    "SELECT COUNT(*) AS n FROM scripts WHERE id = $1",
-    [input.id],
-  );
-  if ((existRows[0]?.n ?? 0) === 0) {
-    throw new Error(`not found: script ${input.id}`);
-  }
+  // No separate existence probe: the content path reads the row anyway and
+  // throws `not found`, and every other path ends in `rowToSummary`, which
+  // throws for an unknown id (its UPDATEs touched no row).
+  // Indexed text of this write; null = the content did not change.
+  let ftsText: string | null = null;
 
   if (input.title !== undefined) {
     await db.execute(
@@ -404,8 +413,13 @@ export async function updateScript(input: UpdateScriptInput): Promise<ScriptSumm
     // conditional UPDATE. If two parallel saves read the same
     // last_word_count, both deltas would otherwise land in daily_word_log
     // and today's bucket would be double-counted.
-    const newWordCount = countWordsInContent(contentJson);
-    const runtime = runtimeStatsFromContent(contentJson);
+    // One parse feeds the word count, runtime columns, character
+    // reconciliation and the FTS row (a long script used to be parsed five
+    // times per autosave, plus a re-read of the row for the index).
+    const derived = deriveContent(contentJson);
+    const newWordCount = derived.words;
+    const runtime = derived.runtime;
+    ftsText = plainTextFromBlocks(derived.blocks);
     const records = await loadColorRecords();
     let delta = 0;
     let attempts = 0;
@@ -425,7 +439,7 @@ export async function updateScript(input: UpdateScriptInput): Promise<ScriptSumm
       }
       const lastWordCount = metaRows[0]?.last_word_count ?? 0;
       const prevMeta = metaRows[0]?.characters_meta ?? "[]";
-      const charsJson = await reconcileCharsMeta(prevMeta, contentJson, records, now);
+      const charsJson = await reconcileCharsMeta(prevMeta, derived.blocks, records, now);
       droppedNames = dropsCharacterNames(parseCharsMeta(prevMeta), parseCharsMeta(charsJson));
 
       // last_word_count === -1 is the sentinel from migration 004 for
@@ -510,8 +524,13 @@ export async function updateScript(input: UpdateScriptInput): Promise<ScriptSumm
       [charsJson, now, input.id],
     );
   }
-  await refreshFtsForScript(input.id);
-  return rowToSummary(input.id);
+  // The summary is read first so the index gets the title as stored now
+  // (a rename may have landed meanwhile). Highlighting and colour picks
+  // don't touch the indexed text.
+  const summary = await rowToSummary(input.id);
+  if (ftsText !== null) await upsertScriptFts(input.id, summary.title, ftsText);
+  else if (input.title !== undefined) await refreshFtsForScript(input.id);
+  return summary;
 }
 
 /** Writes content restored from a snapshot and reconciles every derived
@@ -530,18 +549,19 @@ export async function writeRestoredContent(
   // Snapshots may contain retired block types - restore them as action
   // blocks.
   const contentJson = normalizeLegacyContent(rawContentJson).json;
-  const wordCount = countWordsInContent(contentJson);
-  const runtime = runtimeStatsFromContent(contentJson);
+  const derived = deriveContent(contentJson);
+  const wordCount = derived.words;
+  const runtime = derived.runtime;
   const records = await loadColorRecords();
-  const metaRows = await db.select<{ characters_meta: string }[]>(
-    "SELECT characters_meta FROM scripts WHERE id = $1",
+  const metaRows = await db.select<{ title: string; characters_meta: string }[]>(
+    "SELECT title, characters_meta FROM scripts WHERE id = $1",
     [id],
   );
   if (metaRows.length === 0) {
     throw new Error(`not found: script ${id}`);
   }
   const prevMeta = metaRows[0]?.characters_meta ?? "[]";
-  const charsJson = await reconcileCharsMeta(prevMeta, contentJson, records, now);
+  const charsJson = await reconcileCharsMeta(prevMeta, derived.blocks, records, now);
   // Unconditional on purpose: a concurrent CAS save in updateScript sees
   // the changed last_word_count and retries against the restored baseline.
   await db.execute(
@@ -559,7 +579,7 @@ export async function writeRestoredContent(
       id,
     ],
   );
-  await refreshFtsForScript(id);
+  await upsertScriptFts(id, metaRows[0].title, plainTextFromBlocks(derived.blocks));
   if (dropsCharacterNames(parseCharsMeta(prevMeta), parseCharsMeta(charsJson))) {
     characterUsageBus.notifyNamesDropped();
   }
@@ -634,13 +654,16 @@ export async function backfillRuntimeStats(): Promise<void> {
 
 export async function emptyTrash(): Promise<void> {
   const db = await getDb();
-  // FTS rows must be removed before the script DELETE because the
-  // scripts_fts table has no FK cascade (FTS5 contentless table). Two
-  // statements instead of N+1: one DELETE FROM scripts_fts (sub-query
-  // against scripts), one DELETE FROM scripts. With 50 archived scripts
-  // that is 2 round-trips instead of 100.
+  // FTS rows (and their rowid map) must be removed before the script DELETE
+  // because the FTS5 table has no FK cascade. Set-based statements instead
+  // of N+1 round-trips, the FTS rows addressed by their mapped rowid.
   await db.execute(
-    "DELETE FROM scripts_fts WHERE script_id IN " +
+    "DELETE FROM scripts_fts WHERE rowid IN " +
+      "(SELECT m.fts_rowid FROM scripts_fts_map m JOIN scripts s ON s.id = m.script_id " +
+      "WHERE s.archived_at IS NOT NULL)",
+  );
+  await db.execute(
+    "DELETE FROM scripts_fts_map WHERE script_id IN " +
       "(SELECT id FROM scripts WHERE archived_at IS NOT NULL)",
   );
   const res = await db.execute("DELETE FROM scripts WHERE archived_at IS NOT NULL");
@@ -648,6 +671,18 @@ export async function emptyTrash(): Promise<void> {
 }
 
 // ---------- internal helpers ----------
+
+/** Everything a content write derives from the document, from one parse. */
+interface DerivedContent {
+  blocks: ExtractedBlock[];
+  words: number;
+  runtime: RuntimeStats;
+}
+
+function deriveContent(contentJson: string): DerivedContent {
+  const blocks = extractBlocks(contentJson);
+  return { blocks, words: countWordsInBlocks(blocks), runtime: runtimeStatsFromBlocks(blocks) };
+}
 
 /** Lexical state for a brand-new script: a single empty character
  *  block. The exact byte-shape is irrelevant - Lexical re-serialises on the next
@@ -675,18 +710,18 @@ function emptyLexicalState(): string {
   });
 }
 
-/** Reconciles a stored `characters_meta` blob against `contentJson`,
+/** Reconciles a stored `characters_meta` blob against the content blocks,
  *  back-fills unseen names into the app-wide default registry and returns
  *  the serialized result. Shared by content saves and snapshot restore. */
 async function reconcileCharsMeta(
   existingMeta: string,
-  contentJson: string,
+  blocks: ExtractedBlock[],
   records: Map<string, ColorRecord>,
   now: number,
 ): Promise<string> {
   const { chars, newDefaults } = reconcileCharsFromContent(
     parseCharsMeta(existingMeta),
-    contentJson,
+    blocks,
     records,
   );
   for (const [n, c] of newDefaults) {
@@ -696,7 +731,7 @@ async function reconcileCharsMeta(
 }
 
 /** Reconcile the per-script character list with the names actually
- *  present in the latest content. Resolution priority per name:
+ *  present in the latest content (its extracted blocks). Resolution priority per name:
  *    1. App-wide override (`override_color`)
  *    2. Existing per-script entry (sticky - preserves colours from
  *       before the global registry existed)
@@ -709,11 +744,11 @@ async function reconcileCharsMeta(
  *  so the global default converges. */
 function reconcileCharsFromContent(
   existing: ScriptCharacter[],
-  contentJson: string,
+  blocks: ExtractedBlock[],
   records: Map<string, ColorRecord>,
 ): { chars: ScriptCharacter[]; newDefaults: [string, string][] } {
-  const names = extractCharacterNames(contentJson);
-  const wordsByChar = dialogWordsByCharacter(contentJson);
+  const names = characterNamesFromBlocks(blocks);
+  const wordsByChar = dialogWordsByCharacterFromBlocks(blocks);
   let totalDialog = 0;
   for (const v of Object.values(wordsByChar)) totalDialog += v;
   const out: ScriptCharacter[] = [];

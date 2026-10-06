@@ -8,8 +8,9 @@ export function updateEmptyMarker(editor: LexicalEditor, rootEl: HTMLElement | u
   if (!rootEl) return;
   let isEmpty = true;
   editor.getEditorState().read(() => {
-    const children = $getRoot().getChildren();
-    isEmpty = children.length === 1 && children[0].getTextContent().trim().length === 0;
+    const root = $getRoot();
+    // Size first: never materialize the block list of a long script.
+    isEmpty = root.getChildrenSize() === 1 && (root.getFirstChild()?.getTextContent().trim().length ?? 0) === 0;
   });
   if (isEmpty) rootEl.setAttribute("data-empty", "1");
   else rootEl.removeAttribute("data-empty");

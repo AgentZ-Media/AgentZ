@@ -4,7 +4,7 @@
 // in components happens because `t()` reactively reads the i18n language.
 
 import { createSignal } from "solid-js";
-import { getCurrentLocale, t } from "../i18n";
+import { formatDate, t } from "../i18n";
 
 // Shared "current time" signal that ticks every 60s. Any reactive
 // expression that calls `relativeTime()` automatically re-evaluates
@@ -84,15 +84,16 @@ export function relativeTime(ms: number, now = nowSignal()): string {
       | "weekday.4" | "weekday.5" | "weekday.6");
   }
   const date = new Date(ms);
-  return date.toLocaleDateString(getCurrentLocale(), {
-    day: "2-digit",
-    month: "short",
-    year: date.getFullYear() !== new Date(now).getFullYear() ? "numeric" : undefined,
-  });
+  return formatDate(
+    date,
+    date.getFullYear() !== new Date(now).getFullYear()
+      ? { day: "2-digit", month: "short", year: "numeric" }
+      : { day: "2-digit", month: "short" },
+  );
 }
 
 export function formatAbsolute(ms: number): string {
-  return new Date(ms).toLocaleString(getCurrentLocale(), {
+  return formatDate(ms, {
     day: "2-digit",
     month: "short",
     year: "numeric",

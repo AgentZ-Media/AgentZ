@@ -2,7 +2,7 @@ import { For, Show, createEffect, createResource, on, onCleanup, onMount } from 
 import type { SaveResult } from "@agentz/kit/lib";
 import { api } from "../../../lib/api";
 import { acquireIdeaDraft, releaseIdeaDraft } from "./ideaDrafts";
-import { getCurrentLocale } from "@agentz/kit/i18n";
+import { formatDate } from "@agentz/kit/i18n";
 import { t } from "../../../i18n";
 import { K } from "@agentz/kit/platform";
 import type { Folder, Idea, ScriptSummary } from "../../../lib/types";
@@ -25,7 +25,7 @@ export interface IdeaEditorProps {
   ideaId: string;
   ideas: Idea[];
   folders: Folder[];
-  scripts: Map<string, ScriptSummary>;
+  scripts: ReadonlyMap<string, ScriptSummary>;
   now: number;
   onReady(handle: IdeaEditorHandle): void;
   /** The editor unmounts; `handle` is the one passed to `onReady`. */
@@ -132,7 +132,7 @@ export function IdeaEditor(props: IdeaEditorProps) {
   const created = () => {
     const i = idea();
     if (!i) return "";
-    return new Date(i.created_at).toLocaleString(getCurrentLocale(), {
+    return formatDate(i.created_at, {
       day: "numeric",
       month: "short",
       hour: "2-digit",

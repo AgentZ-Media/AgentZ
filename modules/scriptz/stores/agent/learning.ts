@@ -7,15 +7,17 @@ import { effortOrDefault } from "../../lib/agent/codex/provider";
 import { learnStageIds } from "../../lib/agent/learnStage";
 import { learnChange, worthRelearning } from "../../lib/agent/learnChange";
 import { latestChat, learnedState, markLearned, saveChat } from "../../lib/agent/chats";
-import { listMemory } from "../../lib/agent/memory";
+import { listMemory, selectRelevantMemory, type MemoryEntry } from "../../lib/agent/memory";
 import { LEARN_RULES, memoryBlock, personaBlock } from "../../lib/agent/prompt";
-import { blocksFromContent, hashBlocks, learnText } from "../../lib/agent/scriptText";
+import { blocksFromContent, charactersIn, hashBlocks, learnText } from "../../lib/agent/scriptText";
 import { createChatTools, createMemoryTools, type MemoryChange } from "../../lib/agent/tools";
 import type { AgentThread } from "../../lib/agent/types";
+import type { ScriptSummary } from "../../lib/types";
 import { agentSettings } from "../agentSettings";
 import { agentUi } from "../agentUi";
 import { navStore } from "../nav";
 import { liveBlocks } from "../../components/Agent/editorBridge";
+import { library } from "../../components/Shell/libraryData";
 import { currentProvider, ensureModels, getProvider, refreshStatus, resolveModel, status } from "./provider";
 import { foldersMap, persona } from "./instructions";
 import { memoryItem } from "./chatItems";
@@ -34,6 +36,10 @@ let learnRunning = false;
 let learnAgain = false;
 let learnGeneration = 0;
 const learnFailures = new Map<string, number>();
+/** Scripts checked without anything to learn, by the `updated_at` they had
+ *  then. Every save schedules a run over all finished scripts; unchanged
+ *  ones are not read, parsed and hashed again each time. */
+const nothingToLearn = new Map<string, number>();
 let activeLearnThread: AgentThread | null = null;
 export interface LearnRef {
   id: string;
@@ -52,6 +58,8 @@ interface LearnTarget {
   id: string;
   title: string;
   folderId: string | null;
+  /** Characters of the script (picks the memory the turn starts with). */
+  characters: string[];
   hash: string;
   /** `learnText` of the blocks, stored with the hash once learned. */
   text: string;
@@ -95,10 +103,11 @@ export function scheduleLearning(delayMs = 6000): void {
 
 /** The script as a learning target, or null when there is nothing to learn:
  *  too short, unchanged since the last learning turn, or only changed a
- *  little (typos, small rewordings - see lib/agent/learnChange.ts). */
-async function learnTargetFor(id: string): Promise<LearnTarget | null> {
+ *  little (typos, small rewordings - see lib/agent/learnChange.ts).
+ *  `undefined` when the script could not be read (checked again later). */
+async function learnTargetFor(id: string): Promise<LearnTarget | null | undefined> {
   const script = await api.getScript(id).catch(() => null);
-  if (!script) return null;
+  if (!script) return undefined;
   const blocks = blocksFromContent(script.content_json);
   if (blocks.length < 3) return null;
   const hash = hashBlocks(blocks);
@@ -115,7 +124,24 @@ async function learnTargetFor(id: string): Promise<LearnTarget | null> {
       revision = { lines: change.changedLines, newCharacters: change.newCharacters };
     }
   }
-  return { id: script.id, title: script.title, folderId: script.folder_id, hash, text, revision };
+  return { id: script.id, title: script.title, folderId: script.folder_id, characters: charactersIn(blocks), hash, text, revision };
+}
+
+/** `learnTargetFor`, skipped for scripts unchanged since they last had
+ *  nothing to learn. */
+async function changedLearnTarget(summary: ScriptSummary): Promise<LearnTarget | null> {
+  if (nothingToLearn.get(summary.id) === summary.updated_at) return null;
+  const target = await learnTargetFor(summary.id);
+  // A failed read says nothing about the script: it is not remembered.
+  if (target === null) nothingToLearn.set(summary.id, summary.updated_at);
+  else nothingToLearn.delete(summary.id);
+  return target ?? null;
+}
+
+/** Forgets which scripts had nothing to learn (the learned markers were
+ *  cleared, so every script may be due again). */
+export function resetLearnChecks(): void {
+  nothingToLearn.clear();
 }
 
 async function runLearning(): Promise<void> {
@@ -136,8 +162,13 @@ async function runLearning(): Promise<void> {
   const generation = learnGeneration;
   try {
     const now = Date.now();
-    const lists = await Promise.all(finishedStageIds().map((status) => api.listScripts({ status, sort: "updated", limit: 500 })));
-    const finished = lists.flat()
+    // The shared library list is in memory already; the query is only the
+    // fallback before its first load.
+    const stages = new Set(finishedStageIds());
+    const candidates = library.loaded()
+      ? library.scripts().filter((s) => stages.has(s.status))
+      : (await Promise.all([...stages].map((status) => api.listScripts({ status, sort: "updated", limit: 500 })))).flat();
+    const finished = candidates
       .filter((s) => Math.max(s.status_changed_at ?? 0, s.updated_at) > since)
       .sort((a, b) => b.updated_at - a.updated_at);
     // A finished script that is still being edited is learned once it has
@@ -146,7 +177,7 @@ async function runLearning(): Promise<void> {
     const settling: LearnRef[] = [];
     for (const summary of finished) {
       if (summary.updated_at <= now - SETTLE_MS || (learnFailures.get(summary.id) ?? 0) >= 2) continue;
-      const target = await learnTargetFor(summary.id);
+      const target = await changedLearnTarget(summary);
       if (target) settling.push({ id: target.id, title: target.title });
     }
     if (generation !== learnGeneration) return;
@@ -161,7 +192,7 @@ async function runLearning(): Promise<void> {
       if (summary.updated_at > now - SETTLE_MS) continue;
       if (generation !== learnGeneration || bootstrap().running || !agentSettings.enabled() || !agentSettings.learnFromScripts()) break;
       if ((learnFailures.get(summary.id) ?? 0) >= 2) continue;
-      const target = await learnTargetFor(summary.id);
+      const target = await changedLearnTarget(summary);
       if (!target) continue;
       setLearning({ id: target.id, title: target.title });
       try {
@@ -214,6 +245,18 @@ class LearnInterrupted extends Error {
   }
 }
 
+/** Memory relevant to the scripts of a turn: for each of their folders,
+ *  what a chat in that folder sees, over all their characters. The rest
+ *  stays reachable through `get_memory`. */
+function memoryForTargets(all: readonly MemoryEntry[], targets: readonly LearnTarget[]): MemoryEntry[] {
+  const characters = [...new Set(targets.flatMap((target) => target.characters))];
+  const keep = new Set<string>();
+  for (const folderId of new Set(targets.map((target) => target.folderId))) {
+    for (const entry of selectRelevantMemory(all, folderId, characters)) keep.add(entry.id);
+  }
+  return all.filter((entry) => keep.has(entry.id));
+}
+
 /** One learning turn over one or more scripts. Returns what changed; throws
  *  unless the turn completed, so callers only mark finished work. */
 async function learnBatch(targets: LearnTarget[], kind: "finished" | "existing", onChange?: (change: MemoryChange) => void): Promise<MemoryChange[]> {
@@ -234,7 +277,15 @@ async function learnBatch(targets: LearnTarget[], kind: "finished" | "existing",
     }).filter((tool) => ["read_script", "list_scripts", "search_scripts", "list_folders"].includes(tool.name)),
     ...createMemoryTools({ scriptId: sourceId, onMemory: record, memorySource: "script", memorySourceScriptId: sourceId }),
   ];
-  const instructions = [personaBlock(persona()), LEARN_RULES, `Your memory:\n${memoryBlock(all, folders)}`].join("\n\n---\n\n");
+  const relevant = memoryForTargets(all, targets);
+  const memory = relevant.length > 0 || all.length === 0
+    ? memoryBlock(relevant, folders)
+    : "Nothing stored about these folders and characters yet.";
+  const instructions = [
+    personaBlock(persona()),
+    LEARN_RULES,
+    `Your memory about these scripts' folders and characters (get_memory reads everything):\n${memory}`,
+  ].join("\n\n---\n\n");
   const thread = await p.openThread({ instructions, tools, ephemeral: true });
   activeLearnThread = thread;
   try {
@@ -286,7 +337,7 @@ export async function startBootstrap(): Promise<void> {
     const targets: LearnTarget[] = [];
     for (const summary of summaries) {
       if (generation !== bootstrapGeneration) return;
-      const target = await learnTargetFor(summary.id);
+      const target = await changedLearnTarget(summary);
       if (target) targets.push(target);
     }
     setBootstrap((s) => ({ ...s, total: targets.length }));

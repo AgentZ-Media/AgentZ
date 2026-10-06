@@ -4,7 +4,6 @@ import { pushToast } from "@agentz/kit/stores";
 import { CodexSetupInstructions } from "./CodexSetupInstructions";
 import { t } from "../../i18n";
 import { resolveLearnStage } from "../../lib/agent/learnStage";
-import { clearMemory } from "../../lib/agent/memory";
 import { finalStageId, scriptStages, stageLabel } from "../../lib/stages";
 import { EFFORT_ORDER, type AgentEffort, type AgentModel } from "../../lib/agent/types";
 import { agentStore } from "../../stores/agent";
@@ -146,7 +145,7 @@ export function AgentSettings(props: { onClose(): void }) {
       danger: true,
     });
     if (!ok) return;
-    await clearMemory();
+    await agentStore.clearMemory();
     pushToast(t("agent.prefs.memory.resetDone"), "ok");
   };
 

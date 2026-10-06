@@ -26,8 +26,12 @@ export interface LiveEditorModel {
   blocks: Accessor<TimingBlock[]>;
   caret: Accessor<CaretBlock | null>;
   focused: Accessor<boolean>;
-  /** Bumps on every editor update (layout may have changed). */
+  /** Bumps on every editor update that changed content (layout may have
+   *  changed). Selection-only updates (arrow keys, clicks) don't: overlays
+   *  measuring the paper would otherwise force a layout per caret move. */
   tick: Accessor<number>;
+  /** Bumps on every editor update, selection-only ones included. */
+  cursorTick: Accessor<number>;
   /** True once `blocks` reflect the attached editor's loaded content
    *  (false right after attaching, before the first debounced read). */
   loaded: Accessor<boolean>;
@@ -94,6 +98,7 @@ export function createLiveEditorModel(): LiveEditorModel {
   const [caret, setCaret] = createSignal<CaretBlock | null>(null);
   const [focused, setFocused] = createSignal(false);
   const [tick, setTick] = createSignal(0);
+  const [cursorTick, setCursorTick] = createSignal(0);
   const [loaded, setLoaded] = createSignal(false);
   let detachCurrent: (() => void) | null = null;
 
@@ -111,10 +116,17 @@ export function createLiveEditorModel(): LiveEditorModel {
     // nodes: the initial `setEditorState` after mount is a full reconcile
     // that doesn't always report dirty nodes. Unchanged results are dropped
     // so selection-only updates don't re-render the timeline.
-    const unregister = editor.registerUpdateListener(() => {
+    let first = true;
+    const unregister = editor.registerUpdateListener(({ dirtyElements, dirtyLeaves }) => {
       const nextCaret = readCaret(editor);
-      if (!sameCaret(caret(), nextCaret)) setCaret(nextCaret);
-      setTick((n) => n + 1);
+      batch(() => {
+        if (!sameCaret(caret(), nextCaret)) setCaret(nextCaret);
+        // The first update after attaching may be a full reconcile without
+        // dirty nodes (see above): it always counts as a content change.
+        if (first || dirtyElements.size > 0 || dirtyLeaves.size > 0) setTick((n) => n + 1);
+        setCursorTick((n) => n + 1);
+      });
+      first = false;
       if (timer) clearTimeout(timer);
       timer = setTimeout(() => {
         timer = null;
@@ -147,5 +159,5 @@ export function createLiveEditorModel(): LiveEditorModel {
 
   onCleanup(() => detachCurrent?.());
 
-  return { blocks, caret, focused, tick, loaded, attach };
+  return { blocks, caret, focused, tick, cursorTick, loaded, attach };
 }
