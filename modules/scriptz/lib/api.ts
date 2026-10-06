@@ -24,12 +24,7 @@ import {
   SCRIPTZ_MIME,
   serializeScriptToBytes,
 } from "./scriptzFile";
-import {
-  getStorageAdapter,
-  setStorageAdapter,
-  type ExportResult,
-  type ScriptzStorage,
-} from "./storage";
+import { getStorageAdapter, setStorageAdapter, type ScriptzStorage } from "./storage";
 import {
   countLiveScripts as foldersCountLive,
   createFolder as foldersCreate,
@@ -80,20 +75,6 @@ import {
   listSnapshots as snapsList,
   restoreSnapshot as snapsRestore,
 } from "./snapshots";
-import type {
-  CharacterColorRecord,
-  DailyStatsSummary,
-  DailyWordEntry,
-  Folder,
-  Idea,
-  Script,
-  ScriptCharacter,
-  ScriptStatus,
-  ScriptSummary,
-  SearchHit,
-  Snapshot,
-  SnapshotMeta,
-} from "./types";
 
 // SQL-based product storage. Shared key-value storage lives in Kit. The lib/*
 // modules access the host database via DbConnection (see @agentz/kit/platform).
@@ -102,168 +83,64 @@ import type {
 const sqlBackedAdapter: ScriptzStorage = {
   agent: sqlAgentStorage,
   localChanges: sqlLocalChanges,
-  // Scripts
-  async createScript(input: {
-    title?: string;
-    initialContentJson?: string;
-    folderId?: string | null;
-  }): Promise<ScriptSummary> {
+  // Scripts. The lib functions are mapped directly where their signature
+  // already matches `ScriptzStorage`; wrappers remain only where the argument
+  // shape differs.
+  async createScript(input) {
     return scriptsCreate(
       input.title ?? null,
       input.initialContentJson ?? null,
       input.folderId ?? null,
     );
   },
-  async getScript(id: string): Promise<Script> {
-    return scriptsGet(id);
+  getScript: scriptsGet,
+  updateScript: scriptsUpdate,
+  async listScripts(query = {}) {
+    return scriptsList(query);
   },
-  async updateScript(input: {
-    id: string;
-    title?: string;
-    highlightingEnabled?: number | null;
-    contentJson?: string;
-    characters?: ScriptCharacter[];
-    internalRewrite?: boolean;
-  }): Promise<ScriptSummary> {
-    return scriptsUpdate(input);
-  },
-  async listScripts(query: {
-    includeArchived?: boolean;
-    onlyArchived?: boolean;
-    sort?: "updated" | "created" | "title";
-    query?: string;
-    limit?: number;
-    offset?: number;
-    folderId?: string | null;
-    status?: ScriptStatus;
-  } = {}): Promise<ScriptSummary[]> {
-    return scriptsList({
-      includeArchived: query.includeArchived ?? null,
-      onlyArchived: query.onlyArchived ?? null,
-      sort: query.sort ?? null,
-      query: query.query ?? null,
-      limit: query.limit ?? null,
-      offset: query.offset ?? null,
-      folderId: query.folderId ?? null,
-      status: query.status ?? null,
-    });
-  },
-  async archiveScript(id: string): Promise<void> {
-    return scriptsArchive(id);
-  },
-  async restoreScript(id: string): Promise<void> {
-    return scriptsRestore(id);
-  },
-  async purgeScript(id: string): Promise<void> {
-    return scriptsPurge(id);
-  },
-  async emptyTrash(): Promise<void> {
-    return scriptsEmptyTrash();
-  },
-  async duplicateScript(id: string): Promise<ScriptSummary> {
-    return scriptsDuplicate(id);
-  },
-  async renameScript(id: string, title: string): Promise<ScriptSummary> {
-    return scriptsRename(id, title);
-  },
-  async setScriptStatus(id: string, status: ScriptStatus): Promise<ScriptSummary> {
-    return scriptsSetStatus(id, status);
-  },
-  async countScriptsWithStatus(status: ScriptStatus): Promise<number> {
-    return scriptsCountWithStatus(status);
-  },
-  async reassignScriptStatus(from: ScriptStatus, to: ScriptStatus): Promise<number> {
-    return scriptsReassignStatus(from, to);
-  },
-  async backfillRuntimeStats(): Promise<void> {
-    return scriptsBackfillRuntime();
-  },
+  archiveScript: scriptsArchive,
+  restoreScript: scriptsRestore,
+  purgeScript: scriptsPurge,
+  emptyTrash: scriptsEmptyTrash,
+  duplicateScript: scriptsDuplicate,
+  renameScript: scriptsRename,
+  setScriptStatus: scriptsSetStatus,
+  countScriptsWithStatus: scriptsCountWithStatus,
+  reassignScriptStatus: scriptsReassignStatus,
+  backfillRuntimeStats: scriptsBackfillRuntime,
 
   // Folders
-  async listFolders(): Promise<Folder[]> {
-    return foldersList();
-  },
-  async countLiveScripts(): Promise<number> {
-    return foldersCountLive();
-  },
-  async createFolder(name: string): Promise<Folder> {
-    return foldersCreate(name);
-  },
-  async renameFolder(id: string, name: string): Promise<Folder> {
-    return foldersRename(id, name);
-  },
-  async setFolderLengthRange(
-    id: string,
-    minSec: number | null,
-    maxSec: number | null,
-  ): Promise<Folder> {
-    return foldersSetLengthRange(id, minSec, maxSec);
-  },
-  async deleteFolder(id: string): Promise<void> {
-    return foldersDelete(id);
-  },
-  async moveScript(scriptId: string, folderId: string | null): Promise<void> {
-    return foldersMoveScript(scriptId, folderId);
-  },
-  async moveScripts(scriptIds: string[], folderId: string | null): Promise<void> {
-    return foldersMoveScripts(scriptIds, folderId);
-  },
+  listFolders: foldersList,
+  countLiveScripts: foldersCountLive,
+  createFolder: foldersCreate,
+  renameFolder: foldersRename,
+  setFolderLengthRange: foldersSetLengthRange,
+  deleteFolder: foldersDelete,
+  moveScript: foldersMoveScript,
+  moveScripts: foldersMoveScripts,
 
   // Snapshots
-  async createSnapshot(scriptId: string, trigger: "auto" | "manual"): Promise<SnapshotMeta> {
-    return snapsCreate(scriptId, trigger);
-  },
-  async listSnapshots(scriptId: string): Promise<SnapshotMeta[]> {
-    return snapsList(scriptId);
-  },
-  async getSnapshot(id: string): Promise<Snapshot> {
-    return snapsGet(id);
-  },
-  async restoreSnapshot(snapshotId: string): Promise<void> {
-    return snapsRestore(snapshotId);
-  },
-  async deleteSnapshot(id: string): Promise<void> {
-    return snapsDelete(id);
-  },
+  createSnapshot: snapsCreate,
+  listSnapshots: snapsList,
+  getSnapshot: snapsGet,
+  restoreSnapshot: snapsRestore,
+  deleteSnapshot: snapsDelete,
 
   // Search
-  async globalSearch(query: string, limit = 50): Promise<SearchHit[]> {
-    return searchGlobal(query, limit);
-  },
+  globalSearch: searchGlobal,
 
   // Character-colour records (app-wide)
-  async listCharacterColors(): Promise<CharacterColorRecord[]> {
-    return ccList();
-  },
-  async setCharacterColor(name: string, color: string): Promise<string[]> {
-    return ccSet(name, color);
-  },
-  /** Clear the manual override and fall back to the recorded default. The
-   * `activeScriptId` is the palette context used when no default has been
-   * recorded yet - so the freshly-picked colour avoids colliding with
-   * other characters in the script the writer is currently looking at. */
-  async clearCharacterColor(
-    name: string,
-    activeScriptId?: string,
-  ): Promise<string[]> {
+  listCharacterColors: ccList,
+  setCharacterColor: ccSet,
+  async clearCharacterColor(name, activeScriptId) {
     return ccClear(name, activeScriptId ?? null);
   },
-  async findUnusedCharacterNames(): Promise<string[]> {
-    return cuFindUnused();
-  },
-  async pruneUnusedCharacterNames(only?: string[]): Promise<string[]> {
-    return cuPruneUnused(only);
-  },
+  findUnusedCharacterNames: cuFindUnused,
+  pruneUnusedCharacterNames: cuPruneUnused,
 
   // Export: PDF bytes via pdf-lib (./exportPdf.ts), plaintext via
   // extractTeleprompterText; the platform adapter writes the bytes.
-  async exportPdf(input: {
-    scriptId: string;
-    includeHighlighting: boolean;
-    includeTitlePage: boolean;
-    /** Detail line of the title page (lib/pdfDetails.ts). */
-    titleDetails?: string | null;
-  }): Promise<ExportResult> {
+  async exportPdf(input) {
     const s = await scriptsGet(input.scriptId);
     // pdf-lib + fontkit are a ~1 MB bundle - lazy-load so the
     // app start isn't burdened with it. Only users who actually
@@ -290,7 +167,7 @@ const sqlBackedAdapter: ScriptzStorage = {
       bytes,
     );
   },
-  async exportPlaintext(input: { scriptId: string }): Promise<ExportResult> {
+  async exportPlaintext(input) {
     const s = await scriptsGet(input.scriptId);
     const text = extractTeleprompterText(s.content_json);
     const bytes = new TextEncoder().encode(text);
@@ -307,7 +184,7 @@ const sqlBackedAdapter: ScriptzStorage = {
   // .scriptz container. Pure function for serialization
   // sits in ./scriptzFile.ts; here only the "load script -> bytes -> saveAs"
   // composition. Importer counterpart see importScriptz below.
-  async exportScriptz(scriptId: string): Promise<ExportResult> {
+  async exportScriptz(scriptId) {
     const s = await scriptsGet(scriptId);
     const bytes = serializeScriptToBytes({
       title: s.title,
@@ -328,7 +205,7 @@ const sqlBackedAdapter: ScriptzStorage = {
     );
   },
 
-  async importScriptz(): Promise<{ scriptId: string; title: string } | null> {
+  async importScriptz() {
     const file = await getPlatformAdapter().openFile(
       `.${SCRIPTZ_EXTENSION},${SCRIPTZ_MIME}`,
     );
@@ -352,42 +229,18 @@ const sqlBackedAdapter: ScriptzStorage = {
   },
 
   // Ideas inbox.
-  async listIdeas(): Promise<Idea[]> {
-    return ideasList();
-  },
-  async createIdea(input: { title: string; notes?: string; folderId?: string | null; sourceChatId?: string | null }): Promise<Idea> {
-    return ideasCreate(input);
-  },
-  async markIdeaUsed(ideaId: string, scriptId: string): Promise<boolean> {
-    return ideasMarkUsed(ideaId, scriptId);
-  },
-  async updateIdea(input: { id: string; title?: string; notes?: string }): Promise<Idea> {
-    return ideasUpdate(input);
-  },
-  async deleteIdea(id: string): Promise<void> {
-    return ideasDelete(id);
-  },
-  async restoreIdea(idea: Idea): Promise<void> {
-    return ideasRestore(idea);
-  },
-  async moveIdea(ideaId: string, folderId: string | null): Promise<void> {
-    return ideasMove(ideaId, folderId);
-  },
-  async convertIdeaToScript(input: {
-    ideaId: string;
-    folderId?: string | null;
-    notesAsAction?: boolean;
-  }): Promise<{ idea: Idea; script: ScriptSummary }> {
-    return ideasConvert(input);
-  },
+  listIdeas: ideasList,
+  createIdea: ideasCreate,
+  markIdeaUsed: ideasMarkUsed,
+  updateIdea: ideasUpdate,
+  deleteIdea: ideasDelete,
+  restoreIdea: ideasRestore,
+  moveIdea: ideasMove,
+  convertIdeaToScript: ideasConvert,
 
   // Daily writing statistics (heatmap / writing counter).
-  async loadDailyWords(days?: number): Promise<DailyWordEntry[]> {
-    return dwLoadEntries(days);
-  },
-  async loadDailyStats(): Promise<DailyStatsSummary> {
-    return dwLoadStats();
-  },
+  loadDailyWords: dwLoadEntries,
+  loadDailyStats: dwLoadStats,
 };
 
 /** Register ScriptZ SQL storage after the host platform adapter is ready. */

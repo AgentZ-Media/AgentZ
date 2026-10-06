@@ -12,7 +12,7 @@ import { agentSettings } from "../../stores/agentSettings";
 import { navStore } from "../../stores/nav";
 import { settingsStore } from "../../stores/settings";
 import { AgentAvatar } from "../Agent/AgentAvatar";
-import { library } from "../Shell/libraryData";
+import { defaultLengthRange, library } from "../Shell/libraryData";
 
 export type DraftState = ReturnType<typeof draftStates>[number];
 
@@ -63,10 +63,7 @@ export function DraftPanel(props: DraftPanelProps) {
   });
 
   const folder = () => library.folder(props.session.folderId()) ?? null;
-  const range = () => resolveLengthRange(folder(), {
-    minSec: settingsStore.lengthMinDefaultSec(),
-    maxSec: settingsStore.lengthMaxDefaultSec(),
-  });
+  const range = () => resolveLengthRange(folder(), defaultLengthRange());
   const seconds = () => draftRuntime(version().blocks, settingsStore.dialogWpm());
   const status = () => lengthStatus(seconds(), range());
   const scale = () => Math.max(60, (range()?.maxSec ?? 0) * 1.25, seconds() * 1.1);

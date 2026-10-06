@@ -11,6 +11,7 @@
 
 import { createScript } from "./scripts";
 import { getDb } from "./db";
+import { assertFolderExists } from "./folders";
 import { ideasBus } from "./ideasBus";
 import { scriptsBus } from "./scriptsBus";
 import { foldersBus } from "./foldersBus";
@@ -133,15 +134,7 @@ export async function moveIdea(
   folderId: string | null,
 ): Promise<void> {
   const db = await getDb();
-  if (folderId !== null) {
-    const exists = await db.select<{ n: number }[]>(
-      "SELECT COUNT(*) AS n FROM folders WHERE id = $1",
-      [folderId],
-    );
-    if ((exists[0]?.n ?? 0) === 0) {
-      throw new Error(`not found: folder ${folderId}`);
-    }
-  }
+  if (folderId !== null) await assertFolderExists(db, folderId);
   const res = await db.execute(
     `UPDATE ideas SET folder_id = $1 WHERE id = $2`,
     [folderId, ideaId],

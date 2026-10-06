@@ -1,11 +1,5 @@
-import { createSignal } from "solid-js";
+import { createVersionBus } from "./versionBus";
 
-const [version, setVersion] = createSignal(0);
-
-export const foldersBus = {
-  version,
-  bump() {
-    // Functional updater - see dailyStatsBus.ts.
-    setVersion((v) => v + 1);
-  },
-};
+/** Version signal for the folder list (names, length ranges, script
+ *  counts). Bumped after any change that affects one of them. */
+export const foldersBus = createVersionBus();
