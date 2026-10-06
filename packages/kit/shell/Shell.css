@@ -745,14 +745,16 @@
 }
 
 /* Sidebar hidden: the chip sits next to the traffic lights and the main
-   column's top bars make room for it. */
+   column's top bars make room for it. It centres on a bar as tall as the
+   sidebar's top row; a module with a taller bar sets `--shell-bar-h` on
+   `.shell-main` to centre the chip on that bar instead. */
 [data-build="nightly"] .shell.is-bare:not(.is-focus) {
   --shell-inset-left: calc(var(--titlebar-traffic-width) + 92px);
 }
 .shell-main > .shell-night-chip {
   position: absolute;
   z-index: 20;
-  top: calc(var(--side-top-h) / 2);
+  top: calc(var(--shell-bar-h, var(--side-top-h)) / 2);
   left: calc(var(--titlebar-traffic-width) + 10px);
   flex: none;
   height: 22px;

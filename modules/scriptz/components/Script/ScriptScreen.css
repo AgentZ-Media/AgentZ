@@ -52,6 +52,11 @@
   user-select: none;
 }
 
+/* The shell's nightly chip centres on this bar (see Shell.css). */
+.shell-main:has(.ss-bar:not(.is-peek)) {
+  --shell-bar-h: 48px;
+}
+
 /* Side panel next to a list: it sits right of the list, so the traffic
    light inset never applies. */
 .ss-bar.is-peek {
