@@ -17,8 +17,8 @@ import { ideasStore } from "../../stores/ideas";
 import { navStore } from "../../stores/nav";
 import { settingsStore } from "../../stores/settings";
 import { StageGlyph } from "../Common/StageGlyph";
-import { FolderMenu } from "../Ideas/parts/FolderMenu";
-import { ContextMenu } from "../Library/ContextMenu";
+import { FolderMenu } from "../Common/FolderMenu";
+import { ContextMenu } from "../Common/ContextMenu";
 import { defaultLengthRange, library } from "../Shell/libraryData";
 import type { DraftState } from "./DraftPanel";
 

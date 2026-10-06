@@ -6,7 +6,7 @@ import type { ChatQuote, ChatSession } from "../../stores/agent";
 import { agentStore } from "../../stores/agent";
 import { settingsStore } from "../../stores/settings";
 import { uiStore } from "../../stores/ui";
-import { FolderMenu } from "../Ideas/parts/FolderMenu";
+import { FolderMenu } from "../Common/FolderMenu";
 import { defaultLengthRange, library } from "../Shell/libraryData";
 
 export interface AgentComposerProps {

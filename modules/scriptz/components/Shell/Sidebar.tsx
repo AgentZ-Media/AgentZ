@@ -13,7 +13,7 @@ import { agentStore } from "../../stores/agent";
 import { Icon } from "@agentz/kit/ui";
 import { BumpNumber } from "../Common/motion";
 import { StageGlyph } from "../Common/StageGlyph";
-import { ContextMenu, type ContextMenuItem } from "../Library/ContextMenu";
+import { ContextMenu, type ContextMenuItem } from "../Common/ContextMenu";
 import { SCRIPT_DRAG_MIME } from "../Library/dnd";
 import {
   createFolder,
@@ -25,7 +25,8 @@ import {
 import { WritingCounter } from "../Activity/WritingCounter";
 import { openAgentMode } from "../AgentMode/actions";
 import { closeOpenScript, closeOtherOpenScripts } from "./openActions";
-import { folderColor, library } from "./libraryData";
+import { folderColor } from "../Common/folderColor";
+import { library } from "./libraryData";
 
 /**
  * Left navigation: app row, "Neues Skript", the inbox

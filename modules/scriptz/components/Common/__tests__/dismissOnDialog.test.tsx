@@ -6,8 +6,8 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { cleanup, render } from "@solidjs/testing-library";
 import { uiStore } from "../../../stores/ui";
-import { ContextMenu } from "../../Library/ContextMenu";
-import { FolderMenu } from "../../Ideas/parts/FolderMenu";
+import { ContextMenu } from "../ContextMenu";
+import { FolderMenu } from "../FolderMenu";
 
 const tick = () => new Promise((r) => setTimeout(r, 0));
 
