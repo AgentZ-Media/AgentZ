@@ -47,7 +47,9 @@ const focusOverride = new Map<string, boolean>();
 const [captureOpen, setCaptureOpen] = createSignal(false);
 /** Open "new script" dialog: undefined = closed, else its preset folder. */
 const [newScriptFolder, setNewScriptFolder] = createSignal<string | null | undefined>(undefined);
-const [exportScriptId, setExportScriptId] = createSignal<string | null>(null);
+/** Scripts of the open export dialog: empty = closed, several = one PDF each. */
+const NO_EXPORT: readonly string[] = [];
+const [exportScriptIds, setExportScriptIds] = createSignal<readonly string[]>(NO_EXPORT);
 const [activityOpen, setActivityOpen] = createSignal(false);
 
 // ---- ideas page: pending "select + reveal this idea" request ----
@@ -66,7 +68,7 @@ export function startUiRuntime(kv = getKvStore()): () => void {
   const stopLayout = layout.start(kv);
   const unbind = shellUi.setSidebarPersistence((sidebar) => layout.update({ sidebar }));
   focusOverride.clear(); setFocusMode(false);
-  setCaptureOpen(false); setNewScriptFolder(undefined); setExportScriptId(null); setActivityOpen(false); setIdeaToReveal(null);
+  setCaptureOpen(false); setNewScriptFolder(undefined); setExportScriptIds(NO_EXPORT); setActivityOpen(false); setIdeaToReveal(null);
   setCollapsedSections({ pipeline: false, folders: false });
   const current: UiRuntime = {
     active: true, kv, focusWrites: new Map(), sectionsWrite: createStatePersistence(kv, SECTIONS_KEY),
@@ -178,9 +180,13 @@ export const uiStore = {
   closeSettings: shellUi.closeSettings,
   setSettingsSection: shellUi.setSettingsSection,
 
-  exportScriptId,
-  openExport: (scriptId: string) => setExportScriptId(scriptId),
-  closeExport: () => setExportScriptId(null),
+  exportScriptIds,
+  /** The single script of the export dialog (null when closed or several). */
+  exportScriptId: () => (exportScriptIds().length === 1 ? exportScriptIds()[0] : null),
+  openExport: (scriptId: string) => setExportScriptIds([scriptId]),
+  /** Multi export of a selection (PDF only, one file per script). */
+  openExportMany: (scriptIds: readonly string[]) => setExportScriptIds(scriptIds.length > 0 ? [...scriptIds] : NO_EXPORT),
+  closeExport: () => setExportScriptIds(NO_EXPORT),
 
   onboardingOpen: shellUi.onboardingOpen,
   openOnboarding: shellUi.openOnboarding,
@@ -207,7 +213,7 @@ export const uiStore = {
     captureOpen() ||
     newScriptFolder() !== undefined ||
     shellUi.settingsOpen() ||
-    exportScriptId() !== null ||
+    exportScriptIds().length > 0 ||
     shellUi.onboardingOpen() ||
     activityOpen() ||
     agentUi.anyDialogOpen(),

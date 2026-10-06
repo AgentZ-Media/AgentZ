@@ -4,16 +4,14 @@ import { finalStageId, isKnownStage, scriptStages, stageLabel } from "../../lib/
 import { debounce } from "@agentz/kit/lib";
 import { formatRange, resolveLengthRange } from "../../lib/lengthGoal";
 import { INBOX_FOLDER_ID } from "../../lib/folders";
-import { exportScriptsToPdf } from "../../lib/exportSelection";
 import { navStore } from "../../stores/nav";
 import { peekStore } from "../../stores/peek";
 import { openFull, openFromList } from "./openScript";
 import { uiStore } from "../../stores/ui";
-import { settingsStore } from "../../stores/settings";
 import { dailyStatsStore } from "../../stores/dailyStats";
 import { ideasStore } from "../../stores/ideas";
 import { pushToast } from "@agentz/kit/stores";
-import { t, tPlural } from "../../i18n";
+import { t } from "../../i18n";
 import { StageGlyph } from "../Common/StageGlyph";
 import { folderColor } from "../Common/folderColor";
 import { defaultLengthRange, isoWeekStart, library } from "../Shell/libraryData";
@@ -305,19 +303,14 @@ export function ScriptsPage() {
     return library.scripts().filter((s) => ids.has(s.id));
   };
 
-  async function exportSelectedPdf() {
+  /** Opens the export dialog with the PDF options for the selection. */
+  function exportSelectedPdf() {
     const ids = [...selected()];
     if (ids.length === 0) {
       pushToast(t("select.empty"), "info");
       return;
     }
-    try {
-      const res = await exportScriptsToPdf(ids, { includeHighlighting: false, includeTitlePage: settingsStore.exportTitlePageDefault(), wpm: settingsStore.dialogWpm() });
-      if (res.cancelled) return;
-      pushToast(tPlural("select.pdf.toast", res.count), "ok");
-    } catch (e) {
-      pushToast(t("select.pdf.failed", { message: (e as Error).message ?? String(e) }), "error");
-    }
+    uiStore.openExportMany(ids);
   }
 
   // ---- keyboard: "/" focuses the filter, ⌘A selects all, Esc leaves the selection ----
@@ -456,7 +449,7 @@ export function ScriptsPage() {
           onSelectAll={sel.selectAll}
           onClear={sel.clear}
           onExit={exitSelect}
-          onExportPdf={() => void exportSelectedPdf()}
+          onExportPdf={exportSelectedPdf}
           onMove={(anchor) =>
             menuAt(anchor, moveItems([...selected()], undefined), { placement: "above", align: "start" })
           }

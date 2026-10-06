@@ -110,6 +110,12 @@ export const dialogsDe = {
   "exportDialog.preview.emptyText": "Noch kein Dialog im Skript.",
   "exportDialog.preview.blocks_one": "{count} Block",
   "exportDialog.preview.blocks_other": "{count} Blöcke",
+  "exportDialog.many.aria": "Dateien",
+  "exportDialog.many.sub_one": "{count} Skript als PDF",
+  "exportDialog.many.sub_other": "{count} Skripte als PDF, je Skript eine Datei",
+  "exportDialog.many.files_one": "{count} PDF-Datei",
+  "exportDialog.many.files_other": "{count} PDF-Dateien",
+  "exportDialog.many.position": "Skript {n} von {total}",
 
   // ---------- settings ----------
   "prefs.darkPaper.label": "Dunkles Papier",
@@ -377,6 +383,12 @@ export const dialogsEn: Record<keyof typeof dialogsDe, string> = {
   "exportDialog.preview.emptyText": "No dialog in this script yet.",
   "exportDialog.preview.blocks_one": "{count} block",
   "exportDialog.preview.blocks_other": "{count} blocks",
+  "exportDialog.many.aria": "Files",
+  "exportDialog.many.sub_one": "{count} script as PDF",
+  "exportDialog.many.sub_other": "{count} scripts as PDF, one file per script",
+  "exportDialog.many.files_one": "{count} PDF file",
+  "exportDialog.many.files_other": "{count} PDF files",
+  "exportDialog.many.position": "Script {n} of {total}",
 
   // ---------- settings ----------
   "prefs.darkPaper.label": "Dark paper",

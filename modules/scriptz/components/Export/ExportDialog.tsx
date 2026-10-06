@@ -5,6 +5,7 @@ import { getPlatformAdapter } from "@agentz/kit/platform";
 import { requireSuccessfulFlush } from "@agentz/kit/lib";
 import { scriptsBus } from "../../lib/scriptsBus";
 import { defaultScriptzFilename } from "../../lib/scriptzFile";
+import { exportScriptsToPdf, pdfFilenames } from "../../lib/exportSelection";
 import { settingsStore } from "../../stores/settings";
 import { pushToast } from "@agentz/kit/stores";
 import { uiStore } from "../../stores/ui";
@@ -20,30 +21,36 @@ import "./ExportDialog.css";
 type Format = "pdf" | "txt" | "scriptz";
 const FORMATS: Format[] = ["pdf", "txt", "scriptz"];
 
-/** Export dialog (⌘E). Parameterless: the script comes from
- *  `uiStore.exportScriptId()`. Left a live preview (every PDF page laid
+/** Export dialog (⌘E). Parameterless: the scripts come from
+ *  `uiStore.exportScriptIds()`. Left a live preview (every PDF page laid
  *  out like lib/exportPdf.ts, or the teleprompter text), right the three
- *  formats as cards and the options that belong to the chosen format. */
+ *  formats as cards and the options that belong to the chosen format.
+ *  With several scripts (selection export) it writes one PDF per script:
+ *  the format cards give way to the file list, which picks the preview. */
 export function ExportDialog() {
   const [script, setScript] = createSignal<Script | null>(null);
   const [format, setFormat] = createSignal<Format>("pdf");
   const [highlighting, setHighlighting] = createSignal(false);
   const [exporting, setExporting] = createSignal(false);
+  const [previewIndex, setPreviewIndex] = createSignal(0);
 
-  const open = () => uiStore.exportScriptId() !== null;
+  const ids = uiStore.exportScriptIds;
+  const open = () => ids().length > 0;
+  const many = () => ids().length > 1;
+  const previewId = () => ids()[previewIndex()] ?? null;
 
   // Load the script fresh on every open; PDF title pages follow the saved preference.
-  createEffect(() => {
-    const id = uiStore.exportScriptId();
-    if (!id) return;
-    untrack(() => reset(id));
-  });
+  createEffect(
+    on(ids, (list) => {
+      if (list.length > 0) untrack(reset);
+    }),
+  );
   // Live preview: follow saves (autosave, rename, colours) while open.
   createEffect(
     on(
       scriptsBus.version,
       () => {
-        const id = uiStore.exportScriptId();
+        const id = previewId();
         if (id && script()?.id === id) void load(id, false);
       },
       { defer: true },
@@ -52,31 +59,46 @@ export function ExportDialog() {
 
   let loadSeq = 0;
   /** Drains buffered/in-flight saves (⌘E right after typing lands before
-   *  the 250 ms autosave debounce), then reads the stored script. */
-  async function load(id: string, applyScriptOptions: boolean): Promise<void> {
+   *  the 250 ms autosave debounce), then reads the stored script. On open
+   *  a single script's own colour choice wins and a failure closes. */
+  async function load(id: string, opening: boolean): Promise<void> {
     const seq = ++loadSeq;
     try {
       await requireSuccessfulFlush();
       const s = await api.getScript(id);
-      if (seq !== loadSeq || uiStore.exportScriptId() !== id) return;
+      if (seq !== loadSeq || previewId() !== id) return;
       setScript(s);
-      if (applyScriptOptions) {
+      if (opening && !many()) {
         if (s.highlighting_enabled === 1) setHighlighting(true);
         else if (s.highlighting_enabled === 0) setHighlighting(false);
       }
     } catch (err) {
-      if (seq !== loadSeq || uiStore.exportScriptId() !== id) return;
+      if (seq !== loadSeq || previewId() !== id) return;
       pushToast(t("export.toast.failed", { message: String(err) }), "error");
-      if (applyScriptOptions) uiStore.closeExport();
+      if (opening) uiStore.closeExport();
+      // Never show another script's pages under the chosen file.
+      else setScript(null);
     }
   }
 
-  function reset(id: string) {
+  /** Several scripts share one colour switch, which starts at the default
+   *  from the writing settings. */
+  function reset() {
     setScript(null);
     setFormat("pdf");
     setExporting(false);
+    setPreviewIndex(0);
     setHighlighting(settingsStore.highlightingDefault());
-    void load(id, true);
+    const id = previewId();
+    if (id) void load(id, true);
+  }
+
+  /** Picking the shown file again retries a preview that failed to load. */
+  function showPreview(i: number) {
+    if (i === previewIndex() && script()?.id === ids()[i]) return;
+    setPreviewIndex(i);
+    const id = previewId();
+    if (id) void load(id, false);
   }
 
   const title = () => script()?.title || t("common.untitled");
@@ -116,7 +138,14 @@ export function ExportDialog() {
     return s && format() === "txt" ? extractTeleprompterText(s.content_json) : "";
   });
 
+  /** File names of a multi export, titles from the library list. */
+  const fileNames = createMemo(() => {
+    const titles = new Map(library.scripts().map((s) => [s.id, s.title]));
+    return pdfFilenames(ids().map((id) => titles.get(id) ?? ""));
+  });
+
   const fileName = () => {
+    if (many()) return tPlural("exportDialog.many.files", ids().length);
     if (format() === "pdf") return `${title()}.pdf`;
     if (format() === "txt") return `${title()}.txt`;
     return defaultScriptzFilename(script()?.title ?? "");
@@ -127,6 +156,7 @@ export function ExportDialog() {
   };
 
   async function run() {
+    if (many()) return runMany();
     const id = uiStore.exportScriptId();
     if (!id || exporting() || !script()) return;
     setExporting(true);
@@ -162,11 +192,34 @@ export function ExportDialog() {
     }
   }
 
+  async function runMany() {
+    const list = ids();
+    if (exporting() || list.length === 0) return;
+    setExporting(true);
+    try {
+      // The exporter reads the stored content - persist pending typing.
+      await requireSuccessfulFlush();
+      const res = await exportScriptsToPdf([...list], {
+        includeHighlighting: highlighting(),
+        includeTitlePage: settingsStore.exportTitlePageDefault(),
+        wpm: settingsStore.dialogWpm(),
+      });
+      if (res.cancelled) return;
+      pushToast(tPlural("select.pdf.toast", res.count), "ok");
+      setExporting(false);
+      uiStore.closeExport();
+    } catch (e) {
+      pushToast(t("select.pdf.failed", { message: (e as Error).message ?? String(e) }), "error");
+    } finally {
+      setExporting(false);
+    }
+  }
+
   const onDialogKey = (e: KeyboardEvent) => {
     if (e.key !== "Enter" || e.defaultPrevented) return;
     const target = e.target as HTMLElement;
     // Buttons and switches activate themselves on Enter.
-    if (target instanceof HTMLButtonElement && !target.classList.contains("fmt-it")) return;
+    if (target instanceof HTMLButtonElement && !target.classList.contains("fmt-it") && !target.classList.contains("exp-file")) return;
     e.preventDefault();
     void run();
   };
@@ -180,6 +233,21 @@ export function ExportDialog() {
     setFormat(next);
     const el = (e.currentTarget as HTMLElement).querySelector<HTMLElement>(`[data-fmt="${next}"]`);
     el?.focus();
+  };
+
+  const onFileKey = (e: KeyboardEvent) => {
+    const n = ids().length;
+    let next: number;
+    if (e.key === "ArrowDown" || e.key === "ArrowRight") next = (previewIndex() + 1) % n;
+    else if (e.key === "ArrowUp" || e.key === "ArrowLeft") next = (previewIndex() - 1 + n) % n;
+    else if (e.key === "Home") next = 0;
+    else if (e.key === "End") next = n - 1;
+    else return;
+    e.preventDefault();
+    showPreview(next);
+    const el = (e.currentTarget as HTMLElement).querySelector<HTMLElement>(`[data-file="${next}"]`);
+    el?.focus();
+    el?.scrollIntoView({ block: "nearest" });
   };
 
   const formatTitle = (f: Format) =>
@@ -228,6 +296,9 @@ export function ExportDialog() {
               </div>
               <div class="pdf-meta">
                 <b>{t("exportDialog.preview.label")}</b> ·{" "}
+                <Show when={many()}>
+                  {t("exportDialog.many.position", { n: previewIndex() + 1, total: ids().length })} ·{" "}
+                </Show>
                 {t("exportDialog.preview.pages", { n: Math.max(1, pages().length) })} · A4
               </div>
             </Match>
@@ -259,29 +330,57 @@ export function ExportDialog() {
               <kbd>esc</kbd>
             </button>
           </div>
-          <div class="fmt" role="radiogroup" aria-label={t("exportDialog.fmt.aria")} onKeyDown={onFormatKey}>
-            <For each={FORMATS}>
-              {(f) => (
-                <button
-                  type="button"
-                  class="fmt-it"
-                  classList={{ on: format() === f }}
-                  role="radio"
-                  aria-checked={format() === f}
-                  tabindex={format() === f ? 0 : -1}
-                  data-fmt={f}
-                  data-autofocus={format() === f ? "" : undefined}
-                  onClick={() => setFormat(f)}
-                >
-                  <span class="rd" />
-                  <span>
-                    <b>{formatTitle(f)}</b>
-                    <small>{formatSub(f)}</small>
-                  </span>
-                </button>
-              )}
-            </For>
-          </div>
+          <Show when={many()}>
+            <div class="exp-many">
+              <p class="exp-many-sub">{tPlural("exportDialog.many.sub", ids().length)}</p>
+              <div class="exp-files" role="radiogroup" aria-label={t("exportDialog.many.aria")} onKeyDown={onFileKey}>
+                <For each={fileNames()}>
+                  {(name, i) => (
+                    <button
+                      type="button"
+                      class="exp-file"
+                      classList={{ on: previewIndex() === i() }}
+                      role="radio"
+                      aria-checked={previewIndex() === i()}
+                      tabindex={previewIndex() === i() ? 0 : -1}
+                      data-file={i()}
+                      data-autofocus={previewIndex() === i() ? "" : undefined}
+                      title={name}
+                      onClick={() => showPreview(i())}
+                    >
+                      <Icon name="doc" size={13} />
+                      <span>{name}</span>
+                    </button>
+                  )}
+                </For>
+              </div>
+            </div>
+          </Show>
+          <Show when={!many()}>
+            <div class="fmt" role="radiogroup" aria-label={t("exportDialog.fmt.aria")} onKeyDown={onFormatKey}>
+              <For each={FORMATS}>
+                {(f) => (
+                  <button
+                    type="button"
+                    class="fmt-it"
+                    classList={{ on: format() === f }}
+                    role="radio"
+                    aria-checked={format() === f}
+                    tabindex={format() === f ? 0 : -1}
+                    data-fmt={f}
+                    data-autofocus={format() === f ? "" : undefined}
+                    onClick={() => setFormat(f)}
+                  >
+                    <span class="rd" />
+                    <span>
+                      <b>{formatTitle(f)}</b>
+                      <small>{formatSub(f)}</small>
+                    </span>
+                  </button>
+                )}
+              </For>
+            </div>
+          </Show>
 
           <Show when={format() === "pdf"}>
             <div class="opts">
@@ -325,7 +424,7 @@ export function ExportDialog() {
             <button type="button" class="btn ghost" onClick={close} disabled={exporting()}>
               {t("common.cancel")}
             </button>
-            <button type="button" class="btn primary" onClick={() => void run()} disabled={exporting() || !script()}>
+            <button type="button" class="btn primary" onClick={() => void run()} disabled={exporting() || (!many() && !script())}>
               {exporting() ? t("export.exporting") : t("export.button")}
               <Show when={!exporting()}>
                 <kbd>⏎</kbd>
