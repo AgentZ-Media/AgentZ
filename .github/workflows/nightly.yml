@@ -101,7 +101,9 @@ jobs:
       - uses: swatinem/rust-cache@v2
         with:
           workspaces: . -> target
-          key: ${{ matrix.build.app }}-${{ matrix.platform }}
+          # Same cache key as the former per-platform jobs (rust-cache appends
+          # the job id unless shared-key is set), shared with release.yml.
+          shared-key: ${{ matrix.build.app }}-${{ matrix.platform }}-build-${{ matrix.platform }}
       - uses: pnpm/action-setup@v6
       - uses: actions/setup-node@v6
         with:
