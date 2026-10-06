@@ -42,11 +42,13 @@
   align-items: center;
   gap: 10px;
   padding: 0 14px 0 calc(12px + var(--shell-inset-left, 0px));
-  transition: padding-left var(--t-med);
-  border-bottom: 1px solid var(--line);
-  background: var(--bg);
+  transition: padding-left 340ms var(--ease-sheet);
+  /* Stays in the flow above the scrolling desk: Lexical's caret scrolling
+     only knows the canvas bounds, so nothing may cover them. */
   position: relative;
   z-index: 6;
+  background: var(--bg);
+  box-shadow: 0 1px 0 var(--hair), 0 6px 14px -12px var(--hair);
   user-select: none;
 }
 
@@ -163,14 +165,31 @@
 }
 .ss-saved::before {
   content: "";
-  width: 6px;
-  height: 6px;
+  width: 7px;
+  height: 7px;
+  box-sizing: border-box;
   border-radius: 50%;
   background: var(--ok);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--ok) 22%, transparent);
+  animation: ss-saved-pop var(--t-pop) both;
 }
+/* Saving: the dot opens into a small spinning ring ... */
 .ss-saved.is-saving::before {
-  background: var(--faint);
-  animation: ss-pulse 1.2s ease-in-out infinite;
+  width: 10px;
+  height: 10px;
+  margin: -1.5px;
+  background: transparent;
+  border: 1.5px solid var(--faint);
+  border-top-color: transparent;
+  box-shadow: none;
+  animation: ss-spin 0.8s linear infinite;
+}
+/* ... and closes into the green dot again when it's done. */
+@keyframes ss-saved-pop {
+  0% { transform: scale(0.3); }
+}
+@keyframes ss-spin {
+  to { transform: rotate(360deg); }
 }
 .ss-saved.is-error {
   color: var(--warn);
@@ -221,7 +240,8 @@
   z-index: 40;
   width: 232px;
   padding: 9px 11px;
-  border-radius: 9px;
+  border-radius: 10px;
+  animation: ds-menu-in 180ms var(--ease-out);
   background: var(--fg);
   color: var(--bg);
   font-size: 12px;
@@ -262,9 +282,19 @@
   padding: 26px 24px 64px;
   scroll-padding-top: 40px;
   scroll-padding-bottom: 40px;
+  /* The desk: a quiet dot grid with a soft vignette. */
+  background:
+    radial-gradient(120% 90% at 50% 30%, transparent 55%, var(--desk-vignette)),
+    radial-gradient(circle, var(--desk-dot) 0.8px, transparent 1.2px) 0 0 / 18px 18px,
+    var(--desk);
 }
 .ss-sheet {
   overflow: visible;
+  border-radius: 4px;
+  /* A whisper of grain, so the sheet reads as paper. */
+  background-image: var(--noise);
+  background-size: 160px 160px;
+  background-blend-mode: soft-light;
 }
 
 /* Block type of the caret block, left of the paper */
@@ -275,8 +305,9 @@
   align-items: center;
   gap: 6px;
   padding: 0 7px;
-  border-radius: 5px;
-  background: var(--accent);
+  border-radius: 6px;
+  background: linear-gradient(180deg, var(--accent-hi), var(--accent-lo));
+  box-shadow: inset 0 0.5px 0 var(--glint), 0 3px 10px -3px var(--accent-glow);
   color: var(--accent-fg);
   font: 700 10px/1 var(--ui);
   letter-spacing: 0.07em;
@@ -284,7 +315,8 @@
   white-space: nowrap;
   pointer-events: none;
   z-index: 2;
-  transition: top var(--t-fast);
+  /* Glides with the caret from block to block. */
+  transition: top var(--t-glide);
 }
 .ss-gut kbd {
   padding: 2px 4px;
@@ -309,8 +341,8 @@
   right: 0;
   bottom: 0;
   z-index: 20;
-  box-shadow: var(--shadow-pop);
-  animation: ss-slide-in var(--t-med);
+  box-shadow: var(--shadow-3);
+  animation: ss-slide-in 380ms var(--ease-sheet);
 }
 @keyframes ss-slide-in {
   from {
@@ -604,16 +636,22 @@
   display: flex;
   align-items: center;
   gap: 14px;
-  height: 32px;
-  padding: 0 14px;
-  border: 1px solid var(--line);
+  height: 34px;
+  padding: 0 16px;
+  border: 0;
   border-radius: var(--r-pill);
-  background: var(--surface);
+  background: color-mix(in srgb, var(--surface) 76%, transparent);
+  -webkit-backdrop-filter: blur(20px) saturate(1.8);
+  backdrop-filter: blur(20px) saturate(1.8);
   color: var(--muted);
   font-size: 12px;
   white-space: nowrap;
   transform: translateX(-50%);
-  box-shadow: var(--shadow-raise);
+  box-shadow: var(--shadow-3), var(--hi);
+  animation: ss-pill-in 520ms var(--spring) both;
+}
+@keyframes ss-pill-in {
+  from { opacity: 0; translate: 0 12px; scale: 0.92; }
 }
 .ss-focus-pill b {
   color: var(--fg);
@@ -624,7 +662,7 @@
 }
 .ss-focus-pill .div {
   width: 1px;
-  height: 12px;
+  height: 14px;
   background: var(--line);
 }
 
