@@ -88,7 +88,7 @@
 }
 .wcount-day i.on {
   background: var(--accent);
-  box-shadow: 0 0 4px color-mix(in srgb, var(--accent) 50%, transparent);
+  box-shadow: 0 0 4px color-mix(in srgb, var(--glow-hue) 50%, transparent);
 }
 .wcount-day.is-today i.on:nth-last-child(1 of .on) {
   animation: wcount-today 2s ease-in-out infinite;

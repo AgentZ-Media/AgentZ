@@ -167,6 +167,9 @@
   --accent-edge: rgba(120, 90, 0, 0.2);
   /* Text and marks on a coloured swatch (character faces). */
   --on-swatch: #ffffff;
+  /* Hue of glows and light halos (accent shadows, auras, the selected
+     agent pane). The accent by default; nightly builds glow night blue. */
+  --glow-hue: var(--accent);
   /* Light edge on lit surfaces (accent buttons, tiles). */
   --glint: rgba(255, 255, 255, 0.6);
   --glint-soft: rgba(255, 255, 255, 0.28);
@@ -180,12 +183,18 @@
   --on-ink-fill: rgba(255, 255, 255, 0.16);
 }
 
+/* Nightly: glows turn night blue to match the sky; the accent stays. */
+[data-build="nightly"] {
+  --glow-hue: var(--night-blue);
+  --accent-glow: rgba(59, 111, 224, 0.5);
+}
+
 @supports (color: color-mix(in oklab, red, blue)) {
   :root,
   [data-theme="light"] {
     --accent-hi: color-mix(in oklab, var(--accent) 62%, #ffffff);
     --accent-lo: color-mix(in oklab, var(--accent) 90%, #000000);
-    --accent-glow: color-mix(in srgb, var(--accent) 48%, transparent);
+    --accent-glow: color-mix(in srgb, var(--glow-hue) 48%, transparent);
     --accent-ink: color-mix(in oklab, var(--accent) 45%, #000000);
     --accent-edge: color-mix(in oklab, var(--accent) 30%, rgba(0, 0, 0, 0.3));
   }
@@ -284,6 +293,11 @@
   --side-edge-lo: rgba(0, 0, 0, 0.4);
   --side-dot: rgba(255, 255, 255, 0.13);
   --side-glow: rgba(255, 225, 77, 0.14);
+}
+
+/* Nightly: the sidebar's warm corner glow turns night blue as well. */
+[data-build="nightly"] {
+  --side-glow: rgba(59, 111, 224, 0.22);
 }
 
 /* Dark paper: only when the resolved theme is dark AND the user enabled
