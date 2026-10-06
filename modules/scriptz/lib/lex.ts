@@ -124,7 +124,11 @@ function mergeRuns(runs: TextRun[]): TextRun[] {
 }
 
 export function extractPlainText(contentJson: string): string {
-  const blocks = extractBlocks(contentJson);
+  return plainTextFromBlocks(extractBlocks(contentJson));
+}
+
+/** `extractPlainText` for already extracted blocks (one parse per save). */
+export function plainTextFromBlocks(blocks: ExtractedBlock[]): string {
   let out = "";
   for (const b of blocks) {
     if (out.length > 0) out += "\n\n";
@@ -223,9 +227,14 @@ export function wordCount(text: string): number {
  *  (for `characters_meta.share` on save); the live Inspector mirrors it
  *  in `components/Script/timelineMath.ts::liveStats`. */
 export function dialogWordsByCharacter(contentJson: string): Record<string, number> {
+  return dialogWordsByCharacterFromBlocks(extractBlocks(contentJson));
+}
+
+/** `dialogWordsByCharacter` for already extracted blocks. */
+export function dialogWordsByCharacterFromBlocks(blocks: ExtractedBlock[]): Record<string, number> {
   const out: Record<string, number> = {};
   let last: string | null = null;
-  for (const b of extractBlocks(contentJson)) {
+  for (const b of blocks) {
     if (b.kind === "scriptz-character") {
       last = b.text.trim().toUpperCase();
       if (last && !(last in out)) out[last] = 0;
@@ -238,7 +247,11 @@ export function dialogWordsByCharacter(contentJson: string): Record<string, numb
 
 /** Collect unique character names (uppercase) used in the script's content. */
 export function extractCharacterNames(contentJson: string): string[] {
-  const blocks = extractBlocks(contentJson);
+  return characterNamesFromBlocks(extractBlocks(contentJson));
+}
+
+/** `extractCharacterNames` for already extracted blocks. */
+export function characterNamesFromBlocks(blocks: ExtractedBlock[]): string[] {
   const seen = new Set<string>();
   const out: string[] = [];
   for (const b of blocks) {
