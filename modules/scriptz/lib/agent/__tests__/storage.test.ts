@@ -5,7 +5,7 @@ import { readFileSync, readdirSync } from "node:fs";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { getStorageAdapter, setStorageAdapter } from "../../storage";
 import { setPlatformAdapter, type DbConnection, type PlatformAdapter } from "@agentz/kit/platform";
-import { deleteChat, getChat, latestChat, learnedHash, listSessions, markLearned, saveChat, type ChatRecord } from "../chats";
+import { deleteChat, getChat, latestChat, learnedState, listSessions, markLearned, saveChat, type ChatRecord } from "../chats";
 import {
   addMemory, clearMemory, deleteMemory, getMemoryEntry, listMemory, memoryVersion,
   MemoryFullError, restoreMemory, updateMemory,
@@ -109,13 +109,13 @@ describe("agent persistence boundary with SQLite", () => {
     expect(await getMemoryEntry(entry.id)).toEqual(entry);
     await expect(updateMemory("missing", "text")).rejects.toThrow("memory entry not found");
     await expect(addMemory({ ...memoryInput, content: " " })).rejects.toThrow("empty memory entry");
-    await markLearned("script", "old-hash");
-    await markLearned("script", "new-hash");
-    expect(await learnedHash("script")).toBe("new-hash");
+    await markLearned("script", "old-hash", "dialog:old");
+    await markLearned("script", "new-hash", "dialog:new");
+    expect(await learnedState("script")).toMatchObject({ hash: "new-hash", text: "dialog:new" });
     await saveChat(chat());
     await clearMemory();
     expect(await listMemory()).toEqual([]);
-    expect(await learnedHash("script")).toBeNull();
+    expect(await learnedState("script")).toBeNull();
     expect(await latestChat("script")).not.toBeNull();
   });
 

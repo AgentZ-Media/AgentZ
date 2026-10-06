@@ -2,7 +2,7 @@ import { latestChat, deleteChat } from "../lib/agent/chats";
 import { agentSettings } from "./agentSettings";
 import { hasCodexHost, models, modelsLoading, refreshModels, refreshStatus, resolveModel, status } from "./agent/provider";
 import { createChat } from "./agent/chat";
-import { bootstrap, cancelBootstrap, existingScriptCount, learning, scheduleLearning, startBootstrap } from "./agent/learning";
+import { bootstrap, cancelBootstrap, existingScriptCount, learnedVersion, learning, scheduleLearning, startBootstrap, waiting } from "./agent/learning";
 import { byChat, byScript, chatsChanged, liveChats, pendingScripts, unregisterChat } from "./agent/registry";
 import { refreshSessionList, sessionList } from "./agent/sessionList";
 import type { ChatSession } from "./agent/types";
@@ -15,7 +15,7 @@ export type { AgentStatus } from "./agent/provider";
 export { currentPace } from "./agent/instructions";
 export type { ChatSession, SendOptions, ChatQuote } from "./agent/types";
 export { sessionTitleFrom } from "./agent/chat";
-export type { BootstrapState } from "./agent/learning";
+export type { BootstrapState, LearnRef } from "./agent/learning";
 export { startAgentRuntime } from "./agent/runtime";
 
 export const agentStore = {
@@ -23,6 +23,8 @@ export const agentStore = {
   models,
   modelsLoading,
   learning,
+  waiting,
+  learnedVersion,
   available: hasCodexHost,
   refreshStatus,
   refreshModels,

@@ -57,9 +57,15 @@ export function charactersIn(blocks: readonly AgentBlock[]): string[] {
   return [...seen];
 }
 
+/** One line per block, `type:text`: what learning hashes and stores
+ *  (`agent_learned.learned_text`) to compare later versions against. */
+export function learnText(blocks: readonly AgentBlock[]): string {
+  return blocks.map((b) => `${b.type}:${b.text}`).join("\n");
+}
+
 /** Cheap stable hash of a script's text (learning dedupe). */
 export function hashBlocks(blocks: readonly AgentBlock[]): string {
-  const text = blocks.map((b) => `${b.type}:${b.text}`).join("\n");
+  const text = learnText(blocks);
   let h1 = 0x811c9dc5;
   let h2 = 0;
   for (let i = 0; i < text.length; i++) {

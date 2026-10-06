@@ -4,6 +4,11 @@ import { api } from "../../lib/api";
 import { formatClock, formatRange, lengthStatus, type LengthRange } from "../../lib/lengthGoal";
 import { createTween } from "../Common/motion";
 import { scriptStages, stageIndex } from "../../lib/stages";
+import { learnedState, type LearnedState } from "../../lib/agent/chats";
+import { learnStageIds, resolveLearnStage } from "../../lib/agent/learnStage";
+import { memoryVersion } from "../../lib/agent/memory";
+import { agentStore } from "../../stores/agent";
+import { agentSettings } from "../../stores/agentSettings";
 import type { ScriptCharacter, ScriptStatus } from "../../lib/types";
 import { K } from "@agentz/kit/platform";
 import { ideasStore } from "../../stores/ideas";
@@ -80,17 +85,58 @@ export function Inspector(props: InspectorProps) {
     });
   });
 
+  /** Clock time today, a short date otherwise. */
+  const shortTime = (ms: number) => {
+    const d = new Date(ms);
+    const sameDay = d.toDateString() === new Date(now()).toDateString();
+    return sameDay
+      ? d.toLocaleTimeString(getCurrentLocale(), { hour: "2-digit", minute: "2-digit" })
+      : d.toLocaleDateString(getCurrentLocale(), { day: "numeric", month: "short" });
+  };
+
   const lastLabel = () => {
     const v = versions();
     if (!v || v.last === 0) return t("script.insp.versionsNone");
-    const d = new Date(v.last);
-    const today = new Date(now());
-    const sameDay = d.toDateString() === today.toDateString();
-    const time = sameDay
-      ? d.toLocaleTimeString(getCurrentLocale(), { hour: "2-digit", minute: "2-digit" })
-      : d.toLocaleDateString(getCurrentLocale(), { day: "numeric", month: "short" });
-    return t("script.insp.versionsLast", { time });
+    return t("script.insp.versionsLast", { time: shortTime(v.last) });
   };
+
+  // What the agent learned from this script (only while it learns at all).
+  const learnShown = () =>
+    agentStore.available() && agentSettings.onboarded() && agentSettings.enabled() && agentSettings.learnFromScripts();
+  const [learned, setLearned] = createSignal<{ id: string; state: LearnedState | null } | null>(null);
+  createEffect(() => {
+    const id = props.scriptId;
+    if (!learnShown()) return;
+    void agentStore.learnedVersion();
+    // Clearing the memory also clears the learned markers.
+    void memoryVersion();
+    let cancelled = false;
+    learnedState(id)
+      .then((state) => {
+        if (!cancelled) setLearned({ id, state });
+      })
+      .catch(() => {
+        if (!cancelled) setLearned({ id, state: null });
+      });
+    onCleanup(() => {
+      cancelled = true;
+    });
+  });
+  const learn = createMemo((): { label: string; hint: string; active: boolean } | null => {
+    if (!learnShown()) return null;
+    const id = props.scriptId;
+    if (agentStore.learning()?.id === id) return { label: t("agent.insp.learning"), hint: "", active: true };
+    if (agentStore.waiting().some((w) => w.id === id)) {
+      return { label: t("agent.insp.waiting"), hint: t("agent.insp.waitingHint"), active: true };
+    }
+    const loaded = learned();
+    if (!loaded || loaded.id !== id) return null;
+    if (loaded.state) return { label: t("agent.insp.learned"), hint: shortTime(loaded.state.learnedAt), active: false };
+    const stages = scriptStages();
+    const from = resolveLearnStage(agentSettings.learnStage(), stages);
+    const due = learnStageIds(agentSettings.learnStage(), stages).includes(props.status);
+    return { label: t("agent.insp.notYet"), hint: due ? "" : t("agent.insp.fromStage", { stage: stageLabel(from) }), active: false };
+  });
 
   const emptyParts = () => t("script.insp.castEmpty").split("{block}");
   const fmtNum = (n: number) => n.toLocaleString(getCurrentLocale());
@@ -190,6 +236,23 @@ export function Inspector(props: InspectorProps) {
               <b>{i().title}</b>
               <Show when={i().notes.trim()}>
                 <p>{i().notes}</p>
+              </Show>
+            </div>
+          </section>
+        )}
+      </Show>
+
+      <Show when={learn()}>
+        {(l) => (
+          <section class="ss-sec">
+            <div class="ss-sec-h">
+              {t("agent.insp.head")}
+              <span class="r">{agentSettings.displayName()}</span>
+            </div>
+            <div class="ss-learn" classList={{ "is-active": l().active }}>
+              <b>{l().label}</b>
+              <Show when={l().hint}>
+                <span>{l().hint}</span>
               </Show>
             </div>
           </section>
