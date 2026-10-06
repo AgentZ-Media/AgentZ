@@ -11,7 +11,9 @@ import { clearToasts } from "../stores/toasts";
 import { shellUi } from "../stores/ui";
 import { AppMark, BootErrorScreen, Icon, ToastHost, dismissConfirmDialogs } from "../ui";
 import { CommandPalette } from "./CommandPalette";
+import { NavIndicator } from "./NavIndicator";
 import { NightSky } from "./NightSky";
+import { SideDots } from "./SideDots";
 import { SettingsDialog } from "./SettingsDialog";
 import { completeOnboarding as persistOnboarding } from "./onboarding";
 import { createShellShortcuts, createShortcutRegistry } from "./shortcuts";
@@ -139,8 +141,9 @@ export function SuiteShell(props: SuiteShellProps) {
         <Show when={runtime()} fallback={
           <div class="shell-boot" aria-busy="true" aria-label={labels.t("common.loading")}>
             <Show when={nightly()}><NightSky variant="fill" count={70} seed={3} /></Show>
-            <AppMark logo={props.module.logo} appName={props.module.name} size={44} />
-            <div class="shell-boot-bar" />
+            {/* The mark assembles from its dots, then breathes while setup runs. */}
+            <AppMark logo={props.module.logo} appName={props.module.name} size={52} class="shell-boot-mark" />
+            <span class="shell-boot-name" aria-hidden="true">{props.module.name}</span>
           </div>
         }>
           {(active) => <>
@@ -148,7 +151,8 @@ export function SuiteShell(props: SuiteShellProps) {
               data-side={sidebarVisible() ? "on" : "off"}>
               <aside ref={sidebar} class="side" aria-label={t("shell.sidebar.aria")}
                 inert={!sidebarVisible()} aria-hidden={!sidebarVisible()}>
-                <Show when={nightly()}><NightSky /></Show>
+                <Show when={nightly()} fallback={<SideDots />}><NightSky /></Show>
+                <NavIndicator root={() => sidebar} />
                 <div class="side-top" data-tauri-drag-region>
                   <span class="side-traffic" data-tauri-drag-region aria-hidden="true" />
                   <span class="side-sp" data-tauri-drag-region />

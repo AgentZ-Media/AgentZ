@@ -92,6 +92,11 @@ describe("independent module in the real Kit shell", () => {
     await waitFor(() => expect(page.getByRole("heading", { name: "Ein eigenständiges Modul" })).toBeTruthy());
     expect(document.documentElement.dataset.build).toBeUndefined();
     expect(document.querySelector(".night-sky, .night-badge, .shell-night-chip")).toBeNull();
+    // Stable builds carry the dot-grid signature instead, and the sidebar
+    // hands its selection highlight to the gliding pill.
+    expect(document.querySelector("aside.side .side-dots")).toBeTruthy();
+    expect(document.querySelector("aside.side")?.hasAttribute("data-nav-pill")).toBe(true);
+    expect(document.querySelector("aside.side .nav-pill")?.getAttribute("aria-hidden")).toBe("true");
   });
 
   it("dispatches module shortcuts, honors prevented/composing events and dialog context, and disposes", async () => {

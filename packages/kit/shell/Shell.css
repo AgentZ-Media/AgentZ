@@ -22,7 +22,7 @@
   display: grid;
   grid-template-columns: var(--sidebar-width) minmax(0, 1fr);
   overflow: hidden;
-  transition: grid-template-columns var(--t-med);
+  transition: grid-template-columns 340ms var(--ease-sheet);
   background: var(--bg);
   /* Left inset for top bars in the main column. Zero next to the sidebar;
      with the sidebar hidden the macOS traffic lights float over the main
@@ -58,12 +58,30 @@
   display: flex;
   flex-direction: column;
   padding: 0 10px 10px;
-  background: var(--side-bg);
+  /* Material: a soft sheen from the top and a little shade at the bottom.
+     The grain sits in ::before, the light edge on the right in ::after.
+     Isolated so the decorative layers stay between background and content;
+     sidebar popovers are portaled, so nothing fixed is trapped here. */
+  background:
+    linear-gradient(180deg, var(--side-sheen), transparent 32%, var(--side-shade)),
+    var(--side-bg);
   color: var(--side-fg);
   overflow: hidden;
+  isolation: isolate;
   font: 13px/1.45 var(--ui);
   transform: translateX(0);
-  transition: transform var(--t-med);
+  transition: transform 340ms var(--ease-sheet);
+}
+.side::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -2;
+  background: var(--noise);
+  background-size: 160px 160px;
+  mix-blend-mode: overlay;
+  opacity: 0.5;
+  pointer-events: none;
 }
 .shell.is-bare > .side {
   transform: translateX(-100%);
@@ -75,7 +93,7 @@
   right: 0;
   bottom: 0;
   width: 1px;
-  background: var(--side-line);
+  background: linear-gradient(180deg, var(--side-edge-hi), var(--side-line) 40%, var(--side-edge-lo));
   pointer-events: none;
 }
 .side kbd {
@@ -108,12 +126,16 @@
   place-items: center;
   border-radius: var(--r-2);
   color: var(--side-muted);
-  transition: background var(--t-fast), color var(--t-fast);
+  transition: background var(--t-fast), color var(--t-fast), transform var(--t-glide);
 }
 .ic-btn:hover,
 .ic-btn.is-on {
   background: var(--side-hover);
   color: var(--side-fg);
+}
+.ic-btn:active {
+  transform: scale(0.88);
+  transition-duration: 110ms;
 }
 .ic-btn:focus-visible {
   outline: 2px solid var(--accent);
@@ -123,14 +145,38 @@
 .side-app {
   display: flex;
   align-items: center;
-  gap: 9px;
+  gap: 10px;
   padding: 6px;
   margin-top: 2px;
   border-radius: var(--r-3);
 }
+.side-app .app-mark {
+  box-shadow:
+    inset 0 0.5px 0 var(--glint),
+    inset 0 -1.5px 0 var(--accent-edge),
+    0 0 0 0.5px var(--side-edge-lo),
+    0 4px 14px -4px color-mix(in srgb, var(--logo-accent, var(--accent)) 55%, transparent);
+  transition: transform var(--t-pop);
+}
+.side-app:hover .app-mark {
+  transform: rotate(-6deg) scale(1.06);
+}
+.side-app .app-mark circle {
+  transform-box: fill-box;
+  transform-origin: center;
+}
+/* Hovering the app row sends a ripple through the dots of the mark. */
+.side-app:hover .app-mark circle {
+  animation: side-mark-ripple 0.9s var(--ease-out) both;
+  animation-delay: calc(var(--i, 0) * 28ms);
+}
+@keyframes side-mark-ripple {
+  35% { transform: scale(1.45); }
+}
 .side-app-name {
-  font-weight: 700;
-  font-size: 14px;
+  font-weight: 750;
+  font-size: 14.5px;
+  letter-spacing: -0.01em;
   color: var(--side-strong);
 }
 
@@ -138,25 +184,56 @@
   display: flex;
   flex-direction: column;
   gap: 6px;
-  margin: 10px 0 8px;
+  margin: 12px 0 10px;
 }
 /* Main action of the app ("Neues Skript"): full width, accent. */
 .side-primary {
-  height: 32px;
+  position: relative;
+  height: 34px;
   min-width: 0;
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 0 8px 0 10px;
-  border-radius: var(--r-ctl);
-  background: var(--accent);
+  padding: 0 7px 0 11px;
+  border-radius: 9px;
+  background: linear-gradient(180deg, var(--accent-hi), var(--accent) 45%, var(--accent-lo));
   color: var(--accent-fg);
-  font-weight: 600;
+  font-weight: 650;
   text-align: left;
-  transition: filter var(--t-fast);
+  overflow: hidden;
+  box-shadow:
+    inset 0 1px 0 var(--glint),
+    inset 0 -1px 0 var(--accent-edge),
+    0 0 0 0.5px var(--side-edge-lo),
+    0 1px 2px var(--side-shade),
+    0 8px 20px -8px var(--accent-glow);
+  transition: transform var(--t-glide), box-shadow var(--t-med);
+}
+/* A band of light crosses the button on hover. */
+.side-primary::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(100deg, transparent 30%, var(--glint) 48%, transparent 66%);
+  transform: translateX(-120%);
+  pointer-events: none;
 }
 .side-primary:hover {
-  filter: brightness(1.05);
+  box-shadow:
+    inset 0 1px 0 var(--glint),
+    inset 0 -1px 0 var(--accent-edge),
+    0 0 0 0.5px var(--side-edge-lo),
+    0 1px 2px var(--side-shade),
+    0 10px 28px -6px var(--accent-glow);
+}
+.side-primary:hover::after {
+  transform: translateX(120%);
+  transition: transform 0.9s var(--ease-out);
+}
+.side-primary:active {
+  transform: scale(0.965);
+  transition-duration: 110ms;
+  transition-timing-function: var(--ease-out);
 }
 .side-primary:focus-visible {
   outline: 2px solid var(--accent);
@@ -173,8 +250,9 @@
 }
 .side .side-primary kbd {
   margin-left: auto;
-  background: color-mix(in srgb, var(--accent-fg) 10%, transparent);
-  color: color-mix(in srgb, var(--accent-fg) 60%, transparent);
+  background: color-mix(in srgb, var(--accent-fg) 9%, transparent);
+  color: color-mix(in srgb, var(--accent-fg) 58%, transparent);
+  box-shadow: inset 0 0.5px 0 var(--glint-soft);
 }
 
 .side-scroll {
@@ -196,7 +274,7 @@
   align-items: center;
   gap: 9px;
   padding: 0 8px;
-  border-radius: var(--r-2);
+  border-radius: var(--r-3);
   color: var(--side-fg);
   text-align: left;
   transition: background var(--t-fast), color var(--t-fast);
@@ -247,6 +325,42 @@
 }
 .nav.is-on svg.i {
   color: var(--side-strong);
+}
+
+/* Gliding selection (NavIndicator): one pill follows the active row, the
+   row itself stays transparent and lights its glyph in the accent. */
+.nav-pill {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 0;
+  height: 0;
+  border-radius: var(--r-3);
+  background: var(--side-active);
+  box-shadow: inset 0 0.5px 0 var(--side-edge-hi), 0 1px 3px var(--side-shade);
+  pointer-events: none;
+  will-change: transform;
+  transition: transform var(--t-glide), width var(--t-glide), height var(--t-glide), opacity var(--t-fast);
+}
+.nav-pill.is-instant {
+  transition: opacity var(--t-fast);
+}
+.nav-pill.is-hidden {
+  opacity: 0;
+}
+.side[data-nav-pill] .nav.is-on {
+  background: transparent;
+  font-weight: 600;
+}
+.side[data-nav-pill] .nav.is-on::before {
+  display: none;
+}
+.side[data-nav-pill] .nav.is-on > svg.i,
+.side[data-nav-pill] .nav.is-on > svg.st {
+  color: var(--accent);
+}
+.side[data-nav-pill] .nav.is-on:hover {
+  background: transparent;
 }
 .nav.is-drop {
   background: var(--side-active);
@@ -301,11 +415,9 @@
   gap: 6px;
   margin-top: 12px;
   padding: 0 8px;
-  color: var(--side-muted);
-  font-size: 10.5px;
-  font-weight: 700;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
+  color: color-mix(in srgb, var(--side-muted) 82%, transparent);
+  font-size: 11.5px;
+  font-weight: 650;
 }
 .side-h .h-add {
   margin-left: auto;
@@ -328,12 +440,21 @@
 }
 
 .side-foot {
+  position: relative;
   flex: none;
   display: flex;
   align-items: center;
   gap: 6px;
   padding: 10px 2px 0 6px;
-  border-top: 1px solid var(--side-line);
+}
+.side-foot::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: -10px;
+  right: -10px;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--side-line) 18%, var(--side-line) 82%, transparent);
 }
 .side-foot-counter {
   flex: 1;
@@ -347,32 +468,46 @@
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 18px;
-  background: var(--side-bg);
+  gap: 14px;
+  background:
+    radial-gradient(40% 50% at 50% 45%, var(--side-glow), transparent 70%),
+    var(--side-bg);
 }
-.shell-boot-bar {
-  width: 72px;
-  height: 3px;
-  border-radius: 2px;
-  background: color-mix(in srgb, var(--side-strong) 10%, transparent);
-  overflow: hidden;
-  position: relative;
+/* The mark assembles from its dots, then breathes while setup runs. */
+.shell-boot-mark {
+  box-shadow:
+    inset 0 1px 0 var(--glint),
+    0 0 0 0.5px var(--side-edge-lo),
+    0 14px 40px -10px color-mix(in srgb, var(--logo-accent, var(--accent)) 60%, transparent);
+  animation: shell-boot-tile 1s var(--ease-pop) both;
 }
-.shell-boot-bar::after {
-  content: "";
-  position: absolute;
-  top: 0;
-  bottom: 0;
-  left: -40%;
-  width: 40%;
-  border-radius: 2px;
-  background: var(--accent);
-  animation: shell-boot-run 1.1s var(--ease) infinite;
+.shell-boot-mark circle {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation:
+    shell-boot-dot 0.9s var(--ease-out) both,
+    shell-boot-breathe 1.8s ease-in-out infinite;
+  animation-delay: calc(180ms + var(--i, 0) * 32ms), calc(1.4s + var(--i, 0) * 60ms);
 }
-@keyframes shell-boot-run {
-  to {
-    left: 100%;
-  }
+.shell-boot-name {
+  color: var(--side-strong);
+  font-size: 15px;
+  font-weight: 750;
+  letter-spacing: -0.01em;
+  animation: shell-boot-name 0.8s var(--ease-out) 0.7s both;
+}
+@keyframes shell-boot-tile {
+  0% { opacity: 0; transform: scale(0.6); filter: blur(6px); }
+  40% { opacity: 1; filter: blur(0); }
+}
+@keyframes shell-boot-dot {
+  0% { opacity: 0; transform: translate(var(--fx, 0), var(--fy, 0)) scale(0.2); }
+}
+@keyframes shell-boot-breathe {
+  50% { transform: scale(0.78); }
+}
+@keyframes shell-boot-name {
+  from { opacity: 0; transform: translateY(6px); letter-spacing: 0.1em; }
 }
 
 /* Route fallbacks. */
@@ -427,7 +562,46 @@
   animation: night-twinkle var(--d) ease-in-out var(--delay) infinite;
 }
 .night-star.is-glow {
-  box-shadow: 0 0 6px 1px color-mix(in srgb, var(--night-moon) 75%, transparent);
+  box-shadow: 0 0 6px 1.5px color-mix(in srgb, var(--night-moon) 80%, transparent);
+}
+/* Bright stars glint: a thin cross of light. */
+.night-star.is-glow::before,
+.night-star.is-glow::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 9px;
+  height: 0.5px;
+  background: color-mix(in srgb, var(--night-star) 70%, transparent);
+  transform: translate(-50%, -50%);
+}
+.night-star.is-glow::after {
+  transform: translate(-50%, -50%) rotate(90deg);
+}
+.night-layer {
+  position: absolute;
+  inset: 0;
+  animation: night-drift 60s linear infinite alternate;
+}
+/* A slow aurora ribbon above the clouds. */
+.night-aurora {
+  position: absolute;
+  left: -40%;
+  top: 70px;
+  width: 180%;
+  height: 64px;
+  background: linear-gradient(90deg, transparent,
+    color-mix(in srgb, var(--night-aurora) 26%, transparent) 25%,
+    color-mix(in srgb, var(--night-violet) 34%, transparent) 50%,
+    color-mix(in srgb, var(--night-rose) 20%, transparent) 72%, transparent);
+  filter: blur(18px);
+  transform: rotate(-8deg);
+  animation: night-aurora 16s ease-in-out infinite alternate;
+}
+.night-sky.is-fill .night-aurora {
+  top: 40%;
+  height: 90px;
 }
 .night-cloud {
   position: absolute;
@@ -472,11 +646,74 @@
 @keyframes night-fade-in {
   from { opacity: 0; }
 }
+@keyframes night-drift {
+  to { transform: translateX(-14px); }
+}
+@keyframes night-aurora {
+  from { transform: rotate(-8deg) translateX(-8%); opacity: 0.7; }
+  to { transform: rotate(-4deg) translateX(8%); opacity: 1; }
+}
 @media (prefers-reduced-motion: reduce) {
   .night-star,
-  .night-shooting {
+  .night-shooting,
+  .night-layer,
+  .night-aurora,
+  .side-dot,
+  .side-dots::after {
     animation: none;
   }
+}
+
+/* ---------------- Stable signature ----------------
+   The dot grid of the app marks behind the sidebar head, a warm glow in
+   the corner, a few dots breathing in the accent and a slow highlighter
+   sweep. Only rendered by stable builds (SideDots). */
+.side-dots {
+  position: absolute;
+  inset: 0 0 auto;
+  height: 210px;
+  z-index: -1;
+  pointer-events: none;
+  background:
+    radial-gradient(70% 90% at 18% -10%, var(--side-glow), transparent 70%),
+    radial-gradient(circle, var(--side-dot) 0.9px, transparent 1.4px) 6px 6px / 12px 12px;
+  -webkit-mask-image: linear-gradient(180deg, black 30%, transparent 100%);
+  mask-image: linear-gradient(180deg, black 30%, transparent 100%);
+  animation: night-fade-in var(--t-slow);
+}
+.side-dots::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(circle, var(--accent) 1px, transparent 1.5px) 6px 6px / 12px 12px;
+  -webkit-mask-image: linear-gradient(105deg, transparent 35%, black 50%, transparent 65%);
+  mask-image: linear-gradient(105deg, transparent 35%, black 50%, transparent 65%);
+  -webkit-mask-size: 300% 100%;
+  mask-size: 300% 100%;
+  -webkit-mask-position: 120% 0;
+  mask-position: 120% 0;
+  opacity: 0.5;
+  animation: side-dots-sweep 11s var(--ease-sheet) 1.5s infinite;
+}
+.side-dot {
+  position: absolute;
+  left: calc(var(--gx) * 12px + 4.5px);
+  top: calc(var(--gy) * 12px + 4.5px);
+  width: 3px;
+  height: 3px;
+  border-radius: 50%;
+  background: var(--accent);
+  box-shadow: 0 0 6px 1px var(--accent-glow);
+  opacity: 0;
+  animation: side-dot-lit var(--dur) ease-in-out var(--dl) infinite;
+}
+@keyframes side-dots-sweep {
+  0% { -webkit-mask-position: 120% 0; mask-position: 120% 0; }
+  55%, 100% { -webkit-mask-position: -20% 0; mask-position: -20% 0; }
+}
+@keyframes side-dot-lit {
+  0%, 100% { opacity: 0; transform: scale(0.4); }
+  40%, 60% { opacity: 1; transform: scale(1); }
 }
 
 .night-badge {
@@ -538,6 +775,6 @@
   isolation: isolate;
   overflow: hidden;
 }
-[data-build="nightly"] .shell-boot-bar::after {
-  background: linear-gradient(90deg, var(--night-blue), var(--night-violet), var(--night-moon));
+[data-build="nightly"] .shell-boot {
+  background: var(--side-bg);
 }
