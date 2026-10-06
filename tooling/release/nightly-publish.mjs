@@ -3,6 +3,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { execFileSync } from 'node:child_process';
 import { appMetadata, compareVersions, validateAppId } from './core.mjs';
+import { github, publicRequest, releaseByTag } from './github.mjs';
 import {
   isNightlyVersion, nightlyAssetNames, nightlyAssetsToPrune, nightlyManifest, nightlyTag, renderNightlyBody,
 } from './nightly.mjs';
@@ -21,11 +22,7 @@ if (Number.isNaN(Date.parse(builtAt))) throw new Error(`Invalid build time: ${bu
 const tag = nightlyTag(app);
 const { product } = appMetadata(root, app);
 const names = nightlyAssetNames(app, product, version);
-const gh = args => execFileSync('gh', [...args, '--repo', repository], { encoding: 'utf8' }).trim();
-const api = (path, method = 'GET') => {
-  const text = execFileSync('gh', ['api', '-X', method, `repos/${repository}/${path}`], { encoding: 'utf8' });
-  return text.trim() ? JSON.parse(text) : null;
-};
+const { gh, api } = github(repository);
 const dir = mkdtempSync(join(tmpdir(), 'agentz-nightly-'));
 
 function files(path) {
@@ -42,14 +39,6 @@ function one(suffix, mustContainVersion) {
   if (mustContainVersion && !matches[0].includes(`_${version}_`)) throw new Error(`Artifact ${matches[0]} is not version ${version}`);
   return matches[0];
 }
-async function publicRequest(url) {
-  for (let attempt = 0; attempt < 6; attempt++) {
-    const response = await fetch(url, { method: 'HEAD', signal: AbortSignal.timeout(30000) });
-    if (response.ok) return;
-    if (attempt === 5) throw new Error(`Public asset unavailable (${response.status}): ${url}`);
-    await new Promise(resolve => setTimeout(resolve, 5000));
-  }
-}
 function changesSince() {
   const range = previous ? `${previous}..${sha}` : sha;
   const limit = previous ? 50 : 20;
@@ -64,9 +53,7 @@ async function publish() {
   const windowsInstaller = one('-setup.exe', true);
   const windowsSignature = readFileSync(one('-setup.exe.sig', true), 'utf8');
 
-  let release;
-  try { release = api(`releases/tags/${tag}`); }
-  catch (error) { if (!String(error.stderr).includes('HTTP 404')) throw error; }
+  const release = releaseByTag(api, tag);
   if (release && (release.draft || !release.prerelease)) throw new Error(`${tag} must be a published pre-release`);
   if (release?.assets.some(asset => asset.name === 'latest.json')) {
     const current = mkdtempSync(join(dir, 'current-'));
