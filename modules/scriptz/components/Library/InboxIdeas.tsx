@@ -98,6 +98,9 @@ function IdeaRow(props: { idea: Idea }) {
       <span class="lrow-glyph">
         <StageGlyph stage="idea" />
       </span>
+      {/* Ideas have no page preview; the empty cell keeps the grid columns
+          aligned with the script rows. */}
+      <span class="lrow-thumb-gap" aria-hidden="true" />
       <div class="lrow-t">
         <span class="lrow-title">{title()}</span>
         <Show when={note()}>
