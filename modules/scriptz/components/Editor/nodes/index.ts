@@ -1,9 +1,14 @@
+import type { LexicalNode } from "lexical";
 import type { BlockType } from "../../../lib/types";
 import { t, type TranslationKey } from "../../../i18n";
 import { ScriptzActionNode } from "./ScriptzActionNode";
 import { ScriptzCharacterNode } from "./ScriptzCharacterNode";
 import { ScriptzDialogNode } from "./ScriptzDialogNode";
-import { ScriptzParentheticalNode } from "./ScriptzParentheticalNode";
+import { ScriptzParentheticalNode, $createScriptzParentheticalNode } from "./ScriptzParentheticalNode";
+import { $createScriptzActionNode } from "./ScriptzActionNode";
+import { $createScriptzCharacterNode } from "./ScriptzCharacterNode";
+import { $createScriptzDialogNode } from "./ScriptzDialogNode";
+import { BaseScriptzNode } from "./BaseScriptzNode";
 
 // Four block types: Action, Character, Dialog, Parenthetical. The retired
 // types (camera, caption, sfx) have no node class - stored content
@@ -33,7 +38,7 @@ export {
   $isScriptzParentheticalNode,
 } from "./ScriptzParentheticalNode";
 
-export { BaseScriptzNode } from "./BaseScriptzNode";
+export { BaseScriptzNode };
 
 export const SCRIPTZ_NODES = [
   ScriptzActionNode,
@@ -70,3 +75,21 @@ export const BLOCK_HOTKEYS: Record<BlockType, string> = {
   "scriptz-dialog": "Mod+3",
   "scriptz-parenthetical": "Mod+4",
 };
+
+/** Creates an empty block of the given type. */
+export const BLOCK_FACTORY: Record<BlockType, () => BaseScriptzNode> = {
+  "scriptz-action": $createScriptzActionNode,
+  "scriptz-character": $createScriptzCharacterNode,
+  "scriptz-dialog": $createScriptzDialogNode,
+  "scriptz-parenthetical": $createScriptzParentheticalNode,
+};
+
+/** The scriptz block that contains `node` (or is `node`), else null. */
+export function findScriptzAncestor(node: LexicalNode | null): BaseScriptzNode | null {
+  let cur: LexicalNode | null = node;
+  while (cur) {
+    if (cur instanceof BaseScriptzNode) return cur;
+    cur = cur.getParent();
+  }
+  return null;
+}
