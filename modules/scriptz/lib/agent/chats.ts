@@ -102,13 +102,16 @@ export async function getChat(id: string): Promise<ChatRecord | null> {
   return getStorageAdapter().agent.getChat(id);
 }
 
-/** Persists rendered chat state through the active adapter; callers coordinate flush ordering. */
-export async function saveChat(chat: ChatRecord): Promise<void> {
-  return getStorageAdapter().agent.saveChat(chat);
+/** Persists rendered chat state through the active adapter; callers coordinate flush ordering.
+ *  `itemsJson` is `chat.items` already serialized (spares a second pass over long chats). */
+export async function saveChat(chat: ChatRecord, itemsJson?: string): Promise<void> {
+  const storage = getStorageAdapter().agent;
+  return itemsJson === undefined ? storage.saveChat(chat) : storage.saveChat(chat, itemsJson);
 }
 
 export async function deleteChat(id: string): Promise<void> {
-  return getStorageAdapter().agent.deleteChat(id);
+  await getStorageAdapter().agent.deleteChat(id);
+  sessionSummaries.delete(id);
 }
 
 /** A session as the start screen and the session menu list it. */
@@ -128,6 +131,17 @@ export interface SessionSummary {
   finished: number;
   /** Ideas saved in this session. */
   savedIdeas: number;
+}
+
+/** A session row without its items (the cheap part of the session list). */
+export interface SessionHead {
+  id: string;
+  title: string | null;
+  folderId: string | null;
+  scriptId: string | null;
+  updatedAt: number;
+  /** Length of the stored items JSON. */
+  size: number;
 }
 
 /** Open, finished and discarded drafts of a chat, from its items. */
@@ -169,11 +183,40 @@ export function summarizeSession(chat: Pick<ChatRecord, "id" | "title" | "folder
   };
 }
 
+/** Summaries by session id with the row state they were made from. The
+ *  list reads only light columns and loads the items of rows that changed
+ *  since (long sessions hold hundreds of KB of items). */
+const sessionSummaries = new Map<string, { updatedAt: number; size: number; summary: SessionSummary }>();
+
 /** Sessions with at least one message, newest first. `query` searches the
  *  title and the conversation (draft titles included); `offset` pages. */
 export async function listSessions(limit = 40, offset = 0, query = ""): Promise<SessionSummary[]> {
-  const chats = await getStorageAdapter().agent.listSessions({ limit, offset, query: query.trim() });
-  return chats.map(summarizeSession);
+  const storage = getStorageAdapter().agent;
+  const heads = await storage.listSessionHeads({ limit, offset, query: query.trim() });
+  const fresh = (head: SessionHead) => {
+    const cached = sessionSummaries.get(head.id);
+    return !!cached && cached.updatedAt === head.updatedAt && cached.size === head.size;
+  };
+  const stale = heads.filter((head) => !fresh(head));
+  if (stale.length) {
+    const sizes = new Map(stale.map((head) => [head.id, head]));
+    for (const chat of await storage.getChats(stale.map((head) => head.id))) {
+      const head = sizes.get(chat.id);
+      // Written again in between: summarized as read, checked anew next time.
+      const size = head && head.updatedAt === chat.updatedAt ? head.size : -1;
+      sessionSummaries.set(chat.id, { updatedAt: chat.updatedAt, size, summary: summarizeSession(chat) });
+    }
+  }
+  const out: SessionSummary[] = [];
+  for (const head of heads) {
+    const cached = sessionSummaries.get(head.id);
+    // Deleted between the two reads.
+    if (!cached) continue;
+    // Title, folder and script link may change without a new `updated_at`
+    // (a deleted folder or script clears the link in the database).
+    out.push({ ...cached.summary, title: head.title, folderId: head.folderId, scriptId: head.scriptId, updatedAt: head.updatedAt });
+  }
+  return out;
 }
 
 /** What the agent last learned from a script. */

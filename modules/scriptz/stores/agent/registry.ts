@@ -17,6 +17,26 @@ export const pendingScripts = new Map<string, Promise<ChatSession>>();
 const [chatsVersion, setChatsVersion] = createSignal(0);
 export const chatsChanged = () => setChatsVersion((v) => v + 1);
 
+/** Order of last use (panel, agent mode, new session), for unloading the
+ *  least recently used idle chats. */
+const lastUse = new Map<ChatSession, number>();
+let useCount = 0;
+
+export function touchChat(chat: ChatSession): void {
+  lastUse.set(chat, ++useCount);
+}
+
+/** 0 for a chat never asked for by a view (e.g. loaded by its own row). */
+export function lastUsed(chat: ChatSession): number {
+  return lastUse.get(chat) ?? 0;
+}
+
+/** Drops use marks of chats that left the maps another way (failed load). */
+export function pruneLastUse(): void {
+  const live = new Set(liveChats());
+  for (const chat of [...lastUse.keys()]) if (!live.has(chat)) lastUse.delete(chat);
+}
+
 export function liveChats(): ChatSession[] {
   chatsVersion();
   return [...new Set([...byScript.values(), ...byChat.values()])];
@@ -26,6 +46,7 @@ export function liveChats(): ChatSession[] {
 export function unregisterChat(chat: ChatSession): void {
   for (const [key, value] of byScript) if (value === chat) byScript.delete(key);
   for (const [key, value] of byChat) if (value === chat) byChat.delete(key);
+  lastUse.delete(chat);
   chatsChanged();
 }
 
@@ -33,5 +54,6 @@ export function clearLiveChats(): void {
   byScript.clear();
   byChat.clear();
   pendingScripts.clear();
+  lastUse.clear();
   chatsChanged();
 }

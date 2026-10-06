@@ -95,6 +95,34 @@ Commit prüfen. `pnpm remove-app <id>` entfernt nur Generiertes mit
 Eigentumsnachweis, auch spätere Änderungen in diesen Ordnern. Details:
 [`docs/neue-app.md`](../../docs/neue-app.md).
 
+## Große Datenmengen
+
+Apps müssen mit zehntausenden Dokumenten flüssig bleiben. Dafür gilt:
+
+- **Gezielte Updates statt Neuladen.** Ein Autosave meldet das eine geänderte
+  Element (Event mit Nutzlast) und Caches ersetzen nur diese Zeile; ein
+  Versions-Bus, der die ganze Liste neu lädt, ist für strukturelle Änderungen.
+  Neu geladene Listen laufen durch `keepUnchanged` (`@agentz/kit/lib`), damit
+  unveränderte Zeilen ihr Objekt und damit ihr DOM behalten.
+- **Rendern nach Identität oder Position.** `<For>` nur über Objekte mit
+  stabiler Identität; Listen, die bei jeder Änderung neu berechnet werden
+  (Gruppen, Spalten, Zeitleisten, gestreamte Blöcke), mit `<Index>`. Pro Zeile
+  gelesene Auswahl- oder Hover-Zustände über `createSelector`, Signale mit
+  Layout- oder Listendaten mit `equals: sameData`. Lange Listen paginieren.
+- **Pro Tastendruck nur Konstantes.** Kein Durchlaufen des ganzen Dokuments,
+  keine DOM-Abfragen über die Seite und kein Layout-Lesen direkt nach einem
+  Editor-Update; Messungen per `requestAnimationFrame` bündeln, abgeleitete
+  Daten entprellen, Update-Listener ohne geänderte Knoten früh verlassen.
+- **SQL ohne Inhaltsspalten.** Listenabfragen lesen nur Übersichtsspalten über
+  einen Covering-Index (große Text- oder JSON-Spalten liegen in
+  Überlaufseiten), Löschpfade und Fremdschlüssel haben Indizes, FTS-Zeilen
+  werden über ihre rowid angesprochen. Ein Speichern parst das Dokument einmal.
+- **Begrenzte Caches.** Was pro Dokument im Speicher bleibt (geladene Chats,
+  Ansichtszustand, Parser-Caches), hat eine Obergrenze und räumt das am
+  längsten Unbenutzte zuerst. `Intl`-Formatter über `formatDate`/`formatNumber`.
+- **Dauerhafte Animationen** nur über `transform`/`opacity`, damit sie auf dem
+  Compositor laufen.
+
 ## Regel der Zwei und Ausblick
 
 - Ins Kit nur, was heute produktneutral ist oder ein zweites Produkt wirklich

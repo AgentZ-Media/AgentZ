@@ -1,4 +1,5 @@
 import { createSignal, onCleanup, onMount } from "solid-js";
+import { sameData } from "../lib/reconcile";
 
 interface PillBox {
   x: number;
@@ -27,7 +28,9 @@ function clipRect(el: HTMLElement, root: HTMLElement): DOMRect | null {
  * rows themselves drop their own active background.
  */
 export function NavIndicator(props: { root: () => HTMLElement | undefined }) {
-  const [box, setBox] = createSignal<PillBox | null>(null);
+  // Scroll and class mutations re-measure often; an unchanged box must not
+  // rewrite the pill's style.
+  const [box, setBox] = createSignal<PillBox | null>(null, { equals: sameData });
   const [instant, setInstant] = createSignal(true);
   let pill: HTMLSpanElement | undefined;
 

@@ -1,4 +1,4 @@
-import { For, Show, createEffect, createMemo, createSignal, on, onCleanup } from "solid-js";
+import { Index, Show, createEffect, createMemo, createSignal, on, onCleanup } from "solid-js";
 import { Icon } from "@agentz/kit/ui";
 import { K, isModKey } from "@agentz/kit/platform";
 import { pushToast } from "@agentz/kit/stores";
@@ -30,14 +30,16 @@ export interface DraftPanelProps {
   colorOf(name: string): string;
 }
 
-/** Speaker of a dialog / parenthetical block (nearest character above). */
-function speakerAt(blocks: readonly AgentBlock[], index: number): string {
-  for (let i = index; i >= 0; i--) {
-    const block = blocks[i];
-    if (block.type === "character") return block.text.trim().toUpperCase();
-    if (block.type === "action") return "";
-  }
-  return "";
+/** Speaker of every block in one pass: a character block names itself,
+ *  dialog and parenthetical take the nearest character above, an action
+ *  ends the speaker. */
+function speakersOf(blocks: readonly AgentBlock[]): string[] {
+  let current = "";
+  return blocks.map((block) => {
+    if (block.type === "character") current = block.text.trim().toUpperCase();
+    else if (block.type === "action") current = "";
+    return current;
+  });
 }
 
 export function DraftPanel(props: DraftPanelProps) {
@@ -57,6 +59,7 @@ export function DraftPanel(props: DraftPanelProps) {
   const previous = (): DraftVersion | null => (index() > 0 ? versions()[index() - 1] : null);
   const isLatest = () => index() === versions().length - 1;
   const streaming = () => props.session.running() && !version().complete;
+  const speakers = createMemo(() => speakersOf(version().blocks));
   const changed = createMemo(() => {
     const prev = previous();
     return prev && version().complete ? changedBlocks(prev.blocks, version().blocks) : new Set<number>();
@@ -141,36 +144,38 @@ export function DraftPanel(props: DraftPanelProps) {
     <section class="am-draft" aria-label={t("agentMode.draft.aria")}>
       <header class="am-draft-h">
         <div class="am-tabs" role="tablist">
-          <For each={props.drafts}>
+          {/* Draft states are derived anew per streamed token: positional
+              rows keep their buttons. */}
+          <Index each={props.drafts}>
             {(entry) => {
-              const live = () => props.session.running() && !entry.latest.complete;
+              const live = () => props.session.running() && !entry().latest.complete;
               return (
                 <button
                   type="button"
                   role="tab"
                   class="am-tab"
-                  aria-selected={entry.draft.slug === selected().draft.slug}
-                  title={entry.latest.title || t("agentMode.draft.untitled")}
-                  onClick={() => props.onSelect(entry.draft.slug)}
+                  aria-selected={entry().draft.slug === selected().draft.slug}
+                  title={entry().latest.title || t("agentMode.draft.untitled")}
+                  onClick={() => props.onSelect(entry().draft.slug)}
                 >
-                  <Show when={live()} fallback={<Show when={entry.state === "finished"}><Icon name="check" size={12} /></Show>}>
+                  <Show when={live()} fallback={<Show when={entry().state === "finished"}><Icon name="check" size={12} /></Show>}>
                     <span class="am-live-dot" aria-hidden="true" />
                   </Show>
-                  <span class="am-tab-t">{entry.latest.title || t("agentMode.draft.untitled")}</span>
+                  <span class="am-tab-t">{entry().latest.title || t("agentMode.draft.untitled")}</span>
                 </button>
               );
             }}
-          </For>
+          </Index>
         </div>
         <Show when={versions().length > 1}>
           <div class="seg am-vseg" role="group" aria-label={t("agentMode.draft.versionsAria")}>
-            <For each={versions()}>
+            <Index each={versions()}>
               {(_, i) => (
-                <button type="button" aria-pressed={i() === index()} onClick={() => setViewIndex(i() === versions().length - 1 ? null : i())}>
-                  {t("agentMode.draft.versionShort", { n: i() + 1 })}
+                <button type="button" aria-pressed={i === index()} onClick={() => setViewIndex(i === versions().length - 1 ? null : i)}>
+                  {t("agentMode.draft.versionShort", { n: i + 1 })}
                 </button>
               )}
-            </For>
+            </Index>
           </div>
         </Show>
         <span class="am-sp" />
@@ -208,18 +213,21 @@ export function DraftPanel(props: DraftPanelProps) {
           <Show when={version().title}>
             <div class="am-sheet-title">{version().title}</div>
           </Show>
-          <For each={version().blocks}>
+          {/* Positional rows: the streamed line updates in place. */}
+          <Index each={version().blocks}>
             {(block, i) => {
-              const speaker = () => (block.type === "action" ? "" : block.type === "character" ? block.text.trim().toUpperCase() : speakerAt(version().blocks, i()));
+              const speaker = () => speakers()[i] ?? "";
               const tint = () => (speaker() ? { "--char": props.colorOf(speaker()) } : {});
-              const last = () => i() === version().blocks.length - 1;
+              const last = () => i === version().blocks.length - 1;
               return (
                 <div
-                  class={`am-b am-b-${block.type}`}
-                  classList={{ "is-chg": changed().has(i()) }}
+                  class={`am-b am-b-${block().type}`}
+                  classList={{ "is-chg": changed().has(i) }}
                   style={tint()}
                 >
-                  {block.type === "action" ? block.text : <span class="am-m">{block.text}</span>}
+                  <Show when={block().type !== "action"} fallback={block().text}>
+                    <span class="am-m">{block().text}</span>
+                  </Show>
                   <Show when={streaming() && last()}>
                     <span class="am-caret" aria-hidden="true" />
                     <span class="am-wtag" aria-hidden="true">
@@ -230,7 +238,7 @@ export function DraftPanel(props: DraftPanelProps) {
                 </div>
               );
             }}
-          </For>
+          </Index>
           <Show when={version().blocks.length === 0}>
             <div class="am-sheet-empty">
               <span class="am-caret" aria-hidden="true" />

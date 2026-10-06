@@ -1,4 +1,4 @@
-import { For, Match, Show, Switch, createMemo, createSignal } from "solid-js";
+import { For, Index, Match, Show, Switch, createMemo, createSignal } from "solid-js";
 import { Icon } from "@agentz/kit/ui";
 import { K, getPlatformAdapter } from "@agentz/kit/platform";
 import { pushToast } from "@agentz/kit/stores";
@@ -10,8 +10,9 @@ import { hasDraft, splitDraftSegments } from "../../lib/agent/drafts";
 import { sourceHost, type ClaimVerdict, type ProposalTarget } from "../../lib/agent/proposals";
 import { isAgentJob, type AgentJobId } from "../../lib/agent/jobs";
 import { formatClock, lengthStatus, type LengthRange } from "../../lib/lengthGoal";
-import { getCurrentLocale } from "@agentz/kit/i18n";
-import { clearProposalPreview, liveBlocks, showProposalPreview } from "./editorBridge";
+import { formatNumber } from "@agentz/kit/i18n";
+import type { AgentBlock } from "../../lib/agent/scriptText";
+import { clearProposalPreview, showProposalPreview } from "./editorBridge";
 import { optionMetrics, type OptionMetrics } from "./proposalMetrics";
 import { JOB_ICON } from "./jobLabels";
 import { agentSettings } from "../../stores/agentSettings";
@@ -57,8 +58,10 @@ export interface ItemContext {
   scriptId: string | null;
   range: LengthRange | null;
   wpm: number;
-  /** Bumps on every editor update. */
-  tick(): number;
+  /** Blocks of the script on the paper (incl. unsaved typing), settled
+   *  shortly after the last keystroke and read once for all cards; null
+   *  without an editor. */
+  blocks(): AgentBlock[] | null;
 }
 
 // ---------------------------------------------------------------- user
@@ -94,26 +97,28 @@ export function AssistantMessage(props: { item: Item<"assistant">; ctx?: ItemCon
     >
       {(list) => {
         // Drafts get their version ids in order of appearance in the message.
+        // Segments are parsed anew per token: rows are positional, so the
+        // streaming segment updates in place.
         const indexed = createMemo(() => {
           let n = 0;
           return list().map((segment) => (segment.kind === "draft" ? { segment, versionId: `${props.item.id}#${n++}` } : { segment, versionId: "" }));
         });
         return (
           <div class="ag-ai ag-ai-drafts" classList={{ "is-streaming": !!props.item.streaming }}>
-            <For each={indexed()}>
+            <Index each={indexed()}>
               {(entry, i) => (
                 <Show
-                  when={entry.segment.kind === "draft" && props.ctx}
+                  when={entry().segment.kind === "draft" && props.ctx}
                   fallback={
-                    <Show when={entry.segment.kind === "text"}>
-                      <Markdown text={(entry.segment as { text: string }).text} class={i() === indexed().length - 1 ? "is-last" : undefined} />
+                    <Show when={entry().segment.kind === "text"}>
+                      <Markdown text={(entry().segment as { text: string }).text} class={i === indexed().length - 1 ? "is-last" : undefined} />
                     </Show>
                   }
                 >
-                  {(ctx) => <DraftLink versionId={entry.versionId} ctx={ctx()} streaming={!!props.item.streaming} />}
+                  {(ctx) => <DraftLink versionId={entry().versionId} ctx={ctx()} streaming={!!props.item.streaming} />}
                 </Show>
               )}
-            </For>
+            </Index>
           </div>
         );
       }}
@@ -281,7 +286,7 @@ const LETTERS = ["A", "B", "C"];
 
 /** "1,1 s" in the UI language. */
 function fmtSec(sec: number): string {
-  return t("agent.metric.sec", { n: sec.toLocaleString(getCurrentLocale(), { minimumFractionDigits: 1, maximumFractionDigits: 1 }) });
+  return t("agent.metric.sec", { n: formatNumber(sec, { minimumFractionDigits: 1, maximumFractionDigits: 1 }) });
 }
 
 /** What a proposal does before it is inserted: runtime against the target
@@ -325,10 +330,11 @@ function MetricPills(props: { metrics: OptionMetrics; range: LengthRange | null 
 }
 
 export function ProposalCards(props: { item: Item<"proposal">; ctx: ItemContext }) {
-  // Numbers against the script as it is now (incl. unsaved typing).
+  // Numbers against the script as it is now (incl. unsaved typing). An
+  // inserted proposal shows none, so it does not follow the typing at all.
   const metrics = createMemo(() => {
-    props.ctx.tick();
-    const current = liveBlocks(props.ctx.scriptId);
+    if (props.item.applied !== null) return [];
+    const current = props.ctx.blocks();
     if (!current) return [];
     return props.item.proposal.options.map((_, i) => optionMetrics(current, props.item.proposal, i, props.ctx.wpm));
   });

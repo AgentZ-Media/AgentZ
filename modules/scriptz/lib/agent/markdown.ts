@@ -28,6 +28,15 @@ function safeHref(raw: string): string | null {
   }
 }
 
+// Sticky: matched at the scan position without copying the rest of the line.
+const LINK_AT = /\[([^\]\n]+)\]\(([^)\s]+)\)/y;
+const URL_AT = /https?:\/\/[^\s<>()]+[^\s<>().,;:!?"'»“”]/y;
+
+function matchAt(re: RegExp, src: string, i: number): RegExpExecArray | null {
+  re.lastIndex = i;
+  return re.exec(src);
+}
+
 /** Inline parser: scans left to right, longest delimiters first. */
 export function parseInline(src: string): Inline[] {
   const out: Inline[] = [];
@@ -38,14 +47,14 @@ export function parseInline(src: string): Inline[] {
   };
   let i = 0;
   while (i < src.length) {
-    const rest = src.slice(i);
-    if (rest.startsWith("\n")) {
+    const c = src[i];
+    if (c === "\n") {
       flush();
       out.push({ t: "br" });
       i += 1;
       continue;
     }
-    if (rest[0] === "`") {
+    if (c === "`") {
       const end = src.indexOf("`", i + 1);
       if (end > i + 1) {
         flush();
@@ -54,8 +63,8 @@ export function parseInline(src: string): Inline[] {
         continue;
       }
     }
-    if (rest.startsWith("**") || rest.startsWith("__")) {
-      const delim = rest.slice(0, 2);
+    if (src.startsWith("**", i) || src.startsWith("__", i)) {
+      const delim = src.slice(i, i + 2);
       const end = src.indexOf(delim, i + 2);
       if (end > i + 2) {
         flush();
@@ -64,20 +73,20 @@ export function parseInline(src: string): Inline[] {
         continue;
       }
     }
-    if ((rest[0] === "*" || rest[0] === "_") && rest[1] && rest[1] !== " " && rest[1] !== rest[0]) {
-      const delim = rest[0];
-      const end = src.indexOf(delim, i + 1);
+    const next = src[i + 1];
+    if ((c === "*" || c === "_") && next && next !== " " && next !== c) {
+      const end = src.indexOf(c, i + 1);
       // `_` inside words (snake_case) is not emphasis.
       const prev = src[i - 1] ?? " ";
-      if (end > i + 1 && src[end - 1] !== " " && !(delim === "_" && /\w/.test(prev))) {
+      if (end > i + 1 && src[end - 1] !== " " && !(c === "_" && /\w/.test(prev))) {
         flush();
         out.push({ t: "italic", c: parseInline(src.slice(i + 1, end)) });
         i = end + 1;
         continue;
       }
     }
-    if (rest[0] === "[") {
-      const m = /^\[([^\]\n]+)\]\(([^)\s]+)\)/.exec(rest);
+    if (c === "[") {
+      const m = matchAt(LINK_AT, src, i);
       const href = m ? safeHref(m[2]) : null;
       if (m && href) {
         flush();
@@ -86,8 +95,8 @@ export function parseInline(src: string): Inline[] {
         continue;
       }
     }
-    if (rest.startsWith("https://") || rest.startsWith("http://")) {
-      const m = /^https?:\/\/[^\s<>()]+[^\s<>().,;:!?"'»“”]/.exec(rest);
+    if (c === "h" && (src.startsWith("https://", i) || src.startsWith("http://", i))) {
+      const m = matchAt(URL_AT, src, i);
       const href = m ? safeHref(m[0]) : null;
       if (m && href) {
         flush();
@@ -96,7 +105,7 @@ export function parseInline(src: string): Inline[] {
         continue;
       }
     }
-    buf += src[i];
+    buf += c;
     i += 1;
   }
   flush();

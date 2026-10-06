@@ -71,6 +71,10 @@ export function installHighlight(
   getCharacters: () => ScriptCharacter[],
 ): HighlightHandle {
   let lastApplied = new WeakMap<HTMLElement, string>();
+  // The paper colour only changes with theme / dark paper, and those call
+  // refresh(). Reading it per keystroke would force a style recalculation
+  // right after Lexical's DOM write.
+  let paper = currentPaper();
 
   const apply = () => {
     const chars = getCharacters();
@@ -82,17 +86,14 @@ export function installHighlight(
       colorByName.set(c.name.toUpperCase(), c.color);
     }
 
-    // Read the current paper colour at apply time. Theme / dark-paper
-    // changes call refresh(), so once per run is enough.
-    const paper = currentPaper();
-
     editor.getEditorState().read(() => {
       const children = $getRoot().getChildren();
-      // Same rule as the PDF and the export preview (lib/tint.ts).
-      const speakers = tintSpeakers(children.map((child) => ({
-        kind: tintKindOf(child.getType()),
-        text: child.getTextContent(),
-      })));
+      // Same rule as the PDF and the export preview (lib/tint.ts). Only
+      // character names matter for it, so only their text is read.
+      const speakers = tintSpeakers(children.map((child) => {
+        const kind = tintKindOf(child.getType());
+        return { kind, text: kind === "character" ? child.getTextContent() : "" };
+      }));
       children.forEach((child, index) => {
         if (!TINT_BLOCKS.has(child.getType())) return;
         const dom = editor.getElementByKey(child.getKey()) as HTMLElement | null;
@@ -114,7 +115,9 @@ export function installHighlight(
 
   // Initial pass after mount — give Lexical a frame to render the DOM.
   const raf = requestAnimationFrame(apply);
-  const teardownUpdate = editor.registerUpdateListener(() => {
+  // Selection-only updates (arrow keys, clicks) change no tint.
+  const teardownUpdate = editor.registerUpdateListener(({ dirtyElements, dirtyLeaves }) => {
+    if (dirtyElements.size === 0 && dirtyLeaves.size === 0) return;
     apply();
   });
 
@@ -125,6 +128,9 @@ export function installHighlight(
       // Drop refs so GC can reclaim DOM nodes once detached.
       lastApplied = new WeakMap();
     },
-    refresh: apply,
+    refresh: () => {
+      paper = currentPaper();
+      apply();
+    },
   };
 }

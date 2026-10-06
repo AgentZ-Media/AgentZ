@@ -1,4 +1,4 @@
-import { For, Show, createEffect, createMemo, createSignal, onCleanup } from "solid-js";
+import { For, Index, Show, createEffect, createMemo, createSignal, onCleanup } from "solid-js";
 import { Icon } from "@agentz/kit/ui";
 import { api } from "../../lib/api";
 import { formatClock, formatRange, lengthStatus, type LengthRange } from "../../lib/lengthGoal";
@@ -12,7 +12,7 @@ import { agentSettings } from "../../stores/agentSettings";
 import type { ScriptCharacter, ScriptStatus } from "../../lib/types";
 import { K } from "@agentz/kit/platform";
 import { ideasStore } from "../../stores/ideas";
-import { getCurrentLocale } from "@agentz/kit/i18n";
+import { formatDate, formatNumber } from "@agentz/kit/i18n";
 import { t, tPlural } from "../../i18n";
 import { stageLabel } from "./stageActions";
 import { sinceBucket, type LiveStats } from "./timelineMath";
@@ -90,8 +90,8 @@ export function Inspector(props: InspectorProps) {
     const d = new Date(ms);
     const sameDay = d.toDateString() === new Date(now()).toDateString();
     return sameDay
-      ? d.toLocaleTimeString(getCurrentLocale(), { hour: "2-digit", minute: "2-digit" })
-      : d.toLocaleDateString(getCurrentLocale(), { day: "numeric", month: "short" });
+      ? formatDate(d, { hour: "2-digit", minute: "2-digit" })
+      : formatDate(d, { day: "numeric", month: "short" });
   };
 
   const lastLabel = () => {
@@ -139,10 +139,10 @@ export function Inspector(props: InspectorProps) {
   });
 
   const emptyParts = () => t("script.insp.castEmpty").split("{block}");
-  const fmtNum = (n: number) => n.toLocaleString(getCurrentLocale());
+  const fmtNum = (n: number) => formatNumber(n);
   // "52 %" in German, "52%" in English.
   const fmtPct = (n: number) =>
-    (n / 100).toLocaleString(getCurrentLocale(), { style: "percent", maximumFractionDigits: 0 });
+    formatNumber(n / 100, { style: "percent", maximumFractionDigits: 0 });
 
   return (
     <aside class="ss-insp" aria-label={t("script.insp.aria")}>
@@ -201,30 +201,31 @@ export function Inspector(props: InspectorProps) {
             </p>
           }
         >
-          <For each={props.stats.cast}>
+          {/* By position: the cast is recomputed on every edit pause. */}
+          <Index each={props.stats.cast}>
             {(c) => (
               <>
-                <div class="ss-crow" style={{ "--c": colorOf(c.name) }}>
+                <div class="ss-crow" style={{ "--c": colorOf(c().name) }}>
                   <button
                     type="button"
                     class="ss-sw scriptz-color-picker-trigger"
-                    title={t("charDropdown.colorAria", { name: c.name })}
-                    aria-label={t("charDropdown.colorAria", { name: c.name })}
+                    title={t("charDropdown.colorAria", { name: c().name })}
+                    aria-label={t("charDropdown.colorAria", { name: c().name })}
                     onMouseDown={(e) => e.preventDefault()}
                     onClick={(e) => {
                       const r = e.currentTarget.getBoundingClientRect();
-                      props.onOpenColorPicker(c.name, { x: r.left - 232, y: r.top - 8 });
+                      props.onOpenColorPicker(c().name, { x: r.left - 232, y: r.top - 8 });
                     }}
                   />
-                  <span class="ss-nm">{c.name}</span>
-                  <span class="ss-pc">{fmtPct(c.pct)}</span>
+                  <span class="ss-nm">{c().name}</span>
+                  <span class="ss-pc">{fmtPct(c().pct)}</span>
                 </div>
-                <div class="ss-crow-bar" style={{ "--c": colorOf(c.name) }}>
-                  <i style={{ width: `${c.pct}%` }} />
+                <div class="ss-crow-bar" style={{ "--c": colorOf(c().name) }}>
+                  <i style={{ width: `${c().pct}%` }} />
                 </div>
               </>
             )}
-          </For>
+          </Index>
         </Show>
       </section>
 

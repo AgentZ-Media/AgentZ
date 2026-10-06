@@ -3,7 +3,7 @@ import { api } from "../../lib/api";
 import { extractBlocks, extractTeleprompterText } from "../../lib/lex";
 import { getPlatformAdapter } from "@agentz/kit/platform";
 import { requireSuccessfulFlush } from "@agentz/kit/lib";
-import { scriptsBus } from "../../lib/scriptsBus";
+import { scriptSavedBus, scriptsBus } from "../../lib/scriptsBus";
 import { defaultScriptzFilename } from "../../lib/scriptzFile";
 import { exportScriptsToPdf, pdfFilenames } from "../../lib/exportSelection";
 import { settingsStore } from "../../stores/settings";
@@ -48,7 +48,7 @@ export function ExportDialog() {
   // Live preview: follow saves (autosave, rename, colours) while open.
   createEffect(
     on(
-      scriptsBus.version,
+      [scriptsBus.version, scriptSavedBus.version],
       () => {
         const id = previewId();
         if (id && script()?.id === id) void load(id, false);

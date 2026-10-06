@@ -1,5 +1,6 @@
 import { For, Show, createEffect, createMemo, createSignal, on, onCleanup, type Accessor } from "solid-js";
 import type { LexicalEditor } from "lexical";
+import { sameData } from "@agentz/kit/lib";
 import type { Claim, ClaimVerdict } from "../../lib/agent/proposals";
 import { agentStore, type ChatSession } from "../../stores/agent";
 import { t } from "../../i18n";
@@ -8,7 +9,7 @@ export interface ClaimMarksProps {
   scriptId: string;
   editor: Accessor<LexicalEditor | null>;
   sheet: Accessor<HTMLElement | undefined>;
-  /** Bumps on every editor update (text may have moved). */
+  /** Bumps on every content change (text may have moved). */
   tick: Accessor<number>;
   /** Only while the chat is open. */
   active: Accessor<boolean>;
@@ -40,35 +41,49 @@ function highlightApi(): { registry: HighlightRegistry; Highlight: HighlightCtor
 
 const norm = (text: string) => text.replace(/\s+/g, " ").trim().toLowerCase();
 
-/** Finds `quote` inside a block element and returns a DOM range over it
- *  (whitespace and case are ignored). */
-export function findQuoteRange(el: HTMLElement, quote: string): Range | null {
-  const wanted = norm(quote.replace(/^["„“”']+|["„“”']+$/g, ""));
-  if (wanted.length < 3) return null;
-  // Flatten the text nodes (lower case, single spaces) and remember for
-  // every flattened character where it came from.
+/** The text of a block, lower case with single spaces, and for every
+ *  flattened character the text node and offset it came from (parallel
+ *  arrays: no object per character). */
+export interface FlatText {
+  flat: string;
+  nodes: Text[];
+  offsets: number[];
+}
+
+export function flattenText(el: HTMLElement): FlatText {
   const walker = document.createTreeWalker(el, NodeFilter.SHOW_TEXT);
   let flat = "";
   let lastSpace = true;
-  const offsets: Array<{ node: Text; offset: number }> = [];
+  const nodes: Text[] = [];
+  const offsets: number[] = [];
   for (let node = walker.nextNode() as Text | null; node; node = walker.nextNode() as Text | null) {
     const value = node.data;
     for (let i = 0; i < value.length; i++) {
       const space = /\s/.test(value[i]);
       if (space && lastSpace) continue;
       flat += space ? " " : value[i].toLowerCase();
-      offsets.push({ node, offset: i });
+      nodes.push(node);
+      offsets.push(i);
       lastSpace = space;
     }
   }
+  return { flat, nodes, offsets };
+}
+
+/** Finds `quote` inside a block element and returns a DOM range over it
+ *  (whitespace and case are ignored). Pass `text` when several quotes are
+ *  searched in the same block. */
+export function findQuoteRange(el: HTMLElement, quote: string, text?: FlatText): Range | null {
+  const wanted = norm(quote.replace(/^["„“”']+|["„“”']+$/g, ""));
+  if (wanted.length < 3) return null;
+  const { flat, nodes, offsets } = text ?? flattenText(el);
   const at = flat.indexOf(wanted);
   if (at < 0) return null;
-  const from = offsets[at];
-  const to = offsets[at + wanted.length - 1];
-  if (!from || !to) return null;
+  const end = at + wanted.length - 1;
+  if (end >= nodes.length) return null;
   const range = document.createRange();
-  range.setStart(from.node, from.offset);
-  range.setEnd(to.node, to.offset + 1);
+  range.setStart(nodes[at], offsets[at]);
+  range.setEnd(nodes[end], offsets[end] + 1);
   return range;
 }
 
@@ -79,7 +94,7 @@ export function findQuoteRange(el: HTMLElement, quote: string): Range | null {
  * where the web view lacks it, only the numbers are shown.
  */
 export function ClaimMarks(props: ClaimMarksProps) {
-  const [dots, setDots] = createSignal<Dot[]>([]);
+  const [dots, setDots] = createSignal<Dot[]>([], { equals: sameData });
   // The script's chat, resolved like the panel does (one live object per
   // chat row, shared with the agent mode).
   const [chat, setChat] = createSignal<ChatSession | null>(null);
@@ -121,9 +136,16 @@ export function ClaimMarks(props: ClaimMarksProps) {
     const byVerdict = new Map<ClaimVerdict, Range[]>();
     const next: Dot[] = [];
     const blocks = Array.from(root.querySelectorAll<HTMLElement>(":scope > .block"));
+    // Each block is flattened at most once per measure, not once per claim.
+    const texts = new Map<HTMLElement, FlatText>();
+    const textOf = (block: HTMLElement) => {
+      let text = texts.get(block);
+      if (!text) texts.set(block, (text = flattenText(block)));
+      return text;
+    };
     list.forEach((claim, index) => {
       for (const block of blocks) {
-        const range = findQuoteRange(block, claim.quote);
+        const range = findQuoteRange(block, claim.quote, textOf(block));
         if (!range) continue;
         const ranges = byVerdict.get(claim.verdict) ?? [];
         ranges.push(range);

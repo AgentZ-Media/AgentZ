@@ -46,6 +46,8 @@ const LAUNCH_CONFIG = ['web_search="live"', ...DISABLED_FEATURES.map((f) => `fea
 
 /** Abort a turn that runs away (the model can loop). */
 const TURN_TIMEOUT_MS = 6 * 60 * 1000;
+/** Codex acknowledges `turn/start` at once; the turn itself runs longer. */
+const TURN_START_TIMEOUT_MS = 30_000;
 
 const CLIENT_INFO = { name: "scriptz", title: "ScriptZ", version: "1.0.0" };
 
@@ -100,7 +102,7 @@ class CodexThread implements AgentThread {
         summary: "detailed",
         approvalPolicy: "never",
         sandboxPolicy: { type: "readOnly" },
-      }).then((result) => {
+      }, TURN_START_TIMEOUT_MS).then((result) => {
         const turn = obj(result.turn);
         if (typeof turn.id === "string") waiter.turnId = turn.id;
       }).catch((error: unknown) => {

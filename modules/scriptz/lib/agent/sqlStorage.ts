@@ -1,6 +1,6 @@
 // Local SQL implementation of agent persistence. No I/O runs on import.
 import { getDb } from "../db";
-import { parseItems, type ChatRecord, type LearnedState } from "./chats";
+import { parseItems, type ChatRecord, type LearnedState, type SessionHead } from "./chats";
 import type { MemoryEntry, MemoryKind, MemorySource, MemoryScope } from "./memory";
 import type { AgentStorage } from "./storage";
 
@@ -52,7 +52,7 @@ async function getChat(id: string): Promise<ChatRecord | null> {
 
 /** Upserts a chat. Kind, provider and creation time stay as first saved; the
  *  script link may change (a session handed to a script). */
-async function saveChat(chat: ChatRecord): Promise<void> {
+async function saveChat(chat: ChatRecord, itemsJson?: string): Promise<void> {
   const db = await getDb();
   await db.execute(
     `INSERT INTO agent_chats (id, script_id, provider, thread_id, items_json, created_at, updated_at, kind, title, folder_id)
@@ -61,7 +61,7 @@ async function saveChat(chat: ChatRecord): Promise<void> {
        items_json = excluded.items_json, updated_at = excluded.updated_at,
        title = excluded.title, folder_id = excluded.folder_id`,
     [
-      chat.id, chat.scriptId, chat.provider, chat.threadId, JSON.stringify(chat.items),
+      chat.id, chat.scriptId, chat.provider, chat.threadId, itemsJson ?? JSON.stringify(chat.items),
       chat.createdAt, chat.updatedAt, chat.kind, chat.title, chat.folderId,
     ],
   );
@@ -73,18 +73,54 @@ async function deleteChat(id: string): Promise<void> {
   await db.execute(`DELETE FROM agent_chats WHERE id = $1`, [id]);
 }
 
+const SESSION_FILTER = `kind = 'session' AND items_json != '[]'
+       AND ($3 = '' OR title LIKE $4 ESCAPE '\\' OR items_json LIKE $4 ESCAPE '\\')`;
+
+/** LIKE pattern for a search; its own wildcards are escaped. */
+function likePattern(query: string): string {
+  return `%${query.replace(/[\\%_]/g, (c) => `\\${c}`)}%`;
+}
+
 /** Sessions with at least one item, newest first; LIKE wildcards in the
  *  query are escaped. */
 async function listSessions({ limit, offset, query }: { limit: number; offset: number; query: string }): Promise<ChatRecord[]> {
   const db = await getDb();
-  const pattern = `%${query.replace(/[\\%_]/g, (c) => `\\${c}`)}%`;
   const rows = await db.select<ChatRow[]>(
-    `SELECT * FROM agent_chats WHERE kind = 'session' AND items_json != '[]'
-       AND ($3 = '' OR title LIKE $4 ESCAPE '\\' OR items_json LIKE $4 ESCAPE '\\')
+    `SELECT * FROM agent_chats WHERE ${SESSION_FILTER}
      ORDER BY updated_at DESC, id LIMIT $1 OFFSET $2`,
-    [limit, offset, query, pattern],
+    [limit, offset, query, likePattern(query)],
   );
   return rows.map(rowToChat);
+}
+
+/** The rows of `listSessions` without `items_json`; `size` is its length,
+ *  so a cached summary can tell a changed row apart. */
+async function listSessionHeads({ limit, offset, query }: { limit: number; offset: number; query: string }): Promise<SessionHead[]> {
+  const db = await getDb();
+  const rows = await db.select<{ id: string; title: string | null; folder_id: string | null; script_id: string | null; updated_at: number; size: number }[]>(
+    `SELECT id, title, folder_id, script_id, updated_at, length(items_json) AS size FROM agent_chats WHERE ${SESSION_FILTER}
+     ORDER BY updated_at DESC, id LIMIT $1 OFFSET $2`,
+    [limit, offset, query, likePattern(query)],
+  );
+  return rows.map((row) => ({
+    id: row.id, title: row.title, folderId: row.folder_id, scriptId: row.script_id, updatedAt: row.updated_at, size: row.size,
+  }));
+}
+
+/** Chats by id, in chunks so the bound parameters stay few. */
+async function getChats(ids: readonly string[]): Promise<ChatRecord[]> {
+  if (ids.length === 0) return [];
+  const db = await getDb();
+  const out: ChatRecord[] = [];
+  for (let start = 0; start < ids.length; start += 100) {
+    const chunk = ids.slice(start, start + 100);
+    const rows = await db.select<ChatRow[]>(
+      `SELECT * FROM agent_chats WHERE id IN (${chunk.map((_, i) => `$${i + 1}`).join(", ")})`,
+      chunk,
+    );
+    out.push(...rows.map(rowToChat));
+  }
+  return out;
 }
 
 /** Reads what was last learned from this script, or null when absent. The
@@ -211,7 +247,7 @@ async function clearMemory(): Promise<void> {
 }
 
 export const sqlAgentStorage: AgentStorage = {
-  latestChat, getChat, saveChat, deleteChat, listSessions, learnedState, markLearned,
+  latestChat, getChat, saveChat, deleteChat, listSessions, listSessionHeads, getChats, learnedState, markLearned,
   listMemory, getMemoryEntry, countMemoryScope, insertMemory,
   updateMemory, deleteMemory, restoreMemory, clearMemory,
 };
