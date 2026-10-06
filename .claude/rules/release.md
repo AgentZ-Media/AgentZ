@@ -22,7 +22,7 @@ ausgeben oder committen, außerhalb des Repos gesichert halten.
 ## Checkliste
 
 1. Bei Speicher- oder Migrationsänderungen vorher die DB sichern (siehe
-   `apps/<app>/CLAUDE.md`).
+   `apps/<app>/AGENTS.md`).
 2. `pnpm release:bump <app> <version>`: setzt App-`package.json`,
    `tauri.conf.json`, `Cargo.toml` und Root-`Cargo.lock` (Offline-Cargo-Update,
    bei Fehler alles zurück) und legt `docs/release-notes/<app>/v<version>.md`

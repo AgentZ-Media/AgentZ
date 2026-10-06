@@ -38,7 +38,7 @@ export function setBlockType(editor: LexicalEditor, target: BlockType): boolean 
 
     const fresh = BLOCK_FACTORY[target]();
     const text = block.getTextContent();
-    // CLAUDE.md invariant: empty blocks must stay CHILDLESS — Lexical's
+    // AGENTS.md invariant: empty blocks must stay CHILDLESS — Lexical's
     // reconciler injects a managed <br> placeholder and WebKit can place
     // the caret. Pre-seeding $createTextNode("") breaks caret placement.
     if (text.length > 0) {

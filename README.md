@@ -62,7 +62,7 @@ cargo check --workspace --locked
 CI runs all of these plus the frontend builds on every pull request.
 The development app uses the same data folder as the installed app - back up
 your database before working on storage or migrations
-(see [`apps/scriptz/CLAUDE.md`](apps/scriptz/CLAUDE.md)).
+(see [`apps/scriptz/AGENTS.md`](apps/scriptz/AGENTS.md)).
 
 ## New apps and releases
 

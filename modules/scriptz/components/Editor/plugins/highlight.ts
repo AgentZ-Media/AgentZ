@@ -1,6 +1,6 @@
 // Per-character tint for Charakter / Dialog / Parenthetical blocks.
 //
-// CLAUDE.md is strict about not mutating Lexical text-node state during
+// AGENTS.md is strict about not mutating Lexical text-node state during
 // keystrokes — but applying a CSS custom property on the rendered DOM
 // element (no Lexical state changes, no transforms) is safe. This plugin
 // runs after every reconcile and writes `--char-tint` onto the DOM

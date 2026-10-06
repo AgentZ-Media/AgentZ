@@ -165,7 +165,7 @@ export function installBlockDropdown(
         if (block.getType() === type) return;
         const next = BLOCK_FACTORY[type]();
         // Move all children into the new block (preserve text/format).
-        // CLAUDE.md: empty blocks must stay CHILDLESS — Lexical injects a
+        // AGENTS.md: empty blocks must stay CHILDLESS — Lexical injects a
         // managed <br> placeholder; pre-seeding $createTextNode("") breaks
         // caret placement in WebKit.
         for (const child of block.getChildren()) {

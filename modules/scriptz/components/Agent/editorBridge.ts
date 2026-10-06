@@ -73,7 +73,7 @@ export function readSelection(scriptId: string | null): BlockSelection | null {
 
 function buildNode(block: AgentBlock): BaseScriptzNode {
   const node = BLOCK_FACTORY[`scriptz-${block.type}`]();
-  // Empty blocks stay childless (WebKit caret invariant, see CLAUDE.md).
+  // Empty blocks stay childless (WebKit caret invariant, see AGENTS.md).
   if (block.text) node.append($createTextNode(block.text));
   return node;
 }
