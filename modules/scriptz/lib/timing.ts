@@ -23,8 +23,8 @@
 // above it, also across action and parenthetical blocks in between. Action
 // segments carry `speaker: null`.
 
-import { extractBlocks } from "./lex";
-import { SECONDS_PER_DIRECTION_BLOCK, wordCount } from "./runtime";
+import { extractBlocks, wordCount } from "./lex";
+import { SECONDS_PER_DIRECTION_BLOCK } from "./runtime";
 
 export type TimingBlock = {
   /** Lexical node key (editor callers) - passed through to the segment so

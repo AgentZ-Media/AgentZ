@@ -46,7 +46,6 @@ export function SessionsDialog(props: { open: boolean; onClose(): void; onDelete
     searchTimer = setTimeout(() => { if (props.open) void load(false); }, 180);
   }, { defer: true }));
   createEffect(on(() => props.open, (open) => { if (!open) { setQuery(""); setLoaded(false); } }));
-  const shown = list;
   const open = (id: string) => {
     props.onClose();
     void navStore.openAgent(id);
@@ -72,10 +71,10 @@ export function SessionsDialog(props: { open: boolean; onClose(): void; onDelete
         />
       </label>
       <div class="am-sessions-list">
-        <Show when={loaded() && shown().length === 0}>
-          <div class="am-sessions-empty">{list().length === 0 ? t("agentMode.sessions.empty") : t("agentMode.sessions.noMatch")}</div>
+        <Show when={loaded() && list().length === 0}>
+          <div class="am-sessions-empty">{query().trim() ? t("agentMode.sessions.noMatch") : t("agentMode.sessions.empty")}</div>
         </Show>
-        <For each={shown()}>
+        <For each={list()}>
           {(s) => (
             <div class="am-sessions-row">
               <button type="button" class="am-rs" onClick={() => open(s.id)}>

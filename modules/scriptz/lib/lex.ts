@@ -203,6 +203,14 @@ export function jaccardSimilarity(a: Set<string>, b: Set<string>): number {
   return inter / union;
 }
 
+/** Whitespace-separated word count. The one tokenization behind the
+ *  word count, the runtime, the timeline and drafts. */
+export function wordCount(text: string): number {
+  const t = text.trim();
+  if (!t) return 0;
+  return t.split(/\s+/).filter(Boolean).length;
+}
+
 /** Dialog words per character - same algorithm as the Inspector cast
  *  shares: words from `scriptz-dialog` blocks are assigned to the
  *  most recently preceding `scriptz-character` block (parenthetical
@@ -222,8 +230,7 @@ export function dialogWordsByCharacter(contentJson: string): Record<string, numb
       last = b.text.trim().toUpperCase();
       if (last && !(last in out)) out[last] = 0;
     } else if (b.kind === "scriptz-dialog" && last) {
-      const w = b.text.trim().split(/\s+/).filter(Boolean).length;
-      out[last] = (out[last] ?? 0) + w;
+      out[last] = (out[last] ?? 0) + wordCount(b.text);
     }
   }
   return out;
