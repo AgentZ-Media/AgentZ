@@ -11,10 +11,30 @@ import { buildPdfBytes } from "./exportPdf";
 import { pdfTitleDetails } from "./pdfDetails";
 import { t } from "../i18n";
 
-export function sanitizePdfFilename(title: string): string {
+function sanitizeTitle(title: string): string {
   const fallback = t("common.untitled");
   const cleaned = (title || fallback).replace(/[\\/:*?"<>|]+/g, "_").trim();
-  return `${cleaned || fallback}.pdf`;
+  return cleaned || fallback;
+}
+
+/** Hands out one PDF file name per title, in order. Repeated titles get
+ *  " (2)", " (3)" so no file overwrites another (compared without case,
+ *  like the macOS and Windows file systems). */
+export function createPdfNamer(): (title: string) => string {
+  const used = new Set<string>();
+  return (title) => {
+    const base = sanitizeTitle(title);
+    let name = `${base}.pdf`;
+    for (let n = 2; used.has(name.toLowerCase()); n++) name = `${base} (${n}).pdf`;
+    used.add(name.toLowerCase());
+    return name;
+  };
+}
+
+/** File names of a multi export, the same ones `exportScriptsToPdf` writes. */
+export function pdfFilenames(titles: readonly string[]): string[] {
+  const name = createPdfNamer();
+  return titles.map(name);
 }
 
 export interface PdfExportOptions {
@@ -40,6 +60,7 @@ export async function exportScriptsToPdf(
 
   const folders = opts.includeTitlePage ? await storage.listFolders().catch(() => []) : [];
   const date = new Date();
+  const nameFor = createPdfNamer();
   const buildFor = async (id: string) => {
     const s = await storage.getScript(id);
     const titleDetails = opts.includeTitlePage
@@ -54,7 +75,7 @@ export async function exportScriptsToPdf(
       { title: s.title, contentJson: s.content_json, characters: s.characters ?? [] },
       { includeHighlighting: opts.includeHighlighting, includeTitlePage: opts.includeTitlePage, titleDetails },
     );
-    return { name: sanitizePdfFilename(s.title), bytes };
+    return { name: nameFor(s.title), bytes };
   };
 
   // Desktop: pick a folder once, write one file per script.

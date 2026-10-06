@@ -25,7 +25,11 @@ vi.mock("../../../lib/exportSelection", async (importOriginal) => ({
 const originalAdapter = getTestStorage();
 let stored = "first";
 const exportPdf = vi.fn().mockResolvedValue({ cancelled: true });
-const getScript = vi.fn(async (id: string): Promise<Script> => script(id, id === "s2" ? "second script" : stored));
+let failing = new Set<string>();
+const getScript = vi.fn(async (id: string): Promise<Script> => {
+  if (failing.has(id)) throw new Error("disk busy");
+  return script(id, id === "s2" ? "second script" : stored);
+});
 const settings = new Map<string, string>();
 let stopSettings: () => void;
 
@@ -72,6 +76,7 @@ afterEach(() => {
   getScript.mockClear();
   exportPdf.mockClear();
   vi.mocked(exportScriptsToPdf).mockClear();
+  failing = new Set();
 });
 
 const tick = () => new Promise((r) => setTimeout(r, 0));
@@ -233,5 +238,23 @@ describe("ExportDialog", () => {
     expect(files[1].getAttribute("aria-checked")).toBe("true");
     expect(document.body.textContent).toContain("second script");
     expect(document.body.textContent).toContain(t("exportDialog.many.position", { n: 2, total: 2 }));
+  });
+
+  it("clears a failed preview of a selection export and retries it on the next pick", async () => {
+    await settingsStore.setExportTitlePageDefault(false);
+    stored = "first script";
+    failing = new Set(["s2"]);
+    render(() => <ExportDialog />);
+    uiStore.openExportMany(["s1", "s2"]);
+    await tick();
+    const files = within(screen.getByRole("radiogroup", { name: t("exportDialog.many.aria") })).getAllByRole("radio");
+    fireEvent.click(files[1]);
+    await tick();
+    expect(document.body.textContent).not.toContain("first script");
+    expect(uiStore.exportScriptIds()).toEqual(["s1", "s2"]);
+    failing = new Set();
+    fireEvent.click(files[1]);
+    await tick();
+    expect(document.body.textContent).toContain("second script");
   });
 });

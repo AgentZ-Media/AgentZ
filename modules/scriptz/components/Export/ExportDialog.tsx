@@ -5,7 +5,7 @@ import { getPlatformAdapter } from "@agentz/kit/platform";
 import { requireSuccessfulFlush } from "@agentz/kit/lib";
 import { scriptsBus } from "../../lib/scriptsBus";
 import { defaultScriptzFilename } from "../../lib/scriptzFile";
-import { exportScriptsToPdf, sanitizePdfFilename } from "../../lib/exportSelection";
+import { exportScriptsToPdf, pdfFilenames } from "../../lib/exportSelection";
 import { settingsStore } from "../../stores/settings";
 import { pushToast } from "@agentz/kit/stores";
 import { uiStore } from "../../stores/ui";
@@ -76,6 +76,8 @@ export function ExportDialog() {
       if (seq !== loadSeq || previewId() !== id) return;
       pushToast(t("export.toast.failed", { message: String(err) }), "error");
       if (opening) uiStore.closeExport();
+      // Never show another script's pages under the chosen file.
+      else setScript(null);
     }
   }
 
@@ -91,8 +93,9 @@ export function ExportDialog() {
     if (id) void load(id, true);
   }
 
+  /** Picking the shown file again retries a preview that failed to load. */
   function showPreview(i: number) {
-    if (i === previewIndex()) return;
+    if (i === previewIndex() && script()?.id === ids()[i]) return;
     setPreviewIndex(i);
     const id = previewId();
     if (id) void load(id, false);
@@ -138,7 +141,7 @@ export function ExportDialog() {
   /** File names of a multi export, titles from the library list. */
   const fileNames = createMemo(() => {
     const titles = new Map(library.scripts().map((s) => [s.id, s.title]));
-    return ids().map((id) => sanitizePdfFilename(titles.get(id) ?? ""));
+    return pdfFilenames(ids().map((id) => titles.get(id) ?? ""));
   });
 
   const fileName = () => {
