@@ -95,13 +95,11 @@ export function IdeasPage() {
 
   // ---- derived lists ----
   const {
-    scoped,
     counts,
     visible,
     groups,
     openCount,
     freshCount,
-    chipFolders,
     filtering,
     isOpen,
     paging,
@@ -110,7 +108,7 @@ export function IdeasPage() {
     groupById,
     ideaById,
     selectableIds,
-  } = createIdeasLists({ ideas, folders, activeFolder, openId, openQuery, now });
+  } = createIdeasLists({ ideas, activeFolder, openId, openQuery, now });
 
   // ---- selection ----
   // Outside the selection mode `selected` is just the primary row (the one
@@ -403,10 +401,7 @@ export function IdeasPage() {
 
           <IdeasToolbar
             folders={folders() ?? []}
-            chipFolders={chipFolders()}
-            total={scoped().length}
-            byFolder={counts().byFolder}
-            inbox={counts().inbox}
+            counts={counts()}
             activeFolder={activeFolder()}
             onFolder={setFolder}
             filterRef={(el) => (filterRef = el)}
