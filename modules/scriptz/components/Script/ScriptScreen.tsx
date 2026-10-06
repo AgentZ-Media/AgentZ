@@ -24,6 +24,7 @@ import { captureCursor, scriptViewCache, type CursorAddress } from "../../lib/sc
 import type { Folder, Script, ScriptCharacter } from "../../lib/types";
 import { navStore } from "../../stores/nav";
 import { settingsStore } from "../../stores/settings";
+import { defaultLengthRange } from "../Shell/libraryData";
 import { uiStore } from "../../stores/ui";
 import { createStatePersistence, pushToast } from "@agentz/kit/stores";
 import { t } from "../../i18n";
@@ -136,12 +137,7 @@ export function ScriptScreen(props: ScriptScreenProps) {
     if (!fid) return null;
     return folders.latest?.find((f) => f.id === fid) ?? null;
   });
-  const range = createMemo(() =>
-    resolveLengthRange(folder(), {
-      minSec: settingsStore.lengthMinDefaultSec(),
-      maxSec: settingsStore.lengthMaxDefaultSec(),
-    }),
-  );
+  const range = createMemo(() => resolveLengthRange(folder(), defaultLengthRange()));
   const rangeSource = createMemo<RangeSource | null>(() => {
     if (!range()) return null;
     const f = folder();
