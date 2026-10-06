@@ -9,7 +9,7 @@
 // WPM stays a live setting - it is NOT persisted, so a setting change takes
 // effect everywhere immediately without re-saving every script.
 
-import { extractBlocks, type ExtractedBlock } from "./lex";
+import { extractBlocks, wordCount, type ExtractedBlock } from "./lex";
 
 /** Input values of the runtime formula. Stored on save in the
  *  `dialog_word_count` and `direction_block_count` columns. */
@@ -40,14 +40,6 @@ function isDialogBlock(b: ExtractedBlock): boolean {
 
 function isDirectionBlock(b: ExtractedBlock): boolean {
   return b.kind === "scriptz-action";
-}
-
-/** Whitespace-separated word count. Shared with lib/timing.ts so the
- *  timeline and the total use the exact same tokenization. */
-export function wordCount(text: string): number {
-  const t = text.trim();
-  if (!t) return 0;
-  return t.split(/\s+/).filter(Boolean).length;
 }
 
 export function runtimeStatsFromBlocks(blocks: ExtractedBlock[]): RuntimeStats {

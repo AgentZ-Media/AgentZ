@@ -7,11 +7,8 @@
 // from them. Runtime numbers follow lib/runtime.ts exactly.
 
 import type { LengthRange } from "../../lib/lengthGoal";
-import {
-  MIN_RUNTIME_SEC,
-  SECONDS_PER_DIRECTION_BLOCK,
-  wordCount,
-} from "../../lib/runtime";
+import { wordCount } from "../../lib/lex";
+import { MIN_RUNTIME_SEC, SECONDS_PER_DIRECTION_BLOCK } from "../../lib/runtime";
 import type { TimelineSegment, TimingBlock } from "../../lib/timing";
 
 /** The three hook marks after the first line of dialog, by priority:
