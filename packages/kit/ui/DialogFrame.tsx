@@ -1,6 +1,6 @@
 import { JSX, Show, createEffect, onCleanup } from "solid-js";
 import { Portal } from "solid-js/web";
-import { FOCUSABLE, trapTab } from "./focusTrap";
+import { FOCUSABLE } from "./focusTrap";
 
 // Product-neutral dialog frame with nested-overlay, keyboard and focus handling.
 
@@ -43,7 +43,28 @@ export function DialogFrame(props: DialogFrameProps) {
       props.onClose();
       return;
     }
-    if (e.key === "Tab") trapTab(e, surface, focusables());
+    if (e.key !== "Tab") return;
+    const list = focusables();
+    if (list.length === 0) {
+      e.preventDefault();
+      return;
+    }
+    const first = list[0];
+    const last = list[list.length - 1];
+    const active = document.activeElement as HTMLElement | null;
+    if (!active || !surface.contains(active)) {
+      // Focus escaped (e.g. clicked the scrim) - pull it back in.
+      e.preventDefault();
+      (e.shiftKey ? last : first).focus();
+      return;
+    }
+    if (e.shiftKey && active === first) {
+      e.preventDefault();
+      last.focus();
+    } else if (!e.shiftKey && active === last) {
+      e.preventDefault();
+      first.focus();
+    }
   };
 
   let wasOpen = false;

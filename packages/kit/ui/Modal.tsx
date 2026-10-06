@@ -1,7 +1,7 @@
 import { JSX, Show, createEffect, onCleanup, onMount } from "solid-js";
 import { Portal } from "solid-js/web";
 import { t } from "../i18n";
-import { FOCUSABLE, trapTab } from "./focusTrap";
+import { FOCUSABLE } from "./focusTrap";
 import "./Modal.css";
 
 export interface ModalProps {
@@ -44,9 +44,31 @@ export function Modal(props: ModalProps) {
       return;
     }
     if (e.key === "Tab" && modalRef) {
-      const focusables = Array.from(modalRef.querySelectorAll<HTMLElement>(FOCUSABLE))
-        .filter((el) => !el.hasAttribute("disabled"));
-      trapTab(e, modalRef, focusables);
+      const focusables = Array.from(modalRef.querySelectorAll<HTMLElement>(FOCUSABLE)).filter((el) => !el.hasAttribute("disabled"));
+      if (focusables.length === 0) {
+        e.preventDefault();
+        return;
+      }
+      const first = focusables[0];
+      const last = focusables[focusables.length - 1];
+      // Single focusable: trap on it, no movement.
+      if (first === last) {
+        e.preventDefault();
+        first.focus();
+        return;
+      }
+      const active = document.activeElement as HTMLElement | null;
+      if (e.shiftKey) {
+        if (active === first || !modalRef.contains(active)) {
+          e.preventDefault();
+          last.focus();
+        }
+      } else {
+        if (active === last) {
+          e.preventDefault();
+          first.focus();
+        }
+      }
     }
   };
 

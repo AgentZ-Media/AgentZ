@@ -37,6 +37,18 @@ describe("product-neutral UI primitives", () => {
     expect(document.activeElement).toBe(close);
   });
 
+  it("leaves forward Tab inside a stacked modal to the browser", async () => {
+    render(() => <>
+      <Modal open title="Versions" onClose={() => {}}><button>Restore</button></Modal>
+      <Modal open label="Confirm" onClose={() => {}}><button data-testid="cancel">Cancel</button><button>OK</button></Modal>
+    </>);
+    const cancel = document.querySelector<HTMLElement>("[data-testid=cancel]")!;
+    await waitFor(() => expect(document.activeElement).not.toBe(document.body));
+    cancel.focus();
+    expect(fireEvent.keyDown(cancel, { key: "Tab" })).toBe(true);
+    expect(document.activeElement).toBe(cancel);
+  });
+
   it("lets a marked nested overlay consume Escape before the dialog", () => {
     const close = vi.fn();
     const result = render(() => <DialogFrame open label="Preferences" onClose={close}><div data-dialog-dismiss-layer>Picker</div></DialogFrame>);
