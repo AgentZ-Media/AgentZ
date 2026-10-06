@@ -5,7 +5,7 @@ import { ideasStore, startIdeasStore } from "../ideas";
 import { dailyStatsStore, startDailyStatsStore } from "../dailyStats";
 import { ideasBus } from "../../lib/ideasBus";
 import { dailyStatsBus } from "../../lib/dailyStatsBus";
-import { scriptsBus } from "../../lib/scriptsBus";
+import { scriptSavedBus, scriptsBus } from "../../lib/scriptsBus";
 import { library, startLibraryData } from "../../components/Shell/libraryData";
 import { navStore, startNavRuntime } from "../nav";
 import { flushAll, registerFlusher } from "@agentz/kit/lib";
@@ -49,8 +49,14 @@ describe("explicit singleton runtimes", () => {
     expect(loadDailyStats).toHaveBeenCalledTimes(1);
     expect(ideasStore.ideas.latest[0].id).toBe("idea");
     expect(dailyStatsStore.stats().wordsToday).toBe(7);
+    vi.useFakeTimers();
     ideasBus.bump();
     dailyStatsBus.bump();
+    dailyStatsBus.bump();
+    // A burst of saves reloads the stats once, after typing pauses.
+    expect(loadDailyStats).toHaveBeenCalledTimes(1);
+    await vi.advanceTimersByTimeAsync(1500);
+    vi.useRealTimers();
     await tick();
     expect(listIdeas).toHaveBeenCalledTimes(2);
     expect(loadDailyStats).toHaveBeenCalledTimes(2);
@@ -111,6 +117,47 @@ describe("explicit singleton runtimes", () => {
     expect(library.loaded()).toBe(true);
     expect(library.scriptsReady()).toBe(true);
     expect(listScripts).toHaveBeenCalledTimes(2);
+  });
+
+  it("patches a saved script in place and keeps unchanged rows across reloads", async () => {
+    const row = (id: string, updated: number) =>
+      ({ id, title: id, status: "writing", characters: [], updated_at: updated }) as unknown as ScriptSummary;
+    const listScripts = vi.fn().mockResolvedValue([row("a", 2), row("b", 1)]);
+    install({ listScripts, listFolders: vi.fn().mockResolvedValue([]) });
+    cleanups.push(startLibraryData());
+    await tick();
+    const [a, b] = library.scripts();
+    // An autosave moves its row to the front without a reload.
+    scriptSavedBus.emit(row("b", 3));
+    expect(listScripts).toHaveBeenCalledTimes(1);
+    expect(library.scripts().map((s) => s.id)).toEqual(["b", "a"]);
+    expect(library.script("a")).toBe(a);
+    expect(library.script("b")).not.toBe(b);
+    // A reload hands back the objects of rows that did not change.
+    const saved = library.script("b");
+    listScripts.mockResolvedValue([row("b", 3), row("a", 2)]);
+    scriptsBus.bump();
+    await tick();
+    expect(listScripts).toHaveBeenCalledTimes(2);
+    expect(library.script("a")).toBe(a);
+    expect(library.script("b")).toBe(saved);
+  });
+
+  it("keeps an autosave that lands while an older list is still loading", async () => {
+    const row = (id: string, updated: number) =>
+      ({ id, title: id, status: "writing", characters: [], updated_at: updated }) as unknown as ScriptSummary;
+    const listScripts = vi.fn().mockResolvedValue([row("a", 2), row("b", 1)]);
+    install({ listScripts, listFolders: vi.fn().mockResolvedValue([]) });
+    cleanups.push(startLibraryData());
+    await tick();
+    const slow = deferred<ScriptSummary[]>();
+    listScripts.mockReturnValueOnce(slow.promise);
+    scriptsBus.bump();
+    // The save commits after the list was read, and is announced first.
+    scriptSavedBus.emit(row("b", 5));
+    slow.resolve([row("a", 2), row("b", 1)]);
+    await tick();
+    expect(library.scripts().map((s) => [s.id, s.updated_at])).toEqual([["b", 5], ["a", 2]]);
   });
 
   it("does not apply settings from a disposed boot", async () => {

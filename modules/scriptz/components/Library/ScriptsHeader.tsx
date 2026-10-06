@@ -1,5 +1,5 @@
 import { For, Match, Show, Switch, type JSX } from "solid-js";
-import { getCurrentLocale } from "@agentz/kit/i18n";
+import { formatDate, formatNumber } from "@agentz/kit/i18n";
 import { clockNow } from "@agentz/kit/lib";
 import { Icon } from "@agentz/kit/ui";
 import { finalStageId, stageLabel } from "../../lib/stages";
@@ -25,7 +25,7 @@ function boldCount(text: string, display: string): JSX.Element {
   );
 }
 
-const fmtNum = (n: number) => n.toLocaleString(getCurrentLocale());
+const fmtNum = (n: number) => formatNumber(n);
 
 export interface WeekStats {
   /** Scripts that reached the last stage this week. */
@@ -58,7 +58,7 @@ function WeekDots(props: { values: (number | null)[] | undefined }) {
 /** Today's date above the overview title, in the user's language. Reads
  *  the shared minute clock, so it turns over at midnight. */
 function todayLabel(): string {
-  return new Intl.DateTimeFormat(getCurrentLocale(), { weekday: "long", day: "numeric", month: "long" }).format(new Date(clockNow()));
+  return formatDate(clockNow(), { weekday: "long", day: "numeric", month: "long" });
 }
 
 export interface ScriptsHeaderProps {

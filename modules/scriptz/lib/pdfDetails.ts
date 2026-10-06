@@ -3,7 +3,7 @@
 // Pure and translated, so lib/exportPdf.ts and the export dialog render the
 // same words.
 
-import { getCurrentLocale } from "@agentz/kit/i18n";
+import { formatDate } from "@agentz/kit/i18n";
 import { t } from "../i18n";
 import { formatClock } from "./lengthGoal";
 import { runtimeSeconds, runtimeStatsFromContent } from "./runtime";
@@ -18,7 +18,7 @@ export interface TitleDetailsInput {
 /** Folder, estimated runtime and export date, separated by middots. */
 export function pdfTitleDetails(input: TitleDetailsInput): string {
   const runtime = runtimeSeconds(runtimeStatsFromContent(input.contentJson), input.wpm);
-  const date = new Intl.DateTimeFormat(getCurrentLocale(), { dateStyle: "medium" }).format(input.date);
+  const date = formatDate(input.date, { dateStyle: "medium" });
   return [input.folder, t("export.pdf.runtime", { time: formatClock(runtime) }), date]
     .filter((part): part is string => !!part)
     .join(" · ");

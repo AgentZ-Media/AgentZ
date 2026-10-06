@@ -107,8 +107,12 @@ export const navStore = {
     setRecent(recent().map((r) => r.scriptId === scriptId ? { ...r, title } : r));
     navigation.persist();
   },
+  /** Runs after every library change (each autosave too): writes only when
+   *  a deleted script actually leaves "Recent" or the history. */
   reconcile(liveScriptIds: Set<string>) {
-    setRecent(recent().filter((r) => liveScriptIds.has(r.scriptId)));
+    const recentLive = recent().every((r) => liveScriptIds.has(r.scriptId));
+    if (!recentLive) setRecent(recent().filter((r) => liveScriptIds.has(r.scriptId)));
     navigation.reconcile((route) => route.kind !== "script" || liveScriptIds.has(route.scriptId));
+    if (!recentLive) navigation.persist();
   },
 };

@@ -256,6 +256,9 @@ export function Editor(props: EditorProps) {
     // another script) gets the right color immediately instead of only
     // after the debounced DB roundtrip.
     const knownColors = new Map<string, string>();
+    // The colour load below can settle after this editor is gone (script
+    // switch); it must not push this script's cast into the next one.
+    let disposed = false;
 
     // Character reconciliation (runs synchronously on every keystroke).
     const charReconcile = createCharacterReconcile({
@@ -272,6 +275,7 @@ export function Editor(props: EditorProps) {
     api
       .listCharacterColors()
       .then((records) => {
+        if (disposed) return;
         for (const r of records) {
           const color = r.override_color ?? r.default_color;
           if (color) knownColors.set(r.name.toUpperCase(), color);
@@ -330,6 +334,7 @@ export function Editor(props: EditorProps) {
     );
 
     onCleanup(() => {
+      disposed = true;
       persistence?.teardown();
       teardownCanvasFocus();
       teardownUpdate();

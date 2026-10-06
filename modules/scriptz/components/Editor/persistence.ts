@@ -1,6 +1,6 @@
 import type { LexicalEditor } from "lexical";
 import { api } from "../../lib/api";
-import { scriptsBus } from "../../lib/scriptsBus";
+import { scriptSavedBus } from "../../lib/scriptsBus";
 import { registerFlusher } from "@agentz/kit/lib";
 import { createSerialSaver, type SaveResult } from "@agentz/kit/lib";
 import { saveStatusStore } from "../../stores/saveStatus";
@@ -132,7 +132,14 @@ export function createPersistence(opts: PersistenceOptions): PersistenceHandle {
         // Only real writes make an auto snapshot worthwhile.
         dirtySinceSnapshot = true;
         saveStatusStore.markSaved();
-        scriptsBus.bump();
+        // Patches this one row everywhere instead of reloading the library.
+        // The write is done: a failing listener must not turn it into a
+        // failed save that is written again.
+        try {
+          scriptSavedBus.emit(summary);
+        } catch (err) {
+          console.warn("[scriptz] save listener failed", err);
+        }
 
         // Update the cache so a name retyped in a later script
         // immediately gets the canonical color.
@@ -186,7 +193,9 @@ export function createPersistence(opts: PersistenceOptions): PersistenceHandle {
     // editor instance; the flusher is unregistered once it drained.
     // Lexical may clear its document after teardown; retries must keep the
     // final live draft rather than read an already disposed editor.
-    if (!teardownSnapshot) {
+    // Nothing buffered or in flight (the common script switch): the final
+    // flush won't read, so the whole document isn't serialized for nothing.
+    if (!teardownSnapshot && !saver.idle()) {
       try { teardownSnapshot = { content: readContent() }; }
       catch (error) { teardownSnapshot = { error }; }
     }

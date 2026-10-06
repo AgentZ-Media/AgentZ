@@ -1,4 +1,4 @@
-import { For, Match, Show, Switch } from "solid-js";
+import { For, Index, Match, Show, Switch } from "solid-js";
 import type { Idea, ScriptSummary } from "../../lib/types";
 import { firstStageId } from "../../lib/stages";
 import { formatClock } from "../../lib/lengthGoal";
@@ -82,13 +82,16 @@ export function ScriptList(props: ScriptListProps) {
       <Show when={sel.selectMode() && props.selectableCount > 0}>
         <SelectAllLine state={sel.allState()} count={props.selectableCount} onToggle={sel.toggleAll} />
       </Show>
-      <For each={props.blocks}>
+      {/* By position, not by object: the groups are rebuilt on every list
+          change, and a keyed <For> would then rebuild every row's DOM. The
+          rows inside stay keyed by their (identity-preserved) scripts. */}
+      <Index each={props.blocks}>
         {(block) => (
           <Switch>
-            <Match when={block.kind === "teaser"}>
+            <Match when={block().kind === "teaser"}>
               <IdeasTeaser />
             </Match>
-            <Match when={block.kind === "closed" && block}>
+            <Match when={block().kind === "closed" && block()}>
               {(b) => (
                 <div class="grp is-closed">
                   <div class="grp-h">
@@ -115,7 +118,7 @@ export function ScriptList(props: ScriptListProps) {
                 </div>
               )}
             </Match>
-            <Match when={block.kind === "group" && block}>
+            <Match when={block().kind === "group" && block()}>
               {(b) => {
                 const grp = () => (b() as { kind: "group"; group: Group }).group;
                 return (
@@ -153,7 +156,7 @@ export function ScriptList(props: ScriptListProps) {
             </Match>
           </Switch>
         )}
-      </For>
+      </Index>
       <Show when={props.hasMore}>
         <div class="lib-more">
           <button type="button" class="btn ghost" onClick={() => props.onMore()}>

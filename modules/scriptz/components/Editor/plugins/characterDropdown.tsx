@@ -1,4 +1,5 @@
-import { createSignal, For, Show } from "solid-js";
+import { batch, createSignal, For, Show } from "solid-js";
+import { sameData } from "@agentz/kit/lib";
 import { render } from "solid-js/web";
 import {
   $getNodeByKey,
@@ -48,7 +49,7 @@ export function installCharacterDropdown(
   getArgs: () => InstallCharacterDropdownArgs,
 ): () => void {
   const [open, setOpen] = createSignal(false);
-  const [pos, setPos] = createSignal({ x: 0, y: 0 });
+  const [pos, setPos] = createSignal({ x: 0, y: 0 }, { equals: sameData });
   const [filter, setFilter] = createSignal("");
   // While the writer is typing, auto-highlight the first matching suggestion
   // so a partial like "A" lights up "AXEL" and Enter accepts it. An empty
@@ -61,7 +62,8 @@ export function installCharacterDropdown(
   // to `previousCharacterFrom` which walks Lexical state). Holds the
   // characters in predict-ranked order: most-likely-next-speaker first,
   // previous speaker pushed to the tail.
-  const [rankedList, setRankedList] = createSignal<ScriptCharacter[]>([]);
+  // Same ranking on the next keystroke: keep the rows instead of rebuilding.
+  const [rankedList, setRankedList] = createSignal<ScriptCharacter[]>([], { equals: sameData });
   // Name (uppercase) of the predicted next speaker - labelled "ist dran".
   // Null when the only candidate is the previous speaker.
   const [predicted, setPredicted] = createSignal<string | null>(null);
@@ -224,34 +226,37 @@ export function installCharacterDropdown(
       return;
     }
 
-    setActiveKey(nodeKey);
-    setFilter(text);
-    setRankedList(ranked);
-    const head = ranked[0];
-    setPredicted(head && head.name.toUpperCase() !== prevSpeakerUpper ? head.name.toUpperCase() : null);
-    setPos(positionFromCursor(nodeKey));
+    const key = nodeKey;
+    batch(() => {
+      setActiveKey(key);
+      setFilter(text);
+      setRankedList(ranked);
+      const head = ranked[0];
+      setPredicted(head && head.name.toUpperCase() !== prevSpeakerUpper ? head.name.toUpperCase() : null);
+      setPos(positionFromCursor(key));
 
-    // Highlight resolution:
-    //  - typed prefix → first matching entry (filtered list is still in
-    //    predict order, so this is also the most plausible match).
-    //  - empty + the top-ranked entry is a "real" next speaker
-    //    suggestion (i.e. not just the previous speaker because no one
-    //    else exists) → highlight it so Enter accepts.
-    //  - otherwise → -1, so Enter falls through to smartEnter and
-    //    advances to a fresh Dialog block instead of picking a name.
-    const trimmed = text.trim();
-    const list = filteredEntries();
-    if (list.length === 0) {
-      setActiveIdx(-1);
-    } else if (trimmed.length > 0) {
-      setActiveIdx(0);
-    } else {
-      const top = list[0];
-      const isRealSuggestion =
-        top != null && top.name.toUpperCase() !== prevSpeakerUpper;
-      setActiveIdx(isRealSuggestion ? 0 : -1);
-    }
-    setOpen(true);
+      // Highlight resolution:
+      //  - typed prefix → first matching entry (filtered list is still in
+      //    predict order, so this is also the most plausible match).
+      //  - empty + the top-ranked entry is a "real" next speaker
+      //    suggestion (i.e. not just the previous speaker because no one
+      //    else exists) → highlight it so Enter accepts.
+      //  - otherwise → -1, so Enter falls through to smartEnter and
+      //    advances to a fresh Dialog block instead of picking a name.
+      const trimmed = text.trim();
+      const list = filteredEntries();
+      if (list.length === 0) {
+        setActiveIdx(-1);
+      } else if (trimmed.length > 0) {
+        setActiveIdx(0);
+      } else {
+        const top = list[0];
+        const isRealSuggestion =
+          top != null && top.name.toUpperCase() !== prevSpeakerUpper;
+        setActiveIdx(isRealSuggestion ? 0 : -1);
+      }
+      setOpen(true);
+    });
   });
 
   // While the dropdown is open, the page (or any scrollable ancestor) can

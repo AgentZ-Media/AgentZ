@@ -4,14 +4,17 @@
 // palette (title matches) and the shell itself (nav reconcile) all need the
 // same two lists: every live script and every folder. They are loaded once
 // here, refetched on `scriptsBus` / `foldersBus` bumps, and shared - instead
-// of each surface issuing its own `listScripts` roundtrip.
+// of each surface issuing its own `listScripts` roundtrip. An autosave only
+// patches its own row (`scriptSavedBus`), and a reload keeps the objects of
+// unchanged rows, so lists re-render just the rows that really changed.
 //
 // The shell starts and disposes this cache explicitly after boot. No
 // resources exist before adapters, settings and legacy migration are ready.
 
 import { createEffect, createMemo, createResource, createRoot, createSignal, onCleanup } from "solid-js";
+import { keepUnchanged, sameData } from "@agentz/kit/lib";
 import { api } from "../../lib/api";
-import { scriptsBus } from "../../lib/scriptsBus";
+import { scriptSavedBus, scriptsBus } from "../../lib/scriptsBus";
 import { foldersBus } from "../../lib/foldersBus";
 import { resolveLengthRange, type LengthRange } from "../../lib/lengthGoal";
 import { runtimeSeconds } from "../../lib/runtime";
@@ -28,17 +31,36 @@ const [scriptsOk, setScriptsOk] = createSignal(false);
 // Sticky: true after the first successful load. UI empty states key off
 // this so they don't flicker while a refetch is in flight.
 const [loadedOnce, setLoadedOnce] = createSignal(false);
+const [foldersLoadedOnce, setFoldersLoadedOnce] = createSignal(false);
+
+/** `list` with the saved rows that are newer than the ones it holds, moved
+ *  to the front ("newest edit first"). */
+function withNewerSaves(list: ScriptSummary[], saved: ReadonlyMap<string, ScriptSummary>): ScriptSummary[] {
+  if (saved.size === 0) return list;
+  const newer = new Map<string, ScriptSummary>();
+  for (const row of list) {
+    const s = saved.get(row.id);
+    if (s && s.updated_at > row.updated_at) newer.set(row.id, s);
+  }
+  if (newer.size === 0) return list;
+  const front = [...newer.values()].sort((a, b) => b.updated_at - a.updated_at);
+  return [...front, ...list.filter((row) => !newer.has(row.id))];
+}
 
 function createLibraryData(isActive: () => boolean) {
-  const [scripts] = createResource<ScriptSummary[], { v: number }>(
+  // Autosaves since the running fetch started: a save that commits after
+  // the list was read must not be overwritten by that older list.
+  const savedSinceFetch = new Map<string, ScriptSummary>();
+  const [scripts, { mutate: mutateScripts }] = createResource<ScriptSummary[], { v: number }>(
     () => (ready() ? { v: scriptsBus.version() } : false),
     async (_src, info): Promise<ScriptSummary[]> => {
+      savedSinceFetch.clear();
       try {
         const list = await api.listScripts({});
         if (!isActive()) return [];
         setScriptsOk(true);
         setLoadedOnce(true);
-        return list;
+        return keepUnchanged(info.value, withNewerSaves(list, savedSinceFetch));
       } catch (err) {
         if (!isActive()) return [];
         console.warn("[scriptz] library scripts load failed", err);
@@ -54,7 +76,9 @@ function createLibraryData(isActive: () => boolean) {
     async (_src, info): Promise<Folder[]> => {
       try {
         const list = await api.listFolders();
-        return isActive() ? list : [];
+        if (!isActive()) return [];
+        setFoldersLoadedOnce(true);
+        return keepUnchanged(info.value, list);
       } catch (err) {
         if (!isActive()) return [];
         console.warn("[scriptz] library folders load failed", err);
@@ -63,6 +87,17 @@ function createLibraryData(isActive: () => boolean) {
     },
     { initialValue: [] },
   );
+
+  // An autosave moves its row to the front ("newest edit first", like
+  // `listScripts`) instead of reloading every script.
+  const offSaved = scriptSavedBus.listen((summary) => {
+    savedSinceFetch.set(summary.id, summary);
+    const list = scripts.latest ?? [];
+    const i = list.findIndex((s) => s.id === summary.id);
+    if (i < 0 || sameData(list[i], summary)) return;
+    mutateScripts([summary, ...list.slice(0, i), ...list.slice(i + 1)]);
+  });
+  onCleanup(offSaved);
 
   const byId = createMemo(() => {
     const m = new Map<string, ScriptSummary>();
@@ -154,9 +189,9 @@ function createLibraryData(isActive: () => boolean) {
   return {
     finishing,
     scripts,
+    byId,
     folders,
     folderList,
-    byId,
     folderMap,
     openIdeas,
     inProgress,
@@ -167,6 +202,7 @@ function createLibraryData(isActive: () => boolean) {
 }
 
 const [data, setData] = createSignal<ReturnType<typeof createLibraryData>>();
+const EMPTY_SCRIPTS: ReadonlyMap<string, ScriptSummary> = new Map();
 let stopRuntime: (() => void) | undefined;
 
 export const library = {
@@ -178,8 +214,12 @@ export const library = {
     ready() && scriptsOk() && data()?.scripts.state === "ready",
   /** The list has been loaded at least once (for empty states). */
   loaded: loadedOnce,
+  /** The folder list has been loaded at least once. */
+  foldersLoaded: foldersLoadedOnce,
   script: (id: string | null | undefined): ScriptSummary | undefined =>
     id ? data()?.byId().get(id) : undefined,
+  /** Every live script by id (one shared map instead of a per-page copy). */
+  byId: (): ReadonlyMap<string, ScriptSummary> => data()?.byId() ?? EMPTY_SCRIPTS,
   folders: (): Folder[] => data()?.folders() ?? [],
   /** Like `folders()`, but never triggers a Suspense boundary while the list
    *  refetches. Use inside the script screen (agent panel): a suspended
@@ -215,6 +255,7 @@ export function startLibraryData(): () => void {
     setReady(false);
     setScriptsOk(false);
     setLoadedOnce(false);
+    setFoldersLoadedOnce(false);
     setData(undefined);
     stopRuntime = undefined;
   };

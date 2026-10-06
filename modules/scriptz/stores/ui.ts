@@ -150,7 +150,13 @@ export const uiStore = {
     if (scriptId && current) {
       const key = FOCUS_KEY(scriptId);
       let write = current.focusWrites.get(key);
-      if (!write) { write = createStatePersistence(current.kv, key); current.focusWrites.set(key, write); }
+      if (!write) {
+        // One writer at a time: a disposed one still stores its last value,
+        // then unregisters its flusher (one per script would pile up).
+        for (const [other, old] of current.focusWrites) { old.dispose(); current.focusWrites.delete(other); }
+        write = createStatePersistence(current.kv, key);
+        current.focusWrites.set(key, write);
+      }
       write.schedule(next ? "1" : "0");
     }
   },
