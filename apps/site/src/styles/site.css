@@ -47,6 +47,8 @@ img { max-width: 100%; height: auto; }
 .lang-switch { font-size: var(--fs-12); font-weight: 650; letter-spacing: 0.06em; text-decoration: none; color: var(--side-muted); padding: 6px 8px; border-radius: var(--r-ctl); }
 .lang-switch:hover { color: var(--side-strong); background: var(--side-hover); }
 .header-cta { min-height: 36px; padding: 0 14px; }
+.header-account { display: inline-flex; align-items: center; gap: 7px; padding: 6px 10px; border-radius: var(--r-ctl); font-size: var(--fs-14); text-decoration: none; color: var(--side-muted); transition: color var(--t-fast), background var(--t-fast); }
+.header-account:hover, .header-account[aria-current="page"] { color: var(--side-strong); background: var(--side-hover); }
 
 /* ---------------- Hero ---------------- */
 .hero {
@@ -482,6 +484,10 @@ img { max-width: 100%; height: auto; }
   .footer-ai { grid-template-columns: auto 1fr; align-items: center; width: auto; }
   .footer-cols { grid-template-columns: 1fr 1fr; }
   .legal { padding-top: 120px; }
+}
+@media (max-width: 420px) {
+  .header-account { padding: 8px; }
+  .header-account span { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 }
 
 /* Reduced motion: the global rule finishes every animation at once, so show

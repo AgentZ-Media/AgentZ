@@ -17,7 +17,7 @@ im `paths`-Frontmatter) und die `AGENTS.md` des jeweiligen App-Ordners.
 | `packages/desktop/` | `@agentz/desktop` | Tauri-Host: Plattformadapter, Updater, Fenster-/Quit-Lebenszyklus, `@agentz/desktop/vite`. |
 | `crates/agentz-desktop/` | Rust | Standard-Plugins, macOS-Menü, Single-Instance, Quit-Handshake, Kit-Baseline-SQL (`src/baseline.sql`). |
 | `packages/design/` | `@agentz/design` | Tokens, CSS-Primitive, Schriften, Icons, Logos. Kein Framework. |
-| `apps/site/` | `@agentz/site` | Statische Astro-Website (DE/EN) mit App-Liste. |
+| `apps/site/` | `@agentz/site` | Astro-Website (DE/EN) mit App-Liste und Konto; Backend in `apps/site/convex/` (Convex + Better Auth, Mails über Resend). |
 | `tooling/` | | Generator (`new-app`), Release-Skripte, Prüfungen, Test-Preset. |
 
 Abhängigkeitsrichtung (ESLint erzwingt sie):
@@ -69,6 +69,7 @@ pnpm install --frozen-lockfile
 pnpm dev:scriptz                      # App starten
 pnpm build:scriptz                    # native App und Installer bauen
 pnpm dev:site                         # Website lokal
+pnpm dev:site:backend                 # Konto-Backend (Convex-Dev-Deployment)
 pnpm build:site                       # Website bauen
 pnpm lint && pnpm typecheck && pnpm test
 pnpm check:colors && pnpm check:astro

@@ -1,0 +1,171 @@
+---
+import type { IconName } from "@agentz/design/icons";
+import Base from "../layouts/Base.astro";
+import Icon from "./Icon.astro";
+import { accountPaths, catalogs, type Language } from "../i18n";
+import "../styles/account.css";
+interface Props { lang: Language }
+const { lang } = Astro.props;
+const t = catalogs[lang].account;
+// Better Auth runs as HTTP routes on the Convex site URL. Without it (preview
+// builds, CI) the page shows its "unavailable" state instead of breaking.
+const authUrl = import.meta.env.PUBLIC_CONVEX_SITE_URL ?? "";
+// Strings the script needs at runtime; "<" is escaped so the JSON cannot end the tag.
+const runtime = JSON.stringify(t.runtime).replace(/</g, "\\u003c");
+const privacy = "/datenschutz/";
+---
+<Base lang={lang} title={t.title} description={t.description} paths={accountPaths} noindex>
+  <section class="account" data-account data-auth-url={authUrl} data-lang={lang}>
+    <script type="application/json" data-account-text set:html={runtime} />
+    <div class="wrap">
+      <p class="account-state js-only" data-view="loading" role="status"><span class="account-spinner" aria-hidden="true"></span>{t.loading}</p>
+      <noscript><p class="account-state">{t.noscript}</p></noscript>
+
+      <div class="account-state account-unavailable" data-view="unavailable" hidden>
+        <h1 tabindex="-1">{t.unavailableTitle}</h1>
+        <p>{t.unavailableText}</p>
+        <button class="btn btn-lg" type="button" data-action="retry"><Icon name="refresh" />{t.retry}</button>
+      </div>
+
+      <!-- Signed out: sign in or sign up -->
+      <div class="auth" data-view="auth" hidden>
+        <aside class="auth-intro" data-theme="dark">
+          <p class="eyebrow"><span class="pulse"></span>{t.introKicker}</p>
+          <h1 tabindex="-1">{t.introTitle}</h1>
+          <p class="auth-intro-text">{t.introText}</p>
+        </aside>
+
+        <div class="auth-card">
+          <p class="auth-notice" data-notice role="status" hidden></p>
+          <div class="seg auth-tabs" role="tablist" aria-label={t.title}>
+            <button type="button" role="tab" id="tab-signin" aria-controls="form-signin" aria-selected="true" data-tab="signIn">{t.tabs.signIn}</button>
+            <button type="button" role="tab" id="tab-signup" aria-controls="form-signup" aria-selected="false" tabindex="-1" data-tab="signUp">{t.tabs.signUp}</button>
+          </div>
+
+          <form class="auth-form" id="form-signin" role="tabpanel" aria-labelledby="tab-signin" data-form="signIn">
+            <h2>{t.signInTitle}</h2>
+            <label class="fld"><span>{t.email}</span><input class="field" type="email" name="email" autocomplete="email" placeholder={t.emailPlaceholder} required /></label>
+            <label class="fld"><span>{t.password}</span>
+              <span class="field-box pw"><input type="password" name="password" autocomplete="current-password" required /><button class="pw-toggle" type="button" data-toggle-password>{t.runtime.show}</button></span>
+            </label>
+            <p class="form-error" data-error role="alert" hidden></p>
+            <button class="btn accent btn-lg wide" type="submit">{t.signIn}</button>
+            <p class="auth-foot"><button type="button" class="link-btn" data-mode="forgot">{t.forgotLink}</button></p>
+            <p class="auth-switch">{t.noAccount} <button type="button" class="link-btn" data-tab="signUp">{t.tabs.signUp}</button></p>
+          </form>
+
+          <form class="auth-form" id="form-signup" role="tabpanel" aria-labelledby="tab-signup" data-form="signUp" hidden>
+            <h2>{t.signUpTitle}</h2>
+            <label class="fld"><span>{t.name}</span><input class="field" type="text" name="name" autocomplete="name" placeholder={t.namePlaceholder} maxlength="80" required /></label>
+            <label class="fld"><span>{t.email}</span><input class="field" type="email" name="email" autocomplete="email" placeholder={t.emailPlaceholder} required /></label>
+            <label class="fld"><span>{t.password}</span>
+              <span class="field-box pw"><input type="password" name="password" autocomplete="new-password" minlength="8" maxlength="128" aria-describedby="signup-pw-hint" required /><button class="pw-toggle" type="button" data-toggle-password>{t.runtime.show}</button></span>
+              <small id="signup-pw-hint">{t.passwordHint}</small>
+            </label>
+            <p class="form-error" data-error role="alert" hidden></p>
+            <button class="btn accent btn-lg wide" type="submit">{t.signUp}</button>
+            <p class="auth-foot">{t.privacyBefore} <a href={privacy}>{t.privacyLink}</a>{t.privacyAfter}</p>
+            <p class="auth-switch">{t.haveAccount} <button type="button" class="link-btn" data-tab="signIn">{t.tabs.signIn}</button></p>
+          </form>
+
+          <form class="auth-form" data-form="forgot" hidden>
+            <h2>{t.forgotTitle}</h2>
+            <p class="auth-lead">{t.forgotText}</p>
+            <label class="fld"><span>{t.email}</span><input class="field" type="email" name="email" autocomplete="email" placeholder={t.emailPlaceholder} required /></label>
+            <p class="form-error" data-error role="alert" hidden></p>
+            <button class="btn accent btn-lg wide" type="submit">{t.forgotSubmit}</button>
+            <p class="auth-switch"><button type="button" class="link-btn" data-tab="signIn">{t.backToSignIn}</button></p>
+          </form>
+
+          <form class="auth-form" data-form="reset" hidden>
+            <h2>{t.resetTitle}</h2>
+            <p class="auth-lead">{t.resetText}</p>
+            <label class="fld"><span>{t.newPassword}</span>
+              <span class="field-box pw"><input type="password" name="password" autocomplete="new-password" minlength="8" maxlength="128" aria-describedby="reset-pw-hint" required /><button class="pw-toggle" type="button" data-toggle-password>{t.runtime.show}</button></span>
+              <small id="reset-pw-hint">{t.passwordHint}</small>
+            </label>
+            <p class="form-error" data-error role="alert" hidden></p>
+            <button class="btn accent btn-lg wide" type="submit">{t.resetSubmit}</button>
+            <p class="auth-switch"><button type="button" class="link-btn" data-tab="signIn">{t.backToSignIn}</button></p>
+          </form>
+        </div>
+      </div>
+
+      <!-- Signed in: the account -->
+      <div class="acct" data-view="account" hidden>
+        <header class="acct-head">
+          <span class="acct-avatar" data-user="initials" aria-hidden="true"></span>
+          <div class="acct-who">
+            <h1 tabindex="-1" data-user="greeting"></h1>
+            <p><span data-user="email"></span><span class="acct-dot" aria-hidden="true">·</span><span data-user="since"></span></p>
+          </div>
+          <button class="btn btn-lg acct-signout" type="button" data-action="sign-out">{t.signOut}</button>
+        </header>
+
+        <p class="acct-notice" data-account-notice role="status" hidden></p>
+        <div class="acct-grid">
+          <div class="acct-col">
+            <form class="acct-card" data-form="profile">
+              <h2>{t.profileTitle}</h2>
+              <p class="acct-card-text">{t.profileText}</p>
+              <label class="fld"><span>{t.name}</span><input class="field" type="text" name="name" autocomplete="name" maxlength="80" required /></label>
+              <label class="fld"><span>{t.email}</span><input class="field" type="email" name="email" autocomplete="email" readonly aria-describedby="email-hint" /><small id="email-hint">{t.emailHint}</small></label>
+              <p class="email-status is-verified" data-email-verified hidden><Icon name="check" />{t.verified}</p>
+              <p class="email-status" data-email-unverified hidden>{t.unverified} <button type="button" class="link-btn" data-action="resend-verification">{t.resendVerification}</button></p>
+              <p class="form-error" data-error role="alert" hidden></p>
+              <div class="acct-actions"><button class="btn btn-lg" type="submit">{t.save}</button><span class="form-ok" data-ok role="status"></span></div>
+            </form>
+
+            <form class="acct-card" data-form="password">
+              <h2>{t.passwordTitle}</h2>
+              <p class="acct-card-text">{t.passwordText}</p>
+              <input class="sr-only" type="email" name="username" autocomplete="username" tabindex="-1" aria-hidden="true" readonly />
+              <label class="fld"><span>{t.currentPassword}</span>
+                <span class="field-box pw"><input type="password" name="currentPassword" autocomplete="current-password" required /><button class="pw-toggle" type="button" data-toggle-password>{t.runtime.show}</button></span>
+              </label>
+              <label class="fld"><span>{t.newPassword}</span>
+                <span class="field-box pw"><input type="password" name="newPassword" autocomplete="new-password" minlength="8" maxlength="128" aria-describedby="new-pw-hint" required /><button class="pw-toggle" type="button" data-toggle-password>{t.runtime.show}</button></span>
+                <small id="new-pw-hint">{t.passwordHint}</small>
+              </label>
+              <p class="form-error" data-error role="alert" hidden></p>
+              <div class="acct-actions"><button class="btn btn-lg" type="submit">{t.changePassword}</button><span class="form-ok" data-ok role="status"></span></div>
+            </form>
+          </div>
+
+          <div class="acct-col">
+            <section class="acct-soon" data-theme="dark" aria-labelledby="soon-title">
+              <p class="eyebrow"><span class="pulse"></span>{t.soonKicker}</p>
+              <h2 id="soon-title">{t.soonTitle}</h2>
+              <p class="acct-soon-text">{t.soonText}</p>
+              <ul class="soon-list">
+                {t.soonItems.map((item) => (
+                  <li>
+                    <span class="soon-icon"><Icon name={item.icon as IconName} /></span>
+                    <span class="soon-copy"><b>{item.title}</b><span>{item.text}</span></span>
+                    <span class:list={["soon-badge", item.state === "planned" && "is-planned"]}>{item.state === "planned" ? t.soonPlanned : t.soonBadge}</span>
+                  </li>
+                ))}
+              </ul>
+            </section>
+
+            <section class="acct-card acct-danger" aria-labelledby="delete-title">
+              <h2 id="delete-title">{t.deleteTitle}</h2>
+              <p class="acct-card-text">{t.deleteText}</p>
+              <button class="btn btn-lg" type="button" data-action="delete-open"><Icon name="trash" />{t.deleteOpen}</button>
+              <form class="acct-delete" data-form="delete" hidden>
+                <input class="sr-only" type="email" name="username" autocomplete="username" tabindex="-1" aria-hidden="true" readonly />
+                <label class="fld"><span>{t.deleteConfirm}</span><input class="field" type="password" name="password" autocomplete="current-password" required /></label>
+                <p class="form-error" data-error role="alert" hidden></p>
+                <div class="acct-actions">
+                  <button class="btn btn-danger btn-lg" type="submit"><Icon name="trash" />{t.deleteSubmit}</button>
+                  <button class="btn ghost btn-lg" type="button" data-action="delete-cancel">{t.cancel}</button>
+                </div>
+              </form>
+            </section>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+  <script>import "../scripts/account";</script>
+</Base>

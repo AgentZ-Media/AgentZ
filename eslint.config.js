@@ -6,7 +6,7 @@ const root = fileURLToPath(new URL(".", import.meta.url));
 
 export default [
   {
-    ignores: ["**/node_modules/**", "**/dist/**", "**/target/**", "**/coverage/**", "**/src-tauri/gen/**"],
+    ignores: ["**/node_modules/**", "**/dist/**", "**/target/**", "**/coverage/**", "**/src-tauri/gen/**", "**/convex/_generated/**"],
   },
   {
     files: ["**/*.{js,mjs,cjs,ts,tsx,mts,cts}"],

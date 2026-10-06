@@ -10,6 +10,23 @@ paths:
   (Einblenden, Tipp-Demo, Kopieren, Plattform-Erkennung); ohne JavaScript ist
   alles im Endzustand lesbar, `prefers-reduced-motion` stoppt die Demo. Nur
   `@agentz/design` als internes Paket; keine Kit- oder Produktmodule importieren.
+- Einzige Ausnahme ist das Konto (`/konto/`, `/en/account/`): Better Auth auf
+  Convex über `@convex-dev/better-auth`, Backend in `convex/`. Nur
+  `src/scripts/account.ts` spricht mit dem Server und speichert die Sitzung im
+  `localStorage` (Cross-Domain-Plugin); `site.ts` und alle anderen Seiten
+  bleiben ohne Requests und Speicher. Kein React, kein Convex-Websocket auf der
+  Website. Ohne `PUBLIC_CONVEX_SITE_URL` zeigt die Seite „nicht erreichbar“.
+- Kontodaten sind Nutzerdaten: Die Tabellen der Better-Auth-Komponente nicht
+  von Hand ändern, Konfigurationsänderungen (`convex/auth.ts`) erst gegen das
+  Dev-Deployment (`pnpm dev:site:backend`) testen. Production deployt nur der
+  Vercel-Build (`convex deploy --cmd`) nach dem Merge auf `main`.
+  `convex/_generated/` wird committet. Neue Datenverarbeitung im Konto immer
+  in der Datenschutzerklärung nachziehen.
+- Konto-E-Mails (Reset, Bestätigung) über Resend in `convex/emails.ts`, Absender
+  `info@agentz-suite.com`, Texte dort in DE und EN. E-Mails tragen die
+  Token-Werte als feste Farben (Mail-Clients kennen keine CSS-Variablen); das
+  ist die einzige weitere Farbausnahme. Keine Werbe-Mails, kein Öffnungs- oder
+  Klick-Tracking.
 - Tokens, Fonts und `.btn` aus dem Design-Paket. Keine eigenen Farbwerte; einzige
   Ausnahme ist die Charakter-Palette der Demo in `src/styles/palette.css`, die
   die ScriptZ-Palette spiegelt. Icons stammen aus `node packages/design/scripts/build-logo.mjs --app <id>`.

@@ -1,9 +1,10 @@
 ---
-import { catalogs, type Language } from "../i18n";
+import { accountPaths, catalogs, homePaths, type Language, type PagePaths } from "../i18n";
 import DotWord from "./DotWord.astro";
 import AiLabel from "./AiLabel.astro";
-interface Props { lang: Language; home: boolean }
-const { lang, home } = Astro.props;
+interface Props { lang: Language; paths?: PagePaths }
+const { lang, paths } = Astro.props;
+const languages = paths ?? homePaths;
 const t = catalogs[lang];
 const f = t.footer;
 const base = lang === "en" ? "/en/" : "/";
@@ -24,6 +25,7 @@ const base = lang === "en" ? "/en/" : "/";
         <a href={`${base}#scriptz`}>ScriptZ</a>
         <a href={`${base}#apps`}>{t.nav.apps}</a>
         <a href={`${base}#download`}>{t.nav.download}</a>
+        <a href={accountPaths[lang]}>{t.nav.account}</a>
         <a href="https://github.com/AgentZ-Media/AgentZ-Suite">{f.source}</a>
       </nav>
       <nav aria-label={f.legalHeading}>
@@ -33,8 +35,8 @@ const base = lang === "en" ? "/en/" : "/";
       </nav>
       <nav aria-label={t.language}>
         <p>{t.language}</p>
-        <a href="/" lang="de" hreflang="de" aria-current={home && lang === "de" ? "page" : undefined}>Deutsch</a>
-        <a href="/en/" lang="en" hreflang="en" aria-current={home && lang === "en" ? "page" : undefined}>English</a>
+        <a href={languages.de} lang="de" hreflang="de" aria-current={paths && lang === "de" ? "page" : undefined}>Deutsch</a>
+        <a href={languages.en} lang="en" hreflang="en" aria-current={paths && lang === "en" ? "page" : undefined}>English</a>
       </nav>
     </div>
     <p class="footer-copy">© {new Date().getFullYear()} AgentZ Media · agentz-suite.com</p>
