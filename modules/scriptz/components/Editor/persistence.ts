@@ -43,7 +43,6 @@ export interface PersistenceOptions {
    *  Updated in place after every save so a name retyped in a later script
    *  immediately gets the canonical color. */
   knownColors: Map<string, string>;
-  onSavingChange?: (saving: boolean) => void;
 }
 
 export interface PersistenceHandle {
@@ -80,7 +79,6 @@ export function createPersistence(opts: PersistenceOptions): PersistenceHandle {
     initialContentJson,
     mergeAfterSave,
     knownColors,
-    onSavingChange,
   } = opts;
 
   let dirtySinceSnapshot = false;
@@ -128,7 +126,6 @@ export function createPersistence(opts: PersistenceOptions): PersistenceHandle {
         return baseline;
       }
 
-      onSavingChange?.(true);
       saveStatusStore.startSaving();
       try {
         const summary = await api.updateScript({ id: scriptId, contentJson });
@@ -147,8 +144,6 @@ export function createPersistence(opts: PersistenceOptions): PersistenceHandle {
       } catch (err) {
         saveStatusStore.markError(err);
         throw err;
-      } finally {
-        onSavingChange?.(false);
       }
     },
     onError: (err) => console.error("[scriptz] auto-save failed", err),
