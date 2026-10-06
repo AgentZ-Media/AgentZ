@@ -1,4 +1,4 @@
-import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
+import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { cleanup, fireEvent, render, waitFor } from "@solidjs/testing-library";
 import { getTestStorage, setTestStorage, type TestStorage } from "../../../test/storage";
 import "../../../lib/api";
@@ -8,12 +8,8 @@ import { navStore, startNavRuntime } from "../../../stores/nav";
 import { t } from "../../../i18n";
 import { startLibraryData } from "../../Shell/libraryData";
 import { ScriptsPage } from "../ScriptsPage";
-import { settingsStore, startSettingsRuntime } from "../../../stores/settings";
-import { exportScriptsToPdf } from "../../../lib/exportSelection";
-
-vi.mock("../../../lib/exportSelection", () => ({
-  exportScriptsToPdf: vi.fn().mockResolvedValue({ cancelled: true, count: 0 }),
-}));
+import { startSettingsRuntime } from "../../../stores/settings";
+import { uiStore } from "../../../stores/ui";
 
 const originalAdapter = getTestStorage();
 let stopNav: () => void;
@@ -48,7 +44,10 @@ beforeEach(async () => {
   scriptsBus.bump();
   await navStore.go({ kind: "scripts", status: "writing" });
 });
-afterEach(cleanup);
+afterEach(() => {
+  uiStore.closeExport();
+  cleanup();
+});
 afterAll(() => {
   stopNav();
   stopLibrary();
@@ -66,13 +65,10 @@ async function selectAll() {
 const count = () => document.querySelector(".lib-selbar-count")?.textContent;
 
 describe("ScriptsPage selection scope", () => {
-  it.each([true, false])("uses the saved title page choice (%s) for selected PDF exports", async (includeTitlePage) => {
-    await settingsStore.setExportTitlePageDefault(includeTitlePage);
+  it("opens the export dialog for the selected scripts", async () => {
     const view = await selectAll();
     fireEvent.click(view.getByRole("button", { name: t("select.action.pdf") }));
-    await waitFor(() => expect(exportScriptsToPdf).toHaveBeenLastCalledWith(
-      ["a", "b"], { includeHighlighting: false, includeTitlePage, wpm: settingsStore.dialogWpm() },
-    ));
+    expect(uiStore.exportScriptIds()).toEqual(["a", "b"]);
   });
 
   it("clears the selection when the filter changes", async () => {

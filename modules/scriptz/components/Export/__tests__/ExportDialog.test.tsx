@@ -1,9 +1,10 @@
 // Regression tests for the export dialog (components/Export/
 // ExportDialog.tsx): the preview must load only after pending saves were
-// flushed, and follow later saves while the dialog is open.
+// flushed, and follow later saves while the dialog is open. A selection
+// export starts from the defaults in the settings.
 
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
-import { cleanup, fireEvent, render, screen } from "@solidjs/testing-library";
+import { cleanup, fireEvent, render, screen, within } from "@solidjs/testing-library";
 import { getTestStorage, setTestStorage, type TestStorage } from "../../../test/storage";
 import "../../../lib/api";
 import { registerFlusher } from "@agentz/kit/lib";
@@ -14,11 +15,17 @@ import { ExportDialog } from "../ExportDialog";
 import { settingsStore, startSettingsRuntime } from "../../../stores/settings";
 import { SettingsWriting } from "../../Settings/sections/SettingsWriting";
 import { t } from "../../../i18n";
+import { exportScriptsToPdf } from "../../../lib/exportSelection";
+
+vi.mock("../../../lib/exportSelection", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("../../../lib/exportSelection")>()),
+  exportScriptsToPdf: vi.fn().mockResolvedValue({ cancelled: true, count: 0 }),
+}));
 
 const originalAdapter = getTestStorage();
 let stored = "first";
 const exportPdf = vi.fn().mockResolvedValue({ cancelled: true });
-const getScript = vi.fn(async (id: string): Promise<Script> => script(id, stored));
+const getScript = vi.fn(async (id: string): Promise<Script> => script(id, id === "s2" ? "second script" : stored));
 const settings = new Map<string, string>();
 let stopSettings: () => void;
 
@@ -64,6 +71,7 @@ afterEach(() => {
   cleanup();
   getScript.mockClear();
   exportPdf.mockClear();
+  vi.mocked(exportScriptsToPdf).mockClear();
 });
 
 const tick = () => new Promise((r) => setTimeout(r, 0));
@@ -176,5 +184,54 @@ describe("ExportDialog", () => {
     await tick();
     expect(getScript).toHaveBeenCalledTimes(2);
     expect(document.body.textContent).toContain("after autosave");
+  });
+
+  it("starts a selection export from the defaults in the settings", async () => {
+    settings.set("highlighting_default", "1");
+    settings.set("export_title_page_default", "0");
+    await settingsStore.load();
+    render(() => <ExportDialog />);
+    uiStore.openExportMany(["s1", "s2"]);
+    await tick();
+    expect(screen.queryByRole("radiogroup", { name: t("exportDialog.fmt.aria") })).toBeNull();
+    expect(screen.getByRole("switch", { name: t("exportDialog.opt.colors") }).getAttribute("aria-checked")).toBe("true");
+    expect(screen.getByRole("switch", { name: t("exportDialog.opt.titlePage") }).getAttribute("aria-checked")).toBe("false");
+    document.querySelector<HTMLButtonElement>(".exp-foot .btn.primary")!.click();
+    await tick();
+    expect(exportScriptsToPdf).toHaveBeenCalledWith(["s1", "s2"], {
+      includeHighlighting: true, includeTitlePage: false, wpm: settingsStore.dialogWpm(),
+    });
+  });
+
+  it("applies changed options to every script of a selection export", async () => {
+    render(() => <ExportDialog />);
+    uiStore.openExportMany(["s1", "s2"]);
+    await tick();
+    fireEvent.click(screen.getByRole("switch", { name: t("exportDialog.opt.colors") }));
+    fireEvent.click(screen.getByRole("switch", { name: t("exportDialog.opt.titlePage") }));
+    await tick();
+    expect(settings.get("export_title_page_default")).toBe("0");
+    document.querySelector<HTMLButtonElement>(".exp-foot .btn.primary")!.click();
+    await tick();
+    expect(exportScriptsToPdf).toHaveBeenCalledWith(["s1", "s2"], {
+      includeHighlighting: true, includeTitlePage: false, wpm: settingsStore.dialogWpm(),
+    });
+    expect(exportPdf).not.toHaveBeenCalled();
+  });
+
+  it("previews the script picked in the file list of a selection export", async () => {
+    await settingsStore.setExportTitlePageDefault(false);
+    stored = "first script";
+    render(() => <ExportDialog />);
+    uiStore.openExportMany(["s1", "s2"]);
+    await tick();
+    expect(document.body.textContent).toContain("first script");
+    const files = within(screen.getByRole("radiogroup", { name: t("exportDialog.many.aria") })).getAllByRole("radio");
+    expect(files).toHaveLength(2);
+    fireEvent.click(files[1]);
+    await tick();
+    expect(files[1].getAttribute("aria-checked")).toBe("true");
+    expect(document.body.textContent).toContain("second script");
+    expect(document.body.textContent).toContain(t("exportDialog.many.position", { n: 2, total: 2 }));
   });
 });

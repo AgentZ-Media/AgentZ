@@ -11,7 +11,7 @@ import { buildPdfBytes } from "./exportPdf";
 import { pdfTitleDetails } from "./pdfDetails";
 import { t } from "../i18n";
 
-function sanitizePdfFilename(title: string): string {
+export function sanitizePdfFilename(title: string): string {
   const fallback = t("common.untitled");
   const cleaned = (title || fallback).replace(/[\\/:*?"<>|]+/g, "_").trim();
   return `${cleaned || fallback}.pdf`;

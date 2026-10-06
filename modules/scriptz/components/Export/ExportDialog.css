@@ -205,6 +205,59 @@
   padding: 10px 0;
 }
 
+/* Multi export: one PDF per script, the chosen row drives the preview. */
+.exp-many {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+}
+.exp-many-sub {
+  margin: 0;
+  color: var(--muted);
+  font-size: 12px;
+}
+.exp-files {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  max-height: 176px;
+  overflow-y: auto;
+  padding: 4px;
+  border-radius: var(--r-pop);
+  border: 1px solid var(--line);
+  background: var(--surface);
+}
+.exp-file {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  padding: 6px 8px;
+  border-radius: var(--r-2);
+  color: var(--muted);
+  text-align: left;
+  transition: background var(--t-fast), color var(--t-fast);
+}
+.exp-file span {
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.exp-file:hover {
+  background: var(--fill);
+  color: var(--fg);
+}
+.exp-file.on {
+  background: var(--fill);
+  color: var(--fg);
+  font-weight: 600;
+}
+.exp-file.on svg.i {
+  color: var(--accent);
+}
+
 .exp-foot {
   margin-top: auto;
   display: flex;
