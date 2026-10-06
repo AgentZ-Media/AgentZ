@@ -51,6 +51,12 @@ Shortcuts mit Kontext, Onboarding, `flushPending`, `dispose`.
 `revealsSidebar: true` nur, wenn das Modul selbst einen Button zum Einblenden
 der Sidebar anbietet; sonst zeigt die Shell einen.
 
+Die Sidebar-Einträge eines Moduls nutzen die Kit-Klassen `.nav` und für den
+aktiven Eintrag `.is-on`: Die Shell legt darüber eine gleitende Auswahl
+(`NavIndicator`), auch über mehrere Scrollbereiche. Hinter dem Kopf der
+Sidebar zeigen Stable-Builds das Punktraster der App-Kachel (`SideDots`),
+Nightly-Builds den Nachthimmel.
+
 Das Kit liefert ⌘K (Palette), ⌘, (Einstellungen) und ⌘\ (Sidebar) sowie die
 Sektionen Darstellung, Tastatur, Updates und Über. Die Tastatur-Übersicht
 entsteht aus derselben Registry wie die Handler; die Registry respektiert

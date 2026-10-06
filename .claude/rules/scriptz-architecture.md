@@ -138,9 +138,12 @@ Einstellungen aufräumen (manuell oder automatisch nach 4 s Ruhe,
   ruhige Markierung: Balken im linken Papierrand (`Script/HookMarks.tsx`)
   und gestufte Zonen in der Zeitleiste.
 - **Bewegung** über `components/Common/motion.tsx`/`motion.css`
-  (Zahl-Tween, Zähler-Puls, Flug in die Seitenleiste, Aufleuchten, View
-  Transition beim Öffnen). Reduzierte Bewegung schaltet alles ab. Der
-  Fertig-Moment hängt an `library.justFinished(id)`.
+  (Zahl-Tween, rollende Zähler `BumpNumber`, Flug in die Seitenleiste,
+  Aufleuchten, View Transition beim Öffnen). Kurven und Dauern kommen aus
+  den Bewegungs-Tokens des Designs (`--spring`, `--ease-out`, `--t-glide`
+  usw.). Reduzierte Bewegung schaltet alles ab. Der Fertig-Moment
+  (Symbol springt, Lichtring, Punkt-Feuerwerk, Textmarker über dem Titel)
+  hängt an `library.justFinished(id)`.
 - **Schreibmaschine im Fokus** (`focus_typewriter`, Standard aus): die
   Caret-Zeile bleibt mittig, andere Sprechläufe treten zurück; nur
   DOM-Attribute (`data-tw-current`), nie Editor-State.
