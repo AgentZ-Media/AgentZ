@@ -155,7 +155,7 @@
     inset 0 0.5px 0 var(--glint),
     inset 0 -1.5px 0 var(--accent-edge),
     0 0 0 0.5px var(--side-edge-lo),
-    0 4px 14px -4px color-mix(in srgb, var(--logo-accent, var(--accent)) 55%, transparent);
+    0 4px 14px -4px color-mix(in srgb, var(--logo-glow, var(--logo-accent, var(--accent))) 55%, transparent);
   transition: transform var(--t-pop);
 }
 .side-app:hover .app-mark {
@@ -478,7 +478,7 @@
   box-shadow:
     inset 0 1px 0 var(--glint),
     0 0 0 0.5px var(--side-edge-lo),
-    0 14px 40px -10px color-mix(in srgb, var(--logo-accent, var(--accent)) 60%, transparent);
+    0 14px 40px -10px color-mix(in srgb, var(--logo-glow, var(--logo-accent, var(--accent))) 60%, transparent);
   animation: shell-boot-tile 1s var(--ease-pop) both;
 }
 .shell-boot-mark circle {
@@ -777,4 +777,9 @@
 }
 [data-build="nightly"] .shell-boot {
   background: var(--side-bg);
+}
+/* Nightly marks glow night blue, like the rest of the build's light. */
+[data-build="nightly"] .side-app .app-mark,
+[data-build="nightly"] .shell-boot-mark {
+  --logo-glow: var(--glow-hue);
 }

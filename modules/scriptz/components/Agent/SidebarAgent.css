@@ -32,11 +32,11 @@
 }
 /* Agent mode open: the pane takes on the highlighter. */
 .side-agent.is-on {
-  background: linear-gradient(180deg, color-mix(in srgb, var(--accent) 15%, transparent), color-mix(in srgb, var(--accent) 5%, transparent));
+  background: linear-gradient(180deg, color-mix(in srgb, var(--glow-hue) 15%, transparent), color-mix(in srgb, var(--glow-hue) 5%, transparent));
   box-shadow:
-    inset 0 0.5px 0 color-mix(in srgb, var(--accent) 30%, transparent),
-    0 0 0 0.5px color-mix(in srgb, var(--accent) 24%, transparent),
-    0 6px 20px -8px color-mix(in srgb, var(--accent) 40%, transparent);
+    inset 0 0.5px 0 color-mix(in srgb, var(--glow-hue) 30%, transparent),
+    0 0 0 0.5px color-mix(in srgb, var(--glow-hue) 24%, transparent),
+    0 6px 20px -8px color-mix(in srgb, var(--glow-hue) 40%, transparent);
 }
 /* A soft halo behind the face; it breathes while Ida works or learns. */
 .side-agent .ag-av {
@@ -49,7 +49,7 @@
   inset: -8px;
   z-index: -1;
   border-radius: 50%;
-  background: radial-gradient(closest-side, color-mix(in srgb, var(--accent) 32%, transparent), transparent);
+  background: radial-gradient(closest-side, color-mix(in srgb, var(--glow-hue) 32%, transparent), transparent);
   opacity: 0.55;
   transition: opacity var(--t-slow);
 }

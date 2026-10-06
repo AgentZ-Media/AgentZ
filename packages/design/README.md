@@ -20,6 +20,8 @@ Plain CSS + a few typed data modules - no framework code, so any app
      `--shadow-3` (floating), the hairline `--hair` and the top light edge
      `--hi`. `--accent-hi` / `--accent-lo` / `--accent-glow` light the
      highlighter, `--accent-ink` is accent-coloured text on light surfaces.
+     `--glow-hue` tints glows and halos: the accent by default, night blue
+     in nightly builds (`[data-build="nightly"]`).
    - **Material:** `--noise` (monochrome grain), `--desk*` (the surface
      behind the paper) and `--side-sheen` / `--side-dot` / `--side-glow`
      for the sidebar.

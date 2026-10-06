@@ -84,7 +84,7 @@
   pointer-events: none;
 }
 .am-start::before {
-  background: radial-gradient(closest-side, color-mix(in srgb, var(--accent) 30%, transparent), color-mix(in srgb, var(--accent) 7%, transparent) 55%, transparent);
+  background: radial-gradient(closest-side, color-mix(in srgb, var(--glow-hue) 30%, transparent), color-mix(in srgb, var(--glow-hue) 7%, transparent) 55%, transparent);
   animation: am-aura 7s ease-in-out infinite;
 }
 .am-start::after {
@@ -93,7 +93,11 @@
   mask-image: radial-gradient(closest-side, black, transparent 72%);
 }
 [data-theme="dark"] .am-start::before {
-  background: radial-gradient(closest-side, color-mix(in srgb, var(--accent) 15%, transparent), color-mix(in srgb, var(--accent) 4%, transparent) 55%, transparent);
+  background: radial-gradient(closest-side, color-mix(in srgb, var(--glow-hue) 15%, transparent), color-mix(in srgb, var(--glow-hue) 4%, transparent) 55%, transparent);
+}
+/* Nightly: the dot cone glows night blue. */
+[data-build="nightly"] .am-start::after {
+  background: radial-gradient(circle, color-mix(in srgb, var(--glow-hue) 45%, transparent) 1.1px, transparent 1.6px) 0 0 / 14px 14px;
 }
 @keyframes am-aura {
   50% { scale: 1.06; opacity: 0.8; }
@@ -189,7 +193,7 @@
   position: absolute;
   inset: 0;
   z-index: -1;
-  background: radial-gradient(180px circle at var(--mx, 50%) var(--my, 0%), color-mix(in srgb, var(--accent) 22%, transparent), transparent 70%);
+  background: radial-gradient(180px circle at var(--mx, 50%) var(--my, 0%), color-mix(in srgb, var(--glow-hue) 22%, transparent), transparent 70%);
   opacity: 0;
   transition: opacity var(--t-med);
 }
