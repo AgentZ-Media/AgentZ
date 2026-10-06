@@ -1,0 +1,23 @@
+---
+// Renders text in the suite's dot-matrix alphabet (5 x 7 per glyph).
+import { createLogo, LOGO_DOT_R } from "@agentz/design/logo";
+interface Props { text: string; class?: string; gap?: number }
+const { text, class: className, gap = 2 } = Astro.props;
+const step = 10;
+const glyphs = [...text.toUpperCase()].map((char) => (char === " " ? null : createLogo(char).dots));
+let x = 0;
+const dots: { cx: number; cy: number; col: number; row: number }[] = [];
+const grid: { cx: number; cy: number }[] = [];
+for (const glyph of glyphs) {
+  if (glyph) {
+    for (let col = 0; col < 5; col++) for (let row = 0; row < 7; row++) grid.push({ cx: x + col * step + 5, cy: row * step + 5 });
+    for (const dot of glyph) dots.push({ cx: x + dot.cx, cy: dot.cy, col: Math.round((x + dot.cx - 5) / step), row: (dot.cy - 5) / step });
+  }
+  x += glyph ? (5 + gap) * step : 3 * step;
+}
+const width = x - gap * step;
+---
+<svg class:list={["dotword", className]} viewBox={`0 0 ${width} 70`} aria-hidden="true">
+  <g class="dotword-grid">{grid.map((d) => <circle cx={d.cx} cy={d.cy} r={LOGO_DOT_R * 0.42} />)}</g>
+  <g class="dotword-ink">{dots.map((d) => <circle cx={d.cx} cy={d.cy} r={LOGO_DOT_R} style={`--c:${d.col};--r:${d.row}`} />)}</g>
+</svg>
