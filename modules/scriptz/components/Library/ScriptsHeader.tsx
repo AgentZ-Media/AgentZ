@@ -1,5 +1,6 @@
 import { For, Match, Show, Switch, type JSX } from "solid-js";
 import { getCurrentLocale } from "@agentz/kit/i18n";
+import { clockNow } from "@agentz/kit/lib";
 import { Icon } from "@agentz/kit/ui";
 import { finalStageId, stageLabel } from "../../lib/stages";
 import { INBOX_FOLDER_ID } from "../../lib/folders";
@@ -54,9 +55,10 @@ function WeekDots(props: { values: (number | null)[] | undefined }) {
   );
 }
 
-/** Today's date above the overview title, in the user's language. */
+/** Today's date above the overview title, in the user's language. Reads
+ *  the shared minute clock, so it turns over at midnight. */
 function todayLabel(): string {
-  return new Intl.DateTimeFormat(getCurrentLocale(), { weekday: "long", day: "numeric", month: "long" }).format(new Date());
+  return new Intl.DateTimeFormat(getCurrentLocale(), { weekday: "long", day: "numeric", month: "long" }).format(new Date(clockNow()));
 }
 
 export interface ScriptsHeaderProps {

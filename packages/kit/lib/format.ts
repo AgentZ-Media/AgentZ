@@ -10,9 +10,15 @@ import { getCurrentLocale, t } from "../i18n";
 // expression that calls `relativeTime()` automatically re-evaluates
 // when the signal changes, so the "5 minutes ago" labels on the
 // application views stay fresh without each component having
-// to wire up its own interval. Components do not import this directly;
-// reactivity flows through `relativeTime()` reading the signal below.
+// to wire up its own interval. Reactivity flows through `relativeTime()`
+// reading the signal below; `clockNow()` exposes it for other
+// time-dependent labels (e.g. today's date).
 const [nowSignal, setNowSignal] = createSignal(Date.now());
+
+/** Current time in ms from the shared minute clock (reactive). */
+export function clockNow(): number {
+  return nowSignal();
+}
 let stopClock: (() => void) | undefined;
 
 /** Start the visibility-gated clock for the active app runtime. */

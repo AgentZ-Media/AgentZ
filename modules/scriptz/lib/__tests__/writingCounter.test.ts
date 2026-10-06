@@ -125,5 +125,6 @@ describe("week helpers", () => {
   it("scales levels and keeps null days", () => {
     expect(dayLevels([0, 2, 4, null], 4)).toEqual([0, 2, 4, null]);
     expect(dayLevels([0, null], 5)).toEqual([0, null]);
+    expect(dayLevels([2, Number.NaN, 4, null], 4)).toEqual([2, 0, 4, null]);
   });
 });

@@ -196,7 +196,7 @@ export function ScriptRow(props: ScriptRowProps) {
         <Show when={runtime()?.bar}>
           {(bar) => (
             <span class="lrow-rt-bar" aria-hidden="true" style={{
-              "--from": bar().from.toFixed(3), "--to": bar().to.toFixed(3), "--fill": bar().fill.toFixed(3),
+              "--rt-from": bar().from.toFixed(3), "--rt-to": bar().to.toFixed(3), "--rt-fill": bar().fill.toFixed(3),
             }}>
               <i />
             </span>

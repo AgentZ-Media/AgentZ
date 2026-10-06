@@ -95,8 +95,9 @@ export function countPerDay(timestamps: readonly number[], days: number, now: Da
 
 /** Scales values to 0..`levels` like `recentDayLevels`; null stays null. */
 export function dayLevels(values: readonly (number | null)[], levels = 5): (number | null)[] {
-  const max = Math.max(0, ...values.map((v) => v ?? 0));
-  return values.map((v) => {
+  const clean = values.map((v) => (v === null ? null : Number.isFinite(v) && v > 0 ? v : 0));
+  const max = Math.max(0, ...clean.map((v) => v ?? 0));
+  return clean.map((v) => {
     if (v === null) return null;
     if (max === 0 || v <= 0) return 0;
     return Math.max(1, Math.round((v / max) * levels));

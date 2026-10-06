@@ -653,10 +653,10 @@ button.grp-act:hover {
   height: 4px;
   border-radius: 2px;
   background:
-    linear-gradient(90deg, transparent calc(var(--from) * 100%),
-      color-mix(in srgb, var(--ok) 30%, transparent) calc(var(--from) * 100%),
-      color-mix(in srgb, var(--ok) 30%, transparent) calc(var(--to) * 100%),
-      transparent calc(var(--to) * 100%)),
+    linear-gradient(90deg, transparent calc(var(--rt-from) * 100%),
+      color-mix(in srgb, var(--ok) 30%, transparent) calc(var(--rt-from) * 100%),
+      color-mix(in srgb, var(--ok) 30%, transparent) calc(var(--rt-to) * 100%),
+      transparent calc(var(--rt-to) * 100%)),
     var(--fill);
   overflow: hidden;
 }
@@ -665,7 +665,7 @@ button.grp-act:hover {
   left: 0;
   top: 0;
   bottom: 0;
-  width: calc(var(--fill) * 100%);
+  width: calc(var(--rt-fill) * 100%);
   border-radius: 2px;
   background: color-mix(in srgb, var(--fg) 72%, transparent);
   transform-origin: left center;
