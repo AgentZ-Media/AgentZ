@@ -44,7 +44,9 @@ export function Modal(props: ModalProps) {
       return;
     }
     if (e.key === "Tab" && modalRef) {
-      trapTab(e, modalRef, Array.from(modalRef.querySelectorAll<HTMLElement>(FOCUSABLE)));
+      const focusables = Array.from(modalRef.querySelectorAll<HTMLElement>(FOCUSABLE))
+        .filter((el) => !el.hasAttribute("disabled"));
+      trapTab(e, modalRef, focusables);
     }
   };
 

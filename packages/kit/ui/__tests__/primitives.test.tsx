@@ -27,6 +27,16 @@ describe("product-neutral UI primitives", () => {
     expect(document.activeElement).toBe(trigger);
   });
 
+  it("keeps Tab inside a modal and skips disabled elements with a tabindex", async () => {
+    render(() => <Modal open title="Preferences" onClose={() => {}}><input aria-label="Name" /><button disabled tabindex="0">Off</button></Modal>);
+    const close = document.querySelector<HTMLElement>(".modal-close")!;
+    const input = document.querySelector<HTMLElement>("input")!;
+    await waitFor(() => expect(document.activeElement).toBe(close));
+    input.focus();
+    fireEvent.keyDown(input, { key: "Tab" });
+    expect(document.activeElement).toBe(close);
+  });
+
   it("lets a marked nested overlay consume Escape before the dialog", () => {
     const close = vi.fn();
     const result = render(() => <DialogFrame open label="Preferences" onClose={close}><div data-dialog-dismiss-layer>Picker</div></DialogFrame>);
