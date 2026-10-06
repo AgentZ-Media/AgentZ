@@ -81,7 +81,7 @@ describe(${q(name)}, () => {
   });
 });
 `;
-  const plugins = ["os", "window-state", "single-instance", "updater", "process", "opener", "dialog", "clipboard-manager", "fs", "sql"];
+  const plugins = ["os", "window-state", "single-instance", "updater", "process", "opener", "dialog", "fs", "sql"];
   const conf = {
     $schema: "https://schema.tauri.app/config/2", productName: name, version: "0.1.0", identifier: `de.agent-z.${id}`,
     build: { beforeDevCommand: "pnpm dev", devUrl: `http://localhost:${port}`, beforeBuildCommand: "pnpm build", frontendDist: "../dist" },
@@ -90,7 +90,7 @@ describe(${q(name)}, () => {
     plugins: { updater: { endpoints: [`https://github.com/AgentZ-Media/AgentZ/releases/download/${id}-latest/latest.json`], pubkey } },
   };
   return {
-    [`modules/${id}/package.json`]: json({ name: `@agentz/${id}`, private: true, version: "0.0.0", type: "module", main: "./index.ts", types: "./index.ts", exports: { ".": "./index.ts", "./styles.css": "./styles.css" }, sideEffects: ["*.css"], scripts: { typecheck: "tsc --noEmit", test: "vitest run" }, dependencies, devDependencies: { "@agentz/vitest-preset": "workspace:*", "@solidjs/testing-library": "catalog:", jsdom: "catalog:", typescript: "catalog:", vite: "catalog:", "vite-plugin-solid": "catalog:", vitest: "catalog:" } }),
+    [`modules/${id}/package.json`]: json({ name: `@agentz/${id}`, private: true, version: "0.0.0", type: "module", main: "./index.ts", types: "./index.ts", exports: { ".": "./index.ts", "./styles.css": "./styles.css" }, sideEffects: ["*.css"], scripts: { typecheck: "tsc --noEmit", test: "vitest run" }, dependencies, devDependencies: { "@agentz/vitest-preset": "workspace:*", "@solidjs/testing-library": "catalog:", typescript: "catalog:", vite: "catalog:", vitest: "catalog:" } }),
     [`modules/${id}/index.ts`]: 'export { appModule } from "./module";\n',
     [`modules/${id}/module.tsx`]: module,
     [`modules/${id}/i18n.ts`]: `export const catalogs = ${JSON.stringify(catalogs, null, 2)} as const;\n`,
@@ -109,7 +109,7 @@ describe(${q(name)}, () => {
     [`apps/${id}/src-tauri/src/main.rs`]: `#![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]\nfn main() { ${rustId}_lib::run() }\n`,
     [`apps/${id}/src-tauri/src/lib.rs`]: `#[cfg_attr(mobile, tauri::mobile_entry_point)]\npub fn run() {\n    agentz_desktop::builder(agentz_desktop::Config {\n        id: "${id}",\n        migrations: vec![tauri_plugin_sql::Migration {\n            version: 1,\n            description: "kit baseline",\n            sql: include_str!("../migrations/001_baseline.sql"),\n            kind: tauri_plugin_sql::MigrationKind::Up,\n        }],\n    })\n    .run(tauri::generate_context!())\n    .expect("error while running desktop application");\n}\n`,
     [`apps/${id}/src-tauri/migrations/001_baseline.sql`]: baseline,
-    [`apps/${id}/src-tauri/capabilities/default.json`]: json({ $schema: "../gen/schemas/desktop-schema.json", identifier: "default", description: `Baseline permissions for ${name}`, windows: ["main"], permissions: ["core:default", "core:window:allow-start-dragging", "core:window:allow-destroy", "agentz-desktop:default", "os:default", "updater:default", "process:default", "sql:default", "sql:allow-load", "sql:allow-close", "sql:allow-execute", "sql:allow-select", "dialog:default", "opener:default", { identifier: "opener:allow-open-url", allow: [{ url: "https://github.com/AgentZ-Media/**" }] }] }),
+    [`apps/${id}/src-tauri/capabilities/default.json`]: json({ $schema: "../gen/schemas/desktop-schema.json", identifier: "default", description: `Baseline permissions for ${name}`, windows: ["main"], permissions: ["core:default", "core:window:allow-start-dragging", "core:window:allow-destroy", "agentz-desktop:default", "os:default", "updater:default", "process:default", "sql:default", "sql:allow-execute", "dialog:default", "opener:default"] }),
     [`apps/${id}/CLAUDE.md`]: `# ${name}\n\nDesktop-Schale: \`apps/${id}\`, Produktlogik: \`modules/${id}\`. Gemeinsames Kit und semantische Design-Tokens nutzen, keine Importe aus anderen Produkten.\n\n- Ports: Vite ${port}, HMR ${port + 1}. Datenbank \`sqlite:${id}.db\`, Identifier \`de.agent-z.${id}\`.\n- Migrationen nur anhängen, eine veröffentlichte Migration nie ändern.\n- Release-Notes: \`docs/release-notes/${id}/vX.Y.Z.md\`, Tags \`${id}-vX.Y.Z\`, Update-Zeiger \`${id}-latest\`.\n\nSiehe \`docs/neue-app.md\` und \`.claude/rules/suite-architecture.md\`.\n`,
     [`docs/release-notes/${id}/.gitkeep`]: "",
   };

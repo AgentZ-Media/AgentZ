@@ -33,7 +33,6 @@
   },
   "devDependencies": {
     "@agentz/vitest-preset": "workspace:*",
-    "@solidjs/testing-library": "catalog:",
     "@types/node": "catalog:",
     "typescript": "catalog:",
     "vitest": "catalog:"
