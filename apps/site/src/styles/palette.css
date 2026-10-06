@@ -1,0 +1,9 @@
+/* Character colours of the ScriptZ demo. They are document content, not
+   interface colours, and mirror the persisted ScriptZ character palette. */
+:root {
+  --char-1: #e0791f;
+  --char-2: #3a8ed4;
+  --char-3: #7a4ad4;
+  --char-4: #2fa56b;
+  --char-5: #d04141;
+}

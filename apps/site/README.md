@@ -1,9 +1,22 @@
 # AgentZ Suite website
 
 Static Astro site: German at `/`, English at `/en/`, German legal pages at
-`/impressum/` and `/datenschutz/`. No runtime JavaScript, tracking or cookies.
-Fonts, colors and buttons come from `@agentz/design`; Kit and product modules
-are never imported.
+`/impressum/` and `/datenschutz/`. No tracking, cookies, storage or external
+requests. Fonts, colors and buttons come from `@agentz/design`; Kit and product
+modules are never imported.
+
+The landing page shows a rebuilt, animated ScriptZ window
+(`src/components/ScriptzWindow.astro`), feature tiles with small looping demos
+(`Features.astro`) and real screenshots (`public/img/shots/<lang>-<view>-<width>.webp`).
+`src/scripts/site.ts` is the only script: reveal on scroll, the typing demo,
+the copy button and the platform-specific download button. Without JavaScript
+every section shows its final state; reduced motion stops the demo. The demo
+paper uses iA Writer Quattro (SIL OFL, `src/assets/fonts/`).
+
+The footer carries the official EU icon for labelling AI-generated content
+(`src/components/AiLabel.astro`, paths taken unchanged from the European
+Commission's download, free to use without attribution), with a plain-language
+note in German and English.
 
 ## Local
 
@@ -28,7 +41,7 @@ The build calls no GitHub API and shows no version number.
 
 ## Deployment
 
-Planned address: `https://agentz-suite.de` (`astro.config.mjs`). Domain,
+Planned address: `https://agentz-suite.com` (`astro.config.mjs`). Domain,
 Vercel project and DNS are set up manually. With `apps/site` as the Vercel root
 directory, `vercel.json` skips builds unless the site, `packages/design`, the
 root `package.json`, `pnpm-workspace.yaml` or `pnpm-lock.yaml` changed.
@@ -43,3 +56,4 @@ intentionally missing.
 - [Vercel privacy notice](https://vercel.com/legal/privacy-notice)
 - [Vercel DPA](https://vercel.com/legal/dpa)
 - [EU ODR platform shutdown](https://consumer-redress.ec.europa.eu/site-relocation_en)
+- [EU icons for labelling AI-generated content](https://digital-strategy.ec.europa.eu/en/policies/eu-icons-labelling-ai-generated-content)

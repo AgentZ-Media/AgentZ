@@ -1,0 +1,24 @@
+---
+import suiteIcon from "@agentz/design/assets/suite-app-icon.svg?url";
+import { catalogs, type Language } from "../i18n";
+interface Props { lang: Language; home: boolean }
+const { lang, home } = Astro.props;
+const t = catalogs[lang];
+const base = lang === "en" ? "/en/" : "/";
+const other = lang === "en" ? { href: "/", code: "DE", lang: "de", name: "Deutsch" } : { href: "/en/", code: "EN", lang: "en", name: "English" };
+---
+<header class="site-header">
+  <a class="brand" href={base} aria-label={`AgentZ Suite - ${t.home}`}>
+    <img src={suiteIcon} alt="" width="30" height="30" />
+    <span>AgentZ <span class="brand-suite">Suite</span></span>
+  </a>
+  <nav class="header-nav" aria-label="AgentZ Suite">
+    <a href={`${base}#scriptz`}>{t.nav.scriptz}</a>
+    <a href={`${base}#apps`}>{t.nav.apps}</a>
+    <a class="hide-s" href="https://github.com/AgentZ-Media/AgentZ-Suite">{t.nav.source}</a>
+  </nav>
+  <div class="header-end">
+    {home && <a class="lang-switch" href={other.href} hreflang={other.lang} lang={other.lang} aria-label={`${t.language}: ${other.name}`}>{other.code}</a>}
+    <a class="btn accent header-cta" href={`${base}#download`}>{t.nav.download}</a>
+  </div>
+</header>

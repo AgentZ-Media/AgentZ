@@ -1,30 +1,78 @@
 ---
 import Base from "../layouts/Base.astro";
-import { apps, appLinks } from "../apps";
+import ScriptzWindow from "./ScriptzWindow.astro";
+import Features from "./Features.astro";
+import Gallery from "./Gallery.astro";
+import Apps from "./Apps.astro";
+import Download from "./Download.astro";
+import Icon from "./Icon.astro";
+import appIcon from "@agentz/design/assets/scriptz-app-icon.svg?url";
 import { catalogs, type Language } from "../i18n";
 interface Props { lang: Language }
 const { lang } = Astro.props;
 const t = catalogs[lang];
+// Stars of the night sky behind the hero, placed deterministically.
+const stars = Array.from({ length: 34 }, (_, i) => ({
+  x: (i * 37.7) % 100,
+  y: (i * 61.3 + (i % 3) * 7) % 100,
+  d: (i * 0.73) % 6,
+  s: i % 5 === 0 ? 3 : 2,
+}));
 ---
 <Base lang={lang} home>
-  <section class="intro">
-    <h1>{t.headline}</h1>
-    <p>{t.intro}</p>
-  </section>
-  <section class="apps-section" aria-labelledby="apps-heading">
-    <div class="section-heading"><h2 id="apps-heading">{t.appsHeading}</h2><p>{t.appsIntro}</p></div>
-    <div class="app-list">
-      {apps.map(app => {
-        const links = appLinks(app.id);
-        return <article class="app-card" aria-labelledby={`app-${app.id}`}>
-          <img class="app-icon" src={links.icon} alt="" width="112" height="112" loading="lazy" />
-          <div class="app-info">
-            <div class="app-title"><h3 id={`app-${app.id}`}>{app.name}</h3><span class="app-status">{app.status === "available" ? t.available : t.soon}</span></div>
-            <p class="app-tagline">{app.tagline[lang]}</p>
-            {app.status === "available" ? <div class="app-downloads"><div class="download-buttons"><a class="btn primary" href={links.macos}>{t.macos}</a><a class="btn" href={links.windows}>{t.windows}</a></div><p class="platform-note">{t.platforms}. {t.downloads}.</p></div> : <p class="platform-note">{t.platforms}</p>}
-          </div>
-        </article>;
-      })}
+  <section class="hero" data-theme="dark" aria-labelledby="hero-title">
+    <div class="hero-sky" aria-hidden="true">
+      {stars.map((star) => <i style={`--x:${star.x}%;--y:${star.y}%;--d:${star.d}s;--s:${star.s}px`}></i>)}
     </div>
+    <div class="wrap hero-copy">
+      <p class="eyebrow hero-in" style="--n:0"><span class="pulse"></span>{t.hero.eyebrow}</p>
+      <h1 id="hero-title" class="hero-in" style="--n:1">{t.hero.titleA} <mark class="marker">{t.hero.titleMark}</mark></h1>
+      <p class="hero-intro hero-in" style="--n:2">{t.hero.intro}</p>
+      <div class="hero-actions hero-in" style="--n:3">
+        <a class="btn accent btn-lg" href="#download"><Icon name="import" />{t.hero.cta}</a>
+        <a class="btn btn-lg" href="#scriptz"><Icon name="play" />{t.hero.secondary}</a>
+      </div>
+      <p class="hero-facts hero-in" style="--n:4">{t.hero.facts}</p>
+    </div>
+    <div class="wrap-wide hero-stage hero-in" style="--n:5">
+      <div class="hero-tilt"><ScriptzWindow lang={lang} /></div>
+    </div>
+  </section>
+
+  <section id="scriptz" class="section" aria-labelledby="scriptz-title">
+    <div class="wrap">
+      <div class="section-head" data-reveal>
+        <img class="section-icon" src={appIcon} alt="" width="64" height="64" loading="lazy" />
+        <p class="kicker">{t.scriptz.kicker}</p>
+        <h2 id="scriptz-title">{t.scriptz.title}</h2>
+        <p class="lead">{t.scriptz.lead}</p>
+      </div>
+      <Features lang={lang} />
+    </div>
+  </section>
+
+  <section class="section section-ink" data-theme="dark" aria-labelledby="gallery-title">
+    <div class="wrap">
+      <div class="section-head" data-reveal>
+        <p class="kicker">{t.gallery.kicker}</p>
+        <h2 id="gallery-title">{t.gallery.title}</h2>
+      </div>
+      <Gallery lang={lang} />
+    </div>
+  </section>
+
+  <section id="apps" class="section" aria-labelledby="apps-title">
+    <div class="wrap">
+      <div class="section-head" data-reveal>
+        <p class="kicker">{t.suite.kicker}</p>
+        <h2 id="apps-title">{t.suite.title}</h2>
+        <p class="lead">{t.suite.text}</p>
+      </div>
+      <Apps lang={lang} />
+    </div>
+  </section>
+
+  <section id="download" class="section section-download" aria-labelledby="download-title">
+    <div class="wrap"><Download lang={lang} /></div>
   </section>
 </Base>
