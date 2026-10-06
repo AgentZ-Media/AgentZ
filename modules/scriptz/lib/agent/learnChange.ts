@@ -35,15 +35,29 @@ function parseLines(text: string): Line[] {
   });
 }
 
-/** Word counts per lower-cased word (UAX #29 word segments). */
+/** The speaker of each line: the most recent character above it, like the
+ *  cast shares in lib/lex.ts (empty before the first character). */
+function speakers(lines: readonly Line[]): string[] {
+  let speaker = "";
+  return lines.map((line) => {
+    if (line.type === "character") speaker = line.text.trim().replace(/\s+/g, " ").toUpperCase();
+    return line.type === "dialog" || line.type === "parenthetical" ? speaker : "";
+  });
+}
+
+/** Word counts per speaker and lower-cased word (UAX #29 word segments), so
+ *  lines moved to another character count as changed. */
 function countWords(lines: readonly Line[]): Map<string, number> {
   const seg = new Intl.Segmenter(undefined, { granularity: "word" });
+  const who = speakers(lines);
   const counts = new Map<string, number>();
-  for (const line of lines) {
+  lines.forEach((line, i) => {
     for (const piece of seg.segment(line.text.toLowerCase())) {
-      if (piece.isWordLike) counts.set(piece.segment, (counts.get(piece.segment) ?? 0) + 1);
+      if (!piece.isWordLike) continue;
+      const key = `${who[i]}\u0000${piece.segment}`;
+      counts.set(key, (counts.get(key) ?? 0) + 1);
     }
-  }
+  });
   return counts;
 }
 
@@ -69,19 +83,20 @@ export function learnChange(before: string, after: string): LearnChange {
   const known = characters(old);
   const newCharacters = [...characters(next)].filter((name) => !known.has(name));
 
-  // Lines of the new version that the old one did not have (as a multiset).
+  // Lines of the new version that the old one did not have (as a multiset,
+  // per speaker).
+  const oldSpeakers = speakers(old);
   const remaining = new Map<string, number>();
-  for (const line of old) {
-    const key = `${line.type}:${line.text}`;
+  old.forEach((line, i) => {
+    const key = `${line.type}:${oldSpeakers[i]}:${line.text}`;
     remaining.set(key, (remaining.get(key) ?? 0) + 1);
-  }
+  });
+  const nextSpeakers = speakers(next);
   const changedLines: string[] = [];
-  let speaker = "";
-  for (const line of next) {
+  for (const [i, line] of next.entries()) {
     const text = line.text.replace(/\s+/g, " ").trim();
-    if (line.type === "character") speaker = text.toUpperCase();
-    else if (line.type === "action") speaker = "";
-    const key = `${line.type}:${line.text}`;
+    const speaker = nextSpeakers[i];
+    const key = `${line.type}:${speaker}:${line.text}`;
     const left = remaining.get(key) ?? 0;
     if (left > 0) {
       remaining.set(key, left - 1);

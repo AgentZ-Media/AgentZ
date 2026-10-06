@@ -6,7 +6,7 @@ import { foldersBus } from "../../lib/foldersBus";
 import { agentSettings } from "../agentSettings";
 import { agentUi } from "../agentUi";
 import { clearCodexHost, currentProvider, disposeProvider, hasCodexHost, setCodexHost } from "./provider";
-import { finishedStageIds, scheduleLearning, stopLearning } from "./learning";
+import { clearWaiting, finishedStageIds, scheduleLearning, stopLearning } from "./learning";
 import { clearLiveChats, liveChats, unregisterChat } from "./registry";
 import { refreshSessionList, resetSessionList, sessionsVersion } from "./sessionList";
 
@@ -62,6 +62,7 @@ export function startAgentRuntime(services: Readonly<Record<string, unknown>>): 
       ? finishedStageIds().join(",")
       : ""), (key) => {
       if (key) scheduleLearning(3000);
+      else clearWaiting();
     }));
     createEffect(on(agentSettings.enabled, (enabled) => {
       if (!enabled) shutdownProvider();

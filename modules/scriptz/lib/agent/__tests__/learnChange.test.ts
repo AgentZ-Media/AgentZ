@@ -49,6 +49,19 @@ describe("learnChange", () => {
     expect(learnChange(base, moved)).toMatchObject({ changedWords: 0, changedLines: [] });
   });
 
+  it("relearns when dialog moves to another character", () => {
+    const swapped = base
+      .replace("dialog:Ich hätte gern zwei Brötchen und ein Croissant, bitte.", "dialog:__TIMO__")
+      .replace("dialog:Wir haben nur noch Schrippen, Wecken und Semmeln im Angebot.", "dialog:Ich hätte gern zwei Brötchen und ein Croissant, bitte.")
+      .replace("dialog:__TIMO__", "dialog:Wir haben nur noch Schrippen, Wecken und Semmeln im Angebot.");
+    const change = learnChange(base, swapped);
+    expect(worthRelearning(change)).toBe(true);
+    expect(change.changedLines).toEqual([
+      "DIALOG (TIMO): Wir haben nur noch Schrippen, Wecken und Semmeln im Angebot.",
+      "DIALOG (AXEL): Ich hätte gern zwei Brötchen und ein Croissant, bitte.",
+    ]);
+  });
+
   it("treats an empty earlier version as all new", () => {
     const change = learnChange("", base);
     expect(change.changedWords).toBe(change.totalWords);

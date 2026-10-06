@@ -83,6 +83,11 @@ export function finishedStageIds(): string[] {
   return learnStageIds(agentSettings.learnStage(), scriptStages());
 }
 
+/** Forgets the scripts shown as waiting (learning was switched off). */
+export function clearWaiting(): void {
+  setWaiting([]);
+}
+
 export function scheduleLearning(delayMs = 6000): void {
   if (learnTimer) clearTimeout(learnTimer);
   learnTimer = setTimeout(() => { learnTimer = null; void runLearning(); }, delayMs);
