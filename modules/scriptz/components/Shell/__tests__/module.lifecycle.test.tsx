@@ -251,7 +251,8 @@ describe("ScriptZ module lifecycle", () => {
     ideasBus.bump(); dailyStatsBus.bump(); scriptsBus.bump();
     await settleBoot();
     expect(storage.listIdeas).toHaveBeenCalledTimes(3);
-    expect(storage.loadDailyStats).toHaveBeenCalledTimes(3);
+    // The stats reload once typing pauses (debounced), not with the bump.
+    await waitFor(() => expect(storage.loadDailyStats).toHaveBeenCalledTimes(3), { timeout: 3000 });
     expect(storage.listScripts).toHaveBeenCalledTimes(3);
     expect(storage.listFolders).toHaveBeenCalledTimes(3);
     second.unmount();

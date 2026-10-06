@@ -1,7 +1,7 @@
 import { createEffect, createRoot, on } from "solid-js";
 import { registerFlusher } from "@agentz/kit/lib";
 import { api } from "../../lib/api";
-import { scriptsBus } from "../../lib/scriptsBus";
+import { scriptSavedBus, scriptsBus } from "../../lib/scriptsBus";
 import { foldersBus } from "../../lib/foldersBus";
 import { agentSettings } from "../agentSettings";
 import { agentUi } from "../agentUi";
@@ -13,6 +13,8 @@ import { refreshSessionList, resetSessionList, sessionsVersion } from "./session
 // ---------------------------------------------------------------------------
 // Runtime
 // ---------------------------------------------------------------------------
+
+const BOOT_LIST_DELAY_MS = 2000;
 
 /** Live chats whose script or folder was deleted for good follow along:
  *  a session goes on without them, a script chat is gone with its row. */
@@ -54,9 +56,10 @@ function shutdownProvider(): void {
 
 export function startAgentRuntime(services: Readonly<Record<string, unknown>>): () => void {
   setCodexHost(services.codexHost);
-  // Any script change (stage, content, import) may finish a script.
+  // Any script change (stage, content, import) may finish a script. Content
+  // saves come through `scriptSavedBus`, list changes through `scriptsBus`.
   const disposeWatch = createRoot((dispose) => {
-    createEffect(on(scriptsBus.version, () => scheduleLearning(), { defer: true }));
+    createEffect(on([scriptsBus.version, scriptSavedBus.version], () => scheduleLearning(), { defer: true }));
     // Switching learning on or moving the learn stage may make scripts due.
     createEffect(on(() => (agentSettings.enabled() && agentSettings.onboarded() && agentSettings.learnFromScripts()
       ? finishedStageIds().join(",")
@@ -75,12 +78,15 @@ export function startAgentRuntime(services: Readonly<Record<string, unknown>>): 
     // The session list follows every session write (and ideas/scripts that
     // a finished draft touched).
     // Only where the agent exists at all (no queries in builds without it).
-    createEffect(on(sessionsVersion, () => { if (hasCodexHost()) void refreshSessionList(); }));
+    createEffect(on(sessionsVersion, () => { if (hasCodexHost()) void refreshSessionList(); }, { defer: true }));
     createEffect(on([scriptsBus.version, foldersBus.version], () => {
       if (hasCodexHost()) void reconcileLiveChats().catch((error) => console.warn("[agent] reconciling chats failed", error));
     }, { defer: true }));
     return dispose;
   });
+  // The first list (sidebar badge, start screen) is not needed while the app
+  // starts; the agent mode loads it itself when opened earlier.
+  const bootList = setTimeout(() => { if (hasCodexHost()) void refreshSessionList(); }, BOOT_LIST_DELAY_MS);
   // Closing and quitting wait for chat writes (applied options, undos).
   const offFlush = registerFlusher(
     () => Promise.all(liveChats().map((session) => session.flush())).then(() => undefined),
@@ -88,6 +94,7 @@ export function startAgentRuntime(services: Readonly<Record<string, unknown>>): 
     "state",
   );
   return () => {
+    clearTimeout(bootList);
     offFlush();
     disposeWatch();
     stopLearning({ resetProgress: true, clearIndicator: true });

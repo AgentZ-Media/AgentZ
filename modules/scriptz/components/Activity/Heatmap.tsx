@@ -1,5 +1,5 @@
 import { For, Show, createMemo, onMount } from "solid-js";
-import { getCurrentLocale, language } from "@agentz/kit/i18n";
+import { language, formatDate, formatNumber } from "@agentz/kit/i18n";
 import { t, tPlural } from "../../i18n";
 import "./Heatmap.css";
 
@@ -174,7 +174,7 @@ function buildMonthLabels(weeks: (Cell | null)[][]): string[] {
 }
 
 function tooltip(date: Date, words: number): string {
-  const fmt = date.toLocaleDateString(getCurrentLocale(), {
+  const fmt = formatDate(date, {
     weekday: "short",
     day: "numeric",
     month: "short",
@@ -182,6 +182,6 @@ function tooltip(date: Date, words: number): string {
   if (words === 0) return t("activity.heatmap.tooltip.noActivity", { date: fmt });
   return tPlural("activity.heatmap.tooltip.words", words, {
     date: fmt,
-    count: words.toLocaleString(getCurrentLocale()),
+    count: formatNumber(words),
   });
 }

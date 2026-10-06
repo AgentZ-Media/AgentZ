@@ -2,7 +2,7 @@ import { Show } from "solid-js";
 import { formatClock, formatRange, lengthStatus, type LengthRange } from "../../lib/lengthGoal";
 import { createTween } from "../Common/motion";
 import { K } from "@agentz/kit/platform";
-import { getCurrentLocale } from "@agentz/kit/i18n";
+import { formatNumber } from "@agentz/kit/i18n";
 import { t, tPlural } from "../../i18n";
 
 export interface FocusPillProps {
@@ -26,7 +26,7 @@ export function FocusPill(props: FocusPillProps) {
       </span>
       <span class="div" aria-hidden="true" />
       <span>
-        {t("script.focus.session")} <b>+{props.sessionWords.toLocaleString(getCurrentLocale())}</b>{" "}
+        {t("script.focus.session")} <b>+{formatNumber(props.sessionWords)}</b>{" "}
         {tPlural("units.word", props.sessionWords)}
       </span>
       <span class="div" aria-hidden="true" />

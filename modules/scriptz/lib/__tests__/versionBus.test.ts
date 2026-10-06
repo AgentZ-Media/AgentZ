@@ -1,6 +1,6 @@
 import { createEffect, createRoot } from "solid-js";
 import { describe, expect, it } from "vitest";
-import { createVersionBus } from "../versionBus";
+import { createEventBus, createVersionBus } from "../versionBus";
 
 describe("createVersionBus", () => {
   it("starts at 0 and counts every bump", () => {
@@ -33,5 +33,20 @@ describe("createVersionBus", () => {
     expect(runs).toBe(1);
     expect(bus.version()).toBe(2);
     dispose();
+  });
+});
+
+describe("createEventBus", () => {
+  it("delivers every value in order and bumps the version", () => {
+    const bus = createEventBus<number>();
+    const seen: number[] = [];
+    const off = bus.listen((v) => seen.push(v));
+    bus.emit(1);
+    bus.emit(2);
+    expect(seen).toEqual([1, 2]);
+    expect(bus.version()).toBe(2);
+    off();
+    bus.emit(3);
+    expect(seen).toEqual([1, 2]);
   });
 });

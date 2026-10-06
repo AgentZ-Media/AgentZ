@@ -152,6 +152,24 @@ describe("agent persistence boundary with SQLite", () => {
     expect(database.prepare("SELECT source_chat_id FROM ideas WHERE id = 'idea'").get()).toEqual({ source_chat_id: null });
   });
 
+  it("reads the items of a listed session only after it changed", async () => {
+    const session = (overrides: Partial<ChatRecord> = {}) => chat({
+      id: "listed", kind: "session", scriptId: null, title: "Listed", updatedAt: 20, ...overrides,
+    });
+    await saveChat(session());
+    const getChats = vi.spyOn(sqlAgentStorage, "getChats");
+    setStorageAdapter({ ...originalAdapter, agent: sqlAgentStorage });
+    expect((await listSessions()).map((s) => [s.id, s.title])).toEqual([["listed", "Listed"]]);
+    await listSessions();
+    expect(getChats).toHaveBeenCalledTimes(1);
+    // A new write (newer time, new items) is read again; a new title alone
+    // comes from the light columns.
+    await saveChat(session({ updatedAt: 30, title: "Renamed", items: [{ kind: "handoff", id: "h", scriptId: "script", title: "T", slug: "a", versionId: "m#0", folderId: null, at: 1 }] }));
+    expect(await listSessions()).toMatchObject([{ id: "listed", title: "Renamed", finished: 1, updatedAt: 30 }]);
+    expect(getChats).toHaveBeenCalledTimes(2);
+    getChats.mockRestore();
+  });
+
   it("routes all public writes through the currently registered adapter and propagates failures", async () => {
     const save = vi.fn().mockRejectedValue(new Error("storage unavailable"));
     const insert = vi.fn().mockRejectedValue(new Error("storage unavailable"));

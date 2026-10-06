@@ -21,3 +21,29 @@ export function createVersionBus(): VersionBus {
     },
   };
 }
+
+/** A version bus whose bumps carry a value. Listeners get every value in
+ *  order (a signal alone would only keep the last one); reactive readers
+ *  that only need "something happened" track `version()`. */
+export interface EventBus<T> {
+  version: Accessor<number>;
+  emit(value: T): void;
+  /** Returns the unsubscribe function. */
+  listen(fn: (value: T) => void): () => void;
+}
+
+export function createEventBus<T>(): EventBus<T> {
+  const bus = createVersionBus();
+  const listeners = new Set<(value: T) => void>();
+  return {
+    version: bus.version,
+    emit(value) {
+      for (const fn of [...listeners]) fn(value);
+      bus.bump();
+    },
+    listen(fn) {
+      listeners.add(fn);
+      return () => listeners.delete(fn);
+    },
+  };
+}

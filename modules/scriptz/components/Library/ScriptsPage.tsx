@@ -316,7 +316,11 @@ export function ScriptsPage() {
   // ---- keyboard: "/" focuses the filter, ⌘A selects all, Esc leaves the selection ----
   onMount(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (e.defaultPrevented || modalOpen() || menu()) return;
+      if (e.defaultPrevented || menu()) return;
+      // Typing in the side panel passes here on every key: the dialog check
+      // (a DOM query) only runs for the keys handled below.
+      if (!isSelectAllKey(e) && e.key !== "/" && e.key !== "Escape") return;
+      if (modalOpen()) return;
       if (isSelectAllKey(e) && !isBoard() && !isTypingTarget(e.target) && data.selectableIds().length > 0) {
         e.preventDefault();
         sel.selectAll();

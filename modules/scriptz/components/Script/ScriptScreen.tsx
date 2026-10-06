@@ -14,17 +14,16 @@ import { $getNodeByKey, $isElementNode, type LexicalEditor } from "lexical";
 import { Editor } from "../Editor/Editor";
 import { SnapshotsDialog } from "../Editor/SnapshotsDialog";
 import { api } from "../../lib/api";
-import { scriptsBus } from "../../lib/scriptsBus";
-import { foldersBus } from "../../lib/foldersBus";
+import { scriptSavedBus, scriptsBus, withSavedContent } from "../../lib/scriptsBus";
 import { isModKey } from "@agentz/kit/platform";
 import { requireSuccessfulFlush } from "@agentz/kit/lib";
 import { computeTimeline, type TimelineSegment } from "../../lib/timing";
 import { folderHasLengthRange, resolveLengthRange } from "../../lib/lengthGoal";
 import { captureCursor, scriptViewCache, type CursorAddress } from "../../lib/scriptViewCache";
-import type { Folder, Script, ScriptCharacter } from "../../lib/types";
+import type { Folder, Script, ScriptCharacter, ScriptSummary } from "../../lib/types";
 import { navStore } from "../../stores/nav";
 import { settingsStore } from "../../stores/settings";
-import { defaultLengthRange } from "../Shell/libraryData";
+import { defaultLengthRange, library } from "../Shell/libraryData";
 import { uiStore } from "../../stores/ui";
 import { createStatePersistence, pushToast } from "@agentz/kit/stores";
 import { t } from "../../i18n";
@@ -105,11 +104,16 @@ function errMessage(err: unknown): string {
 export function ScriptScreen(props: ScriptScreenProps) {
   const isPeek = () => props.peek !== undefined;
   // ---------- data ----------
+  // The newest autosave summary: a reload that read the row before that
+  // save committed must not roll the screen back to the older values.
+  let lastSaved: ScriptSummary | null = null;
   const [script, { mutate: setScript }] = createResource<Script | null, { id: string; v: number }>(
     () => ({ id: props.scriptId, v: scriptsBus.version() }),
     async ({ id }, info) => {
       try {
-        return await api.getScript(id);
+        const fresh = await api.getScript(id);
+        const saved = lastSaved;
+        return saved && saved.id === id && saved.updated_at > fresh.updated_at ? withSavedContent(fresh, saved) : fresh;
       } catch (err) {
         console.warn("[scriptz] script load failed", err);
         const prev = info.value;
@@ -117,16 +121,14 @@ export function ScriptScreen(props: ScriptScreenProps) {
       }
     },
   );
-  const [folders] = createResource(
-    () => foldersBus.version(),
-    async (): Promise<Folder[]> => {
-      try {
-        return await api.listFolders();
-      } catch {
-        return [];
-      }
-    },
-  );
+  // Autosaves patch the loaded script with their summary instead of
+  // re-reading it with its whole content (the editor owns the content).
+  const offSaved = scriptSavedBus.listen((summary) => {
+    lastSaved = summary;
+    const prev = script.latest;
+    if (prev && prev.id === summary.id) setScript(withSavedContent(prev, summary));
+  });
+  onCleanup(offSaved);
 
   const current = () => {
     const s = script.latest;
@@ -135,7 +137,7 @@ export function ScriptScreen(props: ScriptScreenProps) {
   const folder = createMemo<Folder | null>(() => {
     const fid = current()?.folder_id ?? null;
     if (!fid) return null;
-    return folders.latest?.find((f) => f.id === fid) ?? null;
+    return library.folder(fid) ?? null;
   });
   const range = createMemo(() => resolveLengthRange(folder(), defaultLengthRange()));
   const rangeSource = createMemo<RangeSource | null>(() => {
@@ -532,7 +534,8 @@ export function ScriptScreen(props: ScriptScreenProps) {
     }
     const ed = editor();
     const caret = live.caret();
-    live.tick();
+    // Arrow keys move the caret line without changing content.
+    live.cursorTick();
     const blocks = live.blocks();
     if (!ed || !caret) return;
     clearTypewriter();

@@ -2,7 +2,7 @@
 // the compact age label. Kept free of Solid so they are unit-testable.
 
 import { INBOX_FOLDER_ID } from "../../lib/folders";
-import { getCurrentLocale } from "@agentz/kit/i18n";
+import { formatDate } from "@agentz/kit/i18n";
 import { t } from "../../i18n";
 import type { Idea } from "../../lib/types";
 
@@ -157,7 +157,7 @@ export function ideaAge(ms: number, now: number): string {
       | "weekday.short.4" | "weekday.short.5" | "weekday.short.6");
   }
   const sameYear = date.getFullYear() === new Date(now).getFullYear();
-  return date.toLocaleDateString(getCurrentLocale(), {
+  return formatDate(date, {
     day: "numeric",
     month: "short",
     year: sameYear ? undefined : "numeric",
@@ -171,7 +171,7 @@ export function groupLabel(g: Pick<IdeaGroup<unknown>, "kind" | "year" | "month"
   if (g.kind === "older") return t("ideasPage.group.older");
   if (g.kind === "all") return t("ideasPage.group.all");
   const d = new Date(g.year, g.month, 1);
-  return d.toLocaleDateString(getCurrentLocale(), {
+  return formatDate(d, {
     month: "long",
     year: g.year === now.getFullYear() ? undefined : "numeric",
   });

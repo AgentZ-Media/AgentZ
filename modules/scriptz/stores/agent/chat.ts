@@ -1,5 +1,5 @@
 import { createSignal } from "solid-js";
-import { createStore, produce, reconcile } from "solid-js/store";
+import { createStore, produce, reconcile, unwrap } from "solid-js/store";
 import { t } from "../../i18n";
 import { api } from "../../lib/api";
 import { effortOrDefault } from "../../lib/agent/codex/provider";
@@ -12,7 +12,7 @@ import { agentSettings } from "../agentSettings";
 import { applyBlocks, liveBlocks, readSelection, revealBlock, targetIndex } from "../../components/Agent/editorBridge";
 import { ensureModels, getProvider, resolveModel } from "./provider";
 import { chatInstructions, currentPace, sessionPreamble } from "./instructions";
-import { applyEvent, finishStreaming, localId, memoryItem, undoMemoryChange } from "./chatItems";
+import { applyEvents, createEventBuffer, finishStreaming, localId, memoryItem, undoMemoryChange } from "./chatItems";
 import { byChat, byScript, chatsChanged } from "./registry";
 import { bumpSessions } from "./sessionList";
 import type { ChatSession } from "./types";
@@ -27,6 +27,11 @@ export function sessionTitleFrom(text: string): string {
   const line = text.replace(/\s+/g, " ").trim();
   return line.length > SESSION_TITLE_MAX ? `${line.slice(0, SESSION_TITLE_MAX - 1).trimEnd()}…` : line;
 }
+
+/** Provider threads of unloaded chats that are still being closed, by
+ *  thread id. A chat opened again for the same row resumes the thread only
+ *  afterwards, or the late unsubscribe would cut off the resumed one. */
+const closingThreads = new Map<string, Promise<void>>();
 
 export type ChatSource =
   /** `record`: the script's newest chat, already loaded (or none yet). */
@@ -51,6 +56,9 @@ export function createChat(source: ChatSource): ChatSession {
   // Writes run one after another so an older snapshot never lands last.
   let writes: Promise<void> = Promise.resolve();
   let writeError: unknown = null;
+  // The snapshot waiting behind a running write; a newer one replaces it.
+  let queued: { record: ChatRecord; json: string } | null = null;
+  let writesInFlight = 0;
   // Bumped by "New chat": a turn from before must not touch the new chat.
   let epoch = 0;
   // Set before the row is deleted: nothing may write it again.
@@ -101,6 +109,9 @@ export function createChat(source: ChatSource): ChatSession {
         title: title(), folderId: folderId(), items: [], createdAt: now, updatedAt: now,
       };
     }
+    // `items` is the live list; `json` is the snapshot that is stored,
+    // serialized once here.
+    const items = unwrap(state.items);
     record = {
       ...record,
       kind: kind(),
@@ -108,14 +119,25 @@ export function createChat(source: ChatSource): ChatSession {
       title: title(),
       folderId: folderId(),
       threadId: thread?.id ?? record.threadId,
-      items: JSON.parse(JSON.stringify(state.items)) as ChatItem[],
+      items,
       updatedAt: now,
     };
-    const snapshot = record;
-    writes = writes.then(() => saveChat(snapshot)).then(
-      () => { writeError = null; if (snapshot.kind === "session") bumpSessions(); },
+    const json = JSON.stringify(items);
+    if (queued) {
+      queued.record = record;
+      queued.json = json;
+      return;
+    }
+    const next = { record, json };
+    queued = next;
+    writesInFlight += 1;
+    writes = writes.then(() => {
+      if (queued === next) queued = null;
+      return saveChat(next.record, next.json);
+    }).then(
+      () => { writeError = null; if (next.record.kind === "session") bumpSessions(); },
       (error: unknown) => { writeError = error; console.warn("[agent] saving chat failed", error); },
-    );
+    ).finally(() => { writesInFlight -= 1; });
   };
 
   const persist = (immediate = false) => {
@@ -197,6 +219,7 @@ export function createChat(source: ChatSource): ChatSession {
     if (!p) throw new Error("agent unavailable");
     await loading;
     const resumeFrom = thread?.id ?? record?.threadId ?? null;
+    if (resumeFrom) await closingThreads.get(resumeFrom);
     if (thread) {
       // Mode changed (handed to a script): unload the thread so resuming
       // picks up the new instructions and tools; the history stays.
@@ -269,10 +292,16 @@ export function createChat(source: ChatSource): ChatSession {
         }
         if (options?.hint) input = `${input}\n\n(${options.hint})`;
         if (modeNow() === "session") input = `${await sessionPreamble(folderId, () => state.items)}\n\n${input}`;
-        const result = await active.run(input, {
-          model: model?.id ?? "",
-          effort: effortOrDefault(model, agentSettings.effort()),
-        }, (event) => { if (live()) applyEvent(setState, event); });
+        const stream = createEventBuffer((events) => { if (live()) applyEvents(setState, events); });
+        let result: Awaited<ReturnType<AgentThread["run"]>>;
+        try {
+          result = await active.run(input, {
+            model: model?.id ?? "",
+            effort: effortOrDefault(model, agentSettings.effort()),
+          }, (event) => stream.push(event));
+        } finally {
+          stream.flush();
+        }
         if (!live()) return;
         if (result.status === "interrupted") push({ kind: "interrupted", id: localId("int") });
         if (result.status === "failed") {
@@ -331,6 +360,20 @@ export function createChat(source: ChatSource): ChatSession {
       // the provider ends any running turn.
       thread = null;
       threadMode = null;
+    },
+    idle() {
+      return ready() && !running() && !saveTimer && writesInFlight === 0;
+    },
+    unload() {
+      const old = thread;
+      thread = null;
+      threadMode = null;
+      if (!old) return Promise.resolve();
+      const closing: Promise<void> = old.close().catch(() => {}).finally(() => {
+        if (closingThreads.get(old.id) === closing) closingThreads.delete(old.id);
+      });
+      closingThreads.set(old.id, closing);
+      return closing;
     },
     applyOption(itemId, index) {
       const id = scriptId();

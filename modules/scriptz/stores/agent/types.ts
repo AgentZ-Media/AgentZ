@@ -32,6 +32,11 @@ export interface ChatSession {
   /** Drops the provider thread but keeps the visible chat; the next message
    *  resumes the saved thread on a fresh connection. */
   release(): void;
+  /** Loaded, no turn running, no save pending or in flight. */
+  idle(): boolean;
+  /** Closes the provider thread of a chat that leaves the registry (idle
+   *  chats beyond the cap); the row stays and opens again from storage. */
+  unload(): Promise<void>;
   applyOption(itemId: string, index: number): boolean;
   applyFix(itemId: string, index: number): boolean;
   undoMemory(itemId: string): Promise<void>;
