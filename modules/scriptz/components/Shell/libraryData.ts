@@ -108,7 +108,7 @@ function createLibraryData(isActive: () => boolean) {
   });
 
   // Read through a memo: readers never hit the resource itself, so a refetch
-  // (every autosave bumps scriptsBus) cannot suspend the screen they sit in.
+  // (any scriptsBus bump) cannot suspend the screen they sit in.
   const folderList = createMemo<Folder[]>(() => folders() ?? []);
 
   const folderMap = createMemo(() => {

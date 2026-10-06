@@ -4,7 +4,8 @@ import { parseMarkdown, type Block, type Inline } from "../../lib/agent/markdown
 
 // Every streamed token parses the text anew into fresh objects. Rows are
 // positional (<Index>), so a token updates the last text node instead of
-// rebuilding the message.
+// rebuilding the message. Match children run once and untracked: text must
+// stay inside JSX (`<>{n().v}</>`) to follow the stream.
 
 function openLink(event: MouseEvent, href: string) {
   event.preventDefault();
@@ -16,7 +17,7 @@ function Inlines(props: { nodes: Inline[] }) {
     <Index each={props.nodes}>
       {(node) => (
         <Switch>
-          <Match when={node().t === "text" && (node() as Extract<Inline, { t: "text" }>)}>{(n) => n().v}</Match>
+          <Match when={node().t === "text" && (node() as Extract<Inline, { t: "text" }>)}>{(n) => <>{n().v}</>}</Match>
           <Match when={node().t === "br"}><br /></Match>
           <Match when={node().t === "code" && (node() as Extract<Inline, { t: "code" }>)}>{(n) => <code>{n().v}</code>}</Match>
           <Match when={node().t === "bold" && (node() as Extract<Inline, { t: "bold" }>)}>{(n) => <strong><Inlines nodes={n().c} /></strong>}</Match>
