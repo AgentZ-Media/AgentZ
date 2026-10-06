@@ -21,6 +21,7 @@ function restoreFiles(root, snapshot) {
   }
 }
 const registryPaths = { logo: "packages/design/logo.ts", site: "apps/site/src/apps.ts" };
+const rootScripts = (id) => ({ [`dev:${id}`]: `pnpm --filter @agentz/${id}-app tauri:dev`, [`build:${id}`]: `pnpm --filter @agentz/${id}-app tauri:build` });
 
 /** Resolved entries of pnpm-lock.yaml: `packages` keys (`name@version`) and
  *  `snapshots` blocks, whose keys carry peer suffixes and whose bodies hold
@@ -108,8 +109,10 @@ export function runCommand(command, args, root) {
   const result = spawnSync(executable, commandArgs, { cwd: root, stdio: "inherit", shell: false });
   if (result.error || result.status !== 0) throw new Error(`${command} ${args.join(" ")} fehlgeschlagen; Repository-Dateien werden zurückgesetzt. ${result.error?.message ?? ""}`);
 }
-function updateLocks(root, run) {
+/** Re-resolves both lockfiles; `afterInstall` runs between pnpm and Cargo. */
+function updateLocks(root, run, afterInstall = () => {}) {
   run("pnpm", ["install", "--no-frozen-lockfile"], root);
+  afterInstall();
   run("cargo", ["check", "--workspace"], root);
 }
 
@@ -131,7 +134,7 @@ export function newApp(root, id, name, { run = runCommand } = {}) {
   for (const path of ownedPaths) if (existsSync(safePath(root, path))) throw new Error(`Wird niemals überschrieben: ${path}`);
   safePath(root, "package.json");
   const pkg = parse(root, "package.json");
-  const scripts = { [`dev:${id}`]: `pnpm --filter @agentz/${id}-app tauri:dev`, [`build:${id}`]: `pnpm --filter @agentz/${id}-app tauri:build` };
+  const scripts = rootScripts(id);
   for (const key of Object.keys(scripts)) if (Object.hasOwn(pkg.scripts ?? {}, key)) throw new Error(`Root-Skript existiert bereits: ${key}`);
   const port = nextPort(root);
   const pubkey = parse(root, "apps/scriptz/src-tauri/tauri.conf.json").plugins.updater.pubkey;
@@ -153,10 +156,10 @@ export function newApp(root, id, name, { run = runCommand } = {}) {
     for (const path of ownedPaths.slice(0, 3)) { mkdirSync(safePath(root, dirname(path)), { recursive: true }); mkdirSync(safePath(root, path)); created.push(path); }
     for (const [path, content] of Object.entries(files)) { mkdirSync(dirname(safePath(root, path)), { recursive: true }); writeFileSync(safePath(root, path), content, { flag: "wx" }); }
     for (const [path, content] of Object.entries(replacements)) writeFileSync(safePath(root, path), content);
-    run("pnpm", ["install", "--no-frozen-lockfile"], root);
-    created.push(...ownedPaths.slice(3));
-    run("node", ["packages/design/scripts/build-logo.mjs", "--app", id], root);
-    run("cargo", ["check", "--workspace"], root);
+    updateLocks(root, run, () => {
+      created.push(...ownedPaths.slice(3));
+      run("node", ["packages/design/scripts/build-logo.mjs", "--app", id], root);
+    });
   } catch (error) {
     restoreFiles(root, { ...originals, ...lockSnapshot });
     for (const path of created) rmSync(join(root, path), { recursive: true, force: true });
@@ -177,8 +180,7 @@ export function removeApp(root, id, { run = runCommand } = {}) {
   if (manifest.generator !== "agentz-new-app" || manifest.version !== 1 || manifest.id !== id || JSON.stringify(manifest.paths) !== JSON.stringify(expectedPaths)) throw new Error("Ungültiger Generator-Eigentumsnachweis");
   for (const path of expectedPaths) safePath(root, path);
   const pkg = parse(root, "package.json");
-  const expectedScripts = { [`dev:${id}`]: `pnpm --filter @agentz/${id}-app tauri:dev`, [`build:${id}`]: `pnpm --filter @agentz/${id}-app tauri:build` };
-  for (const [key, value] of Object.entries(expectedScripts)) {
+  for (const [key, value] of Object.entries(rootScripts(id))) {
     if (pkg.scripts?.[key] !== value) throw new Error(`Root-Skript wurde verändert; zuerst prüfen: ${key}`);
     delete pkg.scripts[key];
   }
