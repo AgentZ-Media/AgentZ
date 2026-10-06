@@ -29,10 +29,8 @@
   },
   "devDependencies": {
     "@solidjs/testing-library": "catalog:",
-    "jsdom": "catalog:",
     "typescript": "catalog:",
     "vite": "catalog:",
-    "vite-plugin-solid": "catalog:",
     "vitest": "catalog:",
     "@agentz/vitest-preset": "workspace:*"
   },

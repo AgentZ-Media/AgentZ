@@ -30,7 +30,6 @@ pub fn builder(config: Config) -> tauri::Builder<Wry> {
             lifecycle::show_main(app);
         }))
         .plugin(tauri_plugin_window_state::Builder::default().build())
-        .plugin(tauri_plugin_clipboard_manager::init())
         .plugin(tauri_plugin_os::init())
         .plugin(tauri_plugin_updater::Builder::new().build())
         .plugin(tauri_plugin_process::init())
