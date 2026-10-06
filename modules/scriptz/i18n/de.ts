@@ -207,7 +207,7 @@ export const de = {
   "settings.about.sub": "Schnell. Lokal. Ohne Konto.",
   "settings.about.license": "Lizenz: MIT",
   "settings.about.developer.linkText": "AgentZ",
-  "settings.about.repository.linkText": "github.com/AgentZ-Media/AgentZ",
+  "settings.about.repository.linkText": "github.com/AgentZ-Media/AgentZ-Suite",
   "settings.toast.colorFailed": "Farbe speichern fehlgeschlagen: {message}",
   "settings.toast.resetFailed": "Reset fehlgeschlagen: {message}",
 

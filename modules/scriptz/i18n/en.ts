@@ -201,7 +201,7 @@ export const en: Record<keyof typeof de, string> = {
   "settings.about.sub": "Fast. Local. No account.",
   "settings.about.license": "License: MIT",
   "settings.about.developer.linkText": "AgentZ",
-  "settings.about.repository.linkText": "github.com/AgentZ-Media/AgentZ",
+  "settings.about.repository.linkText": "github.com/AgentZ-Media/AgentZ-Suite",
   "settings.toast.colorFailed": "Saving color failed: {message}",
   "settings.toast.resetFailed": "Reset failed: {message}",
 

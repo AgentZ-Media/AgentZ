@@ -9,7 +9,7 @@ import { DarkPaperSetting } from "./sections/DarkPaperSetting";
 import { AgentSettings } from "../Agent/AgentSettings";
 import "./SettingsDialog.css";
 
-const REPO_URL = "https://github.com/AgentZ-Media/AgentZ";
+const REPO_URL = "https://github.com/AgentZ-Media/AgentZ-Suite";
 export const scriptzAbout: AboutInfo = {
   description: () => t("settings.about.sub"),
   license: () => t("settings.about.license"),

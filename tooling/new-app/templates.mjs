@@ -25,7 +25,7 @@ export const appModule: AppModule = {
   about: {
     description: () => t("home.description"),
     license: () => "MIT",
-    releasesUrl: "https://github.com/AgentZ-Media/AgentZ/releases/tag/${id}-latest",
+    releasesUrl: "https://github.com/AgentZ-Media/AgentZ-Suite/releases/tag/${id}-latest",
     links: [],
   },
   async setup(context) {
@@ -87,7 +87,7 @@ describe(${q(name)}, () => {
     build: { beforeDevCommand: "pnpm dev", devUrl: `http://localhost:${port}`, beforeBuildCommand: "pnpm build", frontendDist: "../dist" },
     app: { windows: [{ label: "main", title: name, width: 1100, height: 760, minWidth: 800, minHeight: 560, decorations: true, titleBarStyle: "Overlay", hiddenTitle: true, resizable: true, dragDropEnabled: false }], security: { csp: "default-src 'self'; img-src 'self' data: blob:; script-src 'self'; style-src 'self' 'unsafe-inline'; font-src 'self' data:; connect-src 'self' ipc: http://ipc.localhost; worker-src 'self' blob:; object-src 'none'; base-uri 'self'; frame-ancestors 'none'; form-action 'none'; manifest-src 'self'" } },
     bundle: { active: true, targets: ["dmg", "app", "nsis"], icon: ["icons/32x32.png", "icons/128x128.png", "icons/128x128@2x.png", "icons/icon.icns", "icons/icon.ico"], category: "Productivity", shortDescription: `${name} – AgentZ Suite`, createUpdaterArtifacts: true, windows: { nsis: { installMode: "currentUser", displayLanguageSelector: false, languages: ["English", "German"] }, webviewInstallMode: { type: "downloadBootstrapper" } } },
-    plugins: { updater: { endpoints: [`https://github.com/AgentZ-Media/AgentZ/releases/download/${id}-latest/latest.json`], pubkey } },
+    plugins: { updater: { endpoints: [`https://github.com/AgentZ-Media/AgentZ-Suite/releases/download/${id}-latest/latest.json`], pubkey } },
   };
   return {
     [`modules/${id}/package.json`]: json({ name: `@agentz/${id}`, private: true, version: "0.0.0", type: "module", main: "./index.ts", types: "./index.ts", exports: { ".": "./index.ts", "./styles.css": "./styles.css" }, sideEffects: ["*.css"], scripts: { typecheck: "tsc --noEmit", test: "vitest run" }, dependencies, devDependencies: { "@agentz/vitest-preset": "workspace:*", "@solidjs/testing-library": "catalog:", typescript: "catalog:", vite: "catalog:", vitest: "catalog:" } }),

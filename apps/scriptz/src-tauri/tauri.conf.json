@@ -67,7 +67,7 @@
       "active": true,
       "dialog": false,
       "endpoints": [
-        "https://github.com/AgentZ-Media/AgentZ/releases/download/scriptz-latest/latest.json"
+        "https://github.com/AgentZ-Media/AgentZ-Suite/releases/download/scriptz-latest/latest.json"
       ],
       "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IEU0NjMxMEI3QUI4RTg3OTQKUldTVWg0NnJ0eEJqNUNkNGszRDhCZHl5dU9va3F2VlNrdG50NmpLZXRYQ1licXBIbHBuZXBVN2oK"
     }

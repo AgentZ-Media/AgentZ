@@ -100,7 +100,7 @@ Probelauf: baut beide Installer ohne Signatur und veröffentlicht nichts.
 
 ## Installation
 
-Updater-Endpoint: `https://github.com/AgentZ-Media/AgentZ/releases/download/<app>-latest/latest.json`,
+Updater-Endpoint: `https://github.com/AgentZ-Media/AgentZ-Suite/releases/download/<app>-latest/latest.json`,
 für Nightlies zusätzlich `.../<app>-nightly/latest.json` (abgeleitet in
 `crates/agentz-desktop/src/updates.rs`).
 Die Apps sind nicht notarisiert bzw. codesigniert: macOS braucht beim ersten

@@ -194,11 +194,11 @@ mod tests {
     #[test]
     fn derives_the_nightly_endpoint_from_the_stable_pointer() {
         let stable =
-            "https://github.com/AgentZ-Media/AgentZ/releases/download/scriptz-latest/latest.json";
+            "https://github.com/AgentZ-Media/AgentZ-Suite/releases/download/scriptz-latest/latest.json";
         assert_eq!(
             nightly_endpoint(&[stable.into()], "scriptz").map(String::from),
             Some(
-                "https://github.com/AgentZ-Media/AgentZ/releases/download/scriptz-nightly/latest.json"
+                "https://github.com/AgentZ-Media/AgentZ-Suite/releases/download/scriptz-nightly/latest.json"
                     .into()
             )
         );
@@ -207,9 +207,9 @@ mod tests {
     #[test]
     fn refuses_foreign_or_insecure_endpoints() {
         let other =
-            "https://github.com/AgentZ-Media/AgentZ/releases/download/other-latest/latest.json";
+            "https://github.com/AgentZ-Media/AgentZ-Suite/releases/download/other-latest/latest.json";
         let http =
-            "http://github.com/AgentZ-Media/AgentZ/releases/download/scriptz-latest/latest.json";
+            "http://github.com/AgentZ-Media/AgentZ-Suite/releases/download/scriptz-latest/latest.json";
         assert_eq!(
             nightly_endpoint(&[other.into(), http.into()], "scriptz"),
             None

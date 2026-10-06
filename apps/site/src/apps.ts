@@ -21,7 +21,7 @@ export const apps: readonly SuiteApp[] = [
 ];
 
 export function appLinks(id: string) {
-  const release = `https://github.com/AgentZ-Media/AgentZ/releases/download/${id}-latest`;
+  const release = `https://github.com/AgentZ-Media/AgentZ-Suite/releases/download/${id}-latest`;
   return {
     icon: `/img/${id}.png`,
     macos: `${release}/${id}-macos-arm64.dmg`,

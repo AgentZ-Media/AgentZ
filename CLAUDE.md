@@ -1,7 +1,7 @@
 # AgentZ Suite
 
 pnpm- und Cargo-Monorepo für eigenständige, lokale Desktop-Apps für Content
-Creator. Repository `AgentZ-Media/AgentZ`. Aktuell einzige App: ScriptZ.
+Creator. Repository `AgentZ-Media/AgentZ-Suite`. Aktuell einzige App: ScriptZ.
 
 ## Struktur
 
