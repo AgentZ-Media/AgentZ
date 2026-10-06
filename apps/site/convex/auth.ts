@@ -10,7 +10,8 @@ import { sendAccountEmail } from "./emails";
 
 // SITE_URL is the canonical website origin. TRUSTED_ORIGINS (comma separated)
 // adds further origins that may call the auth API, such as the apex domain.
-const siteUrl = process.env.SITE_URL!;
+const siteUrl = process.env.SITE_URL;
+if (!siteUrl) throw new Error("SITE_URL is not set on this Convex deployment");
 const extraOrigins = (process.env.TRUSTED_ORIGINS ?? "")
   .split(",")
   .map((origin) => origin.trim())
