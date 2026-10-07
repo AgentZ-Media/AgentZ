@@ -17,7 +17,7 @@ const account = accountPaths[lang];
   <nav class="header-nav" aria-label="AgentZ Suite">
     <a href={scriptzPaths[lang]}>{t.nav.scriptz}</a>
     <a href={`${base}#apps`}>{t.nav.apps}</a>
-    <a class="hide-s" href="https://github.com/AgentZ-Media/AgentZ-Suite">{t.nav.source}</a>
+    <a class="hide-s" href="https://github.com/AgentZ-Media/AgentZ-Suite" target="_blank" rel="noopener noreferrer">{t.nav.source}</a>
   </nav>
   <div class="header-end">
     {paths && <a class="lang-switch" href={paths[other.lang]} hreflang={other.lang} lang={other.lang} aria-label={`${t.language}: ${other.name}`}>{other.code}</a>}

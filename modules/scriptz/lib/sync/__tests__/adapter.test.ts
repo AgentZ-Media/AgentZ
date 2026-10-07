@@ -41,6 +41,7 @@ function createServer() {
   let head = 0;
   const records = new Map<string, WireRecord>();
   let pushes = 0;
+  const reports: Record<string, number>[] = [];
   const transport = (keyId: string): CloudTransport => ({
     head: async () => ({ rev: head, keyId, resetting: false }),
     watchHead: () => () => {},
@@ -66,6 +67,7 @@ function createServer() {
       }
       return { results, headRev: head };
     },
+    report: async (_app, counts) => { reports.push({ ...counts }); },
     upload: async () => { throw new Error("not used"); },
     download: async () => { throw new Error("not used"); },
     getKey: async () => null,
@@ -75,7 +77,7 @@ function createServer() {
     connected: () => true,
     close: () => {},
   });
-  return { transport, pushes: () => pushes };
+  return { transport, pushes: () => pushes, reports };
 }
 
 const dbs: SQLiteDatabase[] = [];
@@ -216,5 +218,19 @@ describe("ScriptZ sync adapter", () => {
     await a.sync();
     await b.sync();
     expect(b.rows("SELECT id FROM scripts")).toEqual([{ id: "welcome" }]);
+  });
+
+  it("counts the scripts for the website, without the unedited welcome script", async () => {
+    sharedKey = createDataKey();
+    const server = createServer();
+    const a = await device("A", server);
+    a.run(`INSERT INTO scripts (id, title, content_json, created_at, updated_at) VALUES ('welcome', 'Willkommen', '{"root":{"children":[]}}', 5, 5);
+           INSERT INTO app_state VALUES ('welcome_script_id_v1', 'welcome');`);
+    await a.sync();
+    a.run(SEED);
+    await a.sync();
+    a.run("UPDATE scripts SET updated_at = 6 WHERE id = 'welcome'");
+    await a.sync();
+    expect(server.reports).toEqual([{ scripts: 0 }, { scripts: 1 }, { scripts: 2 }]);
   });
 });

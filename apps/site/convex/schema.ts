@@ -58,6 +58,26 @@ export default defineSchema({
   }).index("by_user", ["userId"]),
 
   /**
+   * Plain totals an account's devices report for the website's public
+   * counters, such as the number of scripts. Never derived from content.
+   */
+  sync_stats: defineTable({
+    userId: v.string(),
+    app: v.string(),
+    counts: v.record(v.string(), v.number()),
+    updatedAt: v.number(),
+  })
+    .index("by_user_app", ["userId", "app"])
+    .index("by_app", ["app"]),
+
+  /** Sum of sync_stats per app, refreshed hourly; the website reads this. */
+  site_stats: defineTable({
+    app: v.string(),
+    counts: v.record(v.string(), v.number()),
+    updatedAt: v.number(),
+  }).index("by_app", ["app"]),
+
+  /**
    * Browser sign-in for desktop apps (PKCE): the website stores a short-lived
    * code for the app's challenge, only the app holding the verifier can
    * exchange it for a session.

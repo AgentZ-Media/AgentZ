@@ -18,12 +18,13 @@ paths:
   `convex/`. Nur `src/scripts/account.ts`, `appSignIn.ts`, das gemeinsame
   `authForms.ts` und der Client `authClient.ts` sprechen mit dem Server und
   speichern die Sitzung im `localStorage` (Cross-Domain-Plugin); `site.ts` und
-  alle anderen Seiten bleiben ohne Requests und Speicher. Der Client lädt im
-  Hintergrund (`lazyAuth`): Die erste Ansicht entscheidet die Seite aus dem
-  gespeicherten Sitzungstoken (`storedSession`), ohne Token ohne Request; ein
-  Inline-Skript in `Account.astro` zeigt das Formular schon vor dem ersten
-  Zeichnen. Kein React, kein Convex-Websocket auf der Website. Ohne
-  `PUBLIC_CONVEX_SITE_URL` zeigt die Seite „nicht erreichbar“.
+  alle anderen Seiten bleiben ohne Requests und Speicher, bis auf den
+  Skriptzähler (siehe unten). Der Client lädt im Hintergrund (`lazyAuth`): Die
+  erste Ansicht entscheidet die Seite aus dem gespeicherten Sitzungstoken
+  (`storedSession`), ohne Token ohne Request; ein Inline-Skript in
+  `Account.astro` zeigt das Formular schon vor dem ersten Zeichnen. Kein React,
+  kein Convex-Websocket auf der Website. Ohne `PUBLIC_CONVEX_SITE_URL` zeigt die
+  Seite „nicht erreichbar“.
 - Kontodaten sind Nutzerdaten: Die Tabellen der Better-Auth-Komponente nicht
   von Hand ändern, Konfigurationsänderungen (`convex/auth.ts`) erst gegen das
   Dev-Deployment (`pnpm dev:site:backend`) testen. Production deployt nur der
@@ -33,6 +34,24 @@ paths:
   verschlüsselt; jede App hat eine eigene Record-Tabelle
   ([`docs/cloud-sync.md`](../../docs/cloud-sync.md)). Neue Datenverarbeitung im Konto immer
   in der Datenschutzerklärung nachziehen.
+- Skriptzähler (`ScriptCount.astro`, `src/stats.ts`, `src/scripts/script-count.ts`)
+  auf Startseite und ScriptZ-Seite: Der Build rendert die letzte Summe, der
+  Browser holt die aktuelle über `/api/stats.json`. Das ist ein Rewrite in
+  `vercel.json` auf `/stats` des Production-Backends, dessen CDN die Antwort eine
+  Stunde hält; im Dev-Server leitet `astro.config.mjs` auf das Deployment aus
+  `.env.local` um. Die Summe bildet ein stündlicher Cron (`convex/stats.ts`) aus
+  den Zahlen, die angemeldete Apps melden (`SyncAdapter.stats`, erlaubte
+  Schlüssel in `STAT_KEYS`). Nur Zahlen, nie etwas aus Inhalten. Unter 50
+  Skripten (`MIN_SCRIPTS`) bleibt der Zähler ausgeblendet.
+- Suchmaschinen und Link-Vorschau: `Base.astro` setzt Titel (`<Seite> | AgentZ
+  Suite`), Beschreibung, Canonical, hreflang, Open Graph und Twitter-Card;
+  Startseite und ScriptZ-Seite liefern zusätzlich JSON-LD (`schema`). Jede
+  indexierte Seite braucht eine eigene Beschreibung in DE und EN.
+  Vorschaubilder (1200x630 JPEG) liegen in `public/og/` und entstehen mit
+  `pnpm --filter @agentz/site build:og` aus `src/i18n.ts` und den Tokens; nach
+  Änderungen an Hero-, ScriptZ- oder Demo-Texten neu erzeugen. `sitemap.xml`
+  (`src/pages/sitemap.xml.ts`) listet nur indexierte Seiten, `noindex`-Seiten
+  bleiben draußen. `site` in `astro.config.mjs` ist die echte Adresse mit `www`.
 - Konto-E-Mails (Reset, Bestätigung) über Resend in `convex/emails.ts`, Absender
   `info@agentz-suite.com`, Texte dort in DE und EN. E-Mails tragen die
   Token-Werte als feste Farben (Mail-Clients kennen keine CSS-Variablen); das
