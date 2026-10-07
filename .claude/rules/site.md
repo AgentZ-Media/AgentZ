@@ -15,11 +15,15 @@ paths:
 - Einzige Ausnahme ist das Konto (`/konto/`, `/en/account/`) samt
   Vollbild-Anmeldung für Apps (`/konto/app/`, `/en/account/app/`, ohne Header
   und Footer): Better Auth auf Convex über `@convex-dev/better-auth`, Backend in
-  `convex/`. Nur `src/scripts/account.ts`, `appSignIn.ts` und das gemeinsame
-  `authForms.ts` sprechen mit dem Server und speichern die Sitzung im
-  `localStorage` (Cross-Domain-Plugin); `site.ts` und alle anderen Seiten
-  bleiben ohne Requests und Speicher. Kein React, kein Convex-Websocket auf der
-  Website. Ohne `PUBLIC_CONVEX_SITE_URL` zeigt die Seite „nicht erreichbar“.
+  `convex/`. Nur `src/scripts/account.ts`, `appSignIn.ts`, das gemeinsame
+  `authForms.ts` und der Client `authClient.ts` sprechen mit dem Server und
+  speichern die Sitzung im `localStorage` (Cross-Domain-Plugin); `site.ts` und
+  alle anderen Seiten bleiben ohne Requests und Speicher. Der Client lädt im
+  Hintergrund (`lazyAuth`): Die erste Ansicht entscheidet die Seite aus dem
+  gespeicherten Sitzungstoken (`storedSession`), ohne Token ohne Request; ein
+  Inline-Skript in `Account.astro` zeigt das Formular schon vor dem ersten
+  Zeichnen. Kein React, kein Convex-Websocket auf der Website. Ohne
+  `PUBLIC_CONVEX_SITE_URL` zeigt die Seite „nicht erreichbar“.
 - Kontodaten sind Nutzerdaten: Die Tabellen der Better-Auth-Komponente nicht
   von Hand ändern, Konfigurationsänderungen (`convex/auth.ts`) erst gegen das
   Dev-Deployment (`pnpm dev:site:backend`) testen. Production deployt nur der
