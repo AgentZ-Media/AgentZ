@@ -1,5 +1,5 @@
 // @vitest-environment node
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import type { KvStore } from "../../platform";
 import { createMemorySyncBook, type SyncState } from "../book";
 import { createDataKey, createRecordCipher, type DataKey } from "../crypto";
@@ -13,9 +13,13 @@ function createServer() {
   const records = new Map<string, WireRecord>();
   const blobs = new Map<string, Uint8Array>();
   const pushes: WireChange[] = [];
+  const reports: Record<string, number>[] = [];
+  let reportFails = false;
   return {
     pushes,
     records,
+    reports,
+    failReports(fail: boolean) { reportFails = fail; },
     transport(keyId: string): CloudTransport {
       return {
         head: async () => ({ rev: head, keyId, resetting: false }),
@@ -51,6 +55,10 @@ function createServer() {
           return id;
         },
         download: async (url) => blobs.get(url.slice(5))!,
+        async report(_app, counts) {
+          if (reportFails) throw new Error("offline");
+          reports.push({ ...counts });
+        },
         getKey: async () => null,
         createKey: async () => {},
         rewrapKey: async () => {},
@@ -84,6 +92,7 @@ function createDevice(name: string) {
   const remove = (entity: Entity, id: string) => { tables[entity].delete(id); mark(entity, id); };
   const adapter: SyncAdapter = {
     entities: ["parents", "children"],
+    stats: async () => ({ children: tables.children.size }),
     localCursor: async () => seq,
     async readChanges(after, limit) {
       const list = [...feed.values()].filter((c) => c.seq > after).sort((a, b) => a.seq - b.seq).slice(0, limit);
@@ -296,5 +305,25 @@ describe("sync engine", () => {
     await (await connect(a, server, createDataKey(), "A")).sync();
     await (await connect(b, server, createDataKey(), "B")).sync();
     expect(b.tables.children.size).toBe(0);
+  });
+
+  it("reports the adapter's totals only when they changed and never fails a cycle over them", async () => {
+    const server = createServer();
+    const key = createDataKey();
+    const a = createDevice("a");
+    a.write("children", { id: "c1", title: "Script" });
+    const syncA = await connect(a, server, key, "A");
+    await syncA.sync();
+    await syncA.sync();
+    expect(server.reports).toEqual([{ children: 1 }]);
+    a.write("children", { id: "c2", title: "Script" });
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    server.failReports(true);
+    await syncA.sync();
+    expect(server.records.size).toBe(2);
+    server.failReports(false);
+    warn.mockRestore();
+    await syncA.sync();
+    expect(server.reports).toEqual([{ children: 1 }, { children: 2 }]);
   });
 });

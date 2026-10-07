@@ -7,6 +7,11 @@ export const SYNC_APPS = {
 } as const;
 
 export type SyncApp = keyof typeof SYNC_APPS;
+
+/** Totals an app may report for the website's public counters (stats.ts). */
+export const STAT_KEYS: Record<SyncApp, readonly string[]> = {
+  scriptz: ["scripts"],
+};
 export type RecordTable = (typeof SYNC_APPS)[SyncApp];
 
 export const appArg = v.union(v.literal("scriptz"));

@@ -72,6 +72,12 @@ export interface SyncAdapter {
   read(entity: string, id: string, context: SyncContext): Promise<unknown | null>;
   apply(changes: RemoteChange[], context: SyncContext & { force: boolean }): Promise<RemoteChange[]>;
   keepLocalCopy?(entity: string, id: string, record: unknown): Promise<void>;
+  /**
+   * Totals for the public counters on the website, such as the number of
+   * scripts. Plain numbers, sent unencrypted: never anything derived from
+   * content. Keys must be allowed for the app in apps/site/convex/syncApps.ts.
+   */
+  stats?(): Promise<Record<string, number>>;
   /** Settings keys (KvStore) synced across devices; device-only keys stay out. */
   settings?: {
     keys: readonly string[];

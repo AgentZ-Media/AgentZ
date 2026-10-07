@@ -1,5 +1,14 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "buildCommand": "if [ \"$VERCEL_ENV\" = production ] && [ -n \"$CONVEX_DEPLOY_KEY\" ]; then pnpm exec convex deploy --cmd 'PUBLIC_CONVEX_SITE_URL=$CONVEX_SITE_URL pnpm run build'; else PUBLIC_CONVEX_SITE_URL= pnpm run build; fi",
-  "ignoreCommand": "[ -n \"$VERCEL_GIT_PREVIOUS_SHA\" ] && git diff --quiet \"$VERCEL_GIT_PREVIOUS_SHA\" HEAD -- . ../../packages/design ../../pnpm-lock.yaml ../../pnpm-workspace.yaml ../../package.json"
+  "ignoreCommand": "if [ -n \"$VERCEL_GIT_PREVIOUS_SHA\" ] && git cat-file -e \"$VERCEL_GIT_PREVIOUS_SHA^{commit}\" 2>/dev/null; then git diff --quiet \"$VERCEL_GIT_PREVIOUS_SHA\" HEAD -- . ../../packages/design ../../pnpm-lock.yaml ../../pnpm-workspace.yaml ../../package.json; else exit 1; fi",
+  "rewrites": [
+    { "source": "/api/stats.json", "destination": "https://proficient-cuttlefish-204.eu-west-1.convex.site/stats" }
+  ],
+  "headers": [
+    {
+      "source": "/api/stats.json",
+      "headers": [{ "key": "x-vercel-enable-rewrite-caching", "value": "1" }]
+    }
+  ]
 }
