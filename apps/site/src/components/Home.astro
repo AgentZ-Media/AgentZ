@@ -8,6 +8,7 @@ import Base from "../layouts/Base.astro";
 import "../styles/home.css";
 import Icon from "./Icon.astro";
 import Download from "./Download.astro";
+import ScriptCount from "./ScriptCount.astro";
 import { LOGO_DOTS, LOGO_DOT_R, LOGO_VIEWBOX } from "@agentz/design/logo";
 import { apps, appLinks } from "../apps";
 import { textCells } from "../scripts/dot-glyphs";
@@ -19,7 +20,14 @@ const next = textCells("?");
 const nextDots = Array.from({ length: 35 }, (_, i) => [i % 5, Math.floor(i / 5)] as const);
 const isOn = (c: number, r: number) => next.cells.some(([x, y]) => x === c && y === r);
 ---
-<Base lang={lang} paths={homePaths} field="page">
+<Base lang={lang} paths={homePaths} field="page" schema={{
+  "@type": "WebSite",
+  name: "AgentZ Suite",
+  url: new URL(homePaths[lang], Astro.site).href,
+  inLanguage: lang,
+  description: t.description,
+  publisher: { "@type": "Organization", name: "AgentZ Media", url: Astro.site?.href, logo: new URL("/img/suite.png", Astro.site).href },
+}}>
   <div class="home-dot" data-dot aria-hidden="true"><i></i></div>
   <nav class="home-rail" data-rail aria-label="AgentZ Suite">
     <i class="home-rail-mark" data-rail-mark></i>
@@ -144,6 +152,7 @@ const isOn = (c: number, r: number) => next.cells.some(([x, y]) => x === c && y 
     <div class="page-head" data-near>
       <h2 id="home-landing-title" class="home-landing-title">{t.landing.title}<span class="home-period home-way" data-way data-rail aria-hidden="true"></span><span class="sr-only">.</span></h2>
       <p class="lead">{t.landing.text}</p>
+      <ScriptCount lang={lang} size="lg" />
     </div>
     <div class="wrap"><Download lang={lang} /></div>
   </section>
