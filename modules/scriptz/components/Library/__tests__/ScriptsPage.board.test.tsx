@@ -77,18 +77,19 @@ describe("scripts page workspace", () => {
     for (const st of stageIds()) expect(view.getByRole("button", { name: `Script ${st}` })).toBeTruthy();
   });
 
-  it("opens a clicked script in the side panel, Alt-click in the full view", async () => {
+  it("opens a clicked script in the full view, Alt-click in the side panel", async () => {
     const view = render(() => <ScriptsPage />);
     const first = stageIds()[0];
-    fireEvent.click(await view.findByRole("button", { name: `Script ${first}` }));
+    fireEvent.click(await view.findByRole("button", { name: `Script ${first}` }), { altKey: true });
     expect(peekStore.scriptId()).toBe(first);
     await waitFor(() => expect(view.container.querySelector(".peek")).toBeTruthy());
     expect(navStore.route().kind).toBe("scripts");
     fireEvent.keyDown(window, { key: "Escape" });
     expect(peekStore.scriptId()).toBeNull();
 
-    fireEvent.click(view.getByRole("button", { name: `Script ${first}` }), { altKey: true });
+    fireEvent.click(view.getByRole("button", { name: `Script ${first}` }));
     await waitFor(() => expect(navStore.activeScriptId()).toBe(first));
+    expect(peekStore.scriptId()).toBeNull();
   });
 
   it("lists open scripts in the sidebar and closes them", async () => {
