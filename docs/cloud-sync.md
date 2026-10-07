@@ -276,6 +276,12 @@ Codex-Installation bleiben pro Gerät. Gerätebezogen bleiben außerdem:
   (`<Geräte-ID>:<Datum>`) hoch, fremde Geräte landen in
   `daily_word_log_remote` (Migration 014), Statistiken zählen beides.
 
+Der Papierkorb leert sich selbst: Skripte, die seit 30 Tagen darin liegen,
+löscht jedes Gerät endgültig (`lib/trashAutoPurge.ts`, kurz nach dem Start und
+stündlich). Die Löschung läuft wie ein manuelles Löschen über den
+Änderungsfeed; das erste Gerät, das sie hochlädt, entfernt damit auch den
+verschlüsselten Inhalt in der Cloud. Der Server kennt den Papierkorb nicht.
+
 Eingehende Skripte aktualisieren Suchindex und Listen, ein offenes Skript lädt
 neu (`remoteScriptBus`), geladene Chats werden entladen, sofern sie nicht
 benutzt werden. Chats synchronisieren als Ganzes: Wird derselbe Chat auf zwei

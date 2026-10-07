@@ -139,6 +139,14 @@ Farb-Registry `character_colors` wächst mit und lässt sich in den
 Einstellungen aufräumen (manuell oder automatisch nach 4 s Ruhe,
 `characterAutoPrune.ts`); das Löschen prüft die Nutzung erneut.
 
+## Papierkorb
+
+„Löschen“ setzt `scripts.archived_at`. Nach 30 Tagen
+(`TRASH_RETENTION_DAYS`) löscht `lib/trashAutoPurge.ts` den Eintrag
+endgültig (kurz nach dem Start, dann stündlich, `api.purgeExpiredTrash`);
+jede Zeile im Papierkorb zeigt die verbleibenden Tage. Mit Konto folgt die
+Cloud über den Änderungsfeed.
+
 ## Färbung, Hook und Bewegung
 
 - **Eine Färbe-Regel** (`lib/tint.ts`) für Editor (`plugins/highlight.ts`),
