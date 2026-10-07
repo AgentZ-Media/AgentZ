@@ -12,7 +12,7 @@ Cloud die Wahrheit.
 | Konto, Krypto, Engine, UI | `packages/kit/account/` (`@agentz/kit/account`) | Anmeldung, Sitzung, Datenschlüssel, Sync-Engine, Avatar, Konto-Button, Dialoge, Einstellungsseite „Konto“ |
 | Adapter je App | z. B. `modules/scriptz/lib/sync/adapter.ts` | Welche Tabellen, in welcher Reihenfolge, wie eingehende Datensätze geschrieben werden, Konfliktkopien |
 | Desktop-Host | `packages/desktop/lib/platform.ts`, `crates/agentz-desktop/src/secrets.rs` | Schlüsselbund (`PlatformAdapter.secrets`), URL-Schema `agentz-<id>://` (`onOpenUrl`) |
-| Backend | `apps/site/convex/` | `sync.ts`, `keys.ts`, `appLink.ts`, `schema.ts`, `syncApps.ts`, `compat.ts`, `syncPolicy.ts` |
+| Backend | `apps/site/convex/` | `sync.ts`, `keys.ts`, `appLink.ts`, `schema.ts`, `syncApps.ts`, `compat.ts`, `syncPolicy.ts`, `releases.ts` |
 | Anmeldeseite | `apps/site/src/components/AppSignIn.astro` (`/konto/app/`, `/en/account/app/`) | Vollbild-Anmeldung für Apps |
 
 Die Shell startet das Konto (`startAccountRuntime`), wenn der Host eine
@@ -210,6 +210,17 @@ testen (`VITE_AGENTZ_CONVEX_URL`, `VITE_AGENTZ_CONVEX_SITE_URL`), dort ist
 von vor dieser Prüfung), bekommt `CLIENT_OUTDATED`. Bewusst ohne Übergang:
 Diese Versionen kennen weder `extra` noch `sync_parked` und würden Felder
 neuerer Versionen löschen.
+
+**Neue Releases live.** Nach `latest.json` melden Release- und
+Nightly-Workflow die Version an `POST /releases/announce`
+(`tooling/release/announce.mjs`, Bearer-Secret `RELEASE_ANNOUNCE_TOKEN` in
+GitHub und Convex). `app_releases` hält pro App und Kanal nur die neueste
+Version, ältere Meldungen ändern nichts. Angemeldete Apps abonnieren
+`releases:latest` und prüfen dann mit einer Zufallsverzögerung (bis 5 min,
+während einer Sync-Pause bis 15 s) über den normalen Updater; Download,
+Signatur und Entscheidung bleiben bei GitHub und dem Updater. Fehlt das
+Secret oder ist der Server nicht erreichbar, warnt der Workflow nur, die
+stündliche Prüfung findet das Update trotzdem.
 
 **Convex-API.** Production deployt beim Merge auf `main`, also vor jedem
 Release. Funktionen und Schema deshalb nur erweitern (neue Funktionen,

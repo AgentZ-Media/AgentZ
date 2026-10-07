@@ -49,6 +49,8 @@ function setup({ version = "1.0.1", currentVersion = "1.0.0", autoInstall = true
     hourlyUpdateCheck: () => true,
     updateChannel: () => channel,
     autoInstall: () => auto,
+    currentVersion: async () => currentVersion,
+    random: () => 0.5,
   };
   const runtime = createDesktopUpdates<FakeUpdate>(options, deps);
   return {
@@ -460,6 +462,67 @@ describe("channel switches", () => {
     expect(s.native.discard).toHaveBeenCalledOnce();
     expect(s.native.installNow).not.toHaveBeenCalled();
     expect(s.store.stage()).toBe("idle");
+    s.dispose();
+  });
+});
+
+describe("release hints", () => {
+  it("checks a little later when a newer release is announced", async () => {
+    vi.useFakeTimers();
+    const s = setup();
+    s.store.releaseHint?.({ stable: "1.0.1", nightly: null });
+    await vi.advanceTimersByTimeAsync(149_000);
+    expect(s.native.check).not.toHaveBeenCalled();
+    await vi.advanceTimersByTimeAsync(1_000);
+    expect(s.native.check).toHaveBeenCalledWith("stable");
+    s.dispose();
+  });
+
+  it("ignores what the app already runs or holds, and nightlies on the stable channel", async () => {
+    vi.useFakeTimers();
+    const s = setup();
+    s.store.releaseHint?.({ stable: "1.0.0", nightly: "1.0.1-nightly.202610071200" });
+    await vi.advanceTimersByTimeAsync(10 * 60_000);
+    expect(s.native.check).not.toHaveBeenCalled();
+    s.setChannel("nightly");
+    s.store.releaseHint?.({ stable: "1.0.0", nightly: "1.0.1-nightly.202610071200" });
+    await vi.advanceTimersByTimeAsync(10 * 60_000);
+    expect(s.native.check).toHaveBeenCalledWith("nightly");
+    s.dispose();
+  });
+
+  it("checks almost at once while the sync waits for the update, and stops with the window", async () => {
+    vi.useFakeTimers();
+    const s = setup();
+    s.store.releaseHint?.({ stable: "1.0.1", nightly: null });
+    s.store.releaseHint?.({ stable: "1.0.1", nightly: null }, { urgent: true });
+    await vi.advanceTimersByTimeAsync(7_500);
+    expect(s.native.check).toHaveBeenCalledOnce();
+    s.store.releaseHint?.({ stable: "1.0.2", nightly: null });
+    await vi.advanceTimersByTimeAsync(0);
+    s.dispose();
+    await vi.advanceTimersByTimeAsync(10 * 60_000);
+    expect(s.native.check).toHaveBeenCalledOnce();
+    expect(vi.getTimerCount()).toBe(0);
+  });
+});
+
+
+describe("release hints while busy", () => {
+  it("keeps a hint that fires during a download and checks afterwards", async () => {
+    vi.useFakeTimers();
+    const s = setup();
+    const pending = deferred<StagedUpdate>();
+    s.native.download.mockReturnValueOnce(pending.promise);
+    await s.store.checkNow();
+    s.publish("1.0.2");
+    s.store.releaseHint?.({ stable: "1.0.2", nightly: null });
+    await vi.advanceTimersByTimeAsync(150_000);
+    expect(s.native.check).toHaveBeenCalledOnce();
+    pending.resolve({ version: "1.0.1", currentVersion: "1.0.0" });
+    await vi.advanceTimersByTimeAsync(30_000);
+    expect(s.native.check).toHaveBeenCalledTimes(2);
+    await vi.waitFor(() => expect(s.store.available()).toEqual({ version: "1.0.2" }));
     s.dispose();
   });
 });

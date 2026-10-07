@@ -1,5 +1,6 @@
 import { ConvexClient } from "convex/browser";
 import { makeFunctionReference } from "convex/server";
+import type { LatestReleases } from "../platform";
 import type { CloudConfig, SyncBlock, SyncClient } from "./types";
 
 // The Convex client for keys and records. Function names mirror
@@ -45,6 +46,8 @@ export interface CloudTransport {
   pull(app: string, client: SyncClient, afterRev: number): Promise<{ records: WireRecord[]; headRev: number; more: boolean }>;
   push(app: string, client: SyncClient, keyId: string, deviceId: string, changes: WireChange[]): Promise<{ results: PushResult[]; headRev: number }>;
   upload(app: string, client: SyncClient, bytes: Uint8Array): Promise<string>;
+  /** Newest published versions of the app; optional for test transports. */
+  watchReleases?(app: string, onReleases: (latest: LatestReleases) => void): () => void;
   report(app: string, client: SyncClient, counts: Record<string, number>): Promise<void>;
   download(url: string): Promise<Uint8Array>;
   getKey(): Promise<WrappedKey | null>;
@@ -66,6 +69,7 @@ const ref = {
   createKey: makeFunctionReference<"mutation", { keyId: string; wrapped: ArrayBuffer }, null>("keys:create"),
   rewrapKey: makeFunctionReference<"mutation", { keyId: string; wrapped: ArrayBuffer }, null>("keys:rewrap"),
   resetKey: makeFunctionReference<"mutation", { keyId: string; wrapped: ArrayBuffer }, null>("keys:reset"),
+  releases: makeFunctionReference<"query", { app: string }, LatestReleases>("releases:latest"),
 };
 
 /** Short-lived JWT for Convex; null when the session is gone. */
@@ -92,6 +96,11 @@ export function createConvexTransport(cloud: CloudConfig, sessionToken: string, 
     head: (app, device) => client.query(ref.head, { app, client: wireClient(device) }),
     watchHead(app, device, onHead, onError) {
       const unsubscribe = client.onUpdate(ref.head, { app, client: wireClient(device) }, onHead, onError);
+      return () => unsubscribe();
+    },
+    watchReleases(app, onReleases) {
+      // Before the backend knows the query (older deployment) this simply errors once.
+      const unsubscribe = client.onUpdate(ref.releases, { app }, onReleases, () => {});
       return () => unsubscribe();
     },
     pull: (app, device, afterRev) => client.query(ref.pull, { app, client: wireClient(device), afterRev }),

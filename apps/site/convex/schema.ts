@@ -75,6 +75,14 @@ export default defineSchema({
     resetting: v.optional(v.boolean()),
   }).index("by_user", ["userId"]),
 
+  /** Newest published version per app and channel (releases.ts). */
+  app_releases: defineTable({
+    app: v.string(),
+    channel: v.string(),
+    version: v.string(),
+    publishedAt: v.number(),
+  }).index("by_app_channel", ["app", "channel"]),
+
   /**
    * Plain totals an account's devices report for the website's public
    * counters, such as the number of scripts. Never derived from content.

@@ -1,9 +1,10 @@
 import { createSignal } from "solid-js";
+import { getVersion } from "@tauri-apps/api/app";
 import { Channel, invoke } from "@tauri-apps/api/core";
 import { Update, type DownloadEvent } from "@tauri-apps/plugin-updater";
 import { baseSettingsStore, pushToast } from "@agentz/kit/stores";
-import { isNightlyVersion } from "@agentz/kit/platform";
-import type { ManualCheckState, UpdateChannel, UpdatesStore, UpdateStage } from "@agentz/kit/platform";
+import { compareVersions, isNightlyVersion } from "@agentz/kit/platform";
+import type { LatestReleases, ManualCheckState, UpdateChannel, UpdatesStore, UpdateStage } from "@agentz/kit/platform";
 import { flushAll, type FlushResult } from "@agentz/kit/lib";
 import { t } from "@agentz/kit/i18n";
 
@@ -14,6 +15,10 @@ import { t } from "@agentz/kit/i18n";
 
 const HOUR_MS = 60 * 60 * 1000;
 const STARTUP_DELAY_MS = 30_000;
+/** A published release reaches every installation within this spread. */
+const HINT_SPREAD_MS = 5 * 60 * 1000;
+/** Sync is paused until the update: check almost at once. */
+const URGENT_HINT_SPREAD_MS = 15_000;
 
 /** A checked update; closing it frees the native resource. */
 export interface CheckedUpdate {
@@ -63,6 +68,9 @@ interface UpdateDependencies<U extends CheckedUpdate> {
   updateChannel(): UpdateChannel;
   /** Download found updates without asking; they install on quit. */
   autoInstall(): boolean;
+  /** Version of the running app. */
+  currentVersion(): Promise<string>;
+  random(): number;
 }
 
 type DesktopUpdate = Update;
@@ -108,6 +116,8 @@ export function createDesktopUpdates<U extends CheckedUpdate = DesktopUpdate>(
     hourlyUpdateCheck: baseSettingsStore.hourlyUpdateCheck,
     updateChannel: baseSettingsStore.updateChannel,
     autoInstall: baseSettingsStore.autoInstallUpdates,
+    currentVersion: getVersion,
+    random: Math.random,
     ...overrides,
   } satisfies UpdateDependencies<U>;
   const [stage, setStage] = createSignal<UpdateStage>("idle");
@@ -129,6 +139,8 @@ export function createDesktopUpdates<U extends CheckedUpdate = DesktopUpdate>(
   let unlock: (() => void) | undefined;
   let startupTimer: ReturnType<typeof setTimeout> | undefined;
   let hourlyTimer: ReturnType<typeof setInterval> | undefined;
+  let hintTimer: ReturnType<typeof setTimeout> | undefined;
+  let hintDue = 0;
 
   /** A natively staged update found without its check: a nightly belongs to that channel. */
   const channelOf = (update: StagedUpdate): UpdateChannel => isNightlyVersion(update.version) ? "nightly" : deps.updateChannel();
@@ -342,6 +354,32 @@ export function createDesktopUpdates<U extends CheckedUpdate = DesktopUpdate>(
     }
   }
 
+  /** The backend announced a release: check soon if it is newer than what we have. */
+  function releaseHint(latest: LatestReleases, hint: { urgent?: boolean } = {}): void {
+    if (disposed || deps.isDevelopment || !deps.updateCheckEnabled()) return;
+    const offered = deps.updateChannel() === "nightly" ? [latest.stable, latest.nightly] : [latest.stable];
+    const newest = offered.reduce<string | null>((best, version) =>
+      version && (!best || (compareVersions(version, best) ?? 0) > 0) ? version : best, null);
+    if (!newest) return;
+    void deps.currentVersion().then((current) => {
+      if (disposed) return;
+      const known = [current, staged?.version, checked?.version].filter((v): v is string => !!v);
+      if (known.some((version) => (compareVersions(newest, version) ?? 1) <= 0)) return;
+      const delay = Math.floor(deps.random() * (hint.urgent ? URGENT_HINT_SPREAD_MS : HINT_SPREAD_MS));
+      const due = Date.now() + delay;
+      // One pending check; an urgent hint may bring it forward.
+      if (hintTimer !== undefined && hintDue <= due) return;
+      clearTimeout(hintTimer);
+      hintDue = due;
+      hintTimer = setTimeout(function fire() {
+        // Busy with a check, download or restart: keep the hint for later.
+        if (checking || downloading || restarting) { hintTimer = setTimeout(fire, 30_000); return; }
+        hintTimer = undefined;
+        void poll(false);
+      }, delay);
+    }).catch(() => {});
+  }
+
   function stopBackgroundPolling(): void {
     backgroundStarted = false;
     pollingEpoch++;
@@ -368,6 +406,7 @@ export function createDesktopUpdates<U extends CheckedUpdate = DesktopUpdate>(
     clearManualCheck: () => setManualCheck(null),
     startBackgroundPolling,
     stopBackgroundPolling,
+    releaseHint,
   };
   return {
     store,
@@ -376,6 +415,7 @@ export function createDesktopUpdates<U extends CheckedUpdate = DesktopUpdate>(
       if (disposed) return;
       disposed = true;
       stopBackgroundPolling();
+      clearTimeout(hintTimer);
       release();
       // A running native download still owns the checked resource; the
       // native host keeps a staged update for a reopened window.
