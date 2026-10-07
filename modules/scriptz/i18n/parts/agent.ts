@@ -98,6 +98,7 @@ export const agentDe = {
   "agent.error.network": "Keine Verbindung. Prüfe das Internet und schick die Nachricht noch einmal.",
   "agent.error.keyInvalid": "OpenRouter hat den Key abgelehnt. Prüfe ihn in den Einstellungen.",
   "agent.error.noCredits": "Auf dem OpenRouter-Konto ist kein Guthaben mehr.",
+  "agent.error.notEnabled": "Der Agent über dein AgentZ-Konto kommt bald. Bis dahin läuft er über ChatGPT (Codex) oder einen eigenen OpenRouter-Key, umstellbar in den Einstellungen.",
 
   // ---------- proposals ----------
   "agent.option.append": "Am Ende einfügen",
@@ -219,6 +220,7 @@ export const agentDe = {
   "agent.provider.agentz.signIn": "Anmelden oder kostenlos registrieren",
   "agent.provider.agentz.noCloud": "In dieser Version gibt es keine AgentZ-Konten.",
   "agent.provider.agentz.error": "AgentZ ist gerade nicht erreichbar",
+  "agent.provider.soon": "Bald verfügbar",
   "agent.provider.openrouter": "Eigener OpenRouter-Key",
   "agent.provider.openrouter.sub": "{model} über deinen eigenen Key",
   "agent.provider.openrouter.noKey": "Kein Key hinterlegt",
@@ -284,7 +286,7 @@ export const agentDe = {
   "agent.onb.state.learn": "Lernt",
   "agent.onb.codex.eyebrow": "Verbinden",
   "agent.onb.connect.title": "Worüber soll dein Agent laufen?",
-  "agent.onb.connect.body": "Über dein ChatGPT-Abo mit Codex, kostenlos mit deinem AgentZ-Konto oder mit einem eigenen OpenRouter-Key. Alle drei können genau dasselbe. Skripte verlassen den Rechner nur, wenn du mit dem Agenten arbeitest.",
+  "agent.onb.connect.body": "Über dein ChatGPT-Abo mit Codex oder mit einem eigenen OpenRouter-Key, bald auch kostenlos mit deinem AgentZ-Konto. Alle Wege können genau dasselbe. Skripte verlassen den Rechner nur, wenn du mit dem Agenten arbeitest.",
   "agent.onb.agentz.found": "AgentZ erreichbar",
   "agent.onb.agentz.signedOutBody": "Melde dich links an oder registriere dich kostenlos.",
   "agent.onb.openrouter.found": "Key von OpenRouter bestätigt",
@@ -478,6 +480,7 @@ export const agentEn: Record<keyof typeof agentDe, string> = {
   "agent.error.network": "No connection. Check your internet and send your message again.",
   "agent.error.keyInvalid": "OpenRouter rejected the key. Check it in the settings.",
   "agent.error.noCredits": "The OpenRouter account has no credits left.",
+  "agent.error.notEnabled": "The agent through your AgentZ account is coming soon. Until then it runs on ChatGPT (Codex) or your own OpenRouter key, switchable in the settings.",
 
   // ---------- proposals ----------
   "agent.option.append": "Add at the end",
@@ -599,6 +602,7 @@ export const agentEn: Record<keyof typeof agentDe, string> = {
   "agent.provider.agentz.signIn": "Sign in or sign up for free",
   "agent.provider.agentz.noCloud": "This version has no AgentZ accounts.",
   "agent.provider.agentz.error": "AgentZ is not reachable right now",
+  "agent.provider.soon": "Coming soon",
   "agent.provider.openrouter": "Own OpenRouter key",
   "agent.provider.openrouter.sub": "{model} with your own key",
   "agent.provider.openrouter.noKey": "No key added",
@@ -664,7 +668,7 @@ export const agentEn: Record<keyof typeof agentDe, string> = {
   "agent.onb.state.learn": "Learning",
   "agent.onb.codex.eyebrow": "Connect",
   "agent.onb.connect.title": "What should your agent run on?",
-  "agent.onb.connect.body": "Your ChatGPT plan through Codex, free with your AgentZ account, or your own OpenRouter key. All three can do exactly the same. Scripts only leave your computer when you work with the agent.",
+  "agent.onb.connect.body": "Your ChatGPT plan through Codex or your own OpenRouter key, soon also free with your AgentZ account. Every way can do exactly the same. Scripts only leave your computer when you work with the agent.",
   "agent.onb.agentz.found": "AgentZ reachable",
   "agent.onb.agentz.signedOutBody": "Sign in on the left or sign up for free.",
   "agent.onb.openrouter.found": "Key confirmed by OpenRouter",

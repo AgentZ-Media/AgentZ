@@ -53,6 +53,15 @@ Sitzung, setzt das Modell (`OPENROUTER_MODEL`) und den Key
 den Stream von OpenRouter unverändert durch. Diese Anfragen sind kein Sync:
 Der Agent braucht Klartext, der Proxy speichert nichts davon.
 
+Den Proxy dürfen nur freigeschaltete Konten nutzen, alle anderen bekommen
+`403 not_enabled` und sehen in der App „Bald verfügbar“. Die Liste steht in
+der Convex-Umgebungsvariable `AI_ACCESS` (je Deployment, kommagetrennt):
+E-Mail-Adressen (nur bestätigte Konten, die Registrierung verlangt keine
+Bestätigung) oder Konto-IDs, `*` öffnet den Proxy für alle. Ohne Variable
+ist er für niemanden offen. Ändern ohne Deploy, z. B.
+`npx convex env set AI_ACCESS "a@example.com,b@example.com"` (mit `--prod`
+für Produktion) oder im Convex-Dashboard.
+
 ## Verschlüsselung
 
 - Pro Konto ein zufälliger 256-Bit-Datenschlüssel. Er verlässt die Geräte nur

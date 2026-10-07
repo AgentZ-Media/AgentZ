@@ -1,4 +1,4 @@
-import { For, Match, Show, Switch, createSignal } from "solid-js";
+import { For, Match, Show, Switch, createEffect, createSignal, on } from "solid-js";
 import { account } from "@agentz/kit/account";
 import { getPlatformAdapter } from "@agentz/kit/platform";
 import { t, type TranslationKey } from "../../i18n";
@@ -7,6 +7,7 @@ import {
   AGENT_KEY_INVALID,
   AGENT_NETWORK,
   AGENT_NO_CREDITS,
+  AGENT_NOT_ENABLED,
   AGENT_PROCESS_EXITED,
   AGENT_RATE_LIMITED,
   AGENT_SIGNED_OUT,
@@ -28,6 +29,7 @@ const ERROR_TEXT: Record<string, TranslationKey> = {
   [AGENT_NETWORK]: "agent.error.network",
   [AGENT_KEY_INVALID]: "agent.error.keyInvalid",
   [AGENT_NO_CREDITS]: "agent.error.noCredits",
+  [AGENT_NOT_ENABLED]: "agent.error.notEnabled",
 };
 
 /** Translated text for an `AGENT_*` error code, else null. */
@@ -45,6 +47,18 @@ const NAME: Record<AgentProviderId, TranslationKey> = {
 export function providerName(id: AgentProviderId = agentSettings.provider()): string {
   return t(NAME[id]);
 }
+
+/** The hosted agent is not open to this account (or nobody is signed in):
+ *  the choice shows "coming soon" and cannot be picked. A choice made before
+ *  stays selectable, its status explains the rest. */
+function comingSoon(id: AgentProviderId): boolean {
+  return id === "agentz" && !agentStore.hostedAccess() && agentSettings.provider() !== id;
+}
+
+const notEnabled = () => {
+  const status = agentStore.status();
+  return status.state === "error" && status.message === AGENT_NOT_ENABLED;
+};
 
 function providerSub(id: AgentProviderId): string {
   if (id === "codex") return t("agent.provider.codex.sub");
@@ -70,7 +84,7 @@ export function providerStatusLine(): string {
 
 export function providerErrorTitle(): string {
   const id = agentSettings.provider();
-  if (id === "agentz") return t("agent.provider.agentz.error");
+  if (id === "agentz") return t(notEnabled() ? "agent.provider.soon" : "agent.provider.agentz.error");
   if (id === "openrouter") return t("agent.provider.openrouter.error");
   return t("agent.state.error.title");
 }
@@ -88,26 +102,33 @@ export async function chooseProvider(id: AgentProviderId, check: boolean): Promi
 /** The three ways as radio cards; the chosen one shows its state. */
 export function ProviderPicker(props: { onChange?(id: AgentProviderId): void; showStatus: boolean; check: boolean }) {
   const ready = () => agentStore.status().state === "ready";
+  // Whether the AgentZ account is open to this account follows the sign-in.
+  createEffect(on(() => account.signedIn(), () => void agentStore.refreshHostedAccess()));
   return (
     <div class="ag-prov" role="radiogroup" aria-label={t("agent.prefs.connection")}>
       <For each={AGENT_PROVIDERS}>
         {(id) => {
-          const on = () => agentSettings.provider() === id;
+          const selected = () => agentSettings.provider() === id;
+          const soon = () => comingSoon(id);
           return (
             <button
               type="button"
               role="radio"
               class="ag-prov-it"
-              classList={{ "is-on": on() }}
-              aria-checked={on()}
+              classList={{ "is-on": selected(), "is-soon": soon() }}
+              aria-checked={selected()}
+              disabled={soon()}
               onClick={() => { void chooseProvider(id, props.check); props.onChange?.(id); }}
             >
               <span class="ag-prov-rd" />
               <div>
-                <b>{t(NAME[id])}</b>
-                <small classList={{ "is-ready": on() && props.showStatus && ready() }}>
+                <b>
+                  {t(NAME[id])}
+                  <Show when={soon()}><span class="ag-prov-soon">{t("agent.provider.soon")}</span></Show>
+                </b>
+                <small classList={{ "is-ready": selected() && props.showStatus && ready() }}>
                   <i />
-                  {on() && props.showStatus ? providerStatusLine() : providerSub(id)}
+                  {selected() && props.showStatus ? providerStatusLine() : providerSub(id)}
                 </small>
               </div>
             </button>

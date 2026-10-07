@@ -5,7 +5,7 @@
 //   session; the suite's OpenRouter key stays on the server.
 // - key: OpenRouter directly with the user's own key (from the keychain).
 
-import { AGENT_KEY_INVALID, AGENT_NETWORK, AGENT_NO_CREDITS, AGENT_RATE_LIMITED, AGENT_SIGNED_OUT, type ProviderState } from "../types";
+import { AGENT_KEY_INVALID, AGENT_NETWORK, AGENT_NO_CREDITS, AGENT_NOT_ENABLED, AGENT_RATE_LIMITED, AGENT_SIGNED_OUT, type ProviderState } from "../types";
 import { obj } from "../toolArgs";
 import { OPENROUTER_API, OPENROUTER_MODEL, OPENROUTER_MODEL_LABEL } from "./config";
 
@@ -39,6 +39,8 @@ const DEFAULT_MODEL: TransportModel = { id: OPENROUTER_MODEL, label: OPENROUTER_
 function errorFor(status: number, detail: string): TransportError {
   if (status === 401) return new TransportError(AGENT_SIGNED_OUT, status);
   if (status === 402) return new TransportError(AGENT_NO_CREDITS, status);
+  // The suite backend opens the hosted agent account by account.
+  if (status === 403 && detail === "not_enabled") return new TransportError(AGENT_NOT_ENABLED, status);
   if (status === 429) return new TransportError(AGENT_RATE_LIMITED, status);
   return new TransportError(detail || `request failed (${status})`, status);
 }
@@ -83,7 +85,7 @@ export function hostedTransport(deps: HostedDeps): OpenRouterTransport {
       try {
         const response = await call("/ai/status", { method: "GET" });
         if (response.status === 401) return { state: { state: "logged-out" }, model: null };
-        if (!response.ok) return { state: { state: "error", message: await detailOf(response) }, model: null };
+        if (!response.ok) return { state: { state: "error", message: errorFor(response.status, await detailOf(response)).message }, model: null };
         const body = obj(await response.json());
         const model = obj(body.model);
         return {
