@@ -16,6 +16,7 @@ import type * as emails from "../emails.js";
 import type * as http from "../http.js";
 import type * as keys from "../keys.js";
 import type * as releases from "../releases.js";
+import type * as stats from "../stats.js";
 import type * as sync from "../sync.js";
 import type * as syncApps from "../syncApps.js";
 import type * as syncPolicy from "../syncPolicy.js";
@@ -35,6 +36,7 @@ declare const fullApi: ApiFromModules<{
   http: typeof http;
   keys: typeof keys;
   releases: typeof releases;
+  stats: typeof stats;
   sync: typeof sync;
   syncApps: typeof syncApps;
   syncPolicy: typeof syncPolicy;
