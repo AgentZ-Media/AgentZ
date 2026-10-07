@@ -26,11 +26,11 @@ function realFolder(id: string | null | undefined): string | null {
   return library.folder(id) ? id : null;
 }
 
-/** Folder the user is "in" right now: the filtered folder of the scripts
- *  or ideas page, or the folder of the open script. */
+/** Folder the user is "in" right now: the filtered folder of the scripts,
+ *  inbox or ideas page, or the folder of the open script. */
 export function currentFolderContext(): string | null {
   const r = navStore.route();
-  if (r.kind === "scripts" || r.kind === "ideas") return realFolder(r.folderId);
+  if (r.kind === "scripts" || r.kind === "inbox" || r.kind === "ideas") return realFolder(r.folderId);
   if (r.kind === "script") return realFolder(library.script(r.scriptId)?.folder_id);
   return null;
 }
@@ -242,7 +242,12 @@ export async function deleteFolder(folder: Folder): Promise<void> {
     await api.deleteFolder(folder.id);
     pushToast(t("folder.toast.deleted", { name: folder.name }), "ok");
     const r = navStore.route();
-    if ((r.kind === "scripts" || r.kind === "ideas") && r.folderId === folder.id) {
+    if (r.kind === "scripts" && r.folderId === folder.id) {
+      // A stage page only drops its folder filter.
+      navStore.openScripts(r.status ? { status: r.status } : {});
+    } else if (r.kind === "inbox" && r.folderId === folder.id) {
+      navStore.openInbox();
+    } else if (r.kind === "ideas" && r.folderId === folder.id) {
       navStore.openScripts();
     }
   } catch (e) {

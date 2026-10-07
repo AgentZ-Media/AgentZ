@@ -14,6 +14,7 @@ export const RUNTIME_STATS_RECOUNT_FLAG = "migration.runtime_stats_v2";
 
 export async function backfillRuntimeStatsOnBoot(kv: KvStore): Promise<void> {
   const recounted = await kv.getAppState(RUNTIME_STATS_RECOUNT_FLAG);
-  await api.backfillRuntimeStats({ all: !recounted });
-  if (!recounted) await kv.setAppState(RUNTIME_STATS_RECOUNT_FLAG, String(Date.now()));
+  const complete = await api.backfillRuntimeStats({ all: !recounted });
+  // A row that failed keeps the old count; the next boot recounts again.
+  if (!recounted && complete) await kv.setAppState(RUNTIME_STATS_RECOUNT_FLAG, String(Date.now()));
 }

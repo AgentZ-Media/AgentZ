@@ -13,6 +13,7 @@ import { t } from "../../i18n";
 import { Icon } from "@agentz/kit/ui";
 import { StageGlyph } from "../Common/StageGlyph";
 import { folderColor } from "../Common/folderColor";
+import { countByFolder } from "../Common/FolderChips";
 import { safeSnippet } from "../Palette/snippet";
 import { library } from "../Shell/libraryData";
 import type { BoardColumn } from "./Board";
@@ -64,17 +65,19 @@ function sortScripts(list: ScriptSummary[], key: SortKey): ScriptSummary[] {
 export function createScriptsData(deps: ScriptsDataDeps) {
   const { isInbox, isAll, status, folderId, query, needle, limit } = deps;
 
-  const scope = createMemo(() => {
+  /** The page before its folder filter: the inbox, one stage or all. */
+  const pageScope = createMemo(() => {
     if (isInbox()) return library.inProgress();
     const st = status();
-    const fid = folderId();
-    return library.scripts().filter((s) => {
-      if (st && s.status !== st) return false;
-      if (fid === INBOX_FOLDER_ID) return s.folder_id === null;
-      if (fid) return s.folder_id === fid;
-      return true;
-    });
+    return st ? library.scripts().filter((s) => s.status === st) : library.scripts();
   });
+  const inFolder = (item: { folder_id: string | null }) => {
+    const fid = folderId();
+    if (fid === INBOX_FOLDER_ID) return item.folder_id === null;
+    return fid === null || item.folder_id === fid;
+  };
+
+  const scope = createMemo(() => (folderId() === null ? pageScope() : pageScope().filter(inFolder)));
 
   const matches = createMemo(() => {
     const n = needle();
@@ -88,23 +91,27 @@ export function createScriptsData(deps: ScriptsDataDeps) {
 
   const sorted = createMemo(() => sortScripts(matches(), libraryPrefs.sort()));
 
-  /** Open ideas of this page (inbox: all of them, a folder: its own),
-   *  filtered like the rows. Ideas have no edit time, so "updated" and
-   *  "created" both list the newest first. */
+  /** Open ideas of this page in its folder filter (a stage has none). */
+  const folderIdeas = createMemo<Idea[]>(() => (status() !== null ? [] : library.openIdeas().filter(inFolder)));
+  /** `folderIdeas`, filtered like the rows. Ideas have no edit time, so
+   *  "updated" and "created" both list the newest first. */
   const scopeIdeas = createMemo<Idea[]>(() => {
-    if (status() !== null) return [];
-    const fid = folderId();
     const n = needle();
-    const list = library.openIdeas().filter((i) => {
-      if (fid === INBOX_FOLDER_ID ? i.folder_id !== null : fid !== null && i.folder_id !== fid) return false;
-      return !n || i.title.toLowerCase().includes(n) || (i.notes ?? "").toLowerCase().includes(n);
-    });
+    const list = folderIdeas().filter(
+      (i) => !n || i.title.toLowerCase().includes(n) || (i.notes ?? "").toLowerCase().includes(n),
+    );
     return libraryPrefs.sort() === "title"
       ? list.sort((a, b) => localeCompare(a.title, b.title))
       : list.sort((a, b) => b.created_at - a.created_at);
   });
   /** The inbox list shows its ideas below the stage groups. */
   const inboxIdeas = () => (isInbox() ? scopeIdeas() : []);
+
+  /** Folder chips: what the page lists per folder, before the folder and
+   *  text filters (the inbox counts its open ideas too). */
+  const folderChips = createMemo(() =>
+    countByFolder(isInbox() ? [...pageScope(), ...library.openIdeas()] : pageScope()),
+  );
 
   /** Board: the ideas, then every stage in pipeline order (the inbox
    *  leaves out the last one, like its list). */
@@ -249,6 +256,8 @@ export function createScriptsData(deps: ScriptsDataDeps) {
 
   return {
     scope,
+    folderIdeas,
+    folderChips,
     matches,
     sorted,
     scopeIdeas,

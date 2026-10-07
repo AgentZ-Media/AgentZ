@@ -12,8 +12,9 @@ export type Route =
        *  scripts without a folder (see lib/folders.ts). */
       folderId?: string | null;
     }
-  /** Work in progress: open ideas and every script before the last stage. */
-  | { kind: "inbox" }
+  /** Work in progress: open ideas and every script before the last stage.
+   *  `folderId` filters it like the scripts route. */
+  | { kind: "inbox"; folderId?: string | null }
   | { kind: "ideas"; folderId?: string | null }
   | { kind: "script"; scriptId: string }
   | { kind: "trash" }
@@ -101,8 +102,8 @@ export const navStore = {
   openScripts(filter: { status?: ScriptStatus | null; folderId?: string | null } = {}): Promise<void> {
     return navigation.go({ kind: "scripts", ...filter });
   },
-  openInbox(): Promise<void> {
-    return navigation.go({ kind: "inbox" });
+  openInbox(folderId?: string | null): Promise<void> {
+    return navigation.go(folderId ? { kind: "inbox", folderId } : { kind: "inbox" });
   },
   openIdeas(folderId?: string | null): Promise<void> {
     return navigation.go({ kind: "ideas", folderId: folderId ?? null });

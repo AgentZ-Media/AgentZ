@@ -134,7 +134,8 @@ export interface ScriptzStorage {
   reassignScriptStatus(from: ScriptStatus, to: ScriptStatus): Promise<number>;
   /** Recomputes the stored runtime inputs: only never-measured scripts,
    *  or every script with `all`. */
-  backfillRuntimeStats(opts?: { all?: boolean }): Promise<void>;
+  /** False when a row could not be updated (it is retried later). */
+  backfillRuntimeStats(opts?: { all?: boolean }): Promise<boolean>;
 
   // ===== Folders =====
   listFolders(): Promise<Folder[]>;

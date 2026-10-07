@@ -70,6 +70,11 @@ die Befehlspalette, deshalb setzt das Modul `revealsSidebar: true`.
   (`library.mode` je Seite). Spalten: offene Ideen, dann die Stufen in
   ihrer Reihenfolge (Inbox ohne die letzte). Karte ziehen setzt die Stufe
   (Undo-Toast), eine Idee auf eine Stufe wird zum Skript.
+- **Ordner-Chips** (`Common/FolderChips.tsx`): Ideen, Inbox, Alle Skripte,
+  Stufen und Ordner filtern mit einem Klick nach Ordner oder „Ohne
+  Ordner“. Der Filter liegt in der Route (`folderId` bei `ideas`, `inbox`
+  und `scripts`, dort kombinierbar mit `status`). Gezählt wird, was die
+  Seite vor dem Ordnerfilter zeigt; leere Ordner bekommen keinen Chip.
 
 ## Migrationen
 
@@ -131,7 +136,11 @@ schlagen sonst fehl). Die Umwandlung von Kamera/Caption/SFX in Action ist bewuss
 - Die letzte Stufe gilt als erledigt (`isFinalStage`). Die Inbox (Route
   `inbox`, ganz oben in der Sidebar und nur sichtbar, solange etwas offen ist)
   zeigt offene Ideen und alle Skripte davor (`library.inProgress`). Eigene
-  Stufen brauchen dort keine Anpassung.
+  Stufen brauchen dort keine Anpassung. Bei Gruppierung nach Stufe trägt nur
+  der Gruppenkopf das Stufen-Symbol. Ideen stehen als kompakte Zeilen
+  darunter: die neuesten 10, zweispaltig (`library.inboxIdeas`, zeilenweise
+  links, rechts) 20, der Rest hinter „weitere anzeigen“; ein Filter zeigt
+  alle Treffer.
 - Zielbereich in Sekunden je Ordner oder global
   (`length_min_default_sec`/`length_max_default_sec`, leer = aus). Auflösung:
   Ordner -> Standard -> keiner (`resolveLengthRange`).
