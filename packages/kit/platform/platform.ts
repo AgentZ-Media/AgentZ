@@ -68,6 +68,18 @@ export interface OpenFileResult {
   bytes: Uint8Array;
 }
 
+// ===== Secrets =====
+//
+// A few small secrets (account session, sync data key) in the operating
+// system's credential store. Hosts without one leave `secrets` unset; the
+// account then keeps them in memory for the session only.
+
+export interface SecretStore {
+  get(key: string): Promise<string | null>;
+  set(key: string, value: string): Promise<void>;
+  delete(key: string): Promise<void>;
+}
+
 // ===== Adapter interface =====
 
 export interface PlatformAdapter {
@@ -118,6 +130,13 @@ export interface PlatformAdapter {
   /** Writes bytes to an absolute path, creating parent dirs as needed. Only
    *  valid when `supportsDirectoryWrite` is true; web throws. */
   writeFileTo(path: string, bytes: Uint8Array): Promise<void>;
+
+  /** OS credential store; unset on hosts without one. */
+  secrets?: SecretStore;
+
+  /** URLs of the app's own scheme (`agentz-<id>://…`) opened while it runs,
+   *  e.g. the website handing back a sign-in. Returns the unsubscribe. */
+  onOpenUrl?(handler: (urls: string[]) => void): Promise<() => void>;
 }
 
 let adapter: PlatformAdapter | null = null;

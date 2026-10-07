@@ -117,6 +117,9 @@ export interface ScriptzStorage {
   restoreScript(id: string): Promise<void>;
   purgeScript(id: string): Promise<void>;
   emptyTrash(): Promise<void>;
+  /** Deletes scripts that went to the trash at or before `cutoff` (ms);
+   *  returns how many were removed. */
+  purgeExpiredTrash(cutoff: number): Promise<number>;
   duplicateScript(id: string): Promise<ScriptSummary>;
   renameScript(id: string, title: string): Promise<ScriptSummary>;
   /** Moves a script to another production stage. Sets
