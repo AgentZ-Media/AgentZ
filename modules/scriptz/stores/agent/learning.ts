@@ -3,7 +3,7 @@ import { pushToast } from "@agentz/kit/stores";
 import { t, tPlural } from "../../i18n";
 import { api } from "../../lib/api";
 import { scriptStages } from "../../lib/stages";
-import { effortOrDefault } from "../../lib/agent/codex/provider";
+import { effortOrDefault } from "../../lib/agent/types";
 import { learnStageIds } from "../../lib/agent/learnStage";
 import { learnChange, worthRelearning } from "../../lib/agent/learnChange";
 import { latestChat, learnedState, markLearned, saveChat } from "../../lib/agent/chats";
@@ -402,5 +402,5 @@ async function appendLearnedToChat(scriptId: string, changes: MemoryChange[]): P
   const now = Date.now();
   await saveChat(chat
     ? { ...chat, items: [...chat.items, ...items], updatedAt: now }
-    : { id: crypto.randomUUID(), kind: "script", scriptId, provider: "codex", threadId: null, title: null, folderId: null, items, createdAt: now, updatedAt: now });
+    : { id: crypto.randomUUID(), kind: "script", scriptId, provider: agentSettings.provider(), threadId: null, title: null, folderId: null, items, createdAt: now, updatedAt: now });
 }

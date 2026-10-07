@@ -213,6 +213,24 @@ async function expire() {
   setNotice("expired");
 }
 
+/** Request to a route of the suite backend (`siteUrl` + `path`) with the
+ *  session of this app, for services beyond sync (e.g. the hosted agent).
+ *  An expired session signs the app out and throws SessionExpiredError. */
+async function backendFetch(path: string, init: RequestInit = {}): Promise<Response> {
+  const r = rt;
+  const token = r?.token;
+  if (!r || !token || phase() !== "signedIn") throw new SessionExpiredError();
+  const headers = new Headers(init.headers);
+  headers.set("Authorization", `Bearer ${token}`);
+  const response = await fetch(`${r.cloud.siteUrl}${path}`, { ...init, headers });
+  if (response.status === 401) {
+    // Only the session that was used: a new sign-in meanwhile stays.
+    if (rt === r && r.token === token) await expire();
+    throw new SessionExpiredError();
+  }
+  return response;
+}
+
 async function signOut() {
   const r = rt;
   if (!r) return;
@@ -595,6 +613,7 @@ export const account = {
   syncAvailable,
   enabled: () => phase() !== "off",
   signedIn: () => phase() === "signedIn",
+  backendFetch,
   signIn,
   /** Opens the sign-in page again while waiting. */
   reopenBrowser: () => { if (rt && lastSignInUrl) void rt.platform.openUrl(lastSignInUrl); },

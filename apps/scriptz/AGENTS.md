@@ -10,7 +10,7 @@ Architektur und Datenfluss: [`scriptz-architecture.md`](../../.claude/rules/scri
 ## Daten schützen
 
 Identifier `de.agent-z.scriptz`, `scriptz.db`, das URL-Schema `agentz-scriptz`,
-die Migrationen `001` bis `014` sowie alle Settings- und `app_state`-Schlüssel sind fix. Neue
+die Migrationen `001` bis `015` sowie alle Settings- und `app_state`-Schlüssel sind fix. Neue
 Schemaänderungen nur als neue Migration in `src-tauri/migrations/`, registriert
 in `src-tauri/src/lib.rs`, und im `.scriptz`-Import/Export mitdenken. Neue
 Spalten einer Inhaltstabelle brauchen außerdem neu angelegte Update-Trigger
@@ -63,15 +63,19 @@ Kein `cp` der laufenden DB (WAL). Wiederherstellen bei beendeter App:
 - **Inspector zeigt nur Informationen**, Einstellungen gehören in den
   Einstellungsdialog. **⌘I ist Ideen-Schnellerfassung**, es gibt kein Kursiv.
 - **Agent nur über das Provider-Interface.** Netzwerk und KI laufen über
-  `lib/agent/types.ts` (`AgentProvider`), heute nur Codex app-server. Der
-  Agent schlägt vor, schreibt nie direkt ins Skript, und Lernen bleibt
-  freiwillig. Details: Abschnitt „Agent" in `scriptz-architecture.md`.
+  `lib/agent/types.ts` (`AgentProvider`): Codex app-server oder der
+  OpenRouter-Harness (AgentZ-Konto, eigener Key). Alle Anbindungen können
+  genau dasselbe (Parität, siehe Root-`AGENTS.md`). Der Agent schlägt vor,
+  schreibt nie direkt ins Skript, und Lernen bleibt freiwillig. Details:
+  Abschnitt „Agent" in `scriptz-architecture.md`.
 - Netzwerkanfragen: der Updater
   (`releases/download/scriptz-latest/latest.json`, mit Nightly-Kanal zusätzlich
-  `scriptz-nightly/latest.json`), nur wenn der Agent eingeschaltet ist der
-  lokale Codex-Prozess und nur mit Anmeldung das Convex-Backend (Sitzung,
-  Ende-zu-Ende verschlüsselter Sync). Keine Telemetrie. Die CSP erlaubt dafür
-  ausschließlich `*.convex.cloud` und `*.convex.site`.
+  `scriptz-nightly/latest.json`), nur mit Anmeldung das Convex-Backend
+  (Sitzung, Ende-zu-Ende verschlüsselter Sync) und nur wenn der Agent
+  eingeschaltet ist je nach Anbindung der lokale Codex-Prozess, der KI-Proxy
+  im Convex-Backend (`/ai/*`) oder `openrouter.ai` mit dem eigenen Key. Keine
+  Telemetrie. Die CSP erlaubt dafür ausschließlich `*.convex.cloud`,
+  `*.convex.site` und `https://openrouter.ai`.
 - **Nightly-Sicherungen** liegen unter
   `~/Library/Application Support/de.agent-z.scriptz/backups/` (Windows:
   `%APPDATA%\de.agent-z.scriptz\backups\`), die letzten fünf bleiben.

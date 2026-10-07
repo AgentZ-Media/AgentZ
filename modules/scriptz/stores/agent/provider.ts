@@ -1,36 +1,83 @@
 import { createSignal } from "solid-js";
+import { account } from "@agentz/kit/account";
+import type { SecretStore } from "@agentz/kit/platform";
 import { CodexProvider, type CodexHostLike } from "../../lib/agent/codex/provider";
+import { OpenRouterProvider } from "../../lib/agent/openrouter/provider";
+import { hostedTransport, keyHint, keyTransport } from "../../lib/agent/openrouter/transport";
+import { threadStore } from "../../lib/agent/threads";
 import type { AgentModel, AgentProvider, ProviderState } from "../../lib/agent/types";
+import { agentSettings, type AgentProviderId } from "../agentSettings";
 
 // ---------------------------------------------------------------------------
 // Provider + status
 // ---------------------------------------------------------------------------
+//
+// Three ways to run the same agent (agent.provider):
+// - "codex": the user's local Codex (ChatGPT plan) through codex app-server,
+// - "agentz": the hosted harness with the suite's OpenRouter key, for
+//   signed-in AgentZ accounts,
+// - "openrouter": the same harness with the user's own OpenRouter key.
 
 let codexHost: CodexHostLike | null = null;
+/** True in builds with the desktop host (the agent exists at all). */
+let hostReady = false;
+let secrets: SecretStore | null = null;
 let provider: AgentProvider | null = null;
 
 export type AgentStatus = ProviderState | { state: "checking" } | { state: "unavailable" };
 const [status, setStatus] = createSignal<AgentStatus>({ state: "checking" });
 const [models, setModels] = createSignal<AgentModel[]>([]);
 const [modelsLoading, setModelsLoading] = createSignal(false);
-export { status, models, modelsLoading };
+/** Hint of the stored own OpenRouter key ("…abcd"), null without one. */
+const [keyHintSignal, setKeyHint] = createSignal<string | null>(null);
+export { status, models, modelsLoading, keyHintSignal as openRouterKeyHint };
+
+/** Keychain entry of the own OpenRouter key (never in settings or sync). */
+const KEY_SECRET = "agent.openrouter-key";
+/** Without a keychain (non-desktop hosts) the key lasts for the session. */
+let memoryKey: string | null = null;
 
 function isCodexHost(value: unknown): value is CodexHostLike {
   const v = value as Partial<CodexHostLike> | null;
   return !!v && typeof v.locate === "function" && typeof v.start === "function";
 }
 
-/** Takes the Codex host from the desktop services; anything else means no agent. */
-export function setCodexHost(value: unknown): void {
-  codexHost = isCodexHost(value) ? value : null;
+/** Takes the Codex host from the desktop services; without one there is no
+ *  agent in this build. The keychain holds the own OpenRouter key. */
+export function setAgentHost(services: Readonly<Record<string, unknown>>, store: SecretStore | null | undefined): void {
+  codexHost = isCodexHost(services.codexHost) ? services.codexHost : null;
+  hostReady = codexHost !== null;
+  secrets = store ?? null;
+  void readKey().then((key) => setKeyHint(key ? keyHint(key) : null)).catch(() => setKeyHint(null));
 }
 
-export function clearCodexHost(): void {
+export function clearAgentHost(): void {
   codexHost = null;
+  hostReady = false;
+  secrets = null;
+  memoryKey = null;
+  setKeyHint(null);
 }
 
-export function hasCodexHost(): boolean {
-  return codexHost !== null;
+export function hasAgentHost(): boolean {
+  return hostReady;
+}
+
+async function readKey(): Promise<string | null> {
+  if (!secrets) return memoryKey;
+  return (await secrets.get(KEY_SECRET).catch(() => null)) ?? null;
+}
+
+/** Stores (or with "" removes) the own OpenRouter key. */
+export async function setOpenRouterKey(raw: string): Promise<void> {
+  const key = raw.trim();
+  if (secrets) {
+    if (key) await secrets.set(KEY_SECRET, key);
+    else await secrets.delete(KEY_SECRET);
+  } else {
+    memoryKey = key || null;
+  }
+  setKeyHint(key ? keyHint(key) : null);
 }
 
 /** The provider currently in use, without creating one. */
@@ -38,10 +85,24 @@ export function currentProvider(): AgentProvider | null {
   return provider;
 }
 
+function createProvider(id: AgentProviderId): AgentProvider | null {
+  if (!hostReady) return null;
+  switch (id) {
+    case "codex":
+      return codexHost ? new CodexProvider(codexHost) : null;
+    case "agentz":
+      return new OpenRouterProvider("agentz", hostedTransport({
+        signedIn: () => account.signedIn(),
+        fetch: (path, init) => account.backendFetch(path, init),
+      }), threadStore);
+    case "openrouter":
+      return new OpenRouterProvider("openrouter", keyTransport({ key: readKey }), threadStore);
+  }
+}
+
 export function getProvider(): AgentProvider | null {
   if (provider) return provider;
-  if (!codexHost) return null;
-  provider = new CodexProvider(codexHost);
+  provider = createProvider(agentSettings.provider());
   return provider;
 }
 
@@ -75,7 +136,7 @@ export async function refreshModels(): Promise<AgentModel[]> {
   setModelsLoading(true);
   try {
     const list = await p.listModels();
-    setModels(list);
+    if (provider === p) setModels(list);
     return list;
   } finally {
     setModelsLoading(false);
@@ -91,8 +152,8 @@ export function resolveModel(list: readonly AgentModel[], chosen: string): Agent
   return list.find((m) => m.id === chosen) ?? list.find((m) => m.isDefault) ?? list[0];
 }
 
-/** Ends the Codex process and forgets status and models. The next status
- *  check starts a fresh provider. */
+/** Ends the provider (Codex process, running harness turns) and forgets
+ *  status and models. The next status check starts a fresh provider. */
 export function disposeProvider(): void {
   const p = provider;
   provider = null;

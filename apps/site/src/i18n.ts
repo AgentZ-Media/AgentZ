@@ -34,7 +34,7 @@ const de = {
     timeline: { title: "Wer redet wann.", text: "Die Zeitleiste zeigt Rhythmus, Wechsel und deinen Hook." },
     pipeline: { title: "Von der Idee bis online.", text: "Jedes Skript hat seine Stufe. Als Liste oder Board." },
     capture: { title: "Ideen in einer Sekunde.", text: "⌘I, tippen, Enter. Egal, wo du gerade bist." },
-    agent: { title: "Ida schreibt mit.", text: "Optional: dein eigener Schreibagent über Codex. Er schlägt vor, du entscheidest." },
+    agent: { title: "Ida schreibt mit.", text: "Optional: dein eigener Schreibagent, über dein ChatGPT-Abo oder kostenlos mit deinem AgentZ-Konto. Er schlägt vor, du entscheidest." },
   },
 
   demo: {
@@ -294,7 +294,7 @@ const en: Catalog = {
     timeline: { title: "Who speaks when.", text: "The timeline shows rhythm, switches and your hook." },
     pipeline: { title: "From idea to online.", text: "Every script has its stage. As a list or a board." },
     capture: { title: "Ideas in a second.", text: "⌘I, type, Enter. Wherever you are." },
-    agent: { title: "Ida writes along.", text: "Optional: your own writing agent via Codex. It suggests, you decide." },
+    agent: { title: "Ida writes along.", text: "Optional: your own writing agent, on your ChatGPT plan or free with your AgentZ account. It suggests, you decide." },
   },
 
   demo: {

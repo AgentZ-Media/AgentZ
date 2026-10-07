@@ -11,7 +11,6 @@ import { obj, type Obj } from "../toolArgs";
 import {
   DEFAULT_EFFORT,
   isAgentEffort,
-  type AgentEffort,
   type AgentEvent,
   type AgentModel,
   type AgentProvider,
@@ -429,10 +428,4 @@ export class CodexProvider implements AgentProvider {
     this.rpc = null;
     if (rpc) await rpc.then((client) => client.close()).catch(() => {});
   }
-}
-
-export function effortOrDefault(model: AgentModel | undefined, wanted: AgentEffort): AgentEffort {
-  if (!model) return wanted;
-  if (model.efforts.includes(wanted)) return wanted;
-  return model.efforts.includes(model.defaultEffort) ? model.defaultEffort : model.efforts[0] ?? wanted;
 }

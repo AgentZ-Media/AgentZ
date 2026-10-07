@@ -70,7 +70,7 @@ die Befehlspalette, deshalb setzt das Modul `revealsSidebar: true`.
 
 ## Migrationen
 
-`001_baseline` bis `014_cloud_sync` in
+`001_baseline` bis `015_agent_threads` in
 `apps/scriptz/src-tauri/migrations/` sind veröffentlicht und unveränderlich. `007` ergänzt `scripts.status`,
 `status_changed_at` und den Ordner-Zielbereich. `008_agent` legt
 `agent_memory`, `agent_chats` und `agent_learned` an. `009_local_changes`
@@ -94,6 +94,9 @@ Covering-Index (`lib/__tests__/queryPlans.test.ts` schlägt sonst fehl).
 `014_cloud_sync` ist rein additiv: `sync_records` (Buchführung der
 Synchronisierung, keine Inhaltstabelle) und `daily_word_log_remote`
 (Schreibstatistik anderer Geräte).
+`015_agent_threads` ist rein additiv: `agent_threads` hält die Transkripte
+des OpenRouter-Harness (Gerätezustand wie `agent_chats.thread_id`, keine
+Inhaltstabelle, nicht im Änderungsfeed, nie synchronisiert oder exportiert).
 Jede neue Spalte einer Inhaltstabelle braucht dasselbe: Trigger neu anlegen
 und `CONTENT_ENTITIES` ergänzen (Tests in `lib/__tests__/localChanges.test.ts`
 schlagen sonst fehl). Die Umwandlung von Kamera/Caption/SFX in Action ist bewusst keine SQL-Migration
@@ -175,11 +178,44 @@ nur nach vollständigem Lauf gesetzt. Snapshots bleiben unverändert.
 Persönlicher Schreib-Agent mit eigenem Namen, Look und Persona.
 
 - **Provider-neutral.** `lib/agent/types.ts` definiert `AgentProvider`,
-  `AgentThread` und `AgentEvent`. Einzige Integration heute:
-  `lib/agent/codex/` spricht JSON-RPC mit `codex app-server` über
-  `services.codexHost` (`@agentz/desktop`, Rust in
-  `crates/agentz-desktop/src/codex.rs`, Permission `agentz-desktop:codex`).
-  Weitere Provider (OpenRouter, lokal) implementieren nur dieses Interface.
+  `AgentThread` und `AgentEvent`. Drei Anbindungen, gewählt in
+  `agent.provider` (pro Gerät, nicht synchronisiert, `stores/agent/provider.ts`):
+  - `codex`: `lib/agent/codex/` spricht JSON-RPC mit `codex app-server` über
+    `services.codexHost` (`@agentz/desktop`, Rust in
+    `crates/agentz-desktop/src/codex.rs`, Permission `agentz-desktop:codex`).
+  - `agentz`: der Harness in `lib/agent/openrouter/` über den KI-Proxy der
+    Suite (`apps/site/convex/ai.ts`, `/ai/status` und `/ai/chat`, Sitzung per
+    `account.backendFetch` aus dem Kit). Der Server hält den OpenRouter-Key
+    und legt das Modell fest (`OPENROUTER_MODEL`, heute
+    `google/gemini-3.8-flash`; App-Seite `openrouter/config.ts`, beide gleich
+    halten). Für angemeldete Nutzer kostenlos, Limits gehören später in
+    `ai.ts`.
+  - `openrouter`: derselbe Harness direkt gegen `openrouter.ai` mit dem
+    eigenen Key des Nutzers (Schlüsselbund `agent.openrouter-key`, nie in
+    Settings oder Sync), auch ohne Konto.
+- **Parität (Pflicht).** Jede Anbindung kann genau dasselbe. Instruktionen
+  (`lib/agent/prompt.ts`, `stores/agent/instructions.ts`), Tools
+  (`tools.ts`, `sessionTools.ts`), Aufträge, Gedächtnis und Lernen entstehen
+  oberhalb des Providers und gehen unverändert an jeden Provider; ein Provider
+  ergänzt keine eigenen Prompt-Texte und keine eigenen Fachtools, sondern
+  bildet nur sein Protokoll auf `AgentEvent` ab. Was ein Modell selbst
+  mitbringt, baut der Harness nach: Websuche als Tool `web_search`
+  (OpenRouter-Web-Plugin mit Exa, echte Quell-URLs), Fortschrittsnotizen
+  (Text neben Tool-Aufrufen = `commentary`), Verlauf (`agent_threads`),
+  Abbrechen, Zeitlimit, Wiederholung bei vorübergehenden Fehlern. Eine neue
+  Fähigkeit oder ein neues Tool gilt erst als fertig, wenn es mit allen
+  Anbindungen läuft und `lib/agent/__tests__/providerParity.test.ts`
+  (gleiche Instruktionen, gleiche Tool-Schemas, gleiche Ereignisfolge)
+  es abdeckt. Provider-spezifische Texte in der Oberfläche nur über
+  `components/Agent/ProviderSetup.tsx`.
+- **OpenRouter-Harness** (`lib/agent/openrouter/`): `provider.ts` (Schleife
+  aus Modellschritten bis zur Antwort ohne Tool-Aufrufe, höchstens 40
+  Schritte, 6 min wie Codex), `stream.ts` (SSE, `reasoning_details` werden
+  unverändert zurückgegeben, sonst verliert Gemini seine Gedankensignaturen),
+  `transport.ts` (gehostet oder eigener Key, gleiche Anfrageform). Prompt
+  Caching über `cache_control` auf Instruktionen und neuester Nachricht
+  (Gemini cached nur mit Breakpoints). Alte Tool-Ausgaben und zuletzt die
+  ältesten Turns fallen erst bei etwa 1,2 Mio. Zeichen weg.
 - **Codex isoliert.** Start mit `web_search="live"`, Shell, Apps, Plugins,
   Sub-Agenten und Codex-Gedächtnis per `features.*=false` aus, MCP-Server des
   Users pro Thread deaktiviert, Sandbox `read-only`, Freigaben werden
@@ -273,8 +309,9 @@ Sidebar, `Mod+L` außerhalb eines Skripts, `Mod+Shift+L` überall, ⌘K, Ideen-S
 - **Fertig** legt über den Dialog ein normales Skript an (Ordner, Stufe, Idee
   als umgesetzt, `api.markIdeaUsed`). „Gespräch mitnehmen“ hängt die Sitzung
   an das Skript (`attachToScript`): ab dann ist sie dessen Chat, der
-  Codex-Thread wird mit Skript-Instruktionen und -Tools neu geladen
-  (`thread/unsubscribe`, dann `thread/resume`). Der Agent legt nie selbst
+  Thread wird mit Skript-Instruktionen und -Tools neu geladen (Codex:
+  `thread/unsubscribe`, dann `thread/resume`; Harness: Transkript neu
+  geöffnet). Der Agent legt nie selbst
   Skripte an.
 
 ## Datenfluss

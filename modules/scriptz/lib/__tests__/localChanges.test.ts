@@ -113,7 +113,7 @@ describe("local content change feed", () => {
 
   it("covers every durable content table and every column in the actual schema", () => {
     migrateTracking();
-    const tables = db.prepare("SELECT name FROM sqlite_master WHERE type = 'table' AND name NOT LIKE 'scripts_fts%' AND name NOT IN ('settings','app_state','local_replica','local_changes','sqlite_sequence','sync_records','daily_word_log_remote')").all().map((r) => r.name);
+    const tables = db.prepare("SELECT name FROM sqlite_master WHERE type = 'table' AND name NOT LIKE 'scripts_fts%' AND name NOT IN ('settings','app_state','local_replica','local_changes','sqlite_sequence','sync_records','daily_word_log_remote','agent_threads')").all().map((r) => r.name);
     expect(tables.sort()).toEqual(Object.keys(CONTENT_ENTITIES).sort());
     for (const [table, config] of Object.entries(CONTENT_ENTITIES)) {
       expect(db.prepare(`PRAGMA table_info(${table})`).all().map((r) => r.name).sort()).toEqual([...config.columns].sort());

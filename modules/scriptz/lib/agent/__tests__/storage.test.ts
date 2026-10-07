@@ -11,6 +11,7 @@ import {
   MemoryFullError, restoreMemory, updateMemory,
 } from "../memory";
 import { sqlAgentStorage } from "../sqlStorage";
+import { threadStore } from "../threads";
 
 const state = { connection: null as DbConnection | null };
 const migrations = new URL("../../../../../apps/scriptz/src-tauri/migrations/", import.meta.url);
@@ -181,5 +182,35 @@ describe("agent persistence boundary with SQLite", () => {
     expect(insert).toHaveBeenCalledOnce();
     expect(memoryVersion()).toBe(version);
     expect(await listMemory()).toEqual([]);
+  });
+});
+
+describe("harness transcripts (migration 015)", () => {
+  const record = (id: string, updatedAt: number) => ({ id, provider: "openrouter", messagesJson: `[{"role":"user","content":"${id}"}]`, createdAt: 1, updatedAt });
+
+  it("stores, updates and prunes transcripts; deleting a chat removes its transcript", async () => {
+    await threadStore.save(record("t1", 10));
+    await threadStore.save({ ...record("t1", 20), provider: "other", createdAt: 99, messagesJson: "[]" });
+    // Provider and creation time stay as first saved.
+    expect(await threadStore.get("t1")).toEqual({ id: "t1", provider: "openrouter", messagesJson: "[]", createdAt: 1, updatedAt: 20 });
+    expect(await threadStore.get("missing")).toBeNull();
+
+    await threadStore.save(record("t2", 30));
+    await threadStore.save(record("t3", 40));
+    await threadStore.prune(2);
+    expect(await threadStore.get("t1")).toBeNull();
+    expect(await threadStore.get("t2")).not.toBeNull();
+
+    await saveChat(chat({ id: "with-thread", threadId: "t3" }));
+    await deleteChat("with-thread");
+    expect(await threadStore.get("t3")).toBeNull();
+    expect(await threadStore.get("t2")).not.toBeNull();
+  });
+
+  it("is device state: no change feed entries", async () => {
+    const before = database.prepare("SELECT COUNT(*) AS n FROM local_changes").get() as { n: number };
+    await threadStore.save(record("t1", 10));
+    const after = database.prepare("SELECT COUNT(*) AS n FROM local_changes").get() as { n: number };
+    expect(after.n).toBe(before.n);
   });
 });

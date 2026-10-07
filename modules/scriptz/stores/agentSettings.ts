@@ -17,6 +17,11 @@ export type AgentTrait = "direct" | "dry" | "encouraging" | "critical" | "brief"
 export const AGENT_TRAITS: readonly AgentTrait[] = ["direct", "dry", "encouraging", "critical", "brief", "detailed"];
 const DEFAULT_TRAITS: AgentTrait[] = ["direct", "dry", "critical"];
 
+/** How the agent runs (stores/agent/provider.ts). Per device, never synced. */
+export type AgentProviderId = "codex" | "agentz" | "openrouter";
+export const AGENT_PROVIDERS: readonly AgentProviderId[] = ["codex", "agentz", "openrouter"];
+const isProviderId = (v: unknown): v is AgentProviderId => typeof v === "string" && (AGENT_PROVIDERS as readonly string[]).includes(v);
+
 export const AGENT_NAME_MAX = 24;
 export const AGENT_INSTRUCTIONS_MAX = 1200;
 
@@ -41,7 +46,7 @@ const KEYS = {
 
 const [enabled, setEnabled] = createSignal(false);
 const [onboarded, setOnboarded] = createSignal(false);
-const [provider, setProvider] = createSignal("codex");
+const [provider, setProvider] = createSignal<AgentProviderId>("codex");
 const [name, setName] = createSignal("");
 const [look, setLook] = createSignal<AgentLook>("eyes");
 const [traits, setTraits] = createSignal<AgentTrait[]>(DEFAULT_TRAITS);
@@ -100,6 +105,7 @@ export const agentSettings = {
   onboarded,
   setOnboarded: async (v: boolean) => { setOnboarded(v); await persist(KEYS.onboarded, v ? "1" : "0"); },
   provider,
+  setProvider: async (v: AgentProviderId) => { setProvider(v); await persist(KEYS.provider, v); },
   name,
   /** The name shown in the UI; falls back to a neutral default. */
   displayName: () => name() || "Ida",
@@ -155,7 +161,8 @@ export const agentSettings = {
     const get = (key: keyof typeof KEYS) => values[Object.keys(KEYS).indexOf(key)] ?? null;
     setEnabled(flag(get("enabled"), false));
     setOnboarded(flag(get("onboarded"), false));
-    setProvider(get("provider") || "codex");
+    const providerId = get("provider");
+    setProvider(isProviderId(providerId) ? providerId : "codex");
     setName(cleanAgentName(get("name") ?? ""));
     setLook(parseLook(get("look")));
     setTraits(parseTraits(get("traits")));

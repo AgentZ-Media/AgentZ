@@ -1,6 +1,6 @@
 import { latestChat, deleteChat } from "../lib/agent/chats";
 import { agentSettings } from "./agentSettings";
-import { hasCodexHost, models, modelsLoading, refreshModels, refreshStatus, resolveModel, status } from "./agent/provider";
+import { hasAgentHost, models, modelsLoading, openRouterKeyHint, refreshModels, refreshStatus, resolveModel, setOpenRouterKey, status } from "./agent/provider";
 import { createChat } from "./agent/chat";
 import { clearMemory } from "../lib/agent/memory";
 import { bootstrap, cancelBootstrap, existingScriptCount, learnedVersion, learning, resetLearnChecks, scheduleLearning, startBootstrap, waiting } from "./agent/learning";
@@ -72,7 +72,13 @@ export const agentStore = {
   learning,
   waiting,
   learnedVersion,
-  available: hasCodexHost,
+  available: hasAgentHost,
+  openRouterKeyHint,
+  /** Stores the own OpenRouter key ("" removes it) and checks it. */
+  async setOpenRouterKey(key: string): Promise<void> {
+    await setOpenRouterKey(key);
+    if (agentSettings.provider() === "openrouter") await refreshStatus();
+  },
   refreshStatus,
   refreshModels,
   /** Clears memory and learned markers; every script may be learned again. */

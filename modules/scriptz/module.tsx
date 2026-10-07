@@ -80,7 +80,7 @@ async function setupScriptz(ctx: ModuleContext): Promise<ModuleRuntime> {
     ctx.onDispose(startDailyStatsStore());
     ctx.onDispose(startLibraryData());
     ctx.onDispose(startCharacterAutoPrune(() => settingsStore.pruneUnusedCharacters()));
-    ctx.onDispose(startAgentRuntime(ctx.services));
+    ctx.onDispose(startAgentRuntime(ctx.services, ctx.platform.secrets));
     createEffect(() => {
       if (!library.scriptsReady()) return;
       const list = library.scripts();

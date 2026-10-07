@@ -18,6 +18,7 @@ const MIGRATION_012_AGENT_LEARNED_TEXT: &str =
 const MIGRATION_013_LARGE_LIBRARY_INDEXES: &str =
     include_str!("../migrations/013_large_library_indexes.sql");
 const MIGRATION_014_CLOUD_SYNC: &str = include_str!("../migrations/014_cloud_sync.sql");
+const MIGRATION_015_AGENT_THREADS: &str = include_str!("../migrations/015_agent_threads.sql");
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
@@ -104,6 +105,12 @@ pub fn run() {
             version: 14,
             description: "cloud sync bookkeeping and other devices' word counts",
             sql: MIGRATION_014_CLOUD_SYNC,
+            kind: MigrationKind::Up,
+        },
+        Migration {
+            version: 15,
+            description: "transcripts of the in-app agent harness",
+            sql: MIGRATION_015_AGENT_THREADS,
             kind: MigrationKind::Up,
         },
     ];

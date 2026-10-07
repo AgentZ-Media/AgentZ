@@ -1,6 +1,7 @@
 export * from "./types";
 export { account, startAccountRuntime, type AccountPhase, type KeyPhase, type SyncPhase, type AccountRuntimeOptions } from "./account";
 export { PRODUCTION_CLOUD, readCloudConfig } from "./config";
+export { SessionExpiredError } from "./http";
 export { createSqlSyncBook, createMemorySyncBook, type SyncBook } from "./book";
 export { SETTINGS_ENTITY, createSyncEngine, type SyncEngine } from "./engine";
 export { createDataKey, createRecordCipher } from "./crypto";
