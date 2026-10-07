@@ -241,10 +241,12 @@ describe("sync engine", () => {
     await syncB.sync();
     await syncA.sync();
     expect(server.pushes.length).toBe(before);
-    // The server never sees content or local IDs.
+    // The server never sees content, entity names or local IDs. Checked
+    // against whole plain-text fragments: random ciphertext or HMAC IDs
+    // contain short strings like "c1" now and then.
     for (const record of server.records.values()) {
-      expect(new TextDecoder().decode(new Uint8Array(record.data!))).not.toContain("Script");
-      expect(record.recordId).not.toContain("c1");
+      expect(new TextDecoder().decode(new Uint8Array(record.data!))).not.toContain('"title":"Script"');
+      expect(record.recordId).not.toMatch(/children|parents|settings|\u0000|:/);
     }
   });
 
