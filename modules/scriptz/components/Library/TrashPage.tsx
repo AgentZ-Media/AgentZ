@@ -1,7 +1,8 @@
 import { For, Show, createResource } from "solid-js";
 import { api } from "../../lib/api";
-import { relativeTime } from "@agentz/kit/lib";
+import { clockNow, relativeTime } from "@agentz/kit/lib";
 import { scriptsBus } from "../../lib/scriptsBus";
+import { TRASH_RETENTION_DAYS, daysUntilPurge } from "../../lib/trashAutoPurge";
 import { foldersBus } from "../../lib/foldersBus";
 import { navStore } from "../../stores/nav";
 import { pushToast } from "@agentz/kit/stores";
@@ -19,7 +20,9 @@ function fail(e: unknown): void {
 
 /** Trash: restore, purge, empty,
  *  restore all. Restoring the last item leads back to the library, so the
- *  user sees where the script went. */
+ *  user sees where the script went. Entries are deleted automatically after
+ *  TRASH_RETENTION_DAYS (`lib/trashAutoPurge.ts`); each row shows the days
+ *  left. */
 export function TrashPage() {
   const [scripts] = createResource(
     () => scriptsBus.version(),
@@ -110,6 +113,9 @@ export function TrashPage() {
               <h1>{t("browser.trash")}</h1>
               <div class="week">
                 <span class="week-lbl">{tPlural("units.scripts", list().length)}</span>
+                <Show when={list().length > 0}>
+                  <span class="week-lbl">{t("trash.autoPurge", { days: TRASH_RETENTION_DAYS })}</span>
+                </Show>
               </div>
             </div>
             <div class="lib-head-acts">
@@ -129,7 +135,7 @@ export function TrashPage() {
               <Show when={!scripts.loading}>
                 <div class="lib-empty">
                   <div class="lib-empty-h">{t("trash.empty")}</div>
-                  <div class="lib-empty-sub">{t("shell.trash.hint")}</div>
+                  <div class="lib-empty-sub">{t("shell.trash.hint", { days: TRASH_RETENTION_DAYS })}</div>
                 </div>
               </Show>
             }
@@ -144,7 +150,7 @@ export function TrashPage() {
                     </div>
                     <div class="lrow-u">
                       <Show when={s.archived_at}>
-                        {(at) => t("trash.deletedAt", { when: relativeTime(at()) })}
+                        {(at) => `${t("trash.deletedAt", { when: relativeTime(at()) })} · ${tPlural("trash.purgesIn", daysUntilPurge(at(), clockNow()))}`}
                       </Show>
                     </div>
                     <div class="trow-act">
