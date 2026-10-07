@@ -1,78 +1,152 @@
 ---
+// The home page. The page opens on one giant dot that zooms out into the
+// suite Z, and one yellow dot travels down the page: from the period of the
+// headline through the idea, the path and the suite to the period of
+// "Punktlandung" (src/scripts/home.ts). Without JavaScript every waypoint
+// shows its own static dot.
 import Base from "../layouts/Base.astro";
-import ScriptzWindow from "./ScriptzWindow.astro";
-import Features from "./Features.astro";
-import Gallery from "./Gallery.astro";
-import Apps from "./Apps.astro";
-import Download from "./Download.astro";
+import "../styles/home.css";
 import Icon from "./Icon.astro";
-import appIcon from "@agentz/design/assets/scriptz-app-icon.svg?url";
-import { catalogs, homePaths, type Language } from "../i18n";
+import Download from "./Download.astro";
+import { LOGO_DOTS, LOGO_DOT_R, LOGO_VIEWBOX } from "@agentz/design/logo";
+import { apps, appLinks } from "../apps";
+import { textCells } from "../scripts/dot-glyphs";
+import { catalogs, homePaths, scriptzPaths, type Language } from "../i18n";
 interface Props { lang: Language }
 const { lang } = Astro.props;
 const t = catalogs[lang];
-// Stars of the night sky behind the hero, placed deterministically.
-const stars = Array.from({ length: 34 }, (_, i) => ({
-  x: (i * 37.7) % 100,
-  y: (i * 61.3 + (i % 3) * 7) % 100,
-  d: (i * 0.73) % 6,
-  s: i % 5 === 0 ? 3 : 2,
-}));
+const next = textCells("?");
+const nextDots = Array.from({ length: 35 }, (_, i) => [i % 5, Math.floor(i / 5)] as const);
+const isOn = (c: number, r: number) => next.cells.some(([x, y]) => x === c && y === r);
 ---
-<Base lang={lang} paths={homePaths}>
-  <section class="hero" data-theme="dark" aria-labelledby="hero-title">
-    <div class="hero-sky" aria-hidden="true">
-      {stars.map((star) => <i style={`--x:${star.x}%;--y:${star.y}%;--d:${star.d}s;--s:${star.s}px`}></i>)}
-    </div>
-    <div class="wrap hero-copy">
-      <p class="eyebrow hero-in" style="--n:0"><span class="pulse"></span>{t.hero.eyebrow}</p>
-      <h1 id="hero-title" class="hero-in" style="--n:1">{t.hero.titleA} <mark class="marker">{t.hero.titleMark}</mark></h1>
-      <p class="hero-intro hero-in" style="--n:2">{t.hero.intro}</p>
-      <div class="hero-actions hero-in" style="--n:3">
-        <a class="btn accent btn-lg" href="#download"><Icon name="import" />{t.hero.cta}</a>
-        <a class="btn btn-lg" href="#scriptz"><Icon name="play" />{t.hero.secondary}</a>
+<Base lang={lang} paths={homePaths} field="page">
+  <div class="home-dot" data-dot aria-hidden="true"><i></i></div>
+  <nav class="home-rail" data-rail aria-label="AgentZ Suite">
+    <i class="home-rail-mark" data-rail-mark></i>
+    {t.rail.map((label) => <button type="button"><span>{label}</span></button>)}
+  </nav>
+
+  <section class="home-hero" data-hero aria-labelledby="home-title">
+    <div class="home-wrap home-hero-grid">
+      <div class="home-hero-copy">
+        <p class="home-eyebrow home-in" style="--n:0"><span class="home-pulse"></span>{t.hero.eyebrow}</p>
+        <h1 id="home-title" class="home-in" style="--n:1">{t.hero.titleA} <span class="home-punkt">{t.hero.titleMark}<span class="home-period home-way" data-way data-rail aria-hidden="true"></span><span class="sr-only">.</span></span></h1>
+        <p class="home-intro home-in" style="--n:2">{t.hero.intro}</p>
+        <div class="home-actions home-in" style="--n:3">
+          <a class="btn accent btn-lg" href="#download"><Icon name="import" />{t.hero.cta}</a>
+          <a class="btn btn-lg" href="#idee"><Icon name="down" />{t.hero.follow}</a>
+        </div>
+        <p class="home-facts home-in" style="--n:4">{t.hero.facts}</p>
       </div>
-      <p class="hero-facts hero-in" style="--n:4">{t.hero.facts}</p>
+      <div class="home-logo" data-dot-scene="logo" aria-hidden="true">
+        <svg class="home-logo-static" viewBox={LOGO_VIEWBOX}>
+          {LOGO_DOTS.map((dot) => <circle cx={dot.cx} cy={dot.cy} r={LOGO_DOT_R} class={dot.tone} />)}
+        </svg>
+      </div>
     </div>
-    <div class="wrap-wide hero-stage hero-in" style="--n:5">
-      <div class="hero-tilt"><ScriptzWindow lang={lang} /></div>
+    <a class="home-scroll" href="#idee"><span>{t.hero.scroll}</span><i></i></a>
+  </section>
+
+  <section id="idee" class="home-spark" aria-labelledby="home-spark-title">
+    <div class="home-spark-stage" data-near>
+      <span class="home-ring" style="--k:0"></span><span class="home-ring" style="--k:1"></span><span class="home-ring" style="--k:2"></span>
+      <span class="home-spark-dot home-way" data-way data-rail></span>
+    </div>
+    <div class="page-head">
+      <p class="kicker">{t.spark.kicker}</p>
+      <h2 id="home-spark-title">{t.spark.title}</h2>
+      <p class="lead">{t.spark.text}</p>
     </div>
   </section>
 
-  <section id="scriptz" class="section" aria-labelledby="scriptz-title">
-    <div class="wrap">
-      <div class="section-head" data-reveal>
-        <img class="section-icon" src={appIcon} alt="" width="64" height="64" loading="lazy" />
-        <p class="kicker">{t.scriptz.kicker}</p>
-        <h2 id="scriptz-title">{t.scriptz.title}</h2>
-        <p class="lead">{t.scriptz.lead}</p>
+  <section id="weg" class="home-path" aria-labelledby="home-path-title">
+    <div class="home-wrap">
+      <div class="page-head page-head-left">
+        <p class="kicker">{t.path.kicker}</p>
+        <h2 id="home-path-title">{t.path.title}</h2>
+        <p class="lead">{t.path.text}</p>
       </div>
-      <Features lang={lang} />
+      <div class="home-track" data-path>
+        <svg class="home-track-line" aria-hidden="true" preserveAspectRatio="none">
+          <path data-path-line />
+          <path data-path-fill />
+        </svg>
+        <ol>
+          {t.path.stages.map((stage, i) => (
+            <li class="home-stage" style={`--i:${i}`} data-near>
+              <span class="home-stage-dot home-way home-slot" data-way="glide" {...(i === 0 ? { "data-rail": "" } : {})}></span>
+              <div>
+                <p class="home-stage-name"><span class="num">0{i + 1}</span>{stage.name}</p>
+                <p class="home-stage-text">{stage.text}</p>
+                {stage.app && <p class="home-stage-app"><i></i>{t.path.today}</p>}
+              </div>
+            </li>
+          ))}
+        </ol>
+      </div>
     </div>
   </section>
 
-  <section class="section section-ink" data-theme="dark" aria-labelledby="gallery-title">
-    <div class="wrap">
-      <div class="section-head" data-reveal>
-        <p class="kicker">{t.gallery.kicker}</p>
-        <h2 id="gallery-title">{t.gallery.title}</h2>
+  <section id="apps" class="home-suite" aria-labelledby="home-suite-title">
+    <div class="home-wrap">
+      <div class="page-head">
+        <p class="kicker">{t.apps.kicker}</p>
+        <h2 id="home-suite-title">{t.apps.title}</h2>
+        <p class="lead">{t.apps.text}</p>
       </div>
-      <Gallery lang={lang} />
+      <div class="home-apps">
+        {apps.map((app) => (
+          <article class="home-app" data-near>
+            <svg class="home-mark" viewBox={LOGO_VIEWBOX} aria-hidden="true">
+              {LOGO_DOTS.map((dot, i) => <circle cx={dot.cx} cy={dot.cy} r={LOGO_DOT_R} class:list={[dot.tone, { "home-way": i === 0 }]} style={`--i:${i}`} {...(i === 0 ? { "data-way": "", "data-rail": "" } : {})} />)}
+            </svg>
+            <div>
+              <p class="home-app-title"><b>{app.name}</b><span class="chip chip-on">{t.apps.available}</span></p>
+              <p>{app.tagline[lang]}</p>
+              <a class="home-more" href={scriptzPaths[lang]}>{t.apps.more}<Icon name="right" /></a>
+            </div>
+            <img src={appLinks(app.id).icon} alt="" width="72" height="72" loading="lazy" class="home-app-icon" />
+          </article>
+        ))}
+        {[0, 1].map((n) => (
+          <article class="home-app is-next">
+            <svg class="home-mark" viewBox="0 0 50 70" aria-hidden="true">
+              {nextDots.map(([c, r]) => <circle cx={c * 10 + 5} cy={r * 10 + 5} r={LOGO_DOT_R} class:list={{ on: isOn(c, r) }} style={`--i:${(c * 7 + r * 3 + n * 5) % 13}`} />)}
+            </svg>
+            <div>
+              <p class="home-app-title"><b>{t.apps.next}</b><span class="chip">{t.apps.soon}</span></p>
+              <p>{t.apps.nextText}</p>
+            </div>
+          </article>
+        ))}
+      </div>
     </div>
   </section>
 
-  <section id="apps" class="section" aria-labelledby="apps-title">
-    <div class="wrap">
-      <div class="section-head" data-reveal>
-        <p class="kicker">{t.suite.kicker}</p>
-        <h2 id="apps-title">{t.suite.title}</h2>
-        <p class="lead">{t.suite.text}</p>
+  <section class="home-promises" aria-labelledby="home-promises-title">
+    <div class="home-wrap home-promises-grid">
+      <div class="page-head page-head-left">
+        <p class="kicker">{t.promises.kicker}</p>
+        <h2 id="home-promises-title">{t.promises.title}</h2>
       </div>
-      <Apps lang={lang} />
+      <ul>
+        {t.promises.items.map((item, i) => (
+          <li data-near>
+            <span class="home-promise-dot home-way home-slot" data-way {...(i === 0 ? { "data-rail": "" } : {})}></span>
+            <div><h3>{item.title}</h3><p>{item.text}</p></div>
+          </li>
+        ))}
+      </ul>
     </div>
   </section>
 
-  <section id="download" class="section section-download" aria-labelledby="download-title">
+  <section id="download" class="home-landing" aria-labelledby="home-landing-title">
+    <div class="page-head" data-near>
+      <h2 id="home-landing-title" class="home-landing-title">{t.landing.title}<span class="home-period home-way" data-way data-rail aria-hidden="true"></span><span class="sr-only">.</span></h2>
+      <p class="lead">{t.landing.text}</p>
+    </div>
     <div class="wrap"><Download lang={lang} /></div>
   </section>
+
+  <script>import "../scripts/home";</script>
 </Base>

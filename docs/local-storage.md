@@ -138,7 +138,7 @@ Inhalts-Hash und lädt sie nicht erneut hoch. Für den Abgleich gilt:
 - Tombstones bleiben lokal und in der Cloud erhalten.
 - Die Schreibstatistik synchronisiert pro Gerät (`daily_word_log_remote`).
 - Provider-Thread-IDs und die Transkripte des OpenRouter-Harness
-  (`agent_threads`, Migration 015, nicht im Änderungsfeed) bleiben lokal.
+  (`agent_threads`, Migration 016, nicht im Änderungsfeed) bleiben lokal.
 - Eine geklonte oder wiederhergestellte Datenbank trägt die Geräte-ID der
   Synchronisierung mit; zwei gleichzeitig benutzte Kopien teilen sich dann
   deren Schreibstatistik.

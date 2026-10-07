@@ -14,7 +14,9 @@ Suite-Grenzen in [`suite-architecture.md`](suite-architecture.md).
 
 - `module.tsx`: `scriptzModule.setup(ctx)` startet Produkt-Settings,
   Navigation, Layout und Bibliothekspräferenzen, seedet das Welcome-Skript,
-  füllt Runtime-Statistiken nach, migriert Legacy-Blöcke und startet erst
+  füllt Runtime-Statistiken nach (`lib/runtimeBackfill.ts`: nach einer
+  Formeländerung einmal alle Skripte, Flag `migration.runtime_stats_v2`),
+  migriert Legacy-Blöcke und startet erst
   danach Ideen-, Statistik- und Bibliotheks-Resources. Liefert Routen
   (Inbox, Skripte, Ideen, Skript, Papierkorb, Agent-Modus), Sidebar, Overlays
   (QuickCapture, Neues Skript, Export, Stufen-Undo), Befehle, Shortcuts,
@@ -70,7 +72,7 @@ die Befehlspalette, deshalb setzt das Modul `revealsSidebar: true`.
 
 ## Migrationen
 
-`001_baseline` bis `015_agent_threads` in
+`001_baseline` bis `016_agent_threads` in
 `apps/scriptz/src-tauri/migrations/` sind veröffentlicht und unveränderlich. `007` ergänzt `scripts.status`,
 `status_changed_at` und den Ordner-Zielbereich. `008_agent` legt
 `agent_memory`, `agent_chats` und `agent_learned` an. `009_local_changes`
@@ -94,7 +96,7 @@ Covering-Index (`lib/__tests__/queryPlans.test.ts` schlägt sonst fehl).
 `014_cloud_sync` ist rein additiv: `sync_records` (Buchführung der
 Synchronisierung, keine Inhaltstabelle) und `daily_word_log_remote`
 (Schreibstatistik anderer Geräte).
-`015_agent_threads` ist rein additiv: `agent_threads` hält die Transkripte
+`016_agent_threads` ist rein additiv: `agent_threads` hält die Transkripte
 des OpenRouter-Harness (Gerätezustand wie `agent_chats.thread_id`, keine
 Inhaltstabelle, nicht im Änderungsfeed, nie synchronisiert oder exportiert).
 Jede neue Spalte einer Inhaltstabelle braucht dasselbe: Trigger neu anlegen
@@ -192,7 +194,9 @@ Persönlicher Schreib-Agent mit eigenem Namen, Look und Persona.
     `AI_ACCESS`, siehe [`cloud-sync.md`](../../docs/cloud-sync.md)), für sie
     kostenlos; Limits gehören später in `ai.ts`. Allen anderen zeigt die
     Auswahl „Bald verfügbar“ (`agentStore.hostedAccess`, Fehlercode
-    `AGENT_NOT_ENABLED`).
+    `AGENT_NOT_ENABLED`). Die Freischaltung fragt die Anbindungswahl
+    angemeldet per `/ai/status` ab (ohne Inhalte), auch bei ausgeschaltetem
+    Agenten, nie bei ausgeblendetem.
   - `openrouter`: derselbe Harness direkt gegen `openrouter.ai` mit dem
     eigenen Key des Nutzers (Schlüsselbund `agent.openrouter-key`, nie in
     Settings oder Sync), auch ohne Konto.
@@ -266,6 +270,21 @@ Persönlicher Schreib-Agent mit eigenem Namen, Look und Persona.
 - **Settings** unter `agent.*` (siehe `stores/agentSettings.ts`), Effort
   überall standardmäßig `medium`. `agent.enabled = false` startet keinen
   Prozess.
+- **Ausblenden** (`agent.hidden`, nur auf diesem Gerät): eigener
+  Onboarding-Schritt „KI-Agent“ (in jedem Desktop-Build, egal welche
+  Anbindung) und Schalter „KI-Funktionen anzeigen“ ganz oben in
+  Einstellungen > Agent; Anbindung und alles Weitere stehen darunter und
+  nur, solange der Agent eingeblendet ist. Ausgeblendet liefert
+  `agentStore.available()` false, damit verschwinden Seitenleiste,
+  Chat, Chips, Rechtsklick, Inspector-Lernstand, Ideen-Knöpfe und -Herkunft,
+  ⌘K-Befehle und die Kürzel (`ShortcutDef.hidden`, auch aus der
+  Tastatur-Übersicht); der Agent-Modus fällt aus der Navigation.
+  `agentSettings.enabled()` ist dann false, `agent.enabled` selbst bleibt
+  stehen. `getProvider()` liefert ausgeblendet keinen Provider und
+  `refreshStatus()` prüft nichts: kein Codex-Prozess, keine Anfrage an
+  OpenRouter oder den KI-Proxy, kein Lernen. Chats, Gedächtnis und ein
+  gespeicherter OpenRouter-Key bleiben erhalten.
+  `agentStore.supported()` fragt nur nach dem Desktop-Host (`hasAgentHost`).
 - **Aufträge** (`lib/agent/jobs.ts`): Einstieg prüfen, Kürzen, Tempo
   erhöhen, Härteres Ende, Fakten prüfen, Feedback. Der Chat zeigt nur das
   kurze Label, das Modell bekommt die englische Instruktion. Vier Türen,
@@ -283,8 +302,14 @@ Persönlicher Schreib-Agent mit eigenem Namen, Look und Persona.
   nummeriert, solange der Chat offen ist.
 - **Kontext Länge.** Der Skript-Chat bekommt Längenziel und Sprechtempo in
   den Instruktionen, Sitzungen vor jeder Nachricht eine Zeile `[Session: ...]`
-  mit Ordner, Ziel, Wortbudget, Entwürfen und gespeicherten Ideen
-  (`lib/agent/writingContext.ts`, gleiche Formel wie die Zeitleiste).
+  mit Ordner, Ziel, Wortbudget, Entwürfen samt gemessener Laufzeit und
+  gespeicherten Ideen (`lib/agent/writingContext.ts`, gleiche Formel wie die
+  Zeitleiste).
+- **Laufzeiten rechnet nur die App.** `get_current_script`, `read_script`
+  und `list_scripts` liefern `runtime` nach `lib/runtime.ts` mit der WPM aus
+  den Einstellungen. Der Prompt verbietet dem Modell, selbst Wörter zu
+  zählen oder Laufzeiten zu nennen, die es nicht von der App hat; zu einem
+  gerade geschriebenen Entwurf nennt es keine Zeit, die zeigt das Panel.
 
 ## Agent-Modus
 

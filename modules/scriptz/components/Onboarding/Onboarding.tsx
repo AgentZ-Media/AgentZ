@@ -12,22 +12,33 @@ import { AppMark } from "@agentz/kit/ui";
 import { Icon } from "@agentz/kit/ui";
 import { DialogFrame } from "@agentz/kit/ui";
 import { account } from "@agentz/kit/account";
+import { agentStore } from "../../stores/agent";
+import { agentSettings } from "../../stores/agentSettings";
 import "./Onboarding.css";
 
 /** app_state key marking the onboarding as done (unchanged since v1, so
  *  existing installs don't see it again). */
 export const ONBOARDING_KEY = "onboarding_completed_v1";
 
-/** The sync step exists only when the host has a cloud backend. */
-const steps = () => (account.enabled() ? 4 : 3);
+type StepId = "appearance" | "blocks" | "go" | "agent" | "sync";
+/** The agent step exists only where the agent can run, the sync step only
+ *  when the host has a cloud backend. */
+const stepIds = (): StepId[] => [
+  "appearance",
+  "blocks",
+  "go",
+  ...(agentStore.supported() ? (["agent"] as const) : []),
+  ...(account.enabled() ? (["sync"] as const) : []),
+];
 type SyncChoice = "local" | "cloud";
 // Demo characters - content colours (data), taken from the character palette.
 const COLOR_A = CHARACTER_PALETTE[3];
 const COLOR_B = CHARACTER_PALETTE[4];
 
 /** First-run onboarding (and "Onboarding erneut zeigen" in the settings):
- *  appearance, the four blocks, keys and, with a cloud backend, the choice
- *  between local only and a synced account - on a full-window grid. Its
+ *  appearance, the four blocks, keys, whether the AI agent is shown at all
+ *  and, with a cloud backend, the choice between local only and a synced
+ *  account - on a full-window grid. Its
  *  visibility and completion marker belong to the shared shell. */
 export function Onboarding(props: OnboardingProps) {
   const [step, setStep] = createSignal(0);
@@ -74,6 +85,8 @@ export function Onboarding(props: OnboardingProps) {
     if (!disposed && !navStore.isScripts()) navStore.openScripts();
   }
 
+  const steps = () => stepIds().length;
+  const current = () => stepIds()[step()];
   const last = () => step() >= steps() - 1;
   const next = () => (last() ? void finish() : setStep(step() + 1));
   const back = () => step() > 0 && setStep(step() - 1);
@@ -98,8 +111,14 @@ export function Onboarding(props: OnboardingProps) {
     }
   };
 
-  const names = () => [t("onb.s1.name"), t("onb.s2.name"), t("onb.s3.name"), t("onb.s4.name")];
-  const eyebrow = () => t("onb.eyebrow", { n: step() + 1, total: steps(), name: names()[step()] });
+  const names = (): Record<StepId, string> => ({
+    appearance: t("onb.s1.name"),
+    blocks: t("onb.s2.name"),
+    go: t("onb.s3.name"),
+    agent: t("onb.agent.name"),
+    sync: t("onb.s4.name"),
+  });
+  const eyebrow = () => t("onb.eyebrow", { n: step() + 1, total: steps(), name: names()[current()] });
   const finishLabel = () => (choice() === "cloud" && !account.signedIn() ? t("onb.s4.finishCloud") : t("onb.finish"));
 
   return (
@@ -125,16 +144,19 @@ export function Onboarding(props: OnboardingProps) {
         </div>
         <div class="onb-eyebrow">{eyebrow()}</div>
         <Switch>
-          <Match when={step() === 0}>
+          <Match when={current() === "appearance"}>
             <StepAppearance />
           </Match>
-          <Match when={step() === 1}>
+          <Match when={current() === "blocks"}>
             <StepBlocks />
           </Match>
-          <Match when={step() === 2}>
+          <Match when={current() === "go"}>
             <StepGo />
           </Match>
-          <Match when={step() === 3}>
+          <Match when={current() === "agent"}>
+            <StepAgent />
+          </Match>
+          <Match when={current() === "sync"}>
             <StepSync choice={choice()} onChoice={setChoice} />
           </Match>
         </Switch>
@@ -158,16 +180,19 @@ export function Onboarding(props: OnboardingProps) {
       </div>
       <div class="onb-r" aria-hidden="true">
         <Switch>
-          <Match when={step() === 0}>
+          <Match when={current() === "appearance"}>
             <PreviewAppearance />
           </Match>
-          <Match when={step() === 1}>
+          <Match when={current() === "blocks"}>
             <PreviewBlocks />
           </Match>
-          <Match when={step() === 2}>
+          <Match when={current() === "go"}>
             <PreviewKeys />
           </Match>
-          <Match when={step() === 3}>
+          <Match when={current() === "agent"}>
+            <PreviewAgent />
+          </Match>
+          <Match when={current() === "sync"}>
             <PreviewSync />
           </Match>
         </Switch>
@@ -435,7 +460,70 @@ function PreviewKeys() {
   );
 }
 
-/* ----------------------------- step 4 ----------------------------- */
+/* ----------------------------- agent ------------------------------ */
+
+/** Shown or hidden applies at once, like the other switches here; hiding
+ *  keeps a set-up agent with its chats and memory. */
+function StepAgent() {
+  const name = () => agentSettings.displayName();
+  return (
+    <>
+      <h2 class="onb-h">{t("onb.agent.h")}</h2>
+      <p class="onb-p">{t("onb.agent.p")}</p>
+      <div class="onb-choice" role="radiogroup" aria-label={t("onb.agent.name")}>
+        <button
+          type="button"
+          role="radio"
+          class="onb-opt"
+          aria-checked={!agentSettings.hidden()}
+          onClick={() => void agentSettings.setHidden(false)}
+        >
+          <Icon name="spark" size={18} />
+          <span>
+            <b>{t("onb.agent.show")}</b>
+            <small>{agentSettings.onboarded() ? t("onb.agent.showReady", { name: name() }) : t("onb.agent.showHelp")}</small>
+          </span>
+        </button>
+        <button
+          type="button"
+          role="radio"
+          class="onb-opt"
+          aria-checked={agentSettings.hidden()}
+          onClick={() => void agentSettings.setHidden(true)}
+        >
+          <Icon name="x" size={18} />
+          <span>
+            <b>{t("onb.agent.hide")}</b>
+            <small>{agentSettings.onboarded() ? t("onb.agent.hideReady") : t("onb.agent.hideHelp")}</small>
+          </span>
+        </button>
+      </div>
+    </>
+  );
+}
+
+function PreviewAgent() {
+  const caps = () => [
+    { icon: "spark" as const, l: t("onb.agent.capPropose") },
+    { icon: "bulb" as const, l: t("onb.agent.capLearn") },
+    { icon: "shield" as const, l: t("onb.agent.capLocked") },
+    { icon: "user" as const, l: t("onb.agent.capConnect") },
+  ];
+  return (
+    <div class="onb-caps" classList={{ "is-off": agentSettings.hidden() }}>
+      <For each={caps()}>
+        {(c, i) => (
+          <div class="onb-cap" style={{ "--d": String(i()) }}>
+            <b><Icon name={c.icon} size={22} /></b>
+            <span>{c.l}</span>
+          </div>
+        )}
+      </For>
+    </div>
+  );
+}
+
+/* ----------------------------- sync ------------------------------- */
 
 function StepSync(props: { choice: SyncChoice; onChoice(choice: SyncChoice): void }) {
   const name = () => account.user()?.name?.trim() || account.user()?.email || "";

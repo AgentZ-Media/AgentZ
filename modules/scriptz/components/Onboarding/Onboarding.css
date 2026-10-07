@@ -374,6 +374,16 @@
   opacity: 0.7;
 }
 
+/* Agent preview: the hidden choice lets the features recede. */
+.onb-caps.is-off .onb-cap {
+  opacity: 0.35;
+  transition: opacity var(--t-fast);
+}
+.onb-caps.is-off .onb-cap:first-child {
+  background: var(--surface);
+  color: inherit;
+}
+
 @media (max-width: 900px) {
   .onb-card {
     grid-template-columns: 1fr;

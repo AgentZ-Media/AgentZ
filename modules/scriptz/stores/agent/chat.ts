@@ -188,6 +188,7 @@ export function createChat(source: ChatSource): ChatSession {
     chatId,
     folderId,
     pace: currentPace,
+    wpm: () => currentPace().wpm,
     ensureStored,
     onIdeas: (board) => push({
       kind: "ideas", id: localId("ideas"), folderId: board.folderId, ideas: board.ideas,

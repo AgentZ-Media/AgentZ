@@ -81,11 +81,13 @@ describe("computeTimeline", () => {
     ]);
   });
 
-  it("counts empty action blocks and skips word-less dialog", () => {
+  it("skips empty action blocks and word-less dialog", () => {
     const segs = computeTimeline(
       [
         { kind: "action", text: "" },
+        { kind: "action", text: "  " },
         { kind: "dialog", text: "   " },
+        { kind: "action", text: "Los." },
         { kind: "dialog", text: "Hallo" },
       ],
       60,

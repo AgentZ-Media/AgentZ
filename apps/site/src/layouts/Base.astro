@@ -19,14 +19,16 @@ interface Props {
   noindex?: boolean;
   /** Full-screen page without header and footer (app sign-in). */
   bare?: boolean;
+  /** The page drives the dot field itself (home page) instead of the plain grid. */
+  field?: "plain" | "page";
 }
-const { lang = "de", title = "AgentZ Suite", paths, noindex = false, bare = false } = Astro.props;
+const { lang = "de", title = "AgentZ Suite", paths, noindex = false, bare = false, field = "plain" } = Astro.props;
 const t = catalogs[lang];
 const description = Astro.props.description ?? t.description;
 const canonical = new URL(Astro.url.pathname, Astro.site);
 ---
 <!doctype html>
-<html lang={lang} data-theme="light">
+<html lang={lang} data-theme="dark">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
@@ -44,6 +46,7 @@ const canonical = new URL(Astro.url.pathname, Astro.site);
     <script is:inline>document.documentElement.classList.add("js")</script>
   </head>
   <body class:list={[bare && "is-bare"]}>
+    <canvas class="dot-field" data-field={field} aria-hidden="true"></canvas>
     {bare ? <main id="content"><slot /></main> : <>
       <a class="skip-link btn" href="#content">{t.skip}</a>
       <Header lang={lang} paths={paths} />

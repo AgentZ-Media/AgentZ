@@ -72,6 +72,11 @@ export function startAgentRuntime(services: Readonly<Record<string, unknown>>, s
     createEffect(on(agentSettings.enabled, (enabled) => {
       if (!enabled) shutdownProvider();
     }, { defer: true }));
+    // Hiding also ends a provider the agent onboarding started while the
+    // agent was still off.
+    createEffect(on(agentSettings.hidden, (hidden) => {
+      if (hidden && currentProvider()) shutdownProvider();
+    }, { defer: true }));
     // Another provider: open threads belong to the old one. Chats resume
     // with the new provider on their next message.
     createEffect(on(agentSettings.provider, () => {

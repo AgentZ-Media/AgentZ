@@ -129,7 +129,9 @@ export interface ScriptzStorage {
    *  `from` leaves the pipeline. Keeps `status_changed_at` and
    *  `updated_at`; returns the number of moved scripts. */
   reassignScriptStatus(from: ScriptStatus, to: ScriptStatus): Promise<number>;
-  backfillRuntimeStats(): Promise<void>;
+  /** Recomputes the stored runtime inputs: only never-measured scripts,
+   *  or every script with `all`. */
+  backfillRuntimeStats(opts?: { all?: boolean }): Promise<void>;
 
   // ===== Folders =====
   listFolders(): Promise<Folder[]>;

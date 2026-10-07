@@ -206,6 +206,10 @@ export const agentDe = {
   // ---------- settings ----------
   "agent.prefs.title": "Agent",
   "agent.prefs.sub": "{name}, das Modell und was gelernt wird.",
+  "agent.prefs.subHidden": "Ausgeblendet: ScriptZ zeigt keine KI-Funktionen.",
+  "agent.prefs.visible": "KI-Funktionen anzeigen",
+  "agent.prefs.visible.help": "Aus blendet {name} überall aus: Seitenleiste, Skript, Ideen, Befehle und Tastenkürzel. Dann läuft kein Codex-Prozess und es gehen keine KI-Anfragen raus.",
+  "agent.prefs.visible.helpReady": "Aus blendet {name} überall aus: Seitenleiste, Skript, Ideen, Befehle und Tastenkürzel. Dann läuft kein Codex-Prozess und es gehen keine KI-Anfragen raus. Chats und Gedächtnis bleiben gespeichert.",
   "agent.prefs.enabled": "Agent aktiv",
   "agent.prefs.enabled.help": "Chat, Rechtsklick-Aktionen und Lernen. Aus heißt: keine einzige Anfrage verlässt den Rechner.",
   "agent.prefs.connection": "Anbindung",
@@ -588,6 +592,10 @@ export const agentEn: Record<keyof typeof agentDe, string> = {
   // ---------- settings ----------
   "agent.prefs.title": "Agent",
   "agent.prefs.sub": "{name}, the model and what gets learned.",
+  "agent.prefs.subHidden": "Hidden: ScriptZ shows no AI features.",
+  "agent.prefs.visible": "Show AI features",
+  "agent.prefs.visible.help": "Off hides {name} everywhere: sidebar, scripts, ideas, commands and shortcuts. No Codex process runs and no AI requests go out.",
+  "agent.prefs.visible.helpReady": "Off hides {name} everywhere: sidebar, scripts, ideas, commands and shortcuts. No Codex process runs and no AI requests go out. Chats and memory are kept.",
   "agent.prefs.enabled": "Agent on",
   "agent.prefs.enabled.help": "Chat, right-click actions and learning. Off means: not a single request leaves your computer.",
   "agent.prefs.connection": "Connection",

@@ -72,7 +72,11 @@ export const agentStore = {
   learning,
   waiting,
   learnedVersion,
-  available: hasAgentHost,
+  /** The host can run the agent at all (desktop build): Codex, the AgentZ
+   *  account or an own OpenRouter key, whichever is set up. */
+  supported: hasAgentHost,
+  /** The agent is offered in the UI: supported and not hidden by the user. */
+  available: () => hasAgentHost() && !agentSettings.hidden(),
   openRouterKeyHint,
   /** The AgentZ account may use the hosted agent; else it is "coming soon". */
   hostedAccess,

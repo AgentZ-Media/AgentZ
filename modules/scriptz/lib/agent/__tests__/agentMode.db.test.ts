@@ -11,7 +11,8 @@ import type { DatabaseSync as DatabaseSyncType } from "node:sqlite";
 import { setPlatformAdapter, type DbConnection, type PlatformAdapter } from "@agentz/kit/platform";
 import { getChat, latestChat, listSessions, saveChat, type ChatRecord } from "../chats";
 import { createIdea, listIdeas, markIdeaUsed } from "../../ideas";
-import { archiveScript, createScript, emptyTrash, purgeScript } from "../../scripts";
+import { archiveScript, backfillRuntimeStats, createScript, emptyTrash, getScript, purgeScript } from "../../scripts";
+import { contentJsonFromBlocks, draftRuntime, parseDraftBody } from "../drafts";
 import { createFolder, deleteFolder } from "../../folders";
 import { foldersBus } from "../../foldersBus";
 import { agentStore, startAgentRuntime } from "../../../stores/agent";
@@ -332,5 +333,42 @@ describe("agent store registry", () => {
     await new Promise((r) => setTimeout(r, 500));
     await chat.flush().catch(() => {});
     expect(await getChat("gone")).toBeNull();
+  });
+});
+
+describe("runtime from the app", () => {
+  let db: DatabaseSync;
+  beforeAll(() => {
+    db = openDatabase();
+    useDatabase(db);
+  });
+
+  it("reports the runtime the app shows in the script tools", async () => {
+    const blocks = parseDraftBody(`ACTION: Ein Büro.\nTIMO: ${"wort ".repeat(70).trim()}`);
+    const script = await createScript("Mit Laufzeit", contentJsonFromBlocks(blocks), null);
+    const host: ToolHost = {
+      scriptId: null, liveBlocks: () => null, selection: () => null, wpm: () => 210,
+      onProposal: () => {}, onClaims: () => {}, onMemory: () => {}, memorySource: "chat", memorySourceScriptId: null,
+    };
+    const run = (name: string, args: unknown) => createChatTools(host).find((t) => t.name === name)!.run(args);
+    // 70 words at 210 WPM = 20 s plus 2 s for the action line; the caret
+    // line at the end of the script adds nothing.
+    expect(draftRuntime(blocks, 210)).toBe(22);
+    const read = await run("read_script", { id: script.id });
+    expect(JSON.parse(read.output)).toMatchObject({ runtime: "0:22", runtime_seconds: 22 });
+    const listed = JSON.parse((await run("list_scripts", { query: "Mit Laufzeit" })).output) as { id: string; runtime: string }[];
+    expect(listed.find((s) => s.id === script.id)?.runtime).toBe("0:22");
+  });
+
+  it("recounts stored runtime inputs on request without touching the content", async () => {
+    const script = await createScript("Alte Zählung", contentJsonFromBlocks(parseDraftBody("ACTION: Los.\nTIMO: Hallo")), null);
+    // Stored with the old formula: the empty caret line counted as a beat.
+    db.exec(`UPDATE scripts SET direction_block_count = 2 WHERE id = '${script.id}'`);
+    const before = await getScript(script.id);
+    await backfillRuntimeStats();
+    expect((await getScript(script.id)).direction_block_count).toBe(2);
+    await backfillRuntimeStats({ all: true });
+    const after = await getScript(script.id);
+    expect(after).toMatchObject({ dialog_word_count: 1, direction_block_count: 1, updated_at: before.updated_at, content_json: before.content_json });
   });
 });

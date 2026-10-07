@@ -5,6 +5,8 @@
 
 import { api } from "../api";
 import { INBOX_FOLDER_ID } from "../folders";
+import { formatClock } from "../lengthGoal";
+import { storedRuntimeSeconds } from "../runtime";
 import { scriptStages, stageLabel, isFinalStage } from "../stages";
 import type { Folder } from "../types";
 import {
@@ -20,6 +22,7 @@ import {
   type MemoryKind,
   type MemorySource,
 } from "./memory";
+import { draftRuntime } from "./drafts";
 import { anchorTarget, parseClaims, parseProposal, type Claim, type Proposal } from "./proposals";
 import { blocksFromContent, charactersIn, numberedScript, type AgentBlock } from "./scriptText";
 import { fail, obj, ok } from "./toolArgs";
@@ -45,9 +48,20 @@ export interface ToolHost {
   onMemory(change: MemoryChange): void;
   memorySource: MemorySource;
   memorySourceScriptId: string | null;
+  /** Speaking pace from the settings. With it, script tools report the
+   *  runtime the app shows, so the model never has to count words. */
+  wpm?(): number;
 }
 
 const text = (v: unknown, max = 400): string => (typeof v === "string" ? v.trim().slice(0, max) : "");
+
+/** Runtime as the app shows it ("m:ss" and seconds); null for nothing to
+ *  measure. Empty without a pace, so hosts without one report no runtime. */
+function runtimeFields(host: Pick<ToolHost, "wpm">, seconds: (wpm: number) => number | null) {
+  if (!host.wpm) return {};
+  const sec = seconds(host.wpm());
+  return sec ? { runtime: formatClock(sec), runtime_seconds: sec } : { runtime: null, runtime_seconds: null };
+}
 
 async function foldersById(): Promise<Map<string, Folder>> {
   const list = await api.listFolders().catch(() => [] as Folder[]);
@@ -125,7 +139,7 @@ export function createChatTools(host: ToolHost): AgentTool[] {
   const tools: AgentTool[] = [
     {
       name: "get_current_script",
-      description: "Read the script the user has open right now (numbered blocks, folder, stage, characters, selection). Call this before proposing changes.",
+      description: "Read the script the user has open right now (numbered blocks, folder, stage, characters, selection, runtime at the user's pace). Call this before proposing changes.",
       parameters: { type: "object", properties: {}, additionalProperties: false },
       async run() {
         const current = await currentScript();
@@ -141,6 +155,7 @@ export function createChatTools(host: ToolHost): AgentTool[] {
           finished: isFinalStage(script.status),
           characters: charactersIn(blocks),
           block_count: blocks.length,
+          ...runtimeFields(host, (wpm) => draftRuntime(blocks, wpm)),
           selection: host.selection(),
           script: numberedScript(blocks),
         });
@@ -157,7 +172,7 @@ export function createChatTools(host: ToolHost): AgentTool[] {
     },
     {
       name: "list_scripts",
-      description: "List scripts, optionally only one folder or matching a title query. Returns id, title, folder, stage, characters.",
+      description: "List scripts, optionally only one folder or matching a title query. Returns id, title, folder, stage, characters, runtime.",
       parameters: {
         type: "object",
         properties: {
@@ -190,12 +205,13 @@ export function createChatTools(host: ToolHost): AgentTool[] {
           finished: isFinalStage(s.status),
           characters: s.characters.map((c) => c.name),
           words: Math.max(0, s.word_count),
+          ...runtimeFields(host, (wpm) => storedRuntimeSeconds(s, wpm)),
         })));
       },
     },
     {
       name: "read_script",
-      description: "Read any script by id (numbered blocks).",
+      description: "Read any script by id (numbered blocks, runtime at the user's pace).",
       parameters: {
         type: "object",
         properties: { id: { type: "string" } },
@@ -215,6 +231,7 @@ export function createChatTools(host: ToolHost): AgentTool[] {
           title: script.title,
           folder: script.folder_id ? folders.get(script.folder_id)?.name ?? null : null,
           stage: stageLabel(script.status),
+          ...runtimeFields(host, (wpm) => draftRuntime(blocks, wpm)),
           script: numberedScript(blocks),
         });
       },
