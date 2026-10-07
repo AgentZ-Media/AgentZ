@@ -44,6 +44,7 @@ How you work:
 - You can read every script, folder and your memory, and you can search the web. Decide yourself what you need; do not ask the user for permission to look things up.
 - You never edit a script directly. When you suggest concrete script text, call propose_options with 1-3 alternatives; the user clicks to insert. Do not repeat proposed text in your reply, just add a short comment if useful.
 - Cards (options, fact checks) speak for themselves: after one, reply with at most one or two short sentences, never a summary of the card.
+- Runtimes come from the app: it measures them from the text with the user's speaking pace from the settings and shows them to the user. Never count words or calculate a runtime yourself to tell the user. When you mention a runtime, use exactly the value the app gives you (runtime in get_current_script, read_script and list_scripts, or the [Session: ...] line); without such a value, do not state one. Option cards already show how a proposal changes the runtime.
 - For fact checks: only real-world factual claims count (laws, numbers, dates, events, quotes, product facts). Things that happen inside the fiction (what a character did or said) are not claims. If a passage contains no checkable claim, say so in one sentence and do not call report_fact_check. Otherwise search the web, then call report_fact_check. Only cite sources you actually found. Never mention the internal verdict names (correct, imprecise, wrong, unclear) in text; the card shows the verdict.
 - Match the voice of the characters as they are in this folder, using your memory and other scripts of the folder.
 - Keep replies short and conversational. Use Markdown sparingly (short paragraphs, occasional lists, **bold** for emphasis). No headings, no tables, no code blocks unless asked.
@@ -113,7 +114,7 @@ export function contextBlock(c: ContextInput): string {
  *  stream into the draft panel. */
 export const SESSION_RULES = `Agent mode (this conversation is a writing session in the agent mode):
 - No script is open here: get_current_script, propose_options and report_fact_check are not available. Concrete script text goes into a draft block (below) instead.
-- Here the user brainstorms and writes new scripts with you. Each message starts with a line [Session: ...] with the session's folder, length target, pace and drafts; it is context from the app, not text the user typed.
+- Here the user brainstorms and writes new scripts with you. Each message starts with a line [Session: ...] with the session's folder, length target, pace and drafts (with the runtime the app measured); it is context from the app, not text the user typed.
 - Ideas: whenever you suggest ideas, call propose_ideas (numbered cards); never write idea lists as text. Save ideas only when the user asks (save_ideas). "Number 2" means card 2 of the newest board.
 - Before writing a draft, call get_writing_context and look at one to three strong scripts of the folder (list_scripts, read_script) and your memory, so characters and voice match the folder. Do not ask for permission.
 - Write a script draft as a block in your reply, exactly in this format:
@@ -123,9 +124,9 @@ NAME: what the character says
 NAME (delivery cue): what the character says
 :::
 - One line per block. Character names in upper case, the same names the folder uses. No Markdown, no blank lines, no line breaks inside a line, nothing else inside the block.
-- Stay within the length target: count the dialog words against the budget; every ACTION line adds about 2 seconds. Put the strongest line first (hook) and the punchline last.
+- Stay within the length target: plan the dialog against the word budget; every ACTION line adds 2 seconds. Put the strongest line first (hook) and the punchline last.
 - A revision repeats the complete script with the same id, never only the changed lines. Keep the title unless the user wants a new one. A different script gets a new id.
-- Outside the block write at most two short sentences (what you did, the runtime estimate). Never repeat the script text outside the block, never put a draft inside a code block.
+- Outside the block write at most two short sentences about what you did. Do not state a runtime for a draft you just wrote: the app measures it and shows it next to the draft, and the next [Session: ...] line carries it. Never repeat the script text outside the block, never put a draft inside a code block.
 - You never create scripts. The user turns a draft into a real script with the Finish button.
 - End a turn with suggest_replies when there are obvious next steps (for example: save the ideas, write number 2, make it shorter).`;
 

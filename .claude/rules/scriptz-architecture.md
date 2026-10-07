@@ -14,7 +14,9 @@ Suite-Grenzen in [`suite-architecture.md`](suite-architecture.md).
 
 - `module.tsx`: `scriptzModule.setup(ctx)` startet Produkt-Settings,
   Navigation, Layout und Bibliothekspräferenzen, seedet das Welcome-Skript,
-  füllt Runtime-Statistiken nach, migriert Legacy-Blöcke und startet erst
+  füllt Runtime-Statistiken nach (`lib/runtimeBackfill.ts`: nach einer
+  Formeländerung einmal alle Skripte, Flag `migration.runtime_stats_v2`),
+  migriert Legacy-Blöcke und startet erst
   danach Ideen-, Statistik- und Bibliotheks-Resources. Liefert Routen
   (Inbox, Skripte, Ideen, Skript, Papierkorb, Agent-Modus), Sidebar, Overlays
   (QuickCapture, Neues Skript, Export, Stufen-Undo), Befehle, Shortcuts,
@@ -255,8 +257,14 @@ Persönlicher Schreib-Agent mit eigenem Namen, Look und Persona.
   nummeriert, solange der Chat offen ist.
 - **Kontext Länge.** Der Skript-Chat bekommt Längenziel und Sprechtempo in
   den Instruktionen, Sitzungen vor jeder Nachricht eine Zeile `[Session: ...]`
-  mit Ordner, Ziel, Wortbudget, Entwürfen und gespeicherten Ideen
-  (`lib/agent/writingContext.ts`, gleiche Formel wie die Zeitleiste).
+  mit Ordner, Ziel, Wortbudget, Entwürfen samt gemessener Laufzeit und
+  gespeicherten Ideen (`lib/agent/writingContext.ts`, gleiche Formel wie die
+  Zeitleiste).
+- **Laufzeiten rechnet nur die App.** `get_current_script`, `read_script`
+  und `list_scripts` liefern `runtime` nach `lib/runtime.ts` mit der WPM aus
+  den Einstellungen. Der Prompt verbietet dem Modell, selbst Wörter zu
+  zählen oder Laufzeiten zu nennen, die es nicht von der App hat; zu einem
+  gerade geschriebenen Entwurf nennt es keine Zeit, die zeigt das Panel.
 
 ## Agent-Modus
 

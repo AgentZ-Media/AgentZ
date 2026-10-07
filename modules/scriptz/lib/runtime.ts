@@ -1,10 +1,11 @@
 // Runtime estimate - one source for every display of a script's runtime.
 //
-// Only dialog words count against the WPM, plus 2 s per action block;
-// dividing the TOTAL word count (incl. character names, parentheticals)
-// would systematically overestimate the runtime. This file defines the
-// formula once, scripts.ts persists the two input values on save, and
-// every display calls `runtimeSeconds`.
+// Only dialog words count against the WPM, plus 2 s per action block with
+// text; dividing the TOTAL word count (incl. character names,
+// parentheticals) would systematically overestimate the runtime. This file
+// defines the formula once, scripts.ts persists the two input values on
+// save, and every display (editor, library, export, agent) calls
+// `runtimeSeconds` with the WPM from the settings.
 //
 // WPM stays a live setting - it is NOT persisted, so a setting change takes
 // effect everywhere immediately without re-saving every script.
@@ -16,10 +17,12 @@ import { extractBlocks, wordCount, type ExtractedBlock } from "./lex";
 export interface RuntimeStats {
   /** Words in dialog blocks. Only these are computed against dialog WPM. */
   dialogWords: number;
-  /** Action blocks. Each block contributes a short beat. Retired camera /
-   *  caption / sfx blocks count as action (lex.ts normalizes them before
-   *  extraction). Character and parenthetical blocks contribute nothing:
-   *  a delivery cue like "(leise)" is not spoken and takes no extra beat. */
+  /** Action blocks with text. Each one contributes a short beat; an empty
+   *  action block (e.g. the caret line at the end) contributes nothing.
+   *  Retired camera / caption / sfx blocks count as action (lex.ts
+   *  normalizes them before extraction). Character and parenthetical
+   *  blocks contribute nothing: a delivery cue like "(leise)" is not
+   *  spoken and takes no extra beat. */
   directionBlocks: number;
 }
 
@@ -38,8 +41,14 @@ function isDialogBlock(b: ExtractedBlock): boolean {
   return b.kind === "scriptz-dialog";
 }
 
+/** Whether an action block's text makes it a beat. Shared by every
+ *  caller that counts action blocks (timeline, inspector, drafts). */
+export function isActionBeat(text: string): boolean {
+  return text.trim().length > 0;
+}
+
 function isDirectionBlock(b: ExtractedBlock): boolean {
-  return b.kind === "scriptz-action";
+  return b.kind === "scriptz-action" && isActionBeat(b.text);
 }
 
 export function runtimeStatsFromBlocks(blocks: ExtractedBlock[]): RuntimeStats {
@@ -65,4 +74,15 @@ export function runtimeSeconds(stats: RuntimeStats, wpm: number): number {
   const safeWpm = Math.max(1, wpm);
   const sec = (dialog / safeWpm) * 60 + dir * SECONDS_PER_DIRECTION_BLOCK;
   return Math.max(MIN_RUNTIME_SEC, Math.round(sec));
+}
+
+/** Runtime from the stored inputs of a script (library, agent tools), or
+ *  null when the script was never measured or is empty. */
+export function storedRuntimeSeconds(
+  s: { dialog_word_count: number; direction_block_count: number },
+  wpm: number,
+): number | null {
+  if (s.dialog_word_count < 0 || s.direction_block_count < 0) return null;
+  if (s.dialog_word_count === 0 && s.direction_block_count === 0) return null;
+  return runtimeSeconds({ dialogWords: s.dialog_word_count, directionBlocks: s.direction_block_count }, wpm);
 }

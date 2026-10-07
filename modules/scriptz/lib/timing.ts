@@ -2,8 +2,9 @@
 //
 // Same formula as lib/runtime.ts, applied per block instead of as a sum:
 //  - Dialog block:    words / WPM * 60 seconds
-//  - Action block:    SECONDS_PER_DIRECTION_BLOCK (2 s), also when empty -
-//                     runtime.ts counts every action block
+//  - Action block:    SECONDS_PER_DIRECTION_BLOCK (2 s) when it has text;
+//                     an empty action block yields no segment (like
+//                     runtime.ts::isActionBeat)
 //  - Character block: 0 s, only sets the current speaker
 //  - Parenthetical:   0 s, no segment - a delivery cue belongs to the
 //                     current speaker's speech run but is not spoken
@@ -24,7 +25,7 @@
 // segments carry `speaker: null`.
 
 import { extractBlocks, wordCount } from "./lex";
-import { SECONDS_PER_DIRECTION_BLOCK } from "./runtime";
+import { isActionBeat, SECONDS_PER_DIRECTION_BLOCK } from "./runtime";
 
 export type TimingBlock = {
   /** Lexical node key (editor callers) - passed through to the segment so
@@ -46,9 +47,9 @@ export type TimelineSegment = {
 };
 
 /** Computes start + duration for every timed block. Character and
- *  parenthetical blocks yield no segment; dialog blocks without words yield
- *  no segment either (they have zero duration and contribute nothing to the
- *  runtime). Times are unrounded seconds. */
+ *  parenthetical blocks yield no segment; empty action blocks and dialog
+ *  blocks without words yield no segment either (they have zero duration
+ *  and contribute nothing to the runtime). Times are unrounded seconds. */
 export function computeTimeline(
   blocks: TimingBlock[],
   wpm: number,
@@ -65,6 +66,7 @@ export function computeTimeline(
     }
     if (b.kind === "paren") continue;
     if (b.kind === "action") {
+      if (!isActionBeat(b.text)) continue;
       out.push({
         key: b.key,
         kind: "action",
