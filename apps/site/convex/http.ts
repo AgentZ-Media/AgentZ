@@ -3,6 +3,7 @@ import { corsRouter } from "convex-helpers/server/cors";
 import { chat, status } from "./ai";
 import { approve, claim } from "./appLink";
 import { APP_ORIGINS, authComponent, createAuth } from "./auth";
+import { serve as serveStats } from "./stats";
 
 const http = httpRouter();
 
@@ -29,5 +30,8 @@ const ai = corsRouter(http, {
 });
 ai.route({ path: "/ai/status", method: "GET", handler: status });
 ai.route({ path: "/ai/chat", method: "POST", handler: chat });
+
+// Public counters for the website (stats.ts). No cookies, no user data.
+http.route({ path: "/stats", method: "GET", handler: serveStats });
 
 export default http;

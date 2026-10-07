@@ -36,6 +36,17 @@ main, .site-footer { position: relative; z-index: 1; }
 .page-head-left { justify-items: start; margin: 0; text-align: left; }
 .lead { max-width: 34em; font-size: var(--fs-20); color: var(--muted); text-wrap: pretty; }
 
+/* ---------------- Script counter (ScriptCount.astro) ---------------- */
+.count { display: inline-flex; align-items: center; gap: 10px; color: var(--muted); }
+.count[hidden] { display: none; }
+.count b { color: var(--fg); font-weight: 750; letter-spacing: -0.02em; }
+.count-sm { padding: 6px 14px 6px 12px; border-radius: var(--r-pill); font-size: var(--fs-14); background: color-mix(in srgb, var(--side-hover) 80%, transparent); box-shadow: inset 0 0 0 1px var(--side-line); backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); }
+.count-lg { display: inline-grid; grid-template-areas: "n n" "p l"; align-items: center; justify-content: center; column-gap: 10px; row-gap: 8px; margin-top: 26px; font-size: var(--fs-16); }
+.count-lg[hidden] { display: none; }
+.count-lg b { grid-area: n; justify-self: center; font-size: clamp(44px, 6vw, 76px); line-height: 1; letter-spacing: -0.04em; }
+.count-lg .pulse { grid-area: p; }
+.count-lg [data-count-label] { grid-area: l; }
+
 /* ---------------- Header ---------------- */
 .site-header {
   position: fixed; z-index: 40; top: 12px; left: 50%; translate: -50% 0;

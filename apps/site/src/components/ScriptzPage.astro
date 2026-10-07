@@ -4,18 +4,34 @@
 import Base from "../layouts/Base.astro";
 import "../styles/scriptz.css";
 import LiveApp from "./LiveApp.astro";
+import ScriptCount from "./ScriptCount.astro";
 import { catalogs, scriptzPaths, type Language } from "../i18n";
 interface Props { lang: Language }
 const { lang } = Astro.props;
 const t = catalogs[lang];
 const v = t.live;
+const pageUrl = new URL(scriptzPaths[lang], Astro.site).href;
+const schema = {
+  "@type": "SoftwareApplication",
+  name: "ScriptZ",
+  description: t.meta.scriptzDescription,
+  url: pageUrl,
+  image: new URL(`/og/scriptz-${lang}.jpg`, Astro.site).href,
+  applicationCategory: "MultimediaApplication",
+  operatingSystem: "macOS, Windows",
+  inLanguage: ["de", "en"],
+  offers: { "@type": "Offer", price: "0", priceCurrency: "EUR" },
+  publisher: { "@type": "Organization", name: "AgentZ Media", url: Astro.site?.href },
+};
 ---
-<Base lang={lang} title="ScriptZ" description={t.scriptz.lead} paths={scriptzPaths}>
+<Base lang={lang} title={t.meta.scriptzTitle} description={t.meta.scriptzDescription} paths={scriptzPaths}
+  image={{ path: `/og/scriptz-${lang}.jpg`, alt: t.meta.scriptzImage }} schema={schema}>
   <section class="demo" aria-labelledby="scriptz-title">
     <div class="page-head">
       <p class="kicker">{t.scriptz.kicker}</p>
       <h1 id="scriptz-title">{t.scriptz.title}</h1>
       <p class="lead">{t.scriptz.lead} {v.intro}</p>
+      <ScriptCount lang={lang} />
     </div>
     <div class="demo-bar">
       <ol class="demo-steps" data-steps>
