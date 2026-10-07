@@ -106,18 +106,24 @@ async function submitCode(raw: string) {
   if (!code) { fail("claim"); return; }
   setError(null);
   setPhase("connecting");
+  let token: string;
   try {
-    const token = await claimSession(r.cloud, code, r.pendingVerifier);
-    r.pendingVerifier = null;
-    await r.secrets.set(SESSION_SECRET, token);
-    const next = await fetchUser(r.cloud, token);
-    await saveProfile(next);
-    setDialog(null);
-    await connect(token, next);
+    token = await claimSession(r.cloud, code, r.pendingVerifier);
   } catch (caught) {
     setPhase("waiting");
     fail(caught instanceof TypeError ? "network" : "claim");
+    return;
   }
+  // The code is spent: from here on the session exists, so later failures
+  // never send the user back to an expired sign-in.
+  r.pendingVerifier = null;
+  setDialog(null);
+  try {
+    await r.secrets.set(SESSION_SECRET, token);
+  } catch (caught) {
+    console.warn("[account] storing the session failed; it lasts until the app closes", caught);
+  }
+  await connect(token, null);
 }
 
 function extractCode(raw: string, app: string): string | null {
@@ -166,7 +172,9 @@ async function connect(token: string, known: AccountUser | null) {
     if (caught instanceof SessionExpiredError) { await expire(); return; }
     // Offline: continue with the cached profile, sync starts when possible.
   }
-  if (!current || r.signal.aborted) return;
+  if (r.signal.aborted) return;
+  // Without any profile yet (offline right after signing in) try again later.
+  if (!current) { retryLater(() => connect(token, null)); return; }
   if (!r.adapter) return;
   const state = await readSyncState(r.kv);
   if (state && state.userId !== current.id) {

@@ -251,6 +251,27 @@ describe("sync engine", () => {
     void b;
   });
 
+  it("keeps paging while a child waits for a parent several pages later", async () => {
+    const server = createServer();
+    const key = createDataKey();
+    const a = createDevice("a");
+    const syncA = await connect(a, server, key, "A");
+    a.write("parents", { id: "p1", title: "Folder" });
+    await syncA.sync();
+    a.write("children", { id: "c1", title: "Script", parentId: "p1" });
+    for (let i = 0; i < 6; i++) a.write("children", { id: `x${i}`, title: "filler" });
+    await syncA.sync();
+    // The parent's newest revision now lies three pages behind its child.
+    a.write("parents", { id: "p1", title: "Renamed" });
+    await syncA.sync();
+    const b = createDevice("b");
+    const syncB = await connect(b, server, key, "B");
+    await syncB.sync();
+    expect(b.tables.children.get("c1")?.parentId).toBe("p1");
+    expect(b.tables.children.size).toBe(7);
+    expect(syncB.state.pulled).toBe(Math.max(...[...server.records.values()].map((r) => r.rev)));
+  }, 5000);
+
   it("moves large records through file storage", async () => {
     const server = createServer();
     const key = createDataKey();

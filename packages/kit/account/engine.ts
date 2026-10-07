@@ -244,8 +244,11 @@ export function createSyncEngine(options: EngineOptions) {
   async function pull(): Promise<void> {
     const unsynced = await unsyncedKeys();
     let waiting: Decoded[] = [];
+    // Paging runs ahead of the saved cursor: records waiting for a parent hold
+    // the saved cursor back, never the next page.
+    let fetched = state.pulled;
     for (;;) {
-      const page = await transport.pull(app, state.pulled);
+      const page = await transport.pull(app, fetched);
       if (page.records.length === 0) break;
       const deletedIds = page.records.filter((record) => record.deleted).map((record) => record.recordId);
       const knownByRemote = await book.byRemoteIds(deletedIds);
@@ -279,7 +282,8 @@ export function createSyncEngine(options: EngineOptions) {
       await book.put(bookOnly);
       waiting = await applyAll([...waiting, ...apply]);
       const last = page.records[page.records.length - 1].rev;
-      // Never move the cursor past a record that is still waiting.
+      fetched = last;
+      // Never move the saved cursor past a record that is still waiting.
       const floor = waiting.length > 0 ? Math.min(...waiting.map((item) => item.rev)) - 1 : last;
       const next = Math.max(state.pulled, Math.min(last, floor));
       if (next !== state.pulled) { state.pulled = next; await save(); }
