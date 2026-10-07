@@ -12,7 +12,10 @@ import {
   type StageDef,
 } from "../lib/stages";
 
-const [highlightingDefault, setHighlightingDefault] = createSignal<boolean>(false);
+// Character colours in the text for scripts without their own choice
+// (scripts.highlighting_enabled NULL). Default on; a value stored by an
+// existing install wins (see load()).
+const [highlightingDefault, setHighlightingDefault] = createSignal<boolean>(true);
 const [exportTitlePageDefault, setExportTitlePageDefault] = createSignal<boolean>(true);
 // Open scripts in focus mode. Default false for fresh installs (head bar
 // + inspector are the normal writing view); a value stored by an existing
@@ -43,9 +46,9 @@ const [darkPaper, setDarkPaper] = createSignal<boolean>(false);
 const [pruneUnusedCharacters, setPruneUnusedCharacters] = createSignal<boolean>(false);
 
 // A click on a script in a list or on the board opens it in the side panel
-// next to the list instead of the full script view. Default on; Alt-click
-// does the other one.
-const [openInPanel, setOpenInPanel] = createSignal<boolean>(true);
+// next to the list instead of the full script view. Default off (scripts
+// open full-size); Alt-click does the other one.
+const [openInPanel, setOpenInPanel] = createSignal<boolean>(false);
 // Scripts that reach the last stage leave the sidebar's "Open" list (the
 // script on screen stays until the writer switches away). Default on.
 const [closeFinishedScripts, setCloseFinishedScripts] = createSignal<boolean>(true);
@@ -203,7 +206,7 @@ export const settingsStore = {
       kv.getSetting("focus_typewriter"),
     ]);
     if (generation !== runtimeGeneration) return;
-    setHighlightingDefault(hd === null ? false : hd === "1");
+    setHighlightingDefault(hd === null ? true : hd === "1");
     setExportTitlePageDefault(etpd === null ? true : etpd === "1");
     setQuickModeAutoEnable(qmae === null ? false : qmae === "1");
     setFocusModeDefault(fmd === null ? false : fmd === "1");
@@ -211,7 +214,7 @@ export const settingsStore = {
     setShowWritingStats(sws === null ? true : sws === "1");
     setDarkPaper(dp === null ? false : dp === "1");
     setPruneUnusedCharacters(puc === null ? false : puc === "1");
-    setOpenInPanel(oip === null ? true : oip === "1");
+    setOpenInPanel(oip === "1");
     setCloseFinishedScripts(cfs === null ? true : cfs === "1");
     setLengthMinDefaultSecSignal(parseLengthSetting(lmin));
     setLengthMaxDefaultSecSignal(parseLengthSetting(lmax));
