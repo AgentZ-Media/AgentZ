@@ -35,4 +35,6 @@ it("marks only nightly workflow builds as nightly", async () => {
   expect(readBuildInfo({
     VITE_AGENTZ_BUILD_CHANNEL: "nightly", VITE_AGENTZ_BUILD_COMMIT: " 479ff19 ", VITE_AGENTZ_BUILD_TIME: "",
   })).toEqual({ channel: "nightly", commit: "479ff19", builtAt: undefined });
+  expect(readBuildInfo({ DEV: true })).toEqual({ channel: "stable", development: true });
+  expect(readBuildInfo({ DEV: true, VITE_AGENTZ_BUILD_CHANNEL: "nightly" })).toMatchObject({ channel: "nightly", development: true });
 });

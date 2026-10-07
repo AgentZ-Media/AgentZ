@@ -18,6 +18,7 @@ const migration010 = readFileSync(new URL("010_agent_sessions.sql", migrations),
 const migration011 = readFileSync(new URL("011_track_agent_sessions.sql", migrations), "utf8");
 const migration012 = readFileSync(new URL("012_agent_learned_text.sql", migrations), "utf8");
 const migration013 = readFileSync(new URL("013_large_library_indexes.sql", migrations), "utf8");
+const migration014 = readFileSync(new URL("014_cloud_sync.sql", migrations), "utf8");
 let db: SQLiteDatabase;
 let tempDir: string;
 let dbPath: string;
@@ -37,6 +38,7 @@ function migrateTracking() {
   db.exec(migration011);
   db.exec(migration012);
   db.exec(migration013);
+  db.exec(migration014);
 }
 
 /** Seeds each tracked content type plus settings and UI state excluded from the feed. */
@@ -111,7 +113,7 @@ describe("local content change feed", () => {
 
   it("covers every durable content table and every column in the actual schema", () => {
     migrateTracking();
-    const tables = db.prepare("SELECT name FROM sqlite_master WHERE type = 'table' AND name NOT LIKE 'scripts_fts%' AND name NOT IN ('settings','app_state','local_replica','local_changes','sqlite_sequence')").all().map((r) => r.name);
+    const tables = db.prepare("SELECT name FROM sqlite_master WHERE type = 'table' AND name NOT LIKE 'scripts_fts%' AND name NOT IN ('settings','app_state','local_replica','local_changes','sqlite_sequence','sync_records','daily_word_log_remote')").all().map((r) => r.name);
     expect(tables.sort()).toEqual(Object.keys(CONTENT_ENTITIES).sort());
     for (const [table, config] of Object.entries(CONTENT_ENTITIES)) {
       expect(db.prepare(`PRAGMA table_info(${table})`).all().map((r) => r.name).sort()).toEqual([...config.columns].sort());

@@ -96,6 +96,9 @@ export const en: Record<keyof typeof de, string> = {
   "trash.restoreOne": "Restore",
   "trash.purgeOne": "Delete permanently",
   "trash.deletedAt": "Deleted {when}",
+  "trash.purgesIn_one": "{count} day left",
+  "trash.purgesIn_other": "{count} days left",
+  "trash.autoPurge": "Deleted automatically after {days} days",
   "trash.confirm.restoreAll.title": "Restore all?",
   "trash.confirm.restoreAll.body_one": "{count} script will be restored from the trash.",
   "trash.confirm.restoreAll.body_other": "All {count} scripts will be restored from the trash.",
@@ -198,7 +201,7 @@ export const en: Record<keyof typeof de, string> = {
   // ---------- settings ----------
   "settings.characters.colorAria": "Change color for {name}",
   "settings.characters.reset": "Reset",
-  "settings.about.sub": "Fast. Local. No account.",
+  "settings.about.sub": "Fast. Local. Account optional.",
   "settings.about.license": "License: MIT",
   "settings.about.developer.linkText": "AgentZ",
   "settings.about.repository.linkText": "github.com/AgentZ-Media/AgentZ-Suite",
@@ -229,6 +232,7 @@ export const en: Record<keyof typeof de, string> = {
 
   // ---------- boot / errors ----------
   "boot.loadingScript": "Loading script…",
+  "sync.conflictCopy": "conflict copy",
   "boot.error.title": "ScriptZ could not start",
   "boot.error.lede": "The database file could not be opened. Your scripts are most likely safe - the file is still in the app data directory untouched. Please copy the error below and send it to us.",
 

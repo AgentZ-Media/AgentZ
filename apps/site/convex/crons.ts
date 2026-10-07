@@ -16,4 +16,6 @@ export const cleanupEmails = internalMutation({
 
 const crons = cronJobs();
 crons.interval("remove sent emails", { hours: 1 }, internal.crons.cleanupEmails);
+crons.interval("remove expired app sign-in codes", { hours: 1 }, internal.appLink.cleanup);
+crons.interval("sum up the website counters", { hours: 1 }, internal.stats.refresh);
 export default crons;

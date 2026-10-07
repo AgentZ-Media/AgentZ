@@ -53,6 +53,8 @@ const [waiting, setWaiting] = createSignal<LearnRef[]>([]);
 /** Bumps after a script was marked as learned (inspector reloads). */
 const [learnedVersion, setLearnedVersion] = createSignal(0);
 export { learning, waiting, learnedVersion };
+/** Learned markers changed outside the learning loop (cloud sync). */
+export const notifyLearnedChanged = () => setLearnedVersion((v) => v + 1);
 
 interface LearnTarget {
   id: string;

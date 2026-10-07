@@ -1,6 +1,7 @@
 import { ErrorBoundary, Show, Suspense, createEffect, on, untrack } from "solid-js";
 import type { AppModule, ModuleContext, ModuleRuntime } from "@agentz/kit/shell";
 import { startCharacterAutoPrune } from "./lib/characterAutoPrune";
+import { startTrashAutoPurge } from "./lib/trashAutoPurge";
 import { ensureWelcomeContent } from "./lib/welcome";
 import { migrateLegacyBlocksOnce } from "./lib/legacyBlocksMigration";
 import { backfillRuntimeStatsOnBoot } from "./lib/runtimeBackfill";
@@ -31,6 +32,7 @@ import { createScriptzCommands } from "./components/Palette/commands";
 import { agentSettings, startAgentSettingsRuntime } from "./stores/agentSettings";
 import { startAgentUiRuntime } from "./stores/agentUi";
 import { agentStore, startAgentRuntime } from "./stores/agent";
+import { createScriptzSync } from "./stores/sync";
 import { AgentOnboarding } from "./components/Agent/AgentOnboarding";
 import { MemoryDialog } from "./components/Agent/MemoryDialog";
 import { AgentPage } from "./components/AgentMode/AgentPage";
@@ -79,6 +81,7 @@ async function setupScriptz(ctx: ModuleContext): Promise<ModuleRuntime> {
     ctx.onDispose(startDailyStatsStore());
     ctx.onDispose(startLibraryData());
     ctx.onDispose(startCharacterAutoPrune(() => settingsStore.pruneUnusedCharacters()));
+    ctx.onDispose(startTrashAutoPurge());
     ctx.onDispose(startAgentRuntime(ctx.services));
     createEffect(() => {
       if (!library.scriptsReady()) return;
@@ -139,6 +142,7 @@ async function setupScriptz(ctx: ModuleContext): Promise<ModuleRuntime> {
     shortcuts: getScriptzShortcuts(),
     shortcutContext: () => currentScriptId() ? "editor" : "list",
     onboarding: { key: ONBOARDING_KEY, component: Onboarding },
+    sync: createScriptzSync(),
   };
 }
 

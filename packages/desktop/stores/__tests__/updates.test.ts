@@ -1,22 +1,38 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { DownloadEvent } from "@tauri-apps/plugin-updater";
 import type { UpdateChannel } from "@agentz/kit/platform";
-import { createDesktopUpdates, updateNeedsBackup } from "../updates";
+import { createDesktopUpdates, updateNeedsBackup, type StagedUpdate } from "../updates";
 
 function deferred<T>() {
   let resolve!: (value: T) => void;
-  const promise = new Promise<T>((done) => { resolve = done; });
-  return { promise, resolve };
+  let reject!: (error: unknown) => void;
+  const promise = new Promise<T>((done, fail) => { resolve = done; reject = fail; });
+  return { promise, resolve, reject };
 }
-function setup({ version = "1.0.1", currentVersion = "1.0.0" } = {}) {
+
+interface FakeUpdate { version: string; currentVersion: string; close: ReturnType<typeof vi.fn> }
+
+function setup({ version = "1.0.1", currentVersion = "1.0.0", autoInstall = true, staged = null as StagedUpdate | null } = {}) {
   const sequence: string[] = [];
   let channel: UpdateChannel = "stable";
-  const update = {
-    version,
-    currentVersion,
-    download: vi.fn(async (_event?: (event: DownloadEvent) => void) => { sequence.push("download"); }),
-    install: vi.fn(async () => { sequence.push("install"); }),
-    close: vi.fn(async () => {}),
+  let auto = autoInstall;
+  let nativeStaged: StagedUpdate | null = staged;
+  const makeUpdate = (v = version): FakeUpdate => ({ version: v, currentVersion, close: vi.fn(async () => {}) });
+  let update = makeUpdate();
+  const native = {
+    check: vi.fn(async (_channel: UpdateChannel) => update as FakeUpdate | null),
+    download: vi.fn(async (u: FakeUpdate, onEvent: (event: DownloadEvent) => void) => {
+      sequence.push("download");
+      onEvent({ event: "Started", data: { contentLength: 10 } });
+      onEvent({ event: "Progress", data: { chunkLength: 10 } });
+      onEvent({ event: "Finished" });
+      nativeStaged = { version: u.version, currentVersion: u.currentVersion };
+      return nativeStaged;
+    }),
+    staged: vi.fn(async () => nativeStaged),
+    discard: vi.fn(async () => { sequence.push("discard"); nativeStaged = null; }),
+    installNow: vi.fn(async () => { sequence.push("install"); nativeStaged = null; }),
+    installOnQuit: vi.fn(async () => { sequence.push("installOnQuit"); const had = !!nativeStaged; nativeStaged = null; return had; }),
   };
   const unlock = vi.fn(() => { sequence.push("unlock"); });
   const options = {
@@ -25,162 +41,384 @@ function setup({ version = "1.0.1", currentVersion = "1.0.0" } = {}) {
     backupDatabase: vi.fn(async (_label: string) => { sequence.push("backup"); }),
   };
   const deps = {
-    check: vi.fn(async (_channel: UpdateChannel) => update),
+    native,
     flush: vi.fn(async () => { sequence.push("flush"); return { ok: true, failed: [] as string[], contentFailed: [] as string[] }; }),
     notifySaveFailure: vi.fn(), notifyUpdateFailure: vi.fn(), notifyBackupFailure: vi.fn(),
     isDevelopment: false,
     updateCheckEnabled: () => true,
     hourlyUpdateCheck: () => true,
     updateChannel: () => channel,
+    autoInstall: () => auto,
+    currentVersion: async () => currentVersion,
+    random: () => 0.5,
   };
-  const runtime = createDesktopUpdates(options, deps);
-  const setChannel = (next: UpdateChannel) => { channel = next; };
-  return { ...runtime, sequence, update, unlock, options, deps, setChannel };
+  const runtime = createDesktopUpdates<FakeUpdate>(options, deps);
+  return {
+    ...runtime, sequence, options, deps, native, unlock,
+    get update() { return update; },
+    publish(v: string) { update = makeUpdate(v); },
+    setChannel(next: UpdateChannel) { channel = next; },
+    setAuto(next: boolean) { auto = next; },
+  };
 }
 afterEach(() => vi.useRealTimers());
 
-describe("desktop updater safety", () => {
-  it("downloads before locking, saves before installing, and stays frozen through restart", async () => {
+describe("downloading", () => {
+  it("downloads a found update in the background without touching the editor and never restarts", async () => {
     const s = setup();
     await s.store.checkNow();
-    await s.store.downloadAndInstall();
-    expect(s.sequence).toEqual(["download", "lock", "flush", "install", "restart"]);
+    await vi.waitFor(() => expect(s.store.stage()).toBe("ready"));
+    expect(s.sequence).toEqual(["download"]);
+    expect(s.store.available()).toEqual({ version: "1.0.1" });
+    expect(s.store.progress()).toBe(100);
+    expect(s.options.lockEditing).not.toHaveBeenCalled();
+    expect(s.options.restart).not.toHaveBeenCalled();
+    expect(s.update.close).toHaveBeenCalledOnce();
+    s.dispose();
+  });
+
+  it("only offers the update when automatic downloads are off", async () => {
+    const s = setup({ autoInstall: false });
+    await s.store.checkNow();
+    expect(s.store.stage()).toBe("available");
+    expect(s.native.download).not.toHaveBeenCalled();
+    await s.store.download();
     expect(s.store.stage()).toBe("ready");
-    expect(s.unlock).not.toHaveBeenCalled();
+    s.dispose();
+  });
+
+  it("retries a failed background download quietly with the next check", async () => {
+    const s = setup();
+    s.native.download.mockRejectedValueOnce(new Error("network unavailable"));
+    await s.store.checkNow();
+    await vi.waitFor(() => expect(s.native.download).toHaveBeenCalledOnce());
+    await vi.waitFor(() => expect(s.store.stage()).toBe("available"));
+    expect(s.deps.notifyUpdateFailure).not.toHaveBeenCalled();
+    await s.store.checkNow();
+    await vi.waitFor(() => expect(s.store.stage()).toBe("ready"));
+    s.dispose();
+  });
+
+  it("reports a failed download the user asked for", async () => {
+    const s = setup({ autoInstall: false });
+    s.native.download.mockRejectedValueOnce(new Error("network unavailable"));
+    await s.store.checkNow();
+    await s.store.download();
+    expect(s.store.stage()).toBe("error");
+    expect(s.deps.notifyUpdateFailure).toHaveBeenCalledOnce();
+    // The retry button downloads again.
     await s.store.restart();
-    expect(s.options.restart).toHaveBeenCalledOnce();
+    expect(s.store.stage()).toBe("ready");
+    expect(s.options.lockEditing).not.toHaveBeenCalled();
+    s.dispose();
+  });
+
+  it("serializes duplicate clicks and ignores checks while downloading", async () => {
+    const s = setup({ autoInstall: false });
+    const pending = deferred<StagedUpdate>();
+    s.native.download.mockReturnValueOnce(pending.promise);
+    await s.store.checkNow();
+    const first = s.store.download();
+    await s.store.download();
+    await s.store.checkNow();
+    pending.resolve({ version: "1.0.1", currentVersion: "1.0.0" });
+    await first;
+    expect(s.native.download).toHaveBeenCalledOnce();
+    expect(s.native.check).toHaveBeenCalledOnce();
+    expect(s.store.stage()).toBe("ready");
+    s.dispose();
+  });
+
+  it("closes the checked update when the window goes away during the download", async () => {
+    const s = setup();
+    const pending = deferred<StagedUpdate>();
+    s.native.download.mockReturnValueOnce(pending.promise);
+    await s.store.checkNow();
+    const update = s.update;
+    s.dispose();
+    expect(update.close).not.toHaveBeenCalled();
+    pending.resolve({ version: "1.0.1", currentVersion: "1.0.0" });
+    await vi.waitFor(() => expect(update.close).toHaveBeenCalledOnce());
+    expect(s.store.stage()).toBe("downloading");
+  });
+
+  it("picks up an update a closed window already downloaded", async () => {
+    const s = setup({ staged: { version: "1.0.1", currentVersion: "1.0.0" } });
+    await vi.waitFor(() => expect(s.store.stage()).toBe("ready"));
+    // The same version found again is not downloaded twice.
+    await s.store.checkNow();
+    expect(s.native.download).not.toHaveBeenCalled();
+    expect(s.store.stage()).toBe("ready");
+    expect(s.store.manualCheck()).toBeNull();
+    s.dispose();
+  });
+
+  it("replaces a downloaded update with a newer one", async () => {
+    const s = setup();
+    await s.store.checkNow();
+    await vi.waitFor(() => expect(s.store.stage()).toBe("ready"));
+    s.publish("1.0.2");
+    await s.store.checkNow();
+    await vi.waitFor(() => expect(s.store.available()).toEqual({ version: "1.0.2" }));
+    expect(s.native.download).toHaveBeenCalledTimes(2);
+    expect(s.store.stage()).toBe("ready");
+    s.dispose();
+  });
+});
+
+describe("restart now", () => {
+  it("locks editing, saves, installs and restarts, and stays frozen", async () => {
+    const s = setup();
+    await s.store.checkNow();
+    await vi.waitFor(() => expect(s.store.stage()).toBe("ready"));
+    await s.store.restart();
+    expect(s.sequence).toEqual(["download", "lock", "flush", "install", "restart"]);
+    expect(s.unlock).not.toHaveBeenCalled();
     s.dispose();
     expect(s.unlock).toHaveBeenCalledOnce();
   });
 
-  it("aborts on failed flush, unlocks, and retries saving the existing download", async () => {
+  it("aborts on a failed save, unlocks and keeps the download", async () => {
     const s = setup();
-    s.deps.flush.mockImplementationOnce(async () => { s.sequence.push("flush"); return { ok: false, failed: ["editor"], contentFailed: ["editor"] }; });
     await s.store.checkNow();
-    await s.store.downloadAndInstall();
+    await vi.waitFor(() => expect(s.store.stage()).toBe("ready"));
+    s.deps.flush.mockImplementationOnce(async () => { s.sequence.push("flush"); return { ok: false, failed: ["editor"], contentFailed: ["editor"] }; });
+    await s.store.restart();
     expect(s.sequence).toEqual(["download", "lock", "flush", "unlock"]);
-    expect(s.update.install).not.toHaveBeenCalled();
-    expect(s.options.restart).not.toHaveBeenCalled();
+    expect(s.native.installNow).not.toHaveBeenCalled();
     expect(s.deps.notifySaveFailure).toHaveBeenCalledOnce();
     expect(s.store.stage()).toBe("error");
-    await s.store.downloadAndInstall();
-    expect(s.update.download).toHaveBeenCalledOnce();
+    await s.store.restart();
+    expect(s.native.download).toHaveBeenCalledOnce();
     expect(s.sequence.slice(4)).toEqual(["lock", "flush", "install", "restart"]);
     s.dispose();
   });
 
-  it("does not flush or install when close or quit already owns the editing lock", async () => {
+  it("does nothing while close or quit already owns the editing lock", async () => {
     const s = setup();
+    await s.store.checkNow();
+    await vi.waitFor(() => expect(s.store.stage()).toBe("ready"));
     s.options.lockEditing.mockImplementationOnce(() => { throw new Error("lifecycle busy"); });
-    await s.store.checkNow();
-    await s.store.downloadAndInstall();
-    expect(s.deps.flush).not.toHaveBeenCalled();
-    expect(s.update.install).not.toHaveBeenCalled();
-    expect(s.options.restart).not.toHaveBeenCalled();
-    expect(s.unlock).not.toHaveBeenCalled();
-    expect(s.store.stage()).toBe("error");
-    s.dispose();
-  });
-
-  it("cannot install a failed download and never locks editing for it", async () => {
-    const s = setup();
-    s.update.download.mockRejectedValueOnce(new Error("network unavailable"));
-    await s.store.checkNow();
-    await s.store.downloadAndInstall();
-    expect(s.options.lockEditing).not.toHaveBeenCalled();
-    expect(s.update.install).not.toHaveBeenCalled();
-    expect(s.store.stage()).toBe("error");
-    expect(s.deps.notifyUpdateFailure).toHaveBeenCalledOnce();
-    s.dispose();
-  });
-
-  it("unlocks after failed installation and downloads new native bytes before retry", async () => {
-    const s = setup();
-    s.update.install.mockRejectedValueOnce(new Error("installer failed"));
-    await s.store.checkNow();
-    await s.store.downloadAndInstall();
-    expect(s.store.stage()).toBe("error");
-    expect(s.unlock).toHaveBeenCalledOnce();
-    expect(s.options.restart).not.toHaveBeenCalled();
-    await s.store.downloadAndInstall();
-    expect(s.update.download).toHaveBeenCalledTimes(2);
-    expect(s.update.install).toHaveBeenCalledTimes(2);
-    s.dispose();
-  });
-
-  it("after a failed restart saves again but never reinstalls an already installed update", async () => {
-    const s = setup();
-    s.options.restart.mockRejectedValueOnce(new Error("restart failed"));
-    await s.store.checkNow();
-    await s.store.downloadAndInstall();
-    expect(s.store.stage()).toBe("error");
-    expect(s.unlock).toHaveBeenCalledOnce();
-    await s.store.checkNow();
-    expect(s.deps.check).toHaveBeenCalledOnce();
     await s.store.restart();
-    expect(s.update.install).toHaveBeenCalledOnce();
+    expect(s.deps.flush).not.toHaveBeenCalled();
+    expect(s.native.installNow).not.toHaveBeenCalled();
+    expect(s.store.stage()).toBe("error");
+    s.dispose();
+  });
+
+  it("unlocks after a failed installation and installs again on retry", async () => {
+    const s = setup();
+    await s.store.checkNow();
+    await vi.waitFor(() => expect(s.store.stage()).toBe("ready"));
+    s.native.installNow.mockRejectedValueOnce(new Error("installer failed"));
+    await s.store.restart();
+    expect(s.store.stage()).toBe("error");
+    expect(s.unlock).toHaveBeenCalledOnce();
+    expect(s.deps.notifyUpdateFailure).toHaveBeenCalledOnce();
+    await s.store.restart();
+    expect(s.native.installNow).toHaveBeenCalledTimes(2);
+    expect(s.options.restart).toHaveBeenCalledOnce();
+    s.dispose();
+  });
+
+  it("after a failed relaunch saves again but never reinstalls", async () => {
+    const s = setup();
+    await s.store.checkNow();
+    await vi.waitFor(() => expect(s.store.stage()).toBe("ready"));
+    s.options.restart.mockRejectedValueOnce(new Error("restart failed"));
+    await s.store.restart();
+    expect(s.store.stage()).toBe("error");
+    await s.store.checkNow();
+    expect(s.native.check).toHaveBeenCalledOnce();
+    await s.store.restart();
+    expect(s.native.installNow).toHaveBeenCalledOnce();
     expect(s.deps.flush).toHaveBeenCalledTimes(2);
     expect(s.options.restart).toHaveBeenCalledTimes(2);
     s.dispose();
   });
 
-  it("never locks, installs or restarts a download that settles after disposal", async () => {
+  it("does not relaunch when the window goes away during the installation", async () => {
     const s = setup();
-    const pending = deferred<void>();
-    s.update.download.mockReturnValueOnce(pending.promise);
     await s.store.checkNow();
-    const applying = s.store.downloadAndInstall();
+    await vi.waitFor(() => expect(s.store.stage()).toBe("ready"));
+    const pending = deferred<void>();
+    s.native.installNow.mockReturnValueOnce(pending.promise);
+    const restarting = s.store.restart();
+    await vi.waitFor(() => expect(s.native.installNow).toHaveBeenCalledOnce());
     s.dispose();
     pending.resolve();
-    await applying;
-    expect(s.options.lockEditing).not.toHaveBeenCalled();
-    expect(s.update.install).not.toHaveBeenCalled();
-    expect(s.options.restart).not.toHaveBeenCalled();
-    expect(s.update.close).toHaveBeenCalledOnce();
-  });
-
-  it("does not restart when disposed during native installation", async () => {
-    const s = setup();
-    const pending = deferred<void>();
-    s.update.install.mockReturnValueOnce(pending.promise);
-    await s.store.checkNow();
-    const applying = s.store.downloadAndInstall();
-    await vi.waitFor(() => expect(s.update.install).toHaveBeenCalledOnce());
-    s.dispose();
-    pending.resolve();
-    await applying;
+    await restarting;
     expect(s.options.restart).not.toHaveBeenCalled();
     expect(s.unlock).toHaveBeenCalledOnce();
   });
+});
 
-  it("serializes duplicate install clicks and ignores checks during download", async () => {
+describe("installing on quit", () => {
+  it("installs the downloaded update when the app quits", async () => {
     const s = setup();
-    const pending = deferred<void>();
-    s.update.download.mockReturnValueOnce(pending.promise);
     await s.store.checkNow();
-    const applying = s.store.downloadAndInstall();
-    await s.store.downloadAndInstall();
-    await s.store.checkNow();
-    pending.resolve();
-    await applying;
-    expect(s.update.download).toHaveBeenCalledOnce();
-    expect(s.deps.check).toHaveBeenCalledOnce();
-    expect(s.update.install).toHaveBeenCalledOnce();
+    await vi.waitFor(() => expect(s.store.stage()).toBe("ready"));
+    await s.prepareExit();
+    expect(s.sequence).toEqual(["download", "installOnQuit"]);
+    expect(s.options.lockEditing).not.toHaveBeenCalled();
+    expect(s.options.restart).not.toHaveBeenCalled();
+    // Nothing installs twice, even if quitting is cancelled and repeated.
+    await s.prepareExit();
+    expect(s.native.installOnQuit).toHaveBeenCalledOnce();
     s.dispose();
   });
 
+  it("does nothing without a downloaded update", async () => {
+    const s = setup({ autoInstall: false });
+    await s.store.checkNow();
+    await s.prepareExit();
+    expect(s.native.installOnQuit).not.toHaveBeenCalled();
+    s.dispose();
+  });
+
+  it("never throws, so a failure cannot keep the app open", async () => {
+    const s = setup();
+    await s.store.checkNow();
+    await vi.waitFor(() => expect(s.store.stage()).toBe("ready"));
+    s.native.installOnQuit.mockRejectedValueOnce(new Error("needs a password"));
+    await expect(s.prepareExit()).resolves.toBeUndefined();
+    s.dispose();
+  });
+});
+
+describe("races", () => {
+  it("never keeps a download for a channel the user left while it ran", async () => {
+    const s = setup({ version: "1.0.2-nightly.202610051500", autoInstall: false });
+    s.setChannel("nightly");
+    await s.store.checkNow();
+    const pending = deferred<StagedUpdate>();
+    s.native.download.mockReturnValueOnce(pending.promise);
+    const downloading = s.store.download();
+    s.setChannel("stable");
+    pending.resolve({ version: "1.0.2-nightly.202610051500", currentVersion: "1.0.0" });
+    await downloading;
+    expect(s.native.discard).toHaveBeenCalledOnce();
+    expect(s.store.stage()).toBe("idle");
+    await s.prepareExit();
+    expect(s.native.installOnQuit).not.toHaveBeenCalled();
+    s.dispose();
+  });
+
+  it("installs on quit what a closed window finished downloading", async () => {
+    const s = setup({ autoInstall: false });
+    await vi.waitFor(() => expect(s.native.staged).toHaveBeenCalledOnce());
+    s.native.staged.mockResolvedValueOnce({ version: "1.0.1", currentVersion: "1.0.0" });
+    await s.prepareExit();
+    expect(s.native.installOnQuit).toHaveBeenCalledOnce();
+    s.dispose();
+  });
+
+  it("drops a nightly a closed window left behind once the app is on the stable channel", async () => {
+    const s = setup({ autoInstall: false });
+    await vi.waitFor(() => expect(s.native.staged).toHaveBeenCalledOnce());
+    s.native.staged.mockResolvedValueOnce({ version: "1.0.2-nightly.202610051500", currentVersion: "1.0.0" });
+    await s.prepareExit();
+    expect(s.native.discard).toHaveBeenCalledOnce();
+    expect(s.native.installOnQuit).not.toHaveBeenCalled();
+    s.dispose();
+  });
+});
+
+describe("nightly channel", () => {
+  it("checks the selected channel", async () => {
+    const s = setup();
+    s.setChannel("nightly");
+    await s.store.checkNow();
+    expect(s.native.check).toHaveBeenCalledWith("nightly");
+    s.dispose();
+  });
+
+  it("backs up after saving and before installing a nightly update", async () => {
+    const s = setup({ version: "1.0.2-nightly.202610051500" });
+    await s.store.checkNow();
+    await vi.waitFor(() => expect(s.store.stage()).toBe("ready"));
+    await s.store.restart();
+    expect(s.sequence).toEqual(["download", "lock", "flush", "backup", "install", "restart"]);
+    expect(s.options.backupDatabase).toHaveBeenCalledWith("before-1.0.2-nightly.202610051500");
+    s.dispose();
+  });
+
+  it("backs up before installing on quit, and does not install without the backup", async () => {
+    const s = setup({ version: "1.0.2", currentVersion: "1.0.2-nightly.202610051500" });
+    await s.store.checkNow();
+    await vi.waitFor(() => expect(s.store.stage()).toBe("ready"));
+    s.options.backupDatabase.mockImplementationOnce(async () => { s.sequence.push("backup"); throw new Error("disk full"); });
+    await s.prepareExit();
+    expect(s.native.installOnQuit).not.toHaveBeenCalled();
+    await s.prepareExit();
+    expect(s.sequence.slice(1)).toEqual(["backup", "backup", "installOnQuit"]);
+    s.dispose();
+  });
+
+  it("does not back up stable-to-stable updates", () => {
+    expect(updateNeedsBackup({ version: "1.0.1", currentVersion: "1.0.0" })).toBe(false);
+    expect(updateNeedsBackup({ version: "1.0.1-rc.1", currentVersion: "1.0.0" })).toBe(false);
+  });
+
+  it("never installs without a backup and retries without downloading again", async () => {
+    const s = setup({ version: "1.0.2-nightly.202610051500" });
+    await s.store.checkNow();
+    await vi.waitFor(() => expect(s.store.stage()).toBe("ready"));
+    s.options.backupDatabase.mockImplementationOnce(async () => { s.sequence.push("backup"); throw new Error("disk full"); });
+    await s.store.restart();
+    expect(s.sequence).toEqual(["download", "lock", "flush", "backup", "unlock"]);
+    expect(s.native.installNow).not.toHaveBeenCalled();
+    expect(s.deps.notifyBackupFailure).toHaveBeenCalledOnce();
+    await s.store.restart();
+    expect(s.native.download).toHaveBeenCalledOnce();
+    expect(s.sequence.slice(5)).toEqual(["lock", "flush", "backup", "install", "restart"]);
+    s.dispose();
+  });
+
+  it("drops an update downloaded for the channel the user left", async () => {
+    const s = setup({ version: "1.0.2-nightly.202610051500" });
+    s.setChannel("nightly");
+    await s.store.checkNow();
+    await vi.waitFor(() => expect(s.store.stage()).toBe("ready"));
+    s.setChannel("stable");
+    s.native.check.mockResolvedValueOnce(null);
+    await s.store.checkNow();
+    expect(s.native.discard).toHaveBeenCalledOnce();
+    expect(s.store.stage()).toBe("idle");
+    expect(s.store.manualCheck()).toEqual({ kind: "uptodate" });
+    await s.prepareExit();
+    expect(s.native.installOnQuit).not.toHaveBeenCalled();
+    s.dispose();
+  });
+
+  it("drops a result that arrives after the channel changed", async () => {
+    const s = setup();
+    const pending = deferred<FakeUpdate | null>();
+    s.native.check.mockReturnValueOnce(pending.promise);
+    const checking = s.store.checkNow();
+    s.setChannel("nightly");
+    pending.resolve(s.update);
+    await checking;
+    expect(s.store.available()).toBeNull();
+    expect(s.store.manualCheck()).toBeNull();
+    expect(s.update.close).toHaveBeenCalledOnce();
+    s.dispose();
+  });
+});
+
+describe("background polling", () => {
   it("cancels poll timers and closes a late check result after disposal", async () => {
     vi.useFakeTimers();
     const s = setup();
-    const pending = deferred<typeof s.update>();
-    s.deps.check.mockReturnValueOnce(pending.promise);
+    const pending = deferred<FakeUpdate | null>();
+    s.native.check.mockReturnValueOnce(pending.promise);
     s.store.startBackgroundPolling();
     await vi.advanceTimersByTimeAsync(30_000);
-    expect(s.deps.check).toHaveBeenCalledOnce();
+    expect(s.native.check).toHaveBeenCalledOnce();
     s.dispose();
     pending.resolve(s.update);
     await vi.advanceTimersByTimeAsync(2 * 60 * 60 * 1000);
-    expect(s.deps.check).toHaveBeenCalledOnce();
+    expect(s.native.check).toHaveBeenCalledOnce();
     expect(s.store.available()).toBeNull();
     expect(s.update.close).toHaveBeenCalledOnce();
     expect(vi.getTimerCount()).toBe(0);
@@ -189,8 +427,8 @@ describe("desktop updater safety", () => {
   it("ignores an in-flight background check after polling was disabled", async () => {
     vi.useFakeTimers();
     const s = setup();
-    const pending = deferred<typeof s.update>();
-    s.deps.check.mockReturnValueOnce(pending.promise);
+    const pending = deferred<FakeUpdate | null>();
+    s.native.check.mockReturnValueOnce(pending.promise);
     s.store.startBackgroundPolling();
     await vi.advanceTimersByTimeAsync(30_000);
     s.store.stopBackgroundPolling();
@@ -203,63 +441,88 @@ describe("desktop updater safety", () => {
   });
 });
 
-describe("nightly channel", () => {
-  it("checks the selected channel", async () => {
-    const s = setup();
+describe("channel switches", () => {
+  it("never downloads an offer found on the channel the user left, even when the next check fails", async () => {
+    const s = setup({ version: "1.0.2-nightly.202610051500", autoInstall: false });
     s.setChannel("nightly");
     await s.store.checkNow();
-    expect(s.deps.check).toHaveBeenCalledWith("nightly");
-    s.dispose();
-  });
-
-  it("backs up after saving and before installing a nightly update", async () => {
-    const s = setup({ version: "1.0.2-nightly.202610051500" });
+    s.setChannel("stable");
+    s.native.check.mockRejectedValueOnce(new Error("offline"));
     await s.store.checkNow();
-    await s.store.downloadAndInstall();
-    expect(s.sequence).toEqual(["download", "lock", "flush", "backup", "install", "restart"]);
-    expect(s.options.backupDatabase).toHaveBeenCalledWith("before-1.0.2-nightly.202610051500");
+    await s.store.download();
+    expect(s.native.download).not.toHaveBeenCalled();
+    expect(s.store.stage()).toBe("idle");
     s.dispose();
   });
 
-  it("also backs up when a nightly build is replaced by a stable release", async () => {
-    const s = setup({ version: "1.0.2", currentVersion: "1.0.2-nightly.202610051500" });
-    await s.store.checkNow();
-    await s.store.downloadAndInstall();
-    expect(s.sequence).toEqual(["download", "lock", "flush", "backup", "install", "restart"]);
+  it("does not restart into an update staged for another channel", async () => {
+    const s = setup({ staged: { version: "1.0.2-nightly.202610051500", currentVersion: "1.0.0" } });
+    await vi.waitFor(() => expect(s.store.stage()).toBe("ready"));
+    await s.store.restart();
+    expect(s.native.discard).toHaveBeenCalledOnce();
+    expect(s.native.installNow).not.toHaveBeenCalled();
+    expect(s.store.stage()).toBe("idle");
     s.dispose();
   });
+});
 
-  it("does not back up stable-to-stable updates", () => {
-    expect(updateNeedsBackup({ version: "1.0.1", currentVersion: "1.0.0" })).toBe(false);
-    expect(updateNeedsBackup({ version: "1.0.1-rc.1", currentVersion: "1.0.0" })).toBe(false);
-  });
-
-  it("never installs without a backup and retries without downloading again", async () => {
-    const s = setup({ version: "1.0.2-nightly.202610051500" });
-    s.options.backupDatabase.mockImplementationOnce(async () => { s.sequence.push("backup"); throw new Error("disk full"); });
-    await s.store.checkNow();
-    await s.store.downloadAndInstall();
-    expect(s.sequence).toEqual(["download", "lock", "flush", "backup", "unlock"]);
-    expect(s.update.install).not.toHaveBeenCalled();
-    expect(s.deps.notifyBackupFailure).toHaveBeenCalledOnce();
-    expect(s.store.stage()).toBe("error");
-    await s.store.downloadAndInstall();
-    expect(s.update.download).toHaveBeenCalledOnce();
-    expect(s.sequence.slice(5)).toEqual(["lock", "flush", "backup", "install", "restart"]);
-    s.dispose();
-  });
-
-  it("drops a result that arrives after the channel changed", async () => {
+describe("release hints", () => {
+  it("checks a little later when a newer release is announced", async () => {
+    vi.useFakeTimers();
     const s = setup();
-    const pending = deferred<typeof s.update>();
-    s.deps.check.mockReturnValueOnce(pending.promise);
-    const checking = s.store.checkNow();
+    s.store.releaseHint?.({ stable: "1.0.1", nightly: null });
+    await vi.advanceTimersByTimeAsync(149_000);
+    expect(s.native.check).not.toHaveBeenCalled();
+    await vi.advanceTimersByTimeAsync(1_000);
+    expect(s.native.check).toHaveBeenCalledWith("stable");
+    s.dispose();
+  });
+
+  it("ignores what the app already runs or holds, and nightlies on the stable channel", async () => {
+    vi.useFakeTimers();
+    const s = setup();
+    s.store.releaseHint?.({ stable: "1.0.0", nightly: "1.0.1-nightly.202610071200" });
+    await vi.advanceTimersByTimeAsync(10 * 60_000);
+    expect(s.native.check).not.toHaveBeenCalled();
     s.setChannel("nightly");
-    pending.resolve(s.update);
-    await checking;
-    expect(s.store.available()).toBeNull();
-    expect(s.store.manualCheck()).toBeNull();
-    expect(s.update.close).toHaveBeenCalledOnce();
+    s.store.releaseHint?.({ stable: "1.0.0", nightly: "1.0.1-nightly.202610071200" });
+    await vi.advanceTimersByTimeAsync(10 * 60_000);
+    expect(s.native.check).toHaveBeenCalledWith("nightly");
+    s.dispose();
+  });
+
+  it("checks almost at once while the sync waits for the update, and stops with the window", async () => {
+    vi.useFakeTimers();
+    const s = setup();
+    s.store.releaseHint?.({ stable: "1.0.1", nightly: null });
+    s.store.releaseHint?.({ stable: "1.0.1", nightly: null }, { urgent: true });
+    await vi.advanceTimersByTimeAsync(7_500);
+    expect(s.native.check).toHaveBeenCalledOnce();
+    s.store.releaseHint?.({ stable: "1.0.2", nightly: null });
+    await vi.advanceTimersByTimeAsync(0);
+    s.dispose();
+    await vi.advanceTimersByTimeAsync(10 * 60_000);
+    expect(s.native.check).toHaveBeenCalledOnce();
+    expect(vi.getTimerCount()).toBe(0);
+  });
+});
+
+
+describe("release hints while busy", () => {
+  it("keeps a hint that fires during a download and checks afterwards", async () => {
+    vi.useFakeTimers();
+    const s = setup();
+    const pending = deferred<StagedUpdate>();
+    s.native.download.mockReturnValueOnce(pending.promise);
+    await s.store.checkNow();
+    s.publish("1.0.2");
+    s.store.releaseHint?.({ stable: "1.0.2", nightly: null });
+    await vi.advanceTimersByTimeAsync(150_000);
+    expect(s.native.check).toHaveBeenCalledOnce();
+    pending.resolve({ version: "1.0.1", currentVersion: "1.0.0" });
+    await vi.advanceTimersByTimeAsync(30_000);
+    expect(s.native.check).toHaveBeenCalledTimes(2);
+    await vi.waitFor(() => expect(s.store.available()).toEqual({ version: "1.0.2" }));
     s.dispose();
   });
 });

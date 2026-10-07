@@ -128,7 +128,13 @@ Apps müssen mit zehntausenden Dokumenten flüssig bleiben. Dafür gilt:
 - Ins Kit nur, was heute produktneutral ist oder ein zweites Produkt wirklich
   braucht. Lexical, Ordner, Papierkorb, Snapshots, Suche und PDF bleiben in
   ScriptZ, bis ein zweites Produkt sie braucht.
-- Konten, Sync und Web-Versionen kommen später für alle Apps gleichzeitig.
-  Deshalb: Kit bleibt plattformneutral, UI und Fachlogik nutzen das
-  Storage-Interface ihres Moduls, neue Fach-IDs sind UUIDs, und
+- Konto und Sync liegen im Kit (`@agentz/kit/account`, Details in
+  [`docs/cloud-sync.md`](../../docs/cloud-sync.md)): die Shell startet sie,
+  wenn der Host eine `CloudConfig` übergibt; ein Modul beschreibt seine Daten
+  nur über `ModuleRuntime.sync` (`SyncAdapter`). Inhalte verlassen das Gerät
+  nur Ende-zu-Ende verschlüsselt, der Server sieht nie Klartext, Entitätsnamen
+  oder lokale IDs. Secrets gibt es in den Apps nicht; Sitzung und
+  Datenschlüssel liegen im Schlüsselbund (`PlatformAdapter.secrets`).
+- Web-Versionen kommen später für alle Apps gleichzeitig. Deshalb: Kit bleibt
+  plattformneutral, UI und Fachlogik nutzen das Storage-Interface ihres Moduls, neue Fach-IDs sind UUIDs, und
   app-übergreifende Funktionen laufen nie über direkte Modul-Importe.

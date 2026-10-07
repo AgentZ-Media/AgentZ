@@ -12,6 +12,7 @@
     "lint": "eslint .",
     "test:tooling": "node --test tooling/checks/*.test.mjs tooling/release/*.test.mjs tooling/new-app/*.test.mjs",
     "check:colors": "node tooling/checks/colors.mjs",
+    "check:sync-format": "node tooling/checks/sync-format.mjs",
     "build:frontends": "pnpm --filter './apps/*' --if-present build",
     "release:bump": "node tooling/release/bump.mjs",
     "dev:site": "pnpm --filter @agentz/site dev",

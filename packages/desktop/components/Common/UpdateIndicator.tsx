@@ -8,7 +8,8 @@ const MARK = "\u0000";
 
 /**
  * Update card at the bottom of the sidebar (`.upd`):
- * "v0.9.0 ist bereit · Neu starten". Hidden while nothing is pending.
+ * "v0.9.0 ist bereit · Neu starten". Hidden while nothing is pending. A
+ * downloaded update installs on quit; the card only offers restarting now.
  * Background polling is started by the desktop host, not here, so hiding the
  * sidebar doesn't stop the update check.
  */
@@ -27,9 +28,9 @@ export function UpdateIndicator(props: { store: UpdatesStore }) {
       await updatesStore.restart();
       return;
     }
-    if (s === "available" || s === "error") {
-      await updatesStore.downloadAndInstall();
-    }
+    if (s === "available") await updatesStore.download();
+    // Retries what failed: the download, or saving and installing.
+    if (s === "error") await updatesStore.restart();
   };
 
   const title = () => {

@@ -1,0 +1,148 @@
+/* =========================================================================
+   Home page: the suite Z in the hero (zoom-out intro) and the yellow dot that
+   travels down the page (scripts/home.ts, dot-field.ts, dot-journey.ts).
+   ========================================================================= */
+
+.home-wrap { width: min(1240px, 100% - 48px); margin: 0 auto; }
+.home-track ol, .home-promises ul { list-style: none; margin: 0; padding: 0; }
+/* ---------------- Hero ---------------- */
+.home-hero { min-height: 100svh; display: grid; align-items: center; padding: 120px 0 90px; cursor: crosshair; }
+.home-hero a, .home-hero button { cursor: pointer; }
+.home-hero-grid { display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(0, 0.8fr); gap: 48px; align-items: center; }
+.home-eyebrow { display: inline-flex; align-items: center; gap: 10px; padding: 6px 14px 6px 10px; border-radius: var(--r-pill); font-size: var(--fs-13); font-weight: 550; color: var(--side-fg); background: color-mix(in srgb, var(--side-hover) 80%, transparent); box-shadow: inset 0 0 0 1px var(--side-line); backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); }
+.home-pulse { width: 8px; height: 8px; border-radius: 50%; background: var(--accent); animation: pulse 2.4s var(--ease-out) infinite; }
+.home-hero h1 { margin: 28px 0 26px; font-size: clamp(50px, 7.8vw, 122px); font-weight: 800; line-height: 0.93; letter-spacing: -0.06em; color: var(--fg); text-wrap: balance; }
+.home-punkt { color: var(--accent); text-shadow: 0 0 60px var(--accent-glow); }
+.home-intro { max-width: 30em; font-size: var(--fs-20); color: var(--muted); text-wrap: pretty; }
+.home-actions { display: flex; flex-wrap: wrap; gap: var(--sp-3); margin-top: 36px; }
+.home-facts { margin-top: 18px; font-size: var(--fs-13); color: var(--faint); }
+.js .home-in { opacity: 0; translate: 0 20px; }
+.js.intro-done .home-in { animation: rise 1000ms calc(var(--n) * 90ms + 100ms) var(--ease-out) forwards; }
+.js:has(.home-hero):not(.intro-done) .site-header { opacity: 0; translate: -50% -12px; }
+.js:has(.home-hero) .site-header { transition: opacity 800ms var(--ease-out), translate 900ms var(--ease-out); }
+.js:has(.home-hero):not(.intro-done) :is(.home-scroll, .home-rail) { opacity: 0; }
+.home-rail { transition: opacity 800ms 600ms var(--ease-out); }
+.home-scroll { transition: opacity 800ms 900ms var(--ease-out); }
+.home-logo { position: relative; height: min(64vh, 580px); }
+.home-logo-static { width: 100%; height: 100%; }
+.home-logo-static circle { fill: var(--fg); }
+.home-logo-static circle.sub { fill: var(--muted); opacity: 0.62; }
+.has-field .home-logo-static { visibility: hidden; }
+.home-scroll { position: absolute; left: 50%; bottom: 26px; translate: -50% 0; display: grid; justify-items: center; gap: 10px; font-size: var(--fs-12); font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; text-decoration: none; color: var(--faint); }
+.home-scroll i { position: relative; width: 2px; height: 42px; border-radius: 1px; background: var(--line); overflow: hidden; }
+.home-scroll i::after { content: ""; position: absolute; left: -1px; top: 0; width: 4px; height: 4px; border-radius: 50%; background: var(--accent); animation: home-fall 1.8s var(--ease) infinite; }
+@keyframes home-fall { from { translate: 0 -6px; opacity: 0; } 30% { opacity: 1; } to { translate: 0 44px; opacity: 0; } }
+
+/* ---------------- Suite ---------------- */
+.home-suite { padding: 120px 0; }
+.home-apps { display: grid; grid-template-columns: 1.4fr 1fr 1fr; gap: 14px; margin-top: 56px; }
+.home-app { position: relative; display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: start; gap: 22px; padding: 28px; border-radius: 24px; background: color-mix(in srgb, var(--surface) 88%, transparent); box-shadow: inset 0 0 0 1px var(--hair), var(--shadow-2); }
+.home-app.is-next { background: color-mix(in srgb, var(--side-bg) 60%, transparent); box-shadow: inset 0 0 0 1.5px var(--side-line); }
+.home-mark { width: 54px; height: auto; overflow: visible; }
+.home-mark circle { fill: var(--fg); }
+.home-mark circle.sub { fill: var(--muted); opacity: 0.62; }
+.home-app:not(.is-next):hover .home-mark circle { animation: home-mark 1.2s calc(var(--i) * 30ms) var(--ease) both; }
+@keyframes home-mark { 40% { fill: var(--accent); translate: 0 -2px; } }
+.is-next .home-mark circle { fill: var(--side-line); }
+.is-next .home-mark circle.on { fill: var(--faint); animation: home-next 4.4s calc(var(--i) * 0.3s) infinite; }
+@keyframes home-next { 0%, 100% { fill: var(--faint); } 30% { fill: var(--accent); } 55% { fill: var(--faint); } }
+.home-app-title { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
+.home-app-title b { font-size: var(--fs-24); font-weight: 750; letter-spacing: -0.03em; }
+.home-app p:not(.home-app-title) { color: var(--muted); }
+.home-app-icon { position: absolute; top: 22px; right: 22px; width: 48px; height: 48px; }
+.home-app:not(.is-next) .home-app-title { padding-right: 56px; }
+.home-more { display: inline-flex; align-items: center; gap: 4px; margin-top: 14px; font-weight: 650; text-decoration: none; color: var(--accent); }
+.home-more:hover { text-decoration: underline; }
+.home-more .i { width: 14px; height: 14px; transition: translate var(--t-med); }
+.home-more:hover .i { translate: 3px 0; }
+
+/* ---------------- Download ---------------- */
+
+
+/* ---------------- The travelling dot ---------------- */
+.home-dot { position: fixed; z-index: 30; top: 0; left: 0; display: none; width: 400px; height: 400px; pointer-events: none; transform-origin: 50% 50%; will-change: transform; }
+.has-dot .home-dot { display: block; }
+.home-dot i { position: absolute; inset: 0; border-radius: 50%; background: radial-gradient(circle at 36% 30%, var(--accent-hi), var(--accent) 42%, var(--accent-lo)); box-shadow: 0 0 90px 8px var(--accent-glow); transition: scale 800ms 450ms var(--ease-pop); }
+html:not(.intro-done) .home-dot i { scale: 0; }
+.home-period { position: relative; display: inline-block; width: 0.19em; height: 0.19em; margin-left: 0.05em; border-radius: 50%; background: var(--accent); vertical-align: baseline; }
+.sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+.has-dot .home-period, .has-dot .home-spark-dot { background: transparent; }
+.home-slot { flex: none; width: 18px; height: 18px; margin-top: 7px; border-radius: 50%; background: var(--accent); transition: box-shadow var(--t-slow), background var(--t-slow); }
+.has-dot .home-slot { background: var(--side-bg); box-shadow: inset 0 0 0 2px var(--line-strong); }
+.has-dot .is-past > .home-slot { box-shadow: inset 0 0 0 2px var(--accent), 0 0 18px -2px var(--accent-glow); }
+
+/* Rail: where the dot is on the page */
+.home-rail { position: fixed; z-index: 35; right: 24px; top: 50%; translate: 0 -50%; display: none; flex-direction: column; gap: 24px; }
+.has-dot .home-rail { display: flex; }
+.home-rail::before { content: ""; position: absolute; left: 4.5px; top: 5px; bottom: 5px; width: 1px; background: var(--side-line); }
+.home-rail button { position: relative; width: 10px; height: 10px; padding: 0; border: 0; border-radius: 50%; background: var(--line-strong); cursor: pointer; transition: background var(--t-med); }
+.home-rail button:hover { background: var(--fg); }
+.home-rail button span { position: absolute; right: 22px; top: 50%; translate: 6px -50%; white-space: nowrap; font: 600 var(--fs-12)/1 var(--ui); color: var(--muted); opacity: 0; transition: opacity var(--t-med), translate var(--t-med); pointer-events: none; }
+.home-rail button:hover span, .home-rail button[aria-current] span { opacity: 1; translate: 0 -50%; }
+.home-rail button[aria-current] span { color: var(--fg); }
+.home-rail-mark { position: absolute; z-index: 1; left: -3px; top: calc(var(--pos, 0) * (100% - 10px) - 3px); width: 16px; height: 16px; border-radius: 50%; background: var(--accent); box-shadow: 0 0 16px var(--accent-glow); pointer-events: none; }
+
+/* ---------------- Spark ---------------- */
+.home-spark { min-height: 150vh; display: grid; align-content: center; justify-items: center; gap: 64px; padding: 140px 24px; }
+.home-spark-stage { position: relative; display: grid; place-items: center; width: min(46vmin, 440px); aspect-ratio: 1; }
+.home-spark-dot { width: 100%; height: 100%; border-radius: 50%; background: var(--accent); }
+.home-ring { position: absolute; inset: 0; border-radius: 50%; box-shadow: inset 0 0 0 1.5px var(--accent); opacity: 0; filter: opacity(var(--near, 1)); animation: home-ring 3.6s calc(var(--k) * 1.2s) var(--ease-out) infinite; }
+@keyframes home-ring { 0% { scale: 1; opacity: 0.7; } 100% { scale: 2; opacity: 0; } }
+
+/* ---------------- Path ---------------- */
+.home-path { padding: 120px 0 140px; }
+.page-head-left { justify-items: start; margin: 0; text-align: left; }
+.home-track { position: relative; margin-top: 90px; }
+.home-track-line { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; pointer-events: none; }
+.home-track-line path { fill: none; stroke-linecap: round; stroke-linejoin: round; }
+.home-track-line [data-path-line] { stroke: var(--line-strong); stroke-width: 3; stroke-dasharray: 0 11; }
+.home-track-line [data-path-fill] { stroke: var(--accent); stroke-width: 2; stroke-dasharray: 0 99999; filter: drop-shadow(0 0 6px var(--accent-glow)); }
+.home-track ol { position: relative; display: grid; gap: 64px; }
+.home-stage { display: flex; align-items: flex-start; gap: 22px; max-width: 440px; margin-left: calc(var(--i) * 15%); opacity: calc(0.4 + var(--near, 1) * 0.6); }
+.home-stage-name { display: flex; align-items: baseline; gap: 12px; font-size: clamp(26px, 3vw, 38px); font-weight: 800; letter-spacing: -0.04em; color: var(--fg); }
+.home-stage-name span { font-size: var(--fs-13); font-weight: 650; letter-spacing: 0.04em; color: var(--faint); }
+.home-stage-text { margin-top: 4px; font-size: var(--fs-18); color: var(--muted); }
+.home-stage-app { display: inline-flex; align-items: center; gap: 8px; margin-top: 12px; padding: 4px 10px 4px 8px; border-radius: var(--r-pill); font-size: var(--fs-12); font-weight: 650; color: var(--accent); background: var(--accent-soft); }
+.home-stage-app i { width: 6px; height: 6px; border-radius: 50%; background: var(--accent); }
+
+/* ---------------- Suite marks react to the dot ---------------- */
+.home-app.is-here .home-mark circle { animation: home-mark 1.2s calc(var(--i) * 30ms) var(--ease) both; }
+
+/* ---------------- Promises ---------------- */
+.home-promises { padding: 140px 0; }
+.home-promises-grid { display: grid; grid-template-columns: minmax(0, 0.85fr) minmax(0, 1.15fr); gap: 64px; align-items: start; }
+.home-promises-grid > .page-head { position: sticky; top: 140px; }
+.home-promises ul { display: grid; gap: 64px; }
+.home-promises li { display: flex; gap: 22px; opacity: calc(0.35 + var(--near, 1) * 0.65); }
+.home-promises h3 { font-size: clamp(24px, 2.6vw, 32px); font-weight: 800; letter-spacing: -0.035em; line-height: 1.15; color: var(--fg); }
+.home-promises li p { margin-top: 8px; max-width: 30em; font-size: var(--fs-18); color: var(--muted); }
+
+/* ---------------- Landing ---------------- */
+.home-landing { padding: 140px 0 0; }
+.home-landing > .page-head { margin-bottom: 64px; }
+.page-head .home-landing-title { font-size: clamp(42px, 12.5vw, 168px); letter-spacing: -0.06em; }
+.home-landing .is-here .home-period::after { content: ""; position: absolute; inset: 0; border-radius: 50%; box-shadow: 0 0 0 2px var(--accent); animation: home-land 1.6s var(--ease-out) infinite; }
+@keyframes home-land { from { scale: 1; opacity: 0.9; } to { scale: 4; opacity: 0; } }
+
+/* ---------------- Responsive ---------------- */
+@media (max-width: 980px) {
+  .home-hero-grid { grid-template-columns: minmax(0, 1fr); gap: 8px; }
+  .home-logo { order: -1; height: 30vh; }
+  .home-apps { grid-template-columns: minmax(0, 1fr); }
+  .home-promises-grid { grid-template-columns: minmax(0, 1fr); gap: 48px; }
+  .home-promises-grid > .page-head { position: static; }
+  .home-stage { margin-left: calc(var(--i) * 7%); }
+}
+@media (max-width: 760px) {
+  .home-hero { padding-top: 96px; }
+  .home-intro, .lead { font-size: var(--fs-18); }
+  .home-scroll, .has-dot .home-rail { display: none; }
+  .home-app { grid-template-columns: minmax(0, 1fr); }
+  .home-spark { min-height: 120vh; }
+  .home-stage { margin-left: calc(var(--i) * 5%); }
+  .home-track ol, .home-promises ul { gap: 48px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .home-in { opacity: 1 !important; translate: none !important; }
+  .home-ring { display: none; }
+}

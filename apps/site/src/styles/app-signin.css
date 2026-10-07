@@ -1,0 +1,47 @@
+/* =========================================================================
+   App sign-in (/konto/app/, /en/account/app/). Full screen, no site header
+   or footer; builds on the account page styles (account.css).
+   ========================================================================= */
+
+body.is-bare { min-height: 100vh; min-height: 100dvh; background: var(--bg); }
+.app-signin { display: grid; grid-template-rows: auto 1fr; min-height: 100vh; min-height: 100dvh; padding: 0; }
+.as-top { display: flex; align-items: center; justify-content: space-between; padding: 22px clamp(20px, 4vw, 40px); }
+.as-brand { display: inline-flex; align-items: center; gap: 10px; font-weight: 750; font-size: var(--fs-16); letter-spacing: -0.02em; color: var(--fg); }
+.as-brand span { color: var(--muted); font-weight: 600; }
+.as-lang { padding: 6px 10px; border-radius: var(--r-pill); color: var(--muted); font-size: var(--fs-13); font-weight: 650; text-decoration: none; }
+.as-lang:hover { background: var(--fill); color: var(--fg); }
+.as-wrap { display: grid; align-content: center; width: min(1080px, 100% - 40px); margin: 0 auto; padding: 8px 0 48px; }
+.app-signin .account-state { min-height: 40vh; }
+
+.as-app-icon { width: 20px; height: 20px; border-radius: 6px; }
+.app-signin .eyebrow { padding-left: 6px; }
+.as-points { display: grid; gap: 10px; margin-top: 4px; }
+.as-points li { display: flex; gap: 10px; align-items: flex-start; color: var(--side-fg); font-size: var(--fs-15); line-height: var(--lh-snug); }
+.as-points .i { flex: none; width: 18px; height: 18px; margin-top: 1px; color: var(--accent); stroke-width: 2.4; }
+
+.as-card {
+  display: grid; justify-items: center; gap: 14px; width: min(460px, 100%); margin: 0 auto;
+  padding: clamp(28px, 5vw, 44px); border-radius: 28px; background: var(--surface); box-shadow: var(--shadow-3); text-align: center;
+}
+.as-card[hidden] { display: none; }
+.as-card h1 { font-size: clamp(26px, 3.4vw, 34px); font-weight: 800; letter-spacing: -0.04em; line-height: 1.08; overflow-wrap: anywhere; text-wrap: balance; }
+.as-card h1:focus { outline: none; }
+.as-card .acct-avatar { width: 64px; height: 64px; border-radius: 20px; font-size: 24px; }
+.as-email { margin-top: -8px; color: var(--muted); font-size: var(--fs-15); }
+.as-text { color: var(--muted); font-size: var(--fs-15); line-height: var(--lh-snug); text-wrap: pretty; }
+.as-card .btn.wide { margin-top: 6px; gap: 10px; }
+.as-card .form-error { justify-self: stretch; text-align: left; }
+.as-other { font-size: var(--fs-14); font-weight: 600; }
+.as-done-icon { width: 72px; height: 72px; border-radius: 18px; box-shadow: var(--shadow-3); }
+.as-fallback { justify-self: stretch; margin-top: 10px; padding-top: 16px; border-top: 1px solid var(--line-soft); text-align: left; }
+.as-fallback summary { cursor: pointer; color: var(--muted); font-size: var(--fs-14); font-weight: 600; }
+.as-fallback p { margin: 10px 0; color: var(--muted); font-size: var(--fs-14); line-height: var(--lh-snug); }
+.as-code { display: flex; gap: 8px; align-items: center; }
+.as-code code {
+  flex: 1; min-width: 0; padding: 10px 12px; border-radius: var(--r-3); background: var(--surface-2);
+  font: 500 var(--fs-13)/1.3 var(--type); overflow-wrap: anywhere; user-select: all;
+}
+
+@media (max-width: 760px) {
+  .as-wrap { padding-bottom: 24px; }
+}

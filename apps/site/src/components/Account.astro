@@ -1,6 +1,7 @@
 ---
 import type { IconName } from "@agentz/design/icons";
 import Base from "../layouts/Base.astro";
+import AuthForms from "./AuthForms.astro";
 import Icon from "./Icon.astro";
 import { accountPaths, catalogs, type Language } from "../i18n";
 import "../styles/account.css";
@@ -12,9 +13,10 @@ const t = catalogs[lang].account;
 const authUrl = import.meta.env.PUBLIC_CONVEX_SITE_URL ?? "";
 // Strings the script needs at runtime; "<" is escaped so the JSON cannot end the tag.
 const runtime = JSON.stringify(t.runtime).replace(/</g, "\\u003c");
-const privacy = "/datenschutz/";
 ---
 <Base lang={lang} title={t.title} description={t.description} paths={accountPaths} noindex>
+  <!-- Opens the connection to the auth server while the page renders. -->
+  {authUrl && <link rel="preconnect" href={authUrl} crossorigin="anonymous" />}
   <section class="account" data-account data-auth-url={authUrl} data-lang={lang}>
     <script type="application/json" data-account-text set:html={runtime} />
     <div class="wrap">
@@ -35,60 +37,7 @@ const privacy = "/datenschutz/";
           <p class="auth-intro-text">{t.introText}</p>
         </aside>
 
-        <div class="auth-card">
-          <p class="auth-notice" data-notice role="status" hidden></p>
-          <div class="seg auth-tabs" role="tablist" aria-label={t.title}>
-            <button type="button" role="tab" id="tab-signin" aria-controls="form-signin" aria-selected="true" data-tab="signIn">{t.tabs.signIn}</button>
-            <button type="button" role="tab" id="tab-signup" aria-controls="form-signup" aria-selected="false" tabindex="-1" data-tab="signUp">{t.tabs.signUp}</button>
-          </div>
-
-          <form class="auth-form" id="form-signin" role="tabpanel" aria-labelledby="tab-signin" data-form="signIn">
-            <h2>{t.signInTitle}</h2>
-            <label class="fld"><span>{t.email}</span><input class="field" type="email" name="email" autocomplete="email" placeholder={t.emailPlaceholder} required /></label>
-            <label class="fld"><span>{t.password}</span>
-              <span class="field-box pw"><input type="password" name="password" autocomplete="current-password" required /><button class="pw-toggle" type="button" data-toggle-password>{t.runtime.show}</button></span>
-            </label>
-            <p class="form-error" data-error role="alert" hidden></p>
-            <button class="btn accent btn-lg wide" type="submit">{t.signIn}</button>
-            <p class="auth-foot"><button type="button" class="link-btn" data-mode="forgot">{t.forgotLink}</button></p>
-            <p class="auth-switch">{t.noAccount} <button type="button" class="link-btn" data-tab="signUp">{t.tabs.signUp}</button></p>
-          </form>
-
-          <form class="auth-form" id="form-signup" role="tabpanel" aria-labelledby="tab-signup" data-form="signUp" hidden>
-            <h2>{t.signUpTitle}</h2>
-            <label class="fld"><span>{t.name}</span><input class="field" type="text" name="name" autocomplete="name" placeholder={t.namePlaceholder} maxlength="80" required /></label>
-            <label class="fld"><span>{t.email}</span><input class="field" type="email" name="email" autocomplete="email" placeholder={t.emailPlaceholder} required /></label>
-            <label class="fld"><span>{t.password}</span>
-              <span class="field-box pw"><input type="password" name="password" autocomplete="new-password" minlength="8" maxlength="128" aria-describedby="signup-pw-hint" required /><button class="pw-toggle" type="button" data-toggle-password>{t.runtime.show}</button></span>
-              <small id="signup-pw-hint">{t.passwordHint}</small>
-            </label>
-            <p class="form-error" data-error role="alert" hidden></p>
-            <button class="btn accent btn-lg wide" type="submit">{t.signUp}</button>
-            <p class="auth-foot">{t.privacyBefore} <a href={privacy}>{t.privacyLink}</a>{t.privacyAfter}</p>
-            <p class="auth-switch">{t.haveAccount} <button type="button" class="link-btn" data-tab="signIn">{t.tabs.signIn}</button></p>
-          </form>
-
-          <form class="auth-form" data-form="forgot" hidden>
-            <h2>{t.forgotTitle}</h2>
-            <p class="auth-lead">{t.forgotText}</p>
-            <label class="fld"><span>{t.email}</span><input class="field" type="email" name="email" autocomplete="email" placeholder={t.emailPlaceholder} required /></label>
-            <p class="form-error" data-error role="alert" hidden></p>
-            <button class="btn accent btn-lg wide" type="submit">{t.forgotSubmit}</button>
-            <p class="auth-switch"><button type="button" class="link-btn" data-tab="signIn">{t.backToSignIn}</button></p>
-          </form>
-
-          <form class="auth-form" data-form="reset" hidden>
-            <h2>{t.resetTitle}</h2>
-            <p class="auth-lead">{t.resetText}</p>
-            <label class="fld"><span>{t.newPassword}</span>
-              <span class="field-box pw"><input type="password" name="password" autocomplete="new-password" minlength="8" maxlength="128" aria-describedby="reset-pw-hint" required /><button class="pw-toggle" type="button" data-toggle-password>{t.runtime.show}</button></span>
-              <small id="reset-pw-hint">{t.passwordHint}</small>
-            </label>
-            <p class="form-error" data-error role="alert" hidden></p>
-            <button class="btn accent btn-lg wide" type="submit">{t.resetSubmit}</button>
-            <p class="auth-switch"><button type="button" class="link-btn" data-tab="signIn">{t.backToSignIn}</button></p>
-          </form>
-        </div>
+        <AuthForms lang={lang} />
       </div>
 
       <!-- Signed in: the account -->
@@ -142,7 +91,7 @@ const privacy = "/datenschutz/";
                   <li>
                     <span class="soon-icon"><Icon name={item.icon as IconName} /></span>
                     <span class="soon-copy"><b>{item.title}</b><span>{item.text}</span></span>
-                    <span class:list={["soon-badge", item.state === "planned" && "is-planned"]}>{item.state === "planned" ? t.soonPlanned : t.soonBadge}</span>
+                    <span class:list={["soon-badge", item.state === "planned" && "is-planned", item.state === "live" && "is-live"]}>{item.state === "planned" ? t.soonPlanned : item.state === "live" ? t.soonLive : t.soonBadge}</span>
                   </li>
                 ))}
               </ul>
@@ -166,6 +115,23 @@ const privacy = "/datenschutz/";
         </div>
       </div>
     </div>
+    <script is:inline>
+      // Runs before the first paint: without a stored session token (see
+      // storedSession in scripts/authForms.ts) the sign-in form shows at once.
+      // Email links and #signup wait for scripts/account.ts, which takes over.
+      // Until then the forms must not submit natively (password in the URL).
+      (() => {
+        const root = document.currentScript.closest("[data-account]");
+        root.addEventListener("submit", (event) => { if (!("ready" in root.dataset)) event.preventDefault(); }, true);
+        if (!root.dataset.authUrl || location.search.includes("flow=") || location.hash) return;
+        try {
+          const cookies = JSON.parse(localStorage.getItem("better-auth_cookie") || "{}");
+          if (Object.keys(cookies).some((name) => name.includes("session_token") && cookies[name] && cookies[name].value)) return;
+        } catch { return; }
+        root.querySelector('[data-view="loading"]').hidden = true;
+        root.querySelector('[data-view="auth"]').hidden = false;
+      })();
+    </script>
   </section>
   <script>import "../scripts/account";</script>
 </Base>

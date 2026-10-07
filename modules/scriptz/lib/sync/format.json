@@ -1,0 +1,16 @@
+{
+  "reads": 1,
+  "writes": 1,
+  "entities": {
+    "folders": ["id", "name", "created_at", "updated_at", "length_min_sec", "length_max_sec"],
+    "scripts": ["id", "title", "highlighting_enabled", "content_json", "characters_meta", "created_at", "updated_at", "archived_at", "page_count", "folder_id", "last_word_count", "dialog_word_count", "direction_block_count", "status", "status_changed_at"],
+    "agent_chats": ["id", "script_id", "provider", "items_json", "created_at", "updated_at", "kind", "title", "folder_id"],
+    "ideas": ["id", "title", "notes", "created_at", "used_at", "script_id", "folder_id", "source_chat_id"],
+    "snapshots": ["id", "script_id", "content_json", "trigger", "created_at"],
+    "agent_memory": ["id", "kind", "folder_id", "subject", "content", "source", "source_script_id", "created_at", "updated_at"],
+    "agent_learned": ["script_id", "content_hash", "learned_at", "learned_text"],
+    "character_colors": ["name", "default_color", "override_color", "updated_at"],
+    "daily_words": ["date", "words_added"]
+  },
+  "settings": ["script_stages", "length_min_default_sec", "length_max_default_sec", "dialog_wpm", "highlighting_default", "export_title_page_default", "focus_mode_default", "focus_typewriter", "quick_mode_auto_enable", "show_writing_stats", "open_scripts_in_panel", "close_finished_scripts", "prune_unused_characters", "agent.name", "agent.look", "agent.traits", "agent.instructions", "agent.user_name", "agent.learn_scripts", "agent.learn_chat", "agent.learn_stage"]
+}

@@ -13,8 +13,9 @@ shares one design system, application kit, desktop host and release pipeline.
 ScriptZ formats scripts while you type (action, character, dialog,
 parenthetical), with two-speaker Quick Mode, character colors, runtime
 estimates against a target range, a speaker timeline, an ideas inbox,
-snapshots and PDF export. Everything stays in a local SQLite database; no
-account, no cloud, no telemetry.
+snapshots and PDF export. Everything stays in a local SQLite database, with
+no telemetry. An optional free account syncs between devices, end-to-end
+encrypted: content is encrypted on the device before it leaves it.
 
 The apps are not notarized or code-signed. On first launch, macOS needs
 `xattr -cr /Applications/ScriptZ.app` and Windows SmartScreen needs
