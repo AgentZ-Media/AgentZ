@@ -92,9 +92,12 @@ jobs:
         with:
           persist-credentials: false
       - name: Install Tauri system dependencies
+        timeout-minutes: 10
+        # Short network timeouts: an unreachable Ubuntu server only skips its
+        # index (a warning) instead of hanging the job until it times out.
         run: |
-          sudo apt-get update
-          sudo apt-get install -y --no-install-recommends \
+          sudo apt-get -o Acquire::http::Timeout=15 -o Acquire::Retries=1 update
+          sudo apt-get -o Acquire::http::Timeout=15 -o Acquire::Retries=3 install -y --no-install-recommends \
             build-essential curl wget file libwebkit2gtk-4.1-dev \
             libxdo-dev libssl-dev libayatana-appindicator3-dev librsvg2-dev
       - uses: dtolnay/rust-toolchain@stable
