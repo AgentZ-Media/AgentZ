@@ -8,6 +8,7 @@ export type SyncTone = "ok" | "busy" | "warn" | "off";
 export function syncStatus(): { text: string; tone: SyncTone } {
   if (!account.signedIn()) return { text: t("account.signInHint"), tone: "off" };
   if (!account.syncAvailable()) return { text: t("account.status.localOnly"), tone: "off" };
+  if (account.syncBlock()) return { text: t("account.status.updateRequired"), tone: "warn" };
   switch (account.keyPhase()) {
     case "none":
     case "checking": return { text: t("account.status.checking"), tone: "busy" };

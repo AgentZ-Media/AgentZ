@@ -1,5 +1,6 @@
 import { Show } from "solid-js";
 import { t } from "../i18n";
+import { shellUi } from "../stores/ui";
 import { Icon, Row, SectionHead } from "../ui";
 import { account } from "./account";
 import { Avatar } from "./Avatar";
@@ -38,7 +39,12 @@ export function AccountSettings(props: { appName: string; onClose(): void }) {
           <button type="button" class="btn sm" onClick={() => void account.signOut()}>{t("account.menu.signOut")}</button>
         </div>
         <Row label={t("prefs.account.sync")} help={<span class={`acc-status is-${status().tone}`}>{status().text}</span>}>
-          <Show when={ready()}>
+          <Show when={account.syncBlock()}>
+            <button type="button" class="btn primary sm" onClick={() => { shellUi.closeSettings(); account.openUpdateDialog(); }}>
+              {t("account.update.details")}
+            </button>
+          </Show>
+          <Show when={ready() && !account.syncBlock()}>
             <button type="button" class="btn sm" onClick={() => account.syncNow()} disabled={account.syncPhase() === "syncing"}>
               {t("prefs.account.syncNow")}
             </button>

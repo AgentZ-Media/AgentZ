@@ -90,7 +90,7 @@ describe("ExportDialog", () => {
     document.querySelector<HTMLButtonElement>(".exp-foot .btn.primary")!.click();
     await tick();
     expect(exportPdf).toHaveBeenCalledWith({
-      scriptId: "s1", includeHighlighting: false, includeTitlePage: true, titleDetails: expect.any(String),
+      scriptId: "s1", includeHighlighting: true, includeTitlePage: true, titleDetails: expect.any(String),
     });
   });
 
@@ -108,7 +108,7 @@ describe("ExportDialog", () => {
     document.querySelector<HTMLButtonElement>(".exp-foot .btn.primary")!.click();
     await tick();
     expect(exportPdf).toHaveBeenCalledWith({
-      scriptId: "s2", includeHighlighting: false, includeTitlePage: false, titleDetails: null,
+      scriptId: "s2", includeHighlighting: true, includeTitlePage: false, titleDetails: null,
     });
     fireEvent.click(screen.getByRole("switch", { name: t("exportDialog.opt.titlePage") }));
     await tick();
@@ -192,19 +192,19 @@ describe("ExportDialog", () => {
   });
 
   it("starts a selection export from the defaults in the settings", async () => {
-    settings.set("highlighting_default", "1");
+    settings.set("highlighting_default", "0");
     settings.set("export_title_page_default", "0");
     await settingsStore.load();
     render(() => <ExportDialog />);
     uiStore.openExportMany(["s1", "s2"]);
     await tick();
     expect(screen.queryByRole("radiogroup", { name: t("exportDialog.fmt.aria") })).toBeNull();
-    expect(screen.getByRole("switch", { name: t("exportDialog.opt.colors") }).getAttribute("aria-checked")).toBe("true");
+    expect(screen.getByRole("switch", { name: t("exportDialog.opt.colors") }).getAttribute("aria-checked")).toBe("false");
     expect(screen.getByRole("switch", { name: t("exportDialog.opt.titlePage") }).getAttribute("aria-checked")).toBe("false");
     document.querySelector<HTMLButtonElement>(".exp-foot .btn.primary")!.click();
     await tick();
     expect(exportScriptsToPdf).toHaveBeenCalledWith(["s1", "s2"], {
-      includeHighlighting: true, includeTitlePage: false, wpm: settingsStore.dialogWpm(),
+      includeHighlighting: false, includeTitlePage: false, wpm: settingsStore.dialogWpm(),
     });
   });
 
@@ -219,7 +219,7 @@ describe("ExportDialog", () => {
     document.querySelector<HTMLButtonElement>(".exp-foot .btn.primary")!.click();
     await tick();
     expect(exportScriptsToPdf).toHaveBeenCalledWith(["s1", "s2"], {
-      includeHighlighting: true, includeTitlePage: false, wpm: settingsStore.dialogWpm(),
+      includeHighlighting: false, includeTitlePage: false, wpm: settingsStore.dialogWpm(),
     });
     expect(exportPdf).not.toHaveBeenCalled();
   });

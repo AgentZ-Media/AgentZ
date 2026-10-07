@@ -96,7 +96,9 @@ Spalte der Skriptliste gehört in eine neue Migration mit erweitertem
 Covering-Index (`lib/__tests__/queryPlans.test.ts` schlägt sonst fehl).
 `014_cloud_sync` ist rein additiv: `sync_records` (Buchführung der
 Synchronisierung, keine Inhaltstabelle) und `daily_word_log_remote`
-(Schreibstatistik anderer Geräte).
+(Schreibstatistik anderer Geräte). `015_sync_newer_versions` ergänzt
+`sync_records.extra` und `sync_parked`: Felder und Datensätze neuerer
+App-Versionen bleiben erhalten, bis ein Update sie kennt.
 `016_agent_threads` ist rein additiv: `agent_threads` hält die Transkripte
 des OpenRouter-Harness (Gerätezustand wie `agent_chats.thread_id`, keine
 Inhaltstabelle, nicht im Änderungsfeed, nie synchronisiert oder exportiert).
@@ -143,6 +145,14 @@ Farben; neue Namen bekommen die nächste freie Palettenfarbe. Die app-weite
 Farb-Registry `character_colors` wächst mit und lässt sich in den
 Einstellungen aufräumen (manuell oder automatisch nach 4 s Ruhe,
 `characterAutoPrune.ts`); das Löschen prüft die Nutzung erneut.
+
+## Papierkorb
+
+„Löschen“ setzt `scripts.archived_at`. Nach 30 Tagen
+(`TRASH_RETENTION_DAYS`) löscht `lib/trashAutoPurge.ts` den Eintrag
+endgültig (kurz nach dem Start, dann stündlich, `api.purgeExpiredTrash`);
+jede Zeile im Papierkorb zeigt die verbleibenden Tage. Mit Konto folgt die
+Cloud über den Änderungsfeed.
 
 ## Färbung, Hook und Bewegung
 

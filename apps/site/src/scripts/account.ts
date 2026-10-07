@@ -1,11 +1,11 @@
 // The account page: sign in, sign up and the signed-in account view.
 // Forms and the auth client are shared with the app sign-in page (authForms.ts).
 import {
-  createAuth, errorText, field, initials, setError, setNotice, setupAuthForms, submit, value, type Text,
+  errorText, field, initials, lazyAuth, setError, setNotice, setupAuthForms, storedSession, submit, value,
+  type SessionUser as User, type Text,
 } from "./authForms";
 
 type View = "loading" | "unavailable" | "auth" | "account";
-interface User { name: string; email: string; emailVerified: boolean; createdAt: Date | string }
 
 const root = document.querySelector<HTMLElement>("[data-account]");
 if (root) start(root);
@@ -36,8 +36,8 @@ function start(root: HTMLElement) {
   }
 
   if (!baseURL) { show("unavailable"); return; }
-  const auth = createAuth(baseURL);
-  const forms = setupAuthForms({ root, auth, text, flow, flowToken, callback, onSignedIn: () => load() });
+  const auth = lazyAuth(baseURL);
+  const forms = setupAuthForms({ root, auth, text, flow, flowToken, callback, onSignedIn: () => load(false) });
   const form = forms.form;
 
   function flashOk(target: HTMLFormElement, message: string) {
@@ -50,17 +50,24 @@ function start(root: HTMLElement) {
   }
 
   // ---- Session ----
-  async function load() {
+  /** Shows the right view; `cached` allows the stored account while the server answers. */
+  async function load(cached = true) {
     if (forms.resetPending()) { show("auth"); return; }
-    show("loading");
+    const stored = storedSession();
+    // No session token on this device: signed out, nothing to ask the server.
+    if (!stored.token) { show("auth"); return; }
+    // After confirming an email the cached session still says "unverified".
+    const verify = flow === "verify";
+    if (cached && !verify && stored.user) renderAccount(stored.user);
+    else show("loading");
     try {
-      // After confirming an email the cached session still says "unverified".
-      const { data, error } = await auth.getSession(flow === "verify" ? { query: { disableCookieCache: true } } : undefined);
-      if (error && error.status !== 401) { show("unavailable"); return; }
+      const { data, error } = await (await auth()).getSession(verify ? { query: { disableCookieCache: true } } : undefined);
+      // The stored account stays when only the server is unreachable.
+      if (error && error.status !== 401) { if (current !== "account") show("unavailable"); return; }
       if (data?.user) renderAccount(data.user);
       else show("auth");
     } catch {
-      show("unavailable");
+      if (current !== "account") show("unavailable");
     }
   }
 
@@ -90,7 +97,7 @@ function start(root: HTMLElement) {
     const target = form("profile");
     const name = value(target, "name").trim();
     if (!name) { setError(target, text.errors.nameRequired); return; }
-    if (await submit(text, target, () => auth.updateUser({ name })) && user) {
+    if (await submit(text, target, async () => (await auth()).updateUser({ name })) && user) {
       // The session response is cached, so apply the saved name locally.
       renderAccount({ ...user, name });
       flashOk(target, text.saved);
@@ -100,7 +107,7 @@ function start(root: HTMLElement) {
   form("password").addEventListener("submit", async (event) => {
     event.preventDefault();
     const target = form("password");
-    const ok = await submit(text, target, () => auth.changePassword({
+    const ok = await submit(text, target, async () => (await auth()).changePassword({
       currentPassword: value(target, "currentPassword"),
       newPassword: value(target, "newPassword"),
       revokeOtherSessions: true,
@@ -118,7 +125,7 @@ function start(root: HTMLElement) {
     if (!user) return;
     resend.disabled = true;
     try {
-      const { error } = await auth.sendVerificationEmail({ email: user.email, callbackURL: callback("verify") });
+      const { error } = await (await auth()).sendVerificationEmail({ email: user.email, callbackURL: callback("verify") });
       setNotice(accountNotice, error ? errorText(text, error) : text.verifySent);
     } catch {
       setNotice(accountNotice, text.errors.network);
@@ -128,7 +135,7 @@ function start(root: HTMLElement) {
   });
 
   root.querySelector("[data-action=sign-out]")!.addEventListener("click", async () => {
-    try { await auth.signOut(); } catch { /* The local session is cleared either way. */ }
+    try { await (await auth()).signOut(); } catch { /* The local session is cleared either way. */ }
     signedOut(text.signedOut);
   });
 
@@ -146,9 +153,9 @@ function start(root: HTMLElement) {
   form("delete").addEventListener("submit", async (event) => {
     event.preventDefault();
     const target = form("delete");
-    if (await submit(text, target, () => auth.deleteUser({ password: value(target, "password") }))) {
+    if (await submit(text, target, async () => (await auth()).deleteUser({ password: value(target, "password") }))) {
       // Clears the stored session of the deleted user.
-      try { await auth.signOut(); } catch { /* Already gone on the server. */ }
+      try { await (await auth()).signOut(); } catch { /* Already gone on the server. */ }
       target.reset();
       target.hidden = true;
       deleteOpen.hidden = false;
@@ -167,7 +174,7 @@ function start(root: HTMLElement) {
   /** Confirms the address from an email link; true when the token was accepted. */
   async function verifyEmail(token: string): Promise<boolean> {
     try {
-      const { error } = await auth.verifyEmail({ query: { token } });
+      const { error } = await (await auth()).verifyEmail({ query: { token } });
       return !error;
     } catch {
       return false;
@@ -175,6 +182,8 @@ function start(root: HTMLElement) {
   }
 
   root.querySelector("[data-action=retry]")!.addEventListener("click", () => void load());
+  // The inline guard in Account.astro stops form submits until now.
+  root.dataset.ready = "";
   void (async () => {
     const verified = flow === "verify" && !!flowToken && await verifyEmail(flowToken);
     await load();
