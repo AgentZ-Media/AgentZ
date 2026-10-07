@@ -16,8 +16,9 @@ in `src-tauri/src/lib.rs`, und im `.scriptz`-Import/Export mitdenken. Neue
 Spalten einer Inhaltstabelle brauchen außerdem neu angelegte Update-Trigger
 des Änderungsfeeds und einen Eintrag in `CONTENT_ENTITIES`
 ([`local-storage.md`](../../docs/local-storage.md)) und gehören in den
-Sync-Adapter `lib/sync/adapter.ts` (Fremdschlüssel in `REFS`, siehe
-[`cloud-sync.md`](../../docs/cloud-sync.md)).
+Sync-Adapter `lib/sync/adapter.ts` (Fremdschlüssel in `REFS`) und in
+`lib/sync/format.json` (additiv, kein neues Format; siehe
+[`cloud-sync.md`](../../docs/cloud-sync.md), „Versionen und Kompatibilität“).
 
 `pnpm dev:scriptz` nutzt dieselbe Datenbank wie die installierte App. Vor
 Arbeit an Speicher, Migrationen oder Boot sichern (App vorher beenden):

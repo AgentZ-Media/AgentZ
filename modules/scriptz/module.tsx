@@ -1,6 +1,7 @@
 import { ErrorBoundary, Show, Suspense, createEffect, on, untrack } from "solid-js";
 import type { AppModule, ModuleContext, ModuleRuntime } from "@agentz/kit/shell";
 import { startCharacterAutoPrune } from "./lib/characterAutoPrune";
+import { startTrashAutoPurge } from "./lib/trashAutoPurge";
 import { ensureWelcomeContent } from "./lib/welcome";
 import { migrateLegacyBlocksOnce } from "./lib/legacyBlocksMigration";
 import { backfillRuntimeStatsOnBoot } from "./lib/runtimeBackfill";
@@ -64,7 +65,7 @@ async function setupScriptz(ctx: ModuleContext): Promise<ModuleRuntime> {
   await Promise.all([
     settingsStore.load(), agentSettings.load(), ensureWelcomeContent({ kv: ctx.kv, signal: ctx.signal }), navStore.load(),
     uiStore.load(active), libraryPrefs.load(active),
-    uiStore.loadSidebarSections(active), libraryPrefs.loadViewModes(active),
+    uiStore.loadSidebarSections(active), libraryPrefs.loadViewModes(active), libraryPrefs.loadIdeaLayout(active),
     backfillRuntimeStatsOnBoot(ctx.kv).catch((error) => console.warn("[scriptz] runtime backfill skipped", error)),
   ]);
   ensureActive();
@@ -80,6 +81,7 @@ async function setupScriptz(ctx: ModuleContext): Promise<ModuleRuntime> {
     ctx.onDispose(startDailyStatsStore());
     ctx.onDispose(startLibraryData());
     ctx.onDispose(startCharacterAutoPrune(() => settingsStore.pruneUnusedCharacters()));
+    ctx.onDispose(startTrashAutoPurge());
     ctx.onDispose(startAgentRuntime(ctx.services, ctx.platform.secrets));
     createEffect(() => {
       if (!library.scriptsReady()) return;

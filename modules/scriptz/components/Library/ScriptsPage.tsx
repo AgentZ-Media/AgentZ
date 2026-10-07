@@ -14,6 +14,7 @@ import { pushToast } from "@agentz/kit/stores";
 import { t } from "../../i18n";
 import { StageGlyph } from "../Common/StageGlyph";
 import { folderColor } from "../Common/folderColor";
+import { FolderChips } from "../Common/FolderChips";
 import { defaultLengthRange, isoWeekStart, library } from "../Shell/libraryData";
 import { countPerDay, currentWeekDays } from "../../lib/writingCounter";
 import { ContextMenu, type ContextMenuItem } from "../Common/ContextMenu";
@@ -74,9 +75,21 @@ export function ScriptsPage() {
     const st = route()?.status;
     return st && isKnownStage(st) ? st : null;
   };
-  const folderId = (): string | null => route()?.folderId ?? null;
   /** Inbox: open ideas plus every script before the last stage. */
   const isInbox = () => navStore.route().kind === "inbox";
+  /** Folder filter of the scripts route or the inbox (the folder chips). */
+  const folderId = createMemo((): string | null => {
+    const r = navStore.route();
+    const id = r.kind === "scripts" || r.kind === "inbox" ? r.folderId ?? null : null;
+    if (id === null || id === INBOX_FOLDER_ID) return id;
+    // A deleted folder falls back to every folder.
+    return library.folder(id) || !library.foldersLoaded() ? id : null;
+  });
+  const setFolder = (id: string | null) => {
+    if (id === folderId()) return;
+    if (isInbox()) void navStore.openInbox(id);
+    else void navStore.openScripts({ status: status() ?? undefined, folderId: id ?? undefined });
+  };
   const isAll = () => !isInbox() && status() === null && folderId() === null;
   /** Pages with a board; a single stage is always a list. */
   const viewScope = (): ViewScope | null => {
@@ -129,12 +142,19 @@ export function ScriptsPage() {
   // ---- pagination ----
   const [limit, setLimit] = createSignal(PAGE_SIZE);
 
-  // A new scope starts clean: no filter, no selection, first page.
+  // A new page starts clean: no filter, no selection, first page. Another
+  // folder keeps the text filter, like the ideas page.
+  createEffect(
+    on(
+      () => [isInbox(), status()] as const,
+      () => clearFilter(),
+      { defer: true },
+    ),
+  );
   createEffect(
     on(
       () => [isInbox(), status(), folderId()] as const,
       () => {
-        clearFilter();
         exitSelect();
         setLimit(PAGE_SIZE);
       },
@@ -152,7 +172,7 @@ export function ScriptsPage() {
 
   // ---- data ----
   const data = createScriptsData({ isInbox, isAll, status, folderId, query, needle, limit });
-  const { scope, matches, sorted, scopeIdeas, inboxIdeas, contentHits, showTeaser } = data;
+  const { scope, folderIdeas, matches, sorted, scopeIdeas, inboxIdeas, contentHits, showTeaser } = data;
 
   // ---- header ----
   const folderName = () => {
@@ -373,9 +393,21 @@ export function ScriptsPage() {
             isInbox={isInbox()}
             week={week()}
             scopeCount={scope().length}
+            ideasCount={folderIdeas().length}
             folderId={folderId()}
             folderRange={folderRange()}
           />
+
+          <Show when={library.folders().length > 0}>
+            <div class="lib-chips" role="group" aria-label={t("folder.chips.aria")}>
+              <FolderChips
+                folders={library.folders()}
+                counts={data.folderChips()}
+                active={folderId()}
+                onSelect={setFolder}
+              />
+            </div>
+          </Show>
 
           <ScriptsTools
             filterRef={(el) => (filterRef = el)}
@@ -436,6 +468,7 @@ export function ScriptsPage() {
                 inboxIdeas={inboxIdeas()}
                 ideasClosed={data.ideasClosed()}
                 ideasCanCollapse={!needle()}
+                ideasFiltered={!!needle()}
                 peekId={peekStore.scriptId()}
                 onNewScript={newScriptHere}
                 onToggleSelect={toggleSelect}

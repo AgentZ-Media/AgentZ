@@ -48,7 +48,8 @@ export function Sidebar() {
   };
   const isStatusOn = (st: ScriptStatus) => {
     const r = route();
-    return r.kind === "scripts" && r.status === st && !r.folderId;
+    // The folder chips narrow a stage page; it stays the active entry.
+    return r.kind === "scripts" && r.status === st;
   };
   const isFolderOn = (id: string) => {
     const r = route();

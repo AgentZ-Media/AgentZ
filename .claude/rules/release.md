@@ -54,6 +54,10 @@ ausgeben oder committen, außerhalb des Repos gesichert halten.
   „Latest"). Er geht nur auf neuere Versionen, repariert bei identischem
   Manifest abgebrochene Uploads und reserviert die Version per Marker im
   Release-Text. Den Marker nie entfernen.
+- Danach meldet `announce.mjs` die Version an das Konto-Backend, damit
+  angemeldete Apps sofort prüfen (Secret `RELEASE_ANNOUNCE_TOKEN`, gleicher
+  Wert als Convex-Env-Variable in Production). Schlägt das fehl, gibt es nur
+  eine Warnung; Pre-Releases werden nicht gemeldet.
 - Laufen mehrere Releases derselben App kurz nacheinander, kann GitHub einen
   wartenden Zeiger-Job abbrechen. Dann den Job der **neuesten** Version erneut
   starten.
@@ -63,6 +67,17 @@ ausgeben oder committen, außerhalb des Repos gesichert halten.
 
 `gh workflow run release.yml --ref main -f app=<app>` ist immer ein
 Probelauf: baut beide Installer ohne Signatur und veröffentlicht nichts.
+
+## Sync-Format
+
+Apps mit Sync führen ihr Datenformat in `modules/<app>/lib/sync/format.json`
+(`reads`, `writes`). `pnpm check:sync-format` (CI) vergleicht `main` mit dem
+letzten Stable-Tag `<app>-vX.Y.Z`: `writes` darf dessen `reads` nicht
+übersteigen, `reads` nicht unter dessen `writes` fallen. Ein Formatbruch
+braucht deshalb zwei Releases, erst `reads` anheben, dann `writes`. Mit dem
+Tag ändert sich der Vergleich; nach einem Release mit neuem `reads` kann der
+nächste PR `writes` anheben. Details: „Versionen und Kompatibilität“ in
+[`docs/cloud-sync.md`](../../docs/cloud-sync.md).
 
 ## Nightly
 
@@ -87,6 +102,7 @@ Probelauf: baut beide Installer ohne Signatur und veröffentlicht nichts.
   zurück auf ältere Versionen; behalten werden die Assets der letzten drei
   Nightlies. Der Tag `<app>-nightly` benennt nur den Kanal und bleibt stehen,
   den gebauten Commit nennt der Release-Text. Den Marker nie entfernen.
+  Danach meldet `announce.mjs` den Nightly wie ein Release.
 - In der App wählt `update_channel` (`stable`/`nightly`) den Kanal. Der Nightly-
   Kanal prüft `<app>-nightly` **und** `<app>-latest` und nimmt die neuere
   Version. Vor jedem Update von, zu oder zwischen Nightlies legt die App per
@@ -103,6 +119,12 @@ Probelauf: baut beide Installer ohne Signatur und veröffentlicht nichts.
 Updater-Endpoint: `https://github.com/AgentZ-Media/AgentZ-Suite/releases/download/<app>-latest/latest.json`,
 für Nightlies zusätzlich `.../<app>-nightly/latest.json` (abgeleitet in
 `crates/agentz-desktop/src/updates.rs`).
+
+In der App: Gefundene Updates lädt sie im Hintergrund (`update_auto_install`,
+Standard an) und installiert sie beim Beenden nach dem Speichern; „Jetzt neu
+starten“ übernimmt sie sofort. Von sich aus startet sie nie neu. Windows
+startet den Installer beim Beenden ohne `/R`, die App bleibt also zu
+(`crates/agentz-desktop/README.md`).
 Die Apps sind nicht notarisiert bzw. codesigniert: macOS braucht beim ersten
 Start `xattr -cr "/Applications/<Produkt>.app"`, Windows zeigt SmartScreen.
 Der Install-Footer erklärt beides. Installationen von ScriptZ 0.8.4 und älter

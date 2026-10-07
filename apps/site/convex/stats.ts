@@ -1,6 +1,7 @@
 import { ConvexError, v } from "convex/values";
 import { internal } from "./_generated/api";
 import { httpAction, internalAction, internalMutation, internalQuery, mutation } from "./_generated/server";
+import { clientArg, requireCompatible } from "./sync";
 import { SYNC_APPS, STAT_KEYS, appArg, type SyncApp } from "./syncApps";
 
 // Public counters for the website ("1,234 scripts written"). Records are end-to-end
@@ -13,12 +14,17 @@ import { SYNC_APPS, STAT_KEYS, appArg, type SyncApp } from "./syncApps";
 const MAX_COUNT = 1_000_000;
 const PAGE = 1000;
 
-/** A device reports its account's totals; the latest report per account counts. */
+/**
+ * A device reports its account's totals; the latest report per account counts.
+ * Like every sync call it carries the device's version and format: a device
+ * that may not sync (CLIENT_OUTDATED) does not report either.
+ */
 export const report = mutation({
-  args: { app: appArg, counts: v.record(v.string(), v.number()) },
-  handler: async (ctx, { app, counts }) => {
+  args: { app: appArg, client: clientArg, counts: v.record(v.string(), v.number()) },
+  handler: async (ctx, { app, client, counts }) => {
     const identity = await ctx.auth.getUserIdentity();
     if (!identity) throw new ConvexError({ code: "UNAUTHENTICATED" });
+    await requireCompatible(ctx, identity.subject, app, client);
     const allowed = STAT_KEYS[app];
     for (const [key, value] of Object.entries(counts)) {
       if (!allowed.includes(key) || !Number.isInteger(value) || value < 0 || value > MAX_COUNT) {

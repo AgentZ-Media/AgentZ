@@ -6,7 +6,6 @@ import { INBOX_FOLDER_ID } from "../../../lib/folders";
 import type { Idea } from "../../../lib/types";
 import {
   countNewThisWeek,
-  folderCounts,
   groupIdeas,
   groupLabel,
   ideaAge,
@@ -15,6 +14,7 @@ import {
   sortIdeas,
   startOfWeek,
 } from "../ideaGroups";
+import { countByFolder } from "../../Common/FolderChips";
 
 // Saturday 2026-10-03, 12:00 local. ISO week starts Monday 2026-09-28.
 const NOW = new Date(2026, 9, 3, 12, 0, 0);
@@ -74,11 +74,12 @@ describe("scope / folder filters", () => {
     expect(inFolder(list, INBOX_FOLDER_ID).map((i) => i.id)).toEqual(["d"]);
   });
 
-  it("counts per folder plus the inbox", () => {
-    const c = folderCounts(list);
+  it("counts per folder plus the ideas without one", () => {
+    const c = countByFolder(list);
     expect(c.byFolder.get("f1")).toBe(2);
     expect(c.byFolder.get("f2")).toBe(1);
-    expect(c.inbox).toBe(1);
+    expect(c.none).toBe(1);
+    expect(c.total).toBe(4);
   });
 });
 

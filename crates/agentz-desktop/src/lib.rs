@@ -23,6 +23,7 @@ pub fn builder(config: Config) -> tauri::Builder<Wry> {
     tauri::Builder::default()
         .manage(lifecycle::Lifecycle::default())
         .manage(updates::HostId(config.id))
+        .manage(updates::Staging::default())
         // Must be first: a second process must never open the app database.
         // With its deep-link feature it also forwards `agentz-<id>://` URLs
         // that start a second process (Windows) to the running app.
@@ -54,6 +55,11 @@ fn host_plugin() -> TauriPlugin<Wry> {
             lifecycle::finish_exit,
             menu::set_menu_language,
             updates::update_check,
+            updates::update_download,
+            updates::update_staged,
+            updates::update_discard,
+            updates::update_install_now,
+            updates::update_install_on_quit,
             updates::prepare_database_backup,
             codex::codex_locate,
             codex::codex_start,
@@ -83,6 +89,7 @@ fn host_plugin() -> TauriPlugin<Wry> {
         .on_event(|app, event| {
             lifecycle::on_event(app, event);
             codex::on_event(app, event);
+            updates::on_event(app, event);
         })
         .build()
 }

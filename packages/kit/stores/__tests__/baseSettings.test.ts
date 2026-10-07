@@ -23,7 +23,7 @@ describe("base settings lifetime", () => {
     const kv = store({ theme: "dark", language: "en", update_check_enabled: "0", hourly_update_check: "1", update_channel: "nightly" });
     stops.push(startBaseSettingsRuntime(kv));
     await settings.load();
-    expect(vi.mocked(kv.getSetting).mock.calls.map(([key]) => key).sort()).toEqual(["hourly_update_check", "language", "theme", "update_channel", "update_check_enabled"]);
+    expect(vi.mocked(kv.getSetting).mock.calls.map(([key]) => key).sort()).toEqual(["hourly_update_check", "language", "theme", "update_auto_install", "update_channel", "update_check_enabled"]);
     expect([settings.theme(), settings.language(), settings.updateCheckEnabled(), settings.hourlyUpdateCheck(), settings.updateChannel()]).toEqual(["dark", "en", false, true, "nightly"]);
     expect(document.documentElement.dataset.theme).toBe("dark");
     expect(language()).toBe("en");

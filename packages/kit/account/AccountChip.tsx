@@ -105,7 +105,12 @@ export function AccountChip() {
                   <Icon name="shield" /><span class="lbl">{t("account.menu.unlock")}</span>
                 </button>
               </Show>
-              <Show when={account.keyPhase() === "ready"}>
+              <Show when={account.syncBlock()}>
+                <button type="button" role="menuitem" class="menu-it" onClick={run(() => account.openUpdateDialog())}>
+                  <Icon name="refresh" /><span class="lbl">{t("account.update.title")}</span>
+                </button>
+              </Show>
+              <Show when={account.keyPhase() === "ready" && !account.syncBlock()}>
                 <button type="button" role="menuitem" class="menu-it" onClick={run(() => account.syncNow())}>
                   <Icon name="refresh" /><span class="lbl">{t("account.menu.syncNow")}</span>
                 </button>

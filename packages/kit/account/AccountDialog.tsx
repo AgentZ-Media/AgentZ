@@ -4,11 +4,13 @@ import { pushToast } from "../stores/toasts";
 import { confirmDialog, DialogFrame, Icon } from "../ui";
 import { getPlatformAdapter } from "../platform";
 import { account } from "./account";
+import { syncUpdateState } from "./updateAction";
 
 /**
  * Dialogs of the account flow: waiting for the browser sign-in, the recovery
- * key (create, rotate, reset), unlocking a new device and moving local data
- * to another account. Rendered once by the SuiteShell.
+ * key (create, rotate, reset), unlocking a new device, moving local data
+ * to another account and the update this version needs to keep syncing.
+ * Rendered once by the SuiteShell.
  */
 export function AccountDialog(props: { appName: string }) {
   const kind = () => account.dialog();
@@ -18,6 +20,7 @@ export function AccountDialog(props: { appName: string }) {
       case "createKey": return t("account.dlg.key.newTitle");
       case "enterKey": return t("account.dlg.unlock.title");
       case "merge": return t("account.dlg.merge.title");
+      case "updateRequired": return t("account.update.title");
       default: return "";
     }
   };
@@ -34,6 +37,7 @@ export function AccountDialog(props: { appName: string }) {
         <Match when={kind() === "createKey"}><RecoveryKeyBody /></Match>
         <Match when={kind() === "enterKey"}><UnlockBody /></Match>
         <Match when={kind() === "merge"}><MergeBody /></Match>
+        <Match when={kind() === "updateRequired"}><UpdateRequiredBody appName={props.appName} /></Match>
       </Switch>
     </DialogFrame>
   );
@@ -47,7 +51,7 @@ function ErrorLine() {
   );
 }
 
-function Head(props: { icon: "cloud" | "shield" | "users"; title: string }) {
+function Head(props: { icon: "cloud" | "shield" | "users" | "refresh"; title: string }) {
   return (
     <div class="acc-dlg-head">
       <span class="acc-dlg-icon"><Icon name={props.icon} size={20} /></span>
@@ -188,6 +192,35 @@ function MergeBody() {
       <div class="acc-actions">
         <button type="button" class="btn ghost" onClick={() => void account.confirmMerge(false)}>{t("account.dlg.merge.decline")}</button>
         <button type="button" class="btn accent" data-autofocus onClick={() => void account.confirmMerge(true)}>{t("account.dlg.merge.accept")}</button>
+      </div>
+    </div>
+  );
+}
+
+/** Shown once per app start when the backend pauses this version's sync. */
+function UpdateRequiredBody(props: { appName: string }) {
+  const state = () => syncUpdateState(props.appName);
+  const text = () => account.syncBlock()?.reason === "format"
+    ? t("account.update.textFormat", { appName: props.appName })
+    : t("account.update.textVersion", { appName: props.appName });
+  const run = () => {
+    const action = state().action?.run;
+    if (!action) return;
+    // Settings open on their own; the banner keeps the topic in view.
+    account.closeDialog();
+    action();
+  };
+  return (
+    <div class="acc-dlg-body">
+      <Head icon="refresh" title={t("account.update.title")} />
+      <p class="acc-text">{text()}</p>
+      <p class="acc-hint">{t("account.update.keepWorking")}</p>
+      <Show when={state().note}>{(note) => <p class="acc-text" role="status">{note()}</p>}</Show>
+      <div class="acc-actions">
+        <button type="button" class="btn ghost" onClick={() => account.closeDialog()}>{t("account.update.later")}</button>
+        <Show when={state().action}>{(action) =>
+          <button type="button" class="btn accent" data-autofocus disabled={!action().run} onClick={run}>{action().label}</button>
+        }</Show>
       </div>
     </div>
   );

@@ -63,6 +63,12 @@ export const shellDe = {
   "shell.row.open": "Öffnen ({hotkey})",
   "shell.inbox.lead": "In Arbeit",
   "shell.inbox.openIdea": "Idee öffnen",
+  "shell.inbox.moreIdeas_one": "{count} weitere Idee anzeigen",
+  "shell.inbox.moreIdeas_other": "{count} weitere Ideen anzeigen",
+  "shell.inbox.fewerIdeas": "Weniger anzeigen",
+  "shell.inbox.ideasLayout": "Ideen-Ansicht",
+  "shell.inbox.oneColumn": "Eine Spalte",
+  "shell.inbox.twoColumns": "Zwei Spalten",
   "shell.menu.stage": "Stufe",
   "shell.menu.exportPdf": "Als PDF exportieren",
   "shell.menu.trash": "In den Papierkorb",
@@ -74,7 +80,7 @@ export const shellDe = {
   "shell.empty.stage.hint": "Die Stufe setzt du im Skript oben am Stufen-Chip oder per Rechtsklick in der Liste.",
   "shell.empty.inbox.title": "Alles erledigt",
   "shell.empty.inbox.hint": "Hier landen offene Ideen und alle Skripte, die noch nicht auf „{stage}“ stehen.",
-  "shell.trash.hint": "Gelöschte Skripte landen hier, bis du sie wiederherstellst oder endgültig löschst.",
+  "shell.trash.hint": "Gelöschte Skripte landen hier und werden nach {days} Tagen automatisch endgültig gelöscht.",
 
   // ---------- selection ----------
   "shell.select.aria": "Auswahl",
@@ -165,6 +171,12 @@ export const shellEn: Record<keyof typeof shellDe, string> = {
   "shell.row.open": "Open ({hotkey})",
   "shell.inbox.lead": "In progress",
   "shell.inbox.openIdea": "Open idea",
+  "shell.inbox.moreIdeas_one": "Show {count} more idea",
+  "shell.inbox.moreIdeas_other": "Show {count} more ideas",
+  "shell.inbox.fewerIdeas": "Show less",
+  "shell.inbox.ideasLayout": "Idea layout",
+  "shell.inbox.oneColumn": "One column",
+  "shell.inbox.twoColumns": "Two columns",
   "shell.menu.stage": "Stage",
   "shell.menu.exportPdf": "Export as PDF",
   "shell.menu.trash": "Move to trash",
@@ -176,7 +188,7 @@ export const shellEn: Record<keyof typeof shellDe, string> = {
   "shell.empty.stage.hint": "Set the stage with the stage chip at the top of a script or by right-clicking in the list.",
   "shell.empty.inbox.title": "All caught up",
   "shell.empty.inbox.hint": "Open ideas and every script not yet at \"{stage}\" show up here.",
-  "shell.trash.hint": "Deleted scripts stay here until you restore them or delete them for good.",
+  "shell.trash.hint": "Deleted scripts stay here and are deleted for good automatically after {days} days.",
 
   // ---------- selection ----------
   "shell.select.aria": "Selection",
