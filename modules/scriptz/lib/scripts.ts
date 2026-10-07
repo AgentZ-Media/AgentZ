@@ -670,6 +670,31 @@ export async function emptyTrash(): Promise<void> {
   if (res.rowsAffected > 0) characterUsageBus.notifyNamesDropped();
 }
 
+/** Hard-deletes every script that went to the trash at or before `cutoff`
+ *  and returns how many were removed. Each DELETE re-checks the trash
+ *  timestamp, so a script restored meanwhile stays; its FTS row goes only
+ *  after the script itself is gone. The change-feed triggers record the
+ *  deletes, so sync removes the cloud copies too. */
+export async function purgeExpiredTrash(cutoff: number): Promise<number> {
+  const db = await getDb();
+  const rows = await db.select<{ id: string }[]>(
+    "SELECT id FROM scripts WHERE archived_at IS NOT NULL AND archived_at <= $1",
+    [cutoff],
+  );
+  let purged = 0;
+  for (const { id } of rows) {
+    const res = await db.execute(
+      "DELETE FROM scripts WHERE id = $1 AND archived_at IS NOT NULL AND archived_at <= $2",
+      [id, cutoff],
+    );
+    if (res.rowsAffected === 0) continue;
+    await deleteScriptFts(id);
+    purged += 1;
+  }
+  if (purged > 0) characterUsageBus.notifyNamesDropped();
+  return purged;
+}
+
 // ---------- internal helpers ----------
 
 /** Everything a content write derives from the document, from one parse. */

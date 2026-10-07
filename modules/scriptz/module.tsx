@@ -2,6 +2,7 @@ import { ErrorBoundary, Show, Suspense, createEffect, on, untrack } from "solid-
 import type { AppModule, ModuleContext, ModuleRuntime } from "@agentz/kit/shell";
 import { api } from "./lib/api";
 import { startCharacterAutoPrune } from "./lib/characterAutoPrune";
+import { startTrashAutoPurge } from "./lib/trashAutoPurge";
 import { ensureWelcomeContent } from "./lib/welcome";
 import { migrateLegacyBlocksOnce } from "./lib/legacyBlocksMigration";
 import { settingsStore, startSettingsRuntime } from "./stores/settings";
@@ -80,6 +81,7 @@ async function setupScriptz(ctx: ModuleContext): Promise<ModuleRuntime> {
     ctx.onDispose(startDailyStatsStore());
     ctx.onDispose(startLibraryData());
     ctx.onDispose(startCharacterAutoPrune(() => settingsStore.pruneUnusedCharacters()));
+    ctx.onDispose(startTrashAutoPurge());
     ctx.onDispose(startAgentRuntime(ctx.services));
     createEffect(() => {
       if (!library.scriptsReady()) return;

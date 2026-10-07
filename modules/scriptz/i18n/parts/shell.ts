@@ -74,7 +74,7 @@ export const shellDe = {
   "shell.empty.stage.hint": "Die Stufe setzt du im Skript oben am Stufen-Chip oder per Rechtsklick in der Liste.",
   "shell.empty.inbox.title": "Alles erledigt",
   "shell.empty.inbox.hint": "Hier landen offene Ideen und alle Skripte, die noch nicht auf „{stage}“ stehen.",
-  "shell.trash.hint": "Gelöschte Skripte landen hier, bis du sie wiederherstellst oder endgültig löschst.",
+  "shell.trash.hint": "Gelöschte Skripte landen hier und werden nach {days} Tagen automatisch endgültig gelöscht.",
 
   // ---------- selection ----------
   "shell.select.aria": "Auswahl",
@@ -176,7 +176,7 @@ export const shellEn: Record<keyof typeof shellDe, string> = {
   "shell.empty.stage.hint": "Set the stage with the stage chip at the top of a script or by right-clicking in the list.",
   "shell.empty.inbox.title": "All caught up",
   "shell.empty.inbox.hint": "Open ideas and every script not yet at \"{stage}\" show up here.",
-  "shell.trash.hint": "Deleted scripts stay here until you restore them or delete them for good.",
+  "shell.trash.hint": "Deleted scripts stay here and are deleted for good automatically after {days} days.",
 
   // ---------- selection ----------
   "shell.select.aria": "Selection",
