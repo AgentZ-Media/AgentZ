@@ -300,6 +300,11 @@
   background-image: var(--noise);
   background-size: 160px 160px;
   background-blend-mode: soft-light;
+  /* Opening a script: the paper fades in quietly, nothing moves. */
+  animation: ss-sheet-in var(--t-med);
+}
+@keyframes ss-sheet-in {
+  from { opacity: 0; }
 }
 
 /* Block type of the caret block, left of the paper */

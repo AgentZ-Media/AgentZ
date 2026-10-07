@@ -160,19 +160,3 @@
   100% { background-size: 0% 42%; background-position: 100% 88%; }
 }
 
-/* ---------- opening a script: list row morphs into the paper ---------- */
-::view-transition-group(scriptz-open) {
-  animation-duration: 0.42s;
-  animation-timing-function: cubic-bezier(0.3, 0.7, 0.2, 1);
-}
-::view-transition-old(scriptz-open),
-::view-transition-new(scriptz-open) {
-  animation-duration: 0.42s;
-  height: 100%;
-  object-fit: cover;
-  object-position: top;
-}
-::view-transition-old(root),
-::view-transition-new(root) {
-  animation-duration: 0.24s;
-}

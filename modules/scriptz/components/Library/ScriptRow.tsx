@@ -5,7 +5,6 @@ import { formatClock, formatRange, lengthStatus, runtimeBar } from "../../lib/le
 import { isValidHexColor } from "../../lib/colors";
 import { K } from "@agentz/kit/platform";
 import { StageGlyph } from "../Common/StageGlyph";
-import { rememberOpenSource } from "../Common/motion";
 import { Icon } from "@agentz/kit/ui";
 import { library, lengthRangeFor, runtimeSecFor } from "../Shell/libraryData";
 import { SCRIPT_DRAG_MIME } from "./dnd";
@@ -126,7 +125,6 @@ export function ScriptRow(props: ScriptRowProps) {
       }}
       onDragEnd={() => setDragging(false)}
       onClick={(e) => {
-        rememberOpenSource(e.currentTarget);
         if (!props.selectMode && (e.shiftKey || e.metaKey || e.ctrlKey)) {
           // Modifier click starts / extends a selection, like a file list.
           props.onToggleSelect(e);
@@ -142,7 +140,6 @@ export function ScriptRow(props: ScriptRowProps) {
         if (e.target !== e.currentTarget) return;
         if (e.key === "Enter" || e.key === " ") {
           e.preventDefault();
-          rememberOpenSource(e.currentTarget);
           activate(e);
         }
       }}
@@ -221,7 +218,6 @@ export function ScriptRow(props: ScriptRowProps) {
             tabIndex={-1}
             onClick={(e) => {
               e.stopPropagation();
-              rememberOpenSource(e.currentTarget.closest(".lrow"));
               if (props.onOpenFull) props.onOpenFull();
               else props.onOpen(false);
             }}
