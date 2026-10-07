@@ -99,6 +99,7 @@ export const agentDe = {
   "agent.error.keyInvalid": "OpenRouter hat den Key abgelehnt. Prüfe ihn in den Einstellungen.",
   "agent.error.noCredits": "Auf dem OpenRouter-Konto ist kein Guthaben mehr.",
   "agent.error.notEnabled": "Der Agent über dein AgentZ-Konto kommt bald. Bis dahin läuft er über ChatGPT (Codex) oder einen eigenen OpenRouter-Key, umstellbar in den Einstellungen.",
+  "agent.error.incomplete": "Die Antwort ist unvollständig abgebrochen. Versuch es noch einmal, gern mit einer kürzeren Bitte.",
 
   // ---------- proposals ----------
   "agent.option.append": "Am Ende einfügen",
@@ -220,7 +221,7 @@ export const agentDe = {
   "agent.provider.agentz": "AgentZ-Konto",
   "agent.provider.agentz.sub": "{model}, kostenlos mit deinem Konto",
   "agent.provider.agentz.signedOut": "Nicht angemeldet",
-  "agent.provider.agentz.signInBody": "Melde dich mit deinem AgentZ-Konto an oder registriere dich kostenlos. Dann läuft {name} mit {model} über AgentZ, ganz ohne eigenes Abo.",
+  "agent.provider.agentz.signInBody": "Melde dich mit deinem AgentZ-Konto an. Ist es freigeschaltet, läuft {name} mit {model} über AgentZ, ganz ohne eigenes Abo. Für alle anderen Konten kommt das bald.",
   "agent.provider.agentz.signIn": "Anmelden oder kostenlos registrieren",
   "agent.provider.agentz.noCloud": "In dieser Version gibt es keine AgentZ-Konten.",
   "agent.provider.agentz.error": "AgentZ ist gerade nicht erreichbar",
@@ -485,6 +486,7 @@ export const agentEn: Record<keyof typeof agentDe, string> = {
   "agent.error.keyInvalid": "OpenRouter rejected the key. Check it in the settings.",
   "agent.error.noCredits": "The OpenRouter account has no credits left.",
   "agent.error.notEnabled": "The agent through your AgentZ account is coming soon. Until then it runs on ChatGPT (Codex) or your own OpenRouter key, switchable in the settings.",
+  "agent.error.incomplete": "The answer broke off before it was complete. Try again, perhaps with a shorter request.",
 
   // ---------- proposals ----------
   "agent.option.append": "Add at the end",
@@ -606,7 +608,7 @@ export const agentEn: Record<keyof typeof agentDe, string> = {
   "agent.provider.agentz": "AgentZ account",
   "agent.provider.agentz.sub": "{model}, free with your account",
   "agent.provider.agentz.signedOut": "Not signed in",
-  "agent.provider.agentz.signInBody": "Sign in with your AgentZ account or sign up for free. Then {name} runs on {model} through AgentZ, no plan of your own needed.",
+  "agent.provider.agentz.signInBody": "Sign in with your AgentZ account. Once it is enabled, {name} runs on {model} through AgentZ, no plan of your own needed. For all other accounts this is coming soon.",
   "agent.provider.agentz.signIn": "Sign in or sign up for free",
   "agent.provider.agentz.noCloud": "This version has no AgentZ accounts.",
   "agent.provider.agentz.error": "AgentZ is not reachable right now",

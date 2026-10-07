@@ -19,7 +19,7 @@ import { navStore } from "../nav";
 import { liveBlocks } from "../../components/Agent/editorBridge";
 import { library } from "../../components/Shell/libraryData";
 import { currentProvider, ensureModels, getProvider, refreshStatus, resolveModel, status } from "./provider";
-import { foldersMap, persona } from "./instructions";
+import { currentPace, foldersMap, persona } from "./instructions";
 import { memoryItem } from "./chatItems";
 import { byScript, liveChats } from "./registry";
 
@@ -275,7 +275,7 @@ async function learnBatch(targets: LearnTarget[], kind: "finished" | "existing",
     ...createChatTools({
       scriptId: sourceId, liveBlocks: () => (sourceId ? liveBlocks(sourceId) : null), selection: () => null,
       onProposal: () => {}, onClaims: () => {}, onMemory: record,
-      memorySource: "script", memorySourceScriptId: sourceId,
+      memorySource: "script", memorySourceScriptId: sourceId, wpm: () => currentPace().wpm,
     }).filter((tool) => ["read_script", "list_scripts", "search_scripts", "list_folders"].includes(tool.name)),
     ...createMemoryTools({ scriptId: sourceId, onMemory: record, memorySource: "script", memorySourceScriptId: sourceId }),
   ];

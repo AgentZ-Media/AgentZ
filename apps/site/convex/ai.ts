@@ -25,6 +25,8 @@ const MAX_OUTPUT_TOKENS = 32_000;
 /** Serialized messages per request; above the app's own context budget
  *  (about 1.2 million characters, lib/agent/openrouter/provider.ts). */
 const MAX_REQUEST_CHARS = 2_000_000;
+/** The whole request as it goes upstream (messages, tools and schemas). */
+const MAX_BODY_CHARS = 2_500_000;
 
 type Json = Record<string, unknown>;
 
@@ -123,14 +125,20 @@ export const chat = httpAction(async (ctx, request) => {
   const { user } = auth;
   const key = process.env.OPENROUTER_API_KEY;
   if (!key) return json({ error: "unavailable" }, 503);
+  // Size first, before the body is parsed: tools and schemas count as well.
+  if (Number(request.headers.get("content-length") ?? 0) > MAX_BODY_CHARS * 4) return json({ error: "too_large" }, 413);
   let raw: unknown;
   try {
-    raw = await request.json();
+    const text = await request.text();
+    if (text.length > MAX_BODY_CHARS) return json({ error: "too_large" }, 413);
+    raw = JSON.parse(text);
   } catch {
     return json({ error: "invalid_request" }, 400);
   }
   const body = isObject(raw) ? upstreamBody(raw, user.id) : null;
   if (!body) return json({ error: "invalid_request" }, 400);
+  const payload = JSON.stringify(body);
+  if (payload.length > MAX_BODY_CHARS) return json({ error: "too_large" }, 413);
   const upstream = await fetch(OPENROUTER_URL, {
     method: "POST",
     headers: {
@@ -139,7 +147,7 @@ export const chat = httpAction(async (ctx, request) => {
       "HTTP-Referer": process.env.SITE_URL ?? "https://www.agentz-suite.com",
       "X-Title": "AgentZ Suite",
     },
-    body: JSON.stringify(body),
+    body: payload,
   });
   if (!upstream.ok || !upstream.body) {
     // Upstream details stay here; the app shows its own message.

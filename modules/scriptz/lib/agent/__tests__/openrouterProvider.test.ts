@@ -4,8 +4,8 @@
 
 import { describe, expect, it, vi } from "vitest";
 import { compact, OpenRouterProvider, repair, requestMessages, THREAD_KIND, type WireMessage } from "../openrouter/provider";
-import { mergeReasoningDetails } from "../openrouter/stream";
-import { AGENT_RATE_LIMITED, type AgentEvent, type AgentTool } from "../types";
+import { IncompleteResponse, mergeReasoningDetails, readStep, StreamError } from "../openrouter/stream";
+import { AGENT_INCOMPLETE, AGENT_RATE_LIMITED, type AgentEvent, type AgentTool } from "../types";
 import { fakeTransport, memoryThreads } from "./openrouterFakes";
 
 type Obj = Record<string, unknown>;
@@ -278,5 +278,49 @@ describe("harness transcript helpers", () => {
     mergeReasoningDetails(into, [{ type: "reasoning.text", text: "Hal", index: 0 }]);
     mergeReasoningDetails(into, [{ type: "reasoning.text", text: "lo", index: 0, signature: "s" }, { type: "reasoning.encrypted", data: "E", index: 1 }]);
     expect(into).toEqual([{ type: "reasoning.text", text: "Hallo", index: 0, signature: "s" }, { type: "reasoning.encrypted", data: "E", index: 1 }]);
+  });
+});
+
+describe("openrouter stream end", () => {
+  const body = (...chunks: Obj[]) => {
+    const text = chunks.map((c) => `data: ${JSON.stringify(c)}\n\n`).join("") + "data: [DONE]\n\n";
+    return new ReadableStream<Uint8Array>({ start(c) { c.enqueue(new TextEncoder().encode(text)); c.close(); } });
+  };
+  const handlers = { onContent: () => {}, onReasoning: () => {} };
+  const piece = (delta: Obj, finish: string | null = null) => ({ choices: [{ index: 0, delta, finish_reason: finish }] });
+
+  it("accepts a finished answer", async () => {
+    const step = await readStep(body(piece({ content: "Hi" }), piece({}, "stop")), handlers);
+    expect(step).toMatchObject({ content: "Hi", finishReason: "stop" });
+  });
+
+  it("treats a stream without a finish reason as broken off (retried)", async () => {
+    await expect(readStep(body(piece({ content: "Hi" })), handlers)).rejects.toBeInstanceOf(StreamError);
+  });
+
+  it("treats cut or filtered answers as incomplete, tool calls included", async () => {
+    for (const reason of ["length", "content_filter"]) {
+      const call = { tool_calls: [{ index: 0, id: "c1", type: "function", function: { name: "remember", arguments: "{\"te" } }] };
+      const failure = readStep(body(piece(call), piece({}, reason)), handlers);
+      await expect(failure).rejects.toBeInstanceOf(IncompleteResponse);
+      await expect(failure).rejects.toThrow(AGENT_INCOMPLETE);
+    }
+  });
+});
+
+describe("disposed providers", () => {
+  it("open no thread and send nothing after dispose, also when it lands mid-load", async () => {
+    const { transport, requests } = fakeTransport([{ content: ["Hallo"] }]);
+    const threads = memoryThreads();
+    let release: () => void = () => {};
+    const store = { ...threads.store, get: (id: string) => new Promise<null>((resolve) => { release = () => resolve(null); void id; }) };
+    const provider = new OpenRouterProvider("openrouter", transport, store);
+    const opening = provider.openThread({ instructions: "PERSONA", tools: [], resumeId: "old" });
+    await provider.dispose();
+    release();
+    await expect(opening).rejects.toThrow("disposed");
+    await expect(provider.openThread({ instructions: "PERSONA", tools: [] })).rejects.toThrow("disposed");
+    expect(await provider.check()).toMatchObject({ state: "error" });
+    expect(requests).toHaveLength(0);
   });
 });

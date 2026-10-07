@@ -83,6 +83,8 @@ export async function setOpenRouterKey(raw: string): Promise<void> {
     memoryKey = key || null;
   }
   setKeyHint(key ? keyHint(key) : null);
+  // A check still running for the old key must not answer for the new one.
+  invalidateStatusCheck();
 }
 
 /** The provider currently in use, without creating one. */
@@ -105,19 +107,30 @@ function noteHostedAccess(state: AgentStatus): void {
 }
 
 let accessCheck: Promise<boolean> | null = null;
+/** Account the running access check asks for. */
+let accessAccount: string | null = null;
 
 /** Asks the backend whether the signed-in account may use the hosted agent,
  *  whichever provider is chosen (the picker shows "coming soon" without). */
 export function refreshHostedAccess(): Promise<boolean> {
-  if (accessCheck) return accessCheck;
   // Hidden: no request to the AI proxy, not even this one.
   if (agentSettings.hidden()) return Promise.resolve(hostedAccess());
   if (!hostReady || !account.signedIn()) {
+    // Signed out: no access, and a check of the old session is stale.
+    accessCheck = null;
+    accessAccount = null;
     setHostedAccess(false);
     return Promise.resolve(false);
   }
+  const who = account.user()?.id ?? "";
+  if (accessCheck && accessAccount === who) return accessCheck;
+  accessAccount = who;
   const run = hosted().check()
-    .then((result) => { noteHostedAccess(result.state); return hostedAccess(); })
+    .then((result) => {
+      // Only the answer for the account that is still signed in counts.
+      if (accessCheck === run && account.signedIn() && (account.user()?.id ?? "") === who) noteHostedAccess(result.state);
+      return hostedAccess();
+    })
     .finally(() => { if (accessCheck === run) accessCheck = null; });
   accessCheck = run;
   return run;
@@ -146,6 +159,14 @@ export function getProvider(): AgentProvider | null {
 }
 
 let statusCheck: Promise<AgentStatus> | null = null;
+/** Bumped when credentials change; older checks are then stale. */
+let statusGeneration = 0;
+
+/** Forgets a running check, so the next one asks again. */
+export function invalidateStatusCheck(): void {
+  statusCheck = null;
+  statusGeneration += 1;
+}
 
 /** One check at a time. Never re-sets "checking" while checking, so effects
  *  that react to the status cannot loop. */
@@ -159,11 +180,13 @@ export function refreshStatus(): Promise<AgentStatus> {
     return Promise.resolve(status());
   }
   if (status().state !== "checking") setStatus({ state: "checking" });
+  const generation = statusGeneration;
   const run = p.check()
     .catch((error: unknown): AgentStatus => ({ state: "error", message: error instanceof Error ? error.message : String(error) }))
     .then((next) => {
-      // A check that outlived its provider (agent switched off) is stale.
-      if (provider === p) {
+      // A check that outlived its provider (agent switched off) or its
+      // credentials (other key, other account) is stale.
+      if (provider === p && generation === statusGeneration) {
         setStatus(next);
         if (agentSettings.provider() === "agentz") noteHostedAccess(next);
       }
@@ -201,7 +224,7 @@ export function resolveModel(list: readonly AgentModel[], chosen: string): Agent
 export function disposeProvider(): void {
   const p = provider;
   provider = null;
-  statusCheck = null;
+  invalidateStatusCheck();
   setStatus({ state: "checking" });
   setModels([]);
   if (p) void p.dispose();

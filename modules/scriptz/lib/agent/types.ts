@@ -96,6 +96,8 @@ export const AGENT_KEY_INVALID = "agent-key-invalid";
 export const AGENT_NO_CREDITS = "agent-no-credits";
 /** The hosted agent is not open to this AgentZ account yet ("coming soon"). */
 export const AGENT_NOT_ENABLED = "agent-not-enabled";
+/** The model response broke off or was cut (output limit, content filter). */
+export const AGENT_INCOMPLETE = "agent-incomplete";
 
 export interface AgentThread {
   /** Provider thread id, stored to resume the chat later. */
