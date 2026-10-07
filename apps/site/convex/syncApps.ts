@@ -14,10 +14,10 @@ export const appArg = v.union(v.literal("scriptz"));
 export const isSyncApp = (value: unknown): value is SyncApp =>
   typeof value === "string" && Object.hasOwn(SYNC_APPS, value);
 
-/** Ciphertext above this size goes to file storage. Small enough that a full
+/** Record data above this size goes to file storage. Small enough that a full
  * pull page stays well below the 16 MiB a query may read. */
 export const INLINE_LIMIT = 96 * 1024;
-/** Upper bound for one encrypted record, inline or as a file. */
+/** Upper bound for one record, inline or as a file. */
 export const RECORD_LIMIT = 16 * 1024 * 1024;
 /** Records per push and pull call. */
 export const BATCH_LIMIT = 100;

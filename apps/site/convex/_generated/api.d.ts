@@ -13,7 +13,6 @@ import type * as auth from "../auth.js";
 import type * as crons from "../crons.js";
 import type * as emails from "../emails.js";
 import type * as http from "../http.js";
-import type * as keys from "../keys.js";
 import type * as sync from "../sync.js";
 import type * as syncApps from "../syncApps.js";
 
@@ -29,7 +28,6 @@ declare const fullApi: ApiFromModules<{
   crons: typeof crons;
   emails: typeof emails;
   http: typeof http;
-  keys: typeof keys;
   sync: typeof sync;
   syncApps: typeof syncApps;
 }>;

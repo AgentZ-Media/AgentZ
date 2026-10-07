@@ -53,9 +53,9 @@ export const createAuth = (ctx: GenericCtx<DataModel>) =>
     user: {
       deleteUser: {
         enabled: true,
-        // The encrypted cloud copy of all apps goes with the account.
+        // The cloud copy of all apps goes with the account.
         afterDelete: async (user) => {
-          await requireRunMutationCtx(ctx).runMutation(internal.sync.purge, { userId: user.id, keepKey: false });
+          await requireRunMutationCtx(ctx).runMutation(internal.sync.purge, { userId: user.id });
         },
       },
     },

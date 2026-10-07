@@ -21,7 +21,10 @@ export interface SyncState {
   userId: string;
   /** Shown when another account signs in on this device. */
   email: string;
-  /** Data key the bookkeeping belongs to; a new key starts over. */
+  /**
+   * Cloud format the bookkeeping belongs to (CLOUD_FORMAT); any other value
+   * starts over. Named `keyId` in the stored JSON.
+   */
   keyId: string;
   deviceId: string;
   /** Local change cursor up to which everything was uploaded. */
@@ -32,6 +35,9 @@ export interface SyncState {
 }
 
 const STATE_KEY = "sync.state";
+
+/** Records as JSON without a device key (records.ts). */
+export const CLOUD_FORMAT = "plain-1";
 
 export async function readSyncState(kv: KvStore): Promise<SyncState | null> {
   const raw = await kv.getAppState(STATE_KEY);

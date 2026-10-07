@@ -25,8 +25,8 @@ paths:
   Dev-Deployment (`pnpm dev:site:backend`) testen. Production deployt nur der
   Vercel-Build (`convex deploy --cmd`) nach dem Merge auf `main`.
   `convex/_generated/` wird committet. Sync-Daten der Apps
-  (`schema.ts`, `sync.ts`, `keys.ts`, `appLink.ts`) sind Ende-zu-Ende
-  verschlüsselt; jede App hat eine eigene Record-Tabelle
+  (`schema.ts`, `sync.ts`, `appLink.ts`) sind Nutzerinhalte; jede App hat eine
+  eigene Record-Tabelle
   ([`docs/cloud-sync.md`](../../docs/cloud-sync.md)). Neue Datenverarbeitung im Konto immer
   in der Datenschutzerklärung nachziehen.
 - Konto-E-Mails (Reset, Bestätigung) über Resend in `convex/emails.ts`, Absender

@@ -70,7 +70,7 @@ Kein `cp` der laufenden DB (WAL). Wiederherstellen bei beendeter App:
   (`releases/download/scriptz-latest/latest.json`, mit Nightly-Kanal zusätzlich
   `scriptz-nightly/latest.json`), nur wenn der Agent eingeschaltet ist der
   lokale Codex-Prozess und nur mit Anmeldung das Convex-Backend (Sitzung,
-  Ende-zu-Ende verschlüsselter Sync). Keine Telemetrie. Die CSP erlaubt dafür
+  Sync). Keine Telemetrie. Die CSP erlaubt dafür
   ausschließlich `*.convex.cloud` und `*.convex.site`.
 - **Nightly-Sicherungen** liegen unter
   `~/Library/Application Support/de.agent-z.scriptz/backups/` (Windows:

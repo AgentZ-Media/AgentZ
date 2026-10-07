@@ -46,7 +46,7 @@
     ],
     "category": "Productivity",
     "shortDescription": "Fast, local script editor for creators and sketch teams.",
-    "longDescription": "ScriptZ - a minimalist, lightning-fast script editor for TikTok creators and sketch comedy teams. Local first, with optional end-to-end encrypted sync.",
+    "longDescription": "ScriptZ - a minimalist, lightning-fast script editor for TikTok creators and sketch comedy teams. Local first, with optional sync between devices.",
     "createUpdaterArtifacts": true,
     "windows": {
       "nsis": {

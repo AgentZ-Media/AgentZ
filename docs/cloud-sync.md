@@ -1,7 +1,8 @@
 # Konto und Cloud-Synchronisierung
 
 Apps der Suite funktionieren vollständig ohne Konto. Mit einem Konto gleichen
-sie ihre Daten Ende-zu-Ende verschlüsselt zwischen den Geräten ab. Die lokale
+sie ihre Daten zwischen den Geräten ab: anmelden, fertig, ohne weitere
+Schritte für den Nutzer. Die lokale
 SQLite-Datenbank bleibt die Arbeitskopie; sobald jemand angemeldet ist, ist die
 Cloud die Wahrheit.
 
@@ -9,10 +10,10 @@ Cloud die Wahrheit.
 
 | Teil | Ort | Aufgabe |
 |---|---|---|
-| Konto, Krypto, Engine, UI | `packages/kit/account/` (`@agentz/kit/account`) | Anmeldung, Sitzung, Datenschlüssel, Sync-Engine, Avatar, Konto-Button, Dialoge, Einstellungsseite „Konto“ |
+| Konto, Engine, UI | `packages/kit/account/` (`@agentz/kit/account`) | Anmeldung, Sitzung, Datensatzformat, Sync-Engine, Avatar, Konto-Button, Dialoge, Einstellungsseite „Konto“ |
 | Adapter je App | z. B. `modules/scriptz/lib/sync/adapter.ts` | Welche Tabellen, in welcher Reihenfolge, wie eingehende Datensätze geschrieben werden, Konfliktkopien |
 | Desktop-Host | `packages/desktop/lib/platform.ts`, `crates/agentz-desktop/src/secrets.rs` | Schlüsselbund (`PlatformAdapter.secrets`), URL-Schema `agentz-<id>://` (`onOpenUrl`) |
-| Backend | `apps/site/convex/` | `sync.ts`, `keys.ts`, `appLink.ts`, `schema.ts`, `syncApps.ts` |
+| Backend | `apps/site/convex/` | `sync.ts`, `appLink.ts`, `schema.ts`, `syncApps.ts` |
 | Anmeldeseite | `apps/site/src/components/AppSignIn.astro` (`/konto/app/`, `/en/account/app/`) | Vollbild-Anmeldung für Apps |
 
 Die Shell startet das Konto (`startAccountRuntime`), wenn der Host eine
@@ -44,23 +45,24 @@ JWT über `/api/auth/convex/token`. Erlaubte Origins der Apps stehen in
 `APP_ORIGINS` (`convex/auth.ts`): `tauri://localhost`, `http://tauri.localhost`
 und die Dev-Ports 1420, 1430, … .
 
-## Verschlüsselung
+## Datensätze und Schutz
 
-- Pro Konto ein zufälliger 256-Bit-Datenschlüssel. Er verlässt die Geräte nur
-  verschlüsselt: `sync_keys.wrapped` ist AES-256-GCM mit einem per HKDF aus dem
-  Wiederherstellungsschlüssel abgeleiteten Schlüssel.
-- Der Wiederherstellungsschlüssel (32 Zufallsbytes, 52 Zeichen Crockford-Base32)
-  wird beim Einrichten einmal gezeigt und nie gespeichert. Ein neues Gerät
-  braucht ihn einmal; danach liegt der Datenschlüssel im Schlüsselbund
-  (`sync.key`). „Neuer Schlüssel“ verpackt denselben Datenschlüssel neu.
-  „Schlüssel verloren“ erzeugt einen neuen Datenschlüssel und löscht die
-  Cloud-Daten (`keys.reset`, `sync.purge`), andere Geräte laden danach erneut hoch.
-- Je App leitet HKDF einen Inhaltsschlüssel (AES-256-GCM) und einen ID-Schlüssel
-  (HMAC-SHA-256) ab. Die Record-ID ist der HMAC von Entität und lokaler ID; die
-  Datensätze sind an App und Record-ID gebunden (Additional Authenticated Data).
-  Inhalte über 512 Byte werden vor dem Verschlüsseln mit gzip komprimiert.
-- Der Server sieht pro Datensatz nur Record-ID, Revision, Größe, Löschmarke,
-  Schlüssel-ID, zufällige Geräte-ID und Zeitpunkt.
+- Ein Datensatz ist das JSON `{ entity, id, record }` einer lokalen Zeile,
+  ab 512 Byte mit gzip komprimiert, wenn das kleiner ist
+  (`packages/kit/account/records.ts`). Die Record-ID ist `<entity>/<lokale ID>`.
+- Übertragung per TLS, Convex speichert verschlüsselt (at rest) in der EU.
+  Es gibt bewusst keine Ende-zu-Ende-Verschlüsselung: Ein Schlüssel, den
+  Nutzer aufbewahren oder auf neuen Geräten eingeben müssen, passt nicht zur
+  Zielgruppe, und Funktionen wie Web-Version oder Support brauchen lesbare
+  Daten auf dem Server.
+- `SyncState.keyId` (`app_state.sync.state`) hält das Cloud-Format
+  (`CLOUD_FORMAT`). Weicht es ab, etwa nach Ende-zu-Ende verschlüsseltem Sync
+  älterer Versionen, beginnt die Buchführung neu und alles geht erneut hoch;
+  ein alter Datenschlüssel im Schlüsselbund (`sync.key`) wird dabei gelöscht.
+- Ende-zu-Ende verschlüsselte Datensätze älterer Versionen tragen in Convex
+  ein `keyId`; Geräte überspringen sie. Der erste Upload einer aktuellen App
+  löscht den alten Schlüssel (`sync_keys`) und plant `sync.dropEncrypted`,
+  das diese Datensätze seitenweise entfernt.
 
 ## Datenmodell in Convex
 
@@ -69,11 +71,9 @@ und die Dev-Ports 1420, 1430, … .
   Pro lokaler Zeile gibt es genau ein Dokument mit der letzten Fassung; Seiten
   sind auf 100 Datensätze und 4 MB begrenzt, damit auch zehntausende Skripte
   nur in Änderungen übertragen werden.
-- Verschlüsselte Inhalte bis 96 KiB liegen im Dokument, größere im File
-  Storage.
-- `sync_heads`: Revisionszähler pro Nutzer und App. `sync_keys`: verpackter
-  Datenschlüssel pro Konto (für alle Apps). `app_links`: kurzlebige Codes der
-  App-Anmeldung (stündlicher Cron räumt auf).
+- Datensätze bis 96 KiB liegen im Dokument, größere im File Storage.
+- `sync_heads`: Revisionszähler pro Nutzer und App. `app_links`: kurzlebige
+  Codes der App-Anmeldung (stündlicher Cron räumt auf).
 - Kontolöschung (`deleteUser.afterDelete`) löscht alle Sync-Daten in Batches.
 - Neue App mit Sync: Tabelle in `schema.ts`, Eintrag in `syncApps.ts`
   (`SYNC_APPS`, `appArg`) und ein `SyncAdapter` im Modul. Ohne Eintrag in
@@ -83,7 +83,7 @@ und die Dev-Ports 1420, 1430, … .
 
 Lokal führt die Tabelle `sync_records` (Migration der App, `baseline.sql` für
 neue Apps) pro Datensatz Record-ID, Cloud-Revision und Inhalts-Hash;
-`app_state.sync.state` hält Konto, Schlüssel-ID, Geräte-ID und beide Cursor.
+`app_state.sync.state` hält Konto, Cloud-Format, Geräte-ID und beide Cursor.
 
 Ein Durchlauf schreibt zuerst ungespeichertes Tippen (`flushAll` mit `content`),
 lädt dann lokale Änderungen hoch und holt danach die Cloud-Änderungen:
@@ -126,9 +126,10 @@ Geräten gleichzeitig benutzt, gewinnt die letzte Fassung.
 
 ## Prüfung
 
-- `packages/kit/account/__tests__/`: Krypto (Schlüssel, Verpackung, Bindung,
-  Kompression) und Engine mit einer Cloud-Attrappe (Echo, Konfliktkopie,
-  Bearbeiten gegen Löschen, Eltern-Reihenfolge, File Storage, fremde Schlüssel).
+- `packages/kit/account/__tests__/`: Datensatzformat (JSON, Kompression,
+  Record-IDs) und Engine mit einer Cloud-Attrappe (Echo, Konfliktkopie,
+  Bearbeiten gegen Löschen, Eltern-Reihenfolge, File Storage, verschlüsselte
+  Altdatensätze).
 - `modules/scriptz/lib/sync/__tests__/adapter.test.ts`: zwei echte
   SQLite-Datenbanken mit allen Migrationen.
 - Backend gegen das Dev-Deployment testen (`pnpm dev:site:backend`).

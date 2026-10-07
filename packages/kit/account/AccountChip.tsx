@@ -100,12 +100,7 @@ export function AccountChip() {
               </div>
               <p class={`acc-menu-status is-${status().tone}`}>{status().text}</p>
               <div class="menu-sep" />
-              <Show when={account.keyPhase() === "enter" || account.keyPhase() === "create"}>
-                <button type="button" role="menuitem" class="menu-it" onClick={run(() => account.openKeyDialog())}>
-                  <Icon name="shield" /><span class="lbl">{t("account.menu.unlock")}</span>
-                </button>
-              </Show>
-              <Show when={account.keyPhase() === "ready"}>
+              <Show when={account.syncReady()}>
                 <button type="button" role="menuitem" class="menu-it" onClick={run(() => account.syncNow())}>
                   <Icon name="refresh" /><span class="lbl">{t("account.menu.syncNow")}</span>
                 </button>
