@@ -17,6 +17,9 @@ function createServer() {
   const records = new Map<string, WireRecord>();
   const blobs = new Map<string, Uint8Array>();
   const pushes: WireChange[] = [];
+  /** Fault injection: the pull call with this number (1-based) fails once. */
+  let failPull = 0;
+  let pulls = 0;
   const outdated = (client: SyncClient) => {
     if (client.reads >= format) return null;
     return Object.assign(new Error("outdated"), { data: { code: "CLIENT_OUTDATED", block: { reason: "format", format, by: formatBy } } });
@@ -25,6 +28,7 @@ function createServer() {
     pushes,
     records,
     format: () => format,
+    failPullNumber(n: number) { failPull = n; pulls = 0; },
     transport(keyId: string): CloudTransport {
       return {
         head: async (_app, client) => {
@@ -35,6 +39,8 @@ function createServer() {
         async pull(_app, client, afterRev) {
           const error = outdated(client);
           if (error) throw error;
+          pulls += 1;
+          if (failPull && pulls === failPull) { failPull = 0; throw new Error("network lost"); }
           const list = [...records.values()].filter((r) => r.rev > afterRev).sort((a, b) => a.rev - b.rev);
           const page = list.slice(0, 2);
           return { records: page.map((r) => ({ ...r })), headRev: head, more: list.length > page.length };
@@ -95,9 +101,10 @@ const V1: DeviceSchema = {
   format: { reads: 1, writes: 1 },
 };
 
-// A newer version: children gained "mood", a new entity "notes" and a new setting.
+// A newer version: children gained "mood", a new entity "notes" (optionally
+// inside a parent) and a new setting.
 const V2: DeviceSchema = {
-  fields: { parents: ["id", "title"], children: ["id", "title", "parentId", "mood"], notes: ["id", "title"] },
+  fields: { parents: ["id", "title"], children: ["id", "title", "parentId", "mood"], notes: ["id", "title", "parentId"] },
   settings: ["stages", "theme_accent"],
   format: { reads: 1, writes: 1 },
 };
@@ -151,7 +158,7 @@ function createDevice(name: string, initial: DeviceSchema = V1) {
       for (const change of changes) {
         if (change.record === null) { remove(change.entity, change.id); continue; }
         const row = { ...(change.record as Row) };
-        if (change.entity === "children" && row.parentId && !table("parents").has(row.parentId)) {
+        if ((change.entity === "children" || change.entity === "notes") && row.parentId && !table("parents").has(row.parentId)) {
           if (!force) { waiting.push(change); continue; }
           row.parentId = null;
         }
@@ -164,6 +171,7 @@ function createDevice(name: string, initial: DeviceSchema = V1) {
       const copy = { ...row, id: `${row.id}-copy-${name}`, title: `${row.title} (copy)` };
       write(entity, copy);
       copies.push(copy.id);
+      return copy.id;
     },
     settings: { keys: schema.settings, changed: () => {} },
   });
@@ -424,7 +432,7 @@ describe("data from newer versions", () => {
     older.upgrade(V2);
     const updated = await connect(older, server, key, "O", "1.1.0");
     await updated.sync();
-    expect(older.tables.notes.get("n1")).toEqual({ id: "n1", title: "Note" });
+    expect(older.tables.notes.get("n1")).toEqual({ id: "n1", title: "Note", parentId: null });
     expect(older.tables.notes.has("n2")).toBe(false);
     expect(older.settings.get("theme_accent")).toBe("blue");
     expect(older.book.parkedRecords.size).toBe(0);
@@ -504,5 +512,99 @@ describe("data from newer versions", () => {
     await (await connect(bridge, server, key, "B", "1.5.0")).sync();
     expect(bridge.tables.children.get("c1")?.title).toBe("Script");
     expect(server.format()).toBe(2);
+  });
+
+  it("keeps a learned field the user set after the update, before the first sync", async () => {
+    const server = createServer();
+    const key = createDataKey();
+    const newer = createDevice("new", V2);
+    const older = createDevice("old", V1);
+    const syncNew = await connect(newer, server, key, "N", "1.1.0");
+    newer.write("children", { id: "c1", title: "Script", mood: "calm" });
+    await syncNew.sync();
+    await (await connect(older, server, key, "O")).sync();
+    older.upgrade(V2);
+    older.write("children", { id: "c1", title: "Script", mood: "angry" });
+    await (await connect(older, server, key, "O", "1.1.0")).sync();
+    expect(older.tables.children.get("c1")?.mood).toBe("angry");
+    await syncNew.sync();
+    expect(newer.tables.children.get("c1")?.mood).toBe("angry");
+  });
+
+  it("lets a parked record wait for its parent when the pull that parked it broke off", async () => {
+    const server = createServer();
+    const key = createDataKey();
+    const newer = createDevice("new", V2);
+    const older = createDevice("old", V1);
+    const syncNew = await connect(newer, server, key, "N", "1.1.0");
+    newer.write("parents", { id: "p0", title: "Filler" });
+    newer.write("notes", { id: "n1", title: "Note", parentId: "p1" });
+    await syncNew.sync();
+    // The parent arrives in the cloud after the note: a later page.
+    newer.write("parents", { id: "p1", title: "Folder" });
+    newer.write("parents", { id: "p2", title: "Filler" });
+    await syncNew.sync();
+    server.failPullNumber(2);
+    await expect((await connect(older, server, key, "O")).sync()).rejects.toThrow("network lost");
+    expect(older.book.parkedRecords.size).toBe(1);
+    expect(older.tables.parents.has("p1")).toBe(false);
+
+    older.upgrade(V2);
+    const updated = await connect(older, server, key, "O", "1.1.0");
+    await updated.push();
+    // Not applied before its parent is here.
+    expect(older.tables.notes.has("n1")).toBe(false);
+    await updated.sync();
+    expect(older.tables.notes.get("n1")).toEqual({ id: "n1", title: "Note", parentId: "p1" });
+    expect(older.book.parkedRecords.size).toBe(0);
+    await syncNew.sync();
+    expect(newer.tables.notes.get("n1")?.parentId).toBe("p1");
+  });
+
+  it("uploads fields and records of newer versions again when the cloud copy is replaced", async () => {
+    const key = createDataKey();
+    const oldCloud = createServer();
+    const newer = createDevice("new", V2);
+    const older = createDevice("old", V1);
+    newer.write("children", { id: "c1", title: "Script", mood: "calm" });
+    newer.write("notes", { id: "n1", title: "Note" });
+    await (await connect(newer, oldCloud, key, "N", "1.1.0")).sync();
+    await (await connect(older, oldCloud, key, "O")).sync();
+    // "Recovery key lost": a new key, an empty cloud, and the newer device is gone.
+    const newKey = createDataKey();
+    const newCloud = createServer();
+    await older.book.resetForNewCloud();
+    await older.kv.setAppState("test.state", JSON.stringify({ userId: "u", email: "u@x", keyId: newKey.keyId, deviceId: "O", pushed: 0, pulled: 0, lastSyncedAt: null }));
+    await (await connect(older, newCloud, newKey, "O")).sync();
+    expect(older.book.parkedRecords.size).toBe(1);
+    const fresh = createDevice("fresh", V2);
+    await (await connect(fresh, newCloud, newKey, "F", "1.1.0")).sync();
+    expect(fresh.tables.children.get("c1")).toMatchObject({ title: "Script", mood: "calm" });
+    expect(fresh.tables.notes.get("n1")).toMatchObject({ title: "Note" });
+    // And nothing goes up twice.
+    const pushes = newCloud.pushes.length;
+    await (await connect(older, newCloud, newKey, "O")).sync();
+    expect(newCloud.pushes.length).toBe(pushes);
+  });
+
+  it("keeps unknown fields with a conflict copy", async () => {
+    const server = createServer();
+    const key = createDataKey();
+    const newer = createDevice("new", V2);
+    const older = createDevice("old", V1);
+    const syncNew = await connect(newer, server, key, "N", "1.1.0");
+    const syncOld = await connect(older, server, key, "O");
+    newer.write("children", { id: "c1", title: "Script", mood: "calm" });
+    await syncNew.sync();
+    await syncOld.sync();
+    newer.write("children", { id: "c1", title: "New edit", mood: "tense" });
+    await syncNew.sync();
+    older.write("children", { id: "c1", title: "Old edit" });
+    await syncOld.push();
+    await syncOld.sync();
+    expect(older.copies).toEqual(["c1-copy-old"]);
+    await syncNew.sync();
+    expect(newer.tables.children.get("c1-copy-old")).toMatchObject({ title: "Old edit (copy)", mood: "calm" });
+    expect(newer.tables.children.get("c1")).toMatchObject({ title: "New edit", mood: "tense" });
   });
 });

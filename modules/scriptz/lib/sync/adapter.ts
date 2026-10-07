@@ -251,7 +251,7 @@ export function createScriptzSyncAdapter(hooks: ScriptzSyncHooks): SyncAdapter {
       return waiting;
     },
 
-    async keepLocalCopy(entity, _id, record) {
+    async keepLocalCopy(entity, _id, record): Promise<string | void> {
       if (entity !== "scripts" && entity !== "ideas") return;
       const row = { ...(record as Row) };
       const now = Date.now();
@@ -265,6 +265,7 @@ export function createScriptzSyncAdapter(hooks: ScriptzSyncHooks): SyncAdapter {
       await upsert(entity, row);
       if (entity === "scripts") await refreshFtsForScript(row.id);
       hooks.applied({ entities: new Set([entity]), scripts: new Set(), chats: new Set() });
+      return String(row.id);
     },
 
     settings: {

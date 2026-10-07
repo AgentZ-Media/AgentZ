@@ -110,7 +110,8 @@ export interface SyncAdapter {
   /** Current local version of a record, or null if it does not exist. */
   read(entity: string, id: string, context: SyncContext): Promise<unknown | null>;
   apply(changes: RemoteChange[], context: SyncContext & { force: boolean }): Promise<RemoteChange[]>;
-  keepLocalCopy?(entity: string, id: string, record: unknown): Promise<void>;
+  /** Returns the local ID of the copy, so fields this version does not know stay with it. */
+  keepLocalCopy?(entity: string, id: string, record: unknown): Promise<string | void>;
   /** Settings keys (KvStore) synced across devices; device-only keys stay out. */
   settings?: {
     keys: readonly string[];

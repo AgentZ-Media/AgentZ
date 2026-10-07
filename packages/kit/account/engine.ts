@@ -53,6 +53,8 @@ interface Candidate {
   envelope: Envelope | null;
   /** Unknown fields merged into the envelope; kept for the next upload. */
   extra: Record<string, unknown> | null;
+  /** A parked record uploaded again after the cloud copy was replaced. */
+  parked?: ParkedRecord;
 }
 
 interface Decoded extends RemoteChange {
@@ -122,7 +124,8 @@ export function createSyncEngine(options: EngineOptions) {
       if (!entry && !envelope) continue;
       out.push({
         entity: change.entity, id: change.id, envelope, hash, extra,
-        remoteId: entry?.remoteId ?? await cipher.recordId(change.entity, change.id),
+        // Empty after the cloud copy was replaced (book.resetForNewCloud).
+        remoteId: entry?.remoteId || await cipher.recordId(change.entity, change.id),
         baseRev: entry?.rev ?? 0,
       });
     }
@@ -172,7 +175,11 @@ export function createSyncEngine(options: EngineOptions) {
       for (const candidate of batch) {
         const result = byId.get(candidate.remoteId);
         if (!result) continue;
-        if (result.status === "ok") {
+        if (result.status === "ok" && candidate.parked) {
+          // Still unknown to this version: it stays parked, now under the current key.
+          await book.park([{ ...candidate.parked, remoteId: candidate.remoteId, rev: result.rev, upload: false }]);
+          await book.unpark([candidate.parked.remoteId]);
+        } else if (result.status === "ok") {
           done.push({ entity: candidate.entity, id: candidate.id, remoteId: candidate.remoteId, rev: result.rev, hash: candidate.hash, extra: candidate.extra });
         } else {
           const next = await resolvePushConflict(candidate, result);
@@ -186,6 +193,11 @@ export function createSyncEngine(options: EngineOptions) {
 
   /** Returns a candidate to push again, or null once the cloud version is applied. */
   async function resolvePushConflict(candidate: Candidate, result: Extract<PushResult, { status: "conflict" }>): Promise<Candidate | null> {
+    // Another device already uploaded this record again; the pull brings it.
+    if (candidate.parked) {
+      await book.unpark([candidate.parked.remoteId]);
+      return null;
+    }
     const current = result.current;
     // The cloud lost the record (key reset) or deleted it: the local edit wins.
     if (!current || current.deleted) {
@@ -207,15 +219,36 @@ export function createSyncEngine(options: EngineOptions) {
   let copied = false;
   async function keepCopy(entity: string, id: string, record: unknown) {
     if (entity === SETTINGS_ENTITY || !adapter.keepLocalCopy) return;
-    await adapter.keepLocalCopy(entity, id, record);
+    const copyId = await adapter.keepLocalCopy(entity, id, record);
+    // The copy keeps the fields this version does not know: they go up with it.
+    const extra = extraOf(entity, record);
+    if (typeof copyId === "string" && extra) {
+      await book.put([{ entity, id: copyId, remoteId: "", rev: 0, hash: "", extra }]);
+    }
     copied = true;
     options.onConflictCopy?.(entity);
+  }
+
+  /** Parked records whose cloud copy was replaced go up again under the current key. */
+  async function uploadParked(): Promise<void> {
+    const pending = (await book.parked()).filter((record) => record.upload);
+    if (pending.length === 0) return;
+    const candidates: Candidate[] = [];
+    for (const record of pending) {
+      const envelope: Envelope = { entity: record.entity, id: record.id, record: record.record };
+      candidates.push({
+        entity: record.entity, id: record.id, envelope, hash: await hashOf(envelope), extra: null, parked: record,
+        remoteId: await cipher.recordId(record.entity, record.id), baseRev: 0,
+      });
+    }
+    await upload(candidates);
   }
 
   async function push(): Promise<void> {
     // Before anything goes up: a field learned by an update must reach the
     // local row first, or its empty local column would overwrite the cloud.
     await adoptNewerData();
+    await uploadParked();
     // Settings first: they are few and the content may depend on them (stages).
     await upload(await candidatesFor(await localSettings()));
     for (;;) {
@@ -309,34 +342,46 @@ export function createSyncEngine(options: EngineOptions) {
   let adopted = false;
 
   /**
-   * Once per engine (i.e. per app start), before the first upload: records
-   * parked by an older version that this version knows now are applied like
-   * freshly pulled ones, and booked fields it knows now reach the local tables.
-   * Local work only, no network.
+   * Applies parked records this version knows now, like freshly pulled ones.
+   * Without `force` a record whose parent is still missing stays parked; the
+   * end of a complete pull applies the rest with `force`.
+   */
+  async function applyParked(force: boolean): Promise<void> {
+    const parked = (await book.parked()).filter((record) => !record.upload && knows(record.entity, record.id));
+    if (parked.length === 0) return;
+    const items: Decoded[] = parked.map((record) => ({
+      entity: record.entity, id: record.id, record: record.record, remoteId: record.remoteId, rev: record.rev, hash: record.hash,
+    }));
+    const waiting = await applyAll(await integrate(items, await unsyncedKeys()), force);
+    const stillWaiting = new Set(waiting.map((item) => item.remoteId));
+    await book.unpark(parked.filter((record) => !stillWaiting.has(record.remoteId)).map((record) => record.remoteId));
+  }
+
+  /**
+   * Once per engine (i.e. per app start), before the first upload: parked
+   * records this version knows now are applied, and booked fields it knows
+   * now reach the local rows. Local work only, no network.
    */
   async function adoptNewerData(): Promise<void> {
     if (adopted) return;
-    const parked = (await book.parked()).filter((record) => knows(record.entity, record.id));
-    if (parked.length > 0) {
-      const items: Decoded[] = parked.map((record) => ({
-        entity: record.entity, id: record.id, record: record.record, remoteId: record.remoteId, rev: record.rev, hash: record.hash,
-      }));
-      const waiting = await applyAll(await integrate(items, await unsyncedKeys()));
-      if (waiting.length > 0) await applyAll(waiting, true);
-      await book.unpark(parked.map((record) => record.remoteId));
-    }
+    await applyParked(false);
+    const unsynced = await unsyncedKeys();
     for (const entry of await book.withExtra()) {
       const known = fields.get(entry.entity);
-      if (!known || !entry.extra || !knows(entry.entity, entry.id)) continue;
-      const learned = Object.entries(entry.extra).filter(([key]) => known.has(key));
+      if (!known || !entry.extra || !knows(entry.entity, entry.id) || entry.entity === SETTINGS_ENTITY) continue;
+      const learned = Object.keys(entry.extra).filter((key) => known.has(key));
       if (learned.length === 0) continue;
       const rest = Object.fromEntries(Object.entries(entry.extra).filter(([key]) => !known.has(key)));
-      // The local row equals the synced record in every field this version
-      // knew, so adding the learned fields restores the cloud version. Its hash
-      // stays the booked one and nothing is uploaded again.
-      const local = entry.entity === SETTINGS_ENTITY ? null : await adapter.read(entry.entity, entry.id, context());
+      const local = await adapter.read(entry.entity, entry.id, context());
       if (isPlainObject(local)) {
-        const waiting = await adapter.apply([{ entity: entry.entity, id: entry.id, record: { ...local, ...Object.fromEntries(learned) } }], { ...context(), force: true });
+        // The local row equals the synced record in every field this version
+        // knew; the new columns hold their default. Adding the learned values
+        // restores the cloud version, its hash stays the booked one. A row
+        // edited since the update keeps every learned field it already set.
+        const edited = unsynced.has(bookKey(entry.entity, entry.id));
+        const fill = learned.filter((key) => !edited || local[key] === null || local[key] === undefined);
+        const record = { ...local, ...Object.fromEntries(fill.map((key) => [key, entry.extra![key]])) };
+        const waiting = await adapter.apply([{ entity: entry.entity, id: entry.id, record }], { ...context(), force: true });
         if (waiting.length > 0) continue;
       }
       await book.put([{ ...entry, extra: Object.keys(rest).length > 0 ? rest : null }]);
@@ -356,8 +401,9 @@ export function createSyncEngine(options: EngineOptions) {
       if (page.records.length === 0) break;
       const deletedIds = page.records.filter((record) => record.deleted).map((record) => record.recordId);
       const knownByRemote = await book.byRemoteIds(deletedIds);
-      // A parked record deleted in the cloud is gone for good.
-      await book.unpark(deletedIds);
+      // A newer version of a parked record replaces it below (or applies it,
+      // if this version knows it now); a deletion removes it for good.
+      await book.unpark(page.records.map((record) => record.recordId));
       const decoded: Decoded[] = [];
       const parked: ParkedRecord[] = [];
       for (const record of page.records) {
@@ -389,6 +435,9 @@ export function createSyncEngine(options: EngineOptions) {
         break;
       }
     }
+    // Every page is in: parked records still waiting for a parent get the same
+    // final, forced attempt as pulled ones.
+    await applyParked(true);
   }
 
   return {

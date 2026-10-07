@@ -125,13 +125,21 @@ kennt ihre Felder pro Entität (`SyncAdapter.fields`). Die Engine
   bei jedem Upload dieses Datensatzes unverändert mit. Eine ältere Version
   kann einen Datensatz also bearbeiten, ohne neuere Felder zu löschen.
 - Datensätze einer unbekannten Entität und unbekannte Einstellungen werden
-  geparkt (`sync_parked`), weder angewendet noch gebucht. Eine Löschung in der
-  Cloud entfernt sie auch dort.
+  geparkt (`sync_parked`), weder angewendet noch gebucht. Eine neuere Fassung
+  ersetzt sie, eine Löschung in der Cloud entfernt sie.
+- Eine Konfliktkopie behält die unbekannten Felder ihres Originals.
+- Ersetzt ein neuer Schlüssel oder ein anderes Konto die Cloud-Kopie
+  (`resetForNewCloud`), bleiben Extras und geparkte Datensätze erhalten und
+  gehen mit allem anderen erneut hoch, auch wenn kein neueres Gerät mehr
+  existiert.
 - Nach einem Update übernimmt der erste Durchlauf, noch vor dem ersten Upload,
-  alles, was die neue Version kennt: geparkte Datensätze werden angewendet,
-  bekannte Extras in die lokalen Zeilen geschrieben. Erst danach wird
-  hochgeladen, damit eine neue, noch leere Spalte nie den Cloud-Wert
-  überschreibt.
+  alles, was die neue Version kennt: geparkte Datensätze werden angewendet
+  (wartet einer auf seine Eltern, erst am Ende des nächsten vollständigen
+  Abholens), bekannte Extras in die lokalen Zeilen geschrieben. Erst danach
+  wird hochgeladen, damit eine neue, noch leere Spalte nie den Cloud-Wert
+  überschreibt. Hat der Nutzer ein solches Feld seit dem Update schon selbst
+  gesetzt, gewinnt sein Wert; „noch leer“ heißt `NULL`. Neue synchronisierte
+  Spalten deshalb ohne Standardwert (also `NULL`) anlegen.
 - Fehlt einem eingehenden Datensatz eine Spalte (geschrieben von einer älteren
   Version), behält die lokale Zeile ihren Wert; ein neuer Datensatz bekommt
   den Standardwert.
@@ -190,6 +198,11 @@ dem echten Konto. Ein Dev-Build darf ein Konto mit Daten nie auf ein neueres
 Format heben (`DEV_FORMAT_RAISE`); Formatänderungen gegen das Dev-Deployment
 testen (`VITE_AGENTZ_CONVEX_URL`, `VITE_AGENTZ_CONVEX_SITE_URL`), dort ist
 `ALLOW_DEV_FORMAT_RAISE=1` gesetzt.
+
+**Versionen ohne Angabe.** Wer weder Version noch Format meldet (Nightlies
+von vor dieser Prüfung), bekommt `CLIENT_OUTDATED`. Bewusst ohne Übergang:
+Diese Versionen kennen weder `extra` noch `sync_parked` und würden Felder
+neuerer Versionen löschen.
 
 **Convex-API.** Production deployt beim Merge auf `main`, also vor jedem
 Release. Funktionen und Schema deshalb nur erweitern (neue Funktionen,

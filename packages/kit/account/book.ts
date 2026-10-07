@@ -16,7 +16,7 @@ import type { DbConnection, KvStore } from "../platform";
 export interface BookEntry {
   entity: string;
   id: string;
-  /** Opaque server record ID. */
+  /** Opaque server record ID; empty while the record is not in the cloud under the current key. */
   remoteId: string;
   rev: number;
   /** Hash of the synced content; DELETED for a synced deletion. */
@@ -33,6 +33,8 @@ export interface ParkedRecord {
   rev: number;
   hash: string;
   record: unknown;
+  /** The cloud copy was replaced (new key, other account): upload it again. */
+  upload?: boolean;
 }
 
 export const DELETED = "-";
@@ -79,12 +81,19 @@ export interface SyncBook {
   unpark(remoteIds: readonly string[]): Promise<void>;
   /** Forgets everything, parked records included. */
   clear(): Promise<void>;
+  /**
+   * The cloud copy is replaced (new data key, local data moved to another
+   * account): revisions and record IDs no longer apply. Keeps what only
+   * this device may still hold, fields and records of newer versions, so
+   * they are uploaded again with everything else.
+   */
+  resetForNewCloud(): Promise<void>;
 }
 
 export const bookKey = (entity: string, id: string) => `${entity}\u0000${id}`;
 
 interface Row { entity: string; entity_id: string; remote_id: string; rev: number; hash: string; extra: string | null }
-interface ParkedRow { remote_id: string; entity: string; entity_id: string; rev: number; hash: string; record: string }
+interface ParkedRow { remote_id: string; entity: string; entity_id: string; rev: number; hash: string; record: string; upload: number }
 
 function parseObject(text: string | null): Record<string, unknown> | null {
   if (!text) return null;
@@ -159,15 +168,16 @@ export function createSqlSyncBook(getDb: () => Promise<DbConnection>): SyncBook 
       if (records.length === 0) return;
       const db = await getDb();
       for (let i = 0; i < records.length; i += CHUNK) {
-        const chunk = records.slice(i, i + CHUNK).map((p) => [p.remoteId, p.entity, p.id, p.rev, p.hash, JSON.stringify(p.record)]);
+        const chunk = records.slice(i, i + CHUNK).map((p) => [p.remoteId, p.entity, p.id, p.rev, p.hash, JSON.stringify(p.record), p.upload ? 1 : 0]);
         await db.execute(
-          `INSERT INTO sync_parked (remote_id, entity, entity_id, rev, hash, record)
+          `INSERT INTO sync_parked (remote_id, entity, entity_id, rev, hash, record, upload)
            SELECT json_extract(value, '$[0]'), json_extract(value, '$[1]'), json_extract(value, '$[2]'),
-                  json_extract(value, '$[3]'), json_extract(value, '$[4]'), json_extract(value, '$[5]')
+                  json_extract(value, '$[3]'), json_extract(value, '$[4]'), json_extract(value, '$[5]'),
+                  json_extract(value, '$[6]')
            FROM json_each($1) WHERE true
            ON CONFLICT(remote_id) DO UPDATE SET
              entity = excluded.entity, entity_id = excluded.entity_id, rev = excluded.rev,
-             hash = excluded.hash, record = excluded.record
+             hash = excluded.hash, record = excluded.record, upload = excluded.upload
            WHERE excluded.rev > sync_parked.rev`,
           [JSON.stringify(chunk)],
         );
@@ -175,10 +185,10 @@ export function createSqlSyncBook(getDb: () => Promise<DbConnection>): SyncBook 
     },
     async parked() {
       const db = await getDb();
-      const rows = await db.select<ParkedRow[]>("SELECT remote_id, entity, entity_id, rev, hash, record FROM sync_parked ORDER BY rev");
+      const rows = await db.select<ParkedRow[]>("SELECT remote_id, entity, entity_id, rev, hash, record, upload FROM sync_parked ORDER BY rev");
       return rows.map((row) => ({
         remoteId: row.remote_id, entity: row.entity, id: row.entity_id, rev: row.rev, hash: row.hash,
-        record: JSON.parse(row.record) as unknown,
+        record: JSON.parse(row.record) as unknown, upload: row.upload === 1,
       }));
     },
     async unpark(remoteIds) {
@@ -195,6 +205,13 @@ export function createSqlSyncBook(getDb: () => Promise<DbConnection>): SyncBook 
       const db = await getDb();
       await db.execute("DELETE FROM sync_records");
       await db.execute("DELETE FROM sync_parked");
+    },
+    async resetForNewCloud() {
+      const db = await getDb();
+      await db.execute("DELETE FROM sync_records WHERE extra IS NULL");
+      await db.execute("UPDATE sync_records SET remote_id = '', rev = 0, hash = ''");
+      // rev 0 lets any copy the new cloud already has win over the re-upload.
+      await db.execute("UPDATE sync_parked SET rev = 0, upload = 1");
     },
   };
 }
@@ -246,6 +263,13 @@ export function createMemorySyncBook(): SyncBook & { entries: Map<string, BookEn
     async clear() {
       entries.clear();
       parkedRecords.clear();
+    },
+    async resetForNewCloud() {
+      for (const [key, entry] of entries) {
+        if (!entry.extra) entries.delete(key);
+        else entries.set(key, { ...entry, remoteId: "", rev: 0, hash: "" });
+      }
+      for (const [key, record] of parkedRecords) parkedRecords.set(key, { ...record, rev: 0, upload: true });
     },
   };
 }

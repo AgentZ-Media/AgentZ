@@ -52,7 +52,8 @@ zwischen Produkten. Details: [`suite-architecture.md`](.claude/rules/suite-archi
   Apps (siehe [`docs/cloud-sync.md`](docs/cloud-sync.md)).
 - **Sync-Format nur in zwei Schritten brechen.** Neue Felder, Entitäten und
   Einstellungen sind additiv und brauchen nur einen Eintrag in
-  `modules/<app>/lib/sync/format.json`. Umbenennen, Umdeuten oder Entfernen:
+  `modules/<app>/lib/sync/format.json` (neue synchronisierte Spalten ohne
+  Standardwert, also `NULL`). Umbenennen, Umdeuten oder Entfernen:
   erst ein Release, das `reads` anhebt, dann eines, das `writes` anhebt
   (`pnpm check:sync-format`). Convex-Funktionen und -Schema nur erweitern,
   Production deployt schon beim Merge

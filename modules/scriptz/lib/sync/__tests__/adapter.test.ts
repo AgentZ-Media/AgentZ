@@ -107,12 +107,13 @@ async function device(name: string, server: ReturnType<typeof createServer>, key
   const applied: AppliedSummary[] = [];
   const adapter = createScriptzSyncAdapter({ applied: (summary) => applied.push(summary), settingsChanged: () => {}, copySuffix: () => "Konfliktkopie" });
   const state: SyncState = { userId: "u", email: "u@x", keyId: key.keyId, deviceId: name, pushed: 0, pulled: 0, lastSyncedAt: null };
+  const book = createSqlSyncBook(async () => conn);
   const engine = createSyncEngine({
     app: "scriptz", adapter, cipher: await createRecordCipher(key, "scriptz"),
-    transport: server.transport(key.keyId), book: createSqlSyncBook(async () => conn), kv, state, client,
+    transport: server.transport(key.keyId), book, kv, state, client,
   });
   return {
-    db, applied,
+    db, applied, book,
     run(sql: string) { db.exec(sql); },
     rows: (sql: string) => db.prepare(sql).all(),
     async sync() { activate(); await engine.sync(); },
@@ -272,4 +273,24 @@ describe("ScriptZ sync adapter", () => {
     await a.sync();
     expect(a.rows("SELECT title, status FROM scripts")).toEqual([{ title: "Älter", status: "writing" }]);
   });
+
+  it("keeps data of newer versions in the database when the cloud copy is replaced", async () => {
+    sharedKey = createDataKey();
+    const server = createServer();
+    const a = await device("A", server);
+    a.run(SEED);
+    await a.sync();
+    const script = await server.read("scripts", "script");
+    await server.inject("scripts", "script", { ...script, mood: "ruhig" });
+    await server.inject("storyboards", "board", { id: "board", frames: 3 });
+    await a.sync();
+    await a.book.resetForNewCloud();
+    // Only records with unknown fields stay booked, without cloud identity.
+    expect(a.rows("SELECT entity, entity_id, remote_id, rev, hash, extra FROM sync_records")).toEqual([
+      { entity: "scripts", entity_id: "script", remote_id: "", rev: 0, hash: "", extra: '{"mood":"ruhig"}' },
+    ]);
+    expect(a.rows("SELECT entity_id, rev, upload FROM sync_parked")).toEqual([{ entity_id: "board", rev: 0, upload: 1 }]);
+    expect((await a.book.parked())[0]).toMatchObject({ entity: "storyboards", record: { id: "board", frames: 3 }, upload: true });
+  });
 });
+

@@ -3,6 +3,7 @@ import { language } from "../i18n";
 import { registerFlusher } from "../lib";
 import { getBuildInfo, getUpdatesStore, type KvStore, type PlatformAdapter } from "../platform";
 import { baseSettingsStore } from "../stores/baseSettings";
+import { shellUi } from "../stores/ui";
 import { createSqlSyncBook, readSyncState, writeSyncState, type SyncBook, type SyncState } from "./book";
 import {
   createDataKey, createRecordCipher, formatRecoveryKey, fromBase64Url, parseRecoveryKey, randomBytes,
@@ -194,8 +195,9 @@ async function confirmMerge(accept: boolean) {
   setDialog(null);
   const current = user();
   if (!accept || !current || !rt) { await signOut(); return; }
-  // The local data now belongs to this account: start a fresh bookkeeping.
-  await rt.book.clear();
+  // The local data now belongs to this account: start a fresh bookkeeping,
+  // keeping what newer app versions wrote so it moves along.
+  await rt.book.resetForNewCloud();
   const previous = await readSyncState(rt.kv);
   await writeSyncState(rt.kv, freshState(current, previous?.keyId ?? ""));
   await prepareKey(current);
@@ -403,14 +405,19 @@ async function clientOf(r: Runtime, adapter: SyncAdapter): Promise<SyncClient> {
 
 /** The backend does not let this version sync: pause until an update or a policy change. */
 function pauseForUpdate(r: Runtime, block: SyncBlock) {
+  const changed = JSON.stringify(syncBlock()) !== JSON.stringify(block);
   setSyncBlock(block);
   setSyncPhase("idle");
-  if (r.blockAnnounced) return;
-  r.blockAnnounced = true;
-  if (dialog() === null) setDialog("updateRequired");
-  // Look for the update right away, unless the user turned update checks off.
+  // Look for the newest update when the reason changes (an offered one may be
+  // too old for it), unless the user turned update checks off.
   const updates = getUpdatesStore();
-  if (updates && baseSettingsStore.updateCheckEnabled() && updates.stage() === "idle") void updates.checkNow();
+  const busy = updates?.stage() === "downloading" || updates?.stage() === "installing";
+  if (changed && updates && baseSettingsStore.updateCheckEnabled() && !busy) void updates.checkNow();
+  if (r.blockAnnounced) return;
+  // Never on top of another dialog: the banner and the account button say it too.
+  if (dialog() !== null || shellUi.anyDialogOpen()) return;
+  r.blockAnnounced = true;
+  setDialog("updateRequired");
 }
 
 async function startEngine(current: AccountUser, dataKey: DataKey) {
@@ -422,8 +429,9 @@ async function startEngine(current: AccountUser, dataKey: DataKey) {
     await r.book.clear();
     state = freshState(current, dataKey.keyId);
   } else if (state.keyId !== dataKey.keyId) {
-    // A new key replaced the cloud copy: everything is uploaded again.
-    await r.book.clear();
+    // A new key replaced the cloud copy: everything is uploaded again,
+    // including what only this device still holds from newer versions.
+    await r.book.resetForNewCloud();
     state = { ...state, keyId: dataKey.keyId, pushed: 0, pulled: 0 };
   }
   state.email = current.email;
@@ -444,6 +452,8 @@ async function startEngine(current: AccountUser, dataKey: DataKey) {
   let again = false;
   let failures = 0;
   let stopped = false;
+  /** Counts lifted pauses: a rejection from a request older than that is stale. */
+  let resumed = 0;
   const schedule = (delay: number) => {
     if (stopped) return;
     clearTimeout(timer);
@@ -454,6 +464,7 @@ async function startEngine(current: AccountUser, dataKey: DataKey) {
     if (stopped || syncBlock()) return;
     if (running) { again = true; return; }
     running = true;
+    const startedAt = resumed;
     setSyncPhase("syncing");
     try {
       await engine.sync();
@@ -462,7 +473,15 @@ async function startEngine(current: AccountUser, dataKey: DataKey) {
       setSyncPhase("idle");
     } catch (caught) {
       if (caught instanceof SessionExpiredError) { running = false; await expire(); return; }
-      if (caught instanceof ClientOutdatedError) { running = false; again = false; if (!stopped) pauseForUpdate(r, caught.block); return; }
+      if (caught instanceof ClientOutdatedError) {
+        running = false;
+        again = false;
+        if (stopped) return;
+        // The pause was lifted while this request ran: try again shortly.
+        if (startedAt !== resumed) { schedule(1000); return; }
+        pauseForUpdate(r, caught.block);
+        return;
+      }
       const code = errorCode(caught);
       if (code === "KEY_CHANGED" || code === "NO_KEY") { running = false; await keyChanged(); return; }
       if (code === "DEV_FORMAT_RAISE") {
@@ -498,6 +517,7 @@ async function startEngine(current: AccountUser, dataKey: DataKey) {
     if (head.block) { pauseForUpdate(r, head.block); return; }
     // The policy changed or the account's data went away (key reset).
     if (syncBlock()) {
+      resumed += 1;
       setSyncBlock(null);
       if (dialog() === "updateRequired") setDialog(null);
       schedule(0);

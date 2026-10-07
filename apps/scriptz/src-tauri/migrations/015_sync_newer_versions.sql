@@ -8,12 +8,15 @@
 ALTER TABLE sync_records ADD COLUMN extra TEXT;
 
 -- Cloud records of an entity or setting this version does not know. They are
--- applied by the first sync after an update that knows them.
+-- applied by the first sync after an update that knows them. `upload` = 1:
+-- the cloud copy was replaced (new key, other account), this device uploads
+-- the record again.
 CREATE TABLE sync_parked (
   remote_id TEXT PRIMARY KEY,
   entity TEXT NOT NULL,
   entity_id TEXT NOT NULL,
   rev INTEGER NOT NULL,
   hash TEXT NOT NULL,
-  record TEXT NOT NULL
+  record TEXT NOT NULL,
+  upload INTEGER NOT NULL DEFAULT 0
 ) WITHOUT ROWID;
