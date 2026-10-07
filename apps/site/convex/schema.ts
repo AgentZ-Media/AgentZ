@@ -75,6 +75,14 @@ export default defineSchema({
     resetting: v.optional(v.boolean()),
   }).index("by_user", ["userId"]),
 
+  /** Newest published version per app and channel (releases.ts). */
+  app_releases: defineTable({
+    app: v.string(),
+    channel: v.string(),
+    version: v.string(),
+    publishedAt: v.number(),
+  }).index("by_app_channel", ["app", "channel"]),
+
   /**
    * Browser sign-in for desktop apps (PKCE): the website stores a short-lived
    * code for the app's challenge, only the app holding the verifier can

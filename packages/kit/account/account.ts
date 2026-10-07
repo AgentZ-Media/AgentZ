@@ -70,6 +70,7 @@ interface Runtime {
   stopEngine: (() => void) | null;
   /** The update dialog appears once per app start, the banner stays. */
   blockAnnounced: boolean;
+  stopReleases: (() => void) | null;
 }
 let rt: Runtime | null = null;
 
@@ -170,6 +171,11 @@ async function connect(token: string, known: AccountUser | null) {
   if (r.signal.aborted || r.token !== token) return;
   r.transport = createConvexTransport(r.cloud, token, () => void expire());
   setPhase("signedIn");
+  // New releases arrive live: the updater checks right away instead of hourly.
+  r.stopReleases?.();
+  r.stopReleases = r.transport.watchReleases?.(r.app, (latest) => {
+    getUpdatesStore()?.releaseHint?.(latest, { urgent: syncBlock() !== null });
+  }) ?? null;
   let current = known;
   try {
     current = await fetchUser(r.cloud, token);
@@ -210,6 +216,8 @@ function freshState(current: AccountUser, keyId: string): SyncState {
 async function expire() {
   stopEngine();
   if (rt) {
+    rt.stopReleases?.();
+    rt.stopReleases = null;
     await rt.secrets.delete(SESSION_SECRET).catch(() => {});
     rt.transport?.close();
     rt.transport = null;
@@ -226,6 +234,8 @@ async function signOut() {
   // Upload what is still pending, but never block signing out on the network.
   if (r.engine && !syncBlock()) await withTimeout(r.engine.push(), 3000).catch(() => {});
   stopEngine();
+  r.stopReleases?.();
+  r.stopReleases = null;
   if (r.token) await revokeSession(r.cloud, r.token).catch(() => {});
   await r.secrets.delete(SESSION_SECRET).catch(() => {});
   r.transport?.close();
@@ -600,7 +610,7 @@ export function startAccountRuntime(options: AccountRuntimeOptions): () => void 
     book: options.book ?? createSqlSyncBook(() => options.platform.getDb()),
     signal: controller.signal,
     token: null, transport: null, engine: null, pendingVerifier: null, pendingKey: null, stopEngine: null,
-    blockAnnounced: false,
+    blockAnnounced: false, stopReleases: null,
   };
   rt = r;
   setSyncAvailable(!!options.adapter);
@@ -630,6 +640,7 @@ export function startAccountRuntime(options: AccountRuntimeOptions): () => void 
     stopLinks?.();
     stopEngine();
     clearTimeout(retryTimer);
+    r.stopReleases?.();
     r.transport?.close();
     if (rt === r) rt = null;
     setPhase("off");

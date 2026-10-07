@@ -186,3 +186,10 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           RELEASE_TAG: ${{ needs.prepare.outputs.tag }}
         run: node tooling/release/pointer.mjs
+      # Signed-in apps check right away instead of hourly. Never fails the job.
+      - name: Announce the release to the apps
+        env:
+          CHANNEL: stable
+          RELEASE_TAG: ${{ needs.prepare.outputs.tag }}
+          RELEASE_ANNOUNCE_TOKEN: ${{ secrets.RELEASE_ANNOUNCE_TOKEN }}
+        run: node tooling/release/announce.mjs

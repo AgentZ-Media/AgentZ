@@ -54,6 +54,10 @@ ausgeben oder committen, außerhalb des Repos gesichert halten.
   „Latest"). Er geht nur auf neuere Versionen, repariert bei identischem
   Manifest abgebrochene Uploads und reserviert die Version per Marker im
   Release-Text. Den Marker nie entfernen.
+- Danach meldet `announce.mjs` die Version an das Konto-Backend, damit
+  angemeldete Apps sofort prüfen (Secret `RELEASE_ANNOUNCE_TOKEN`, gleicher
+  Wert als Convex-Env-Variable in Production). Schlägt das fehl, gibt es nur
+  eine Warnung; Pre-Releases werden nicht gemeldet.
 - Laufen mehrere Releases derselben App kurz nacheinander, kann GitHub einen
   wartenden Zeiger-Job abbrechen. Dann den Job der **neuesten** Version erneut
   starten.
@@ -98,6 +102,7 @@ nächste PR `writes` anheben. Details: „Versionen und Kompatibilität“ in
   zurück auf ältere Versionen; behalten werden die Assets der letzten drei
   Nightlies. Der Tag `<app>-nightly` benennt nur den Kanal und bleibt stehen,
   den gebauten Commit nennt der Release-Text. Den Marker nie entfernen.
+  Danach meldet `announce.mjs` den Nightly wie ein Release.
 - In der App wählt `update_channel` (`stable`/`nightly`) den Kanal. Der Nightly-
   Kanal prüft `<app>-nightly` **und** `<app>-latest` und nimmt die neuere
   Version. Vor jedem Update von, zu oder zwischen Nightlies legt die App per

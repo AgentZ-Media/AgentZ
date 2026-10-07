@@ -166,3 +166,11 @@ jobs:
           BUILT_AT: ${{ matrix.built_at }}
           ARTIFACTS: ${{ runner.temp }}/nightly-artifacts
         run: node tooling/release/nightly-publish.mjs
+      # Signed-in nightly apps check right away. Never fails the job.
+      - name: Announce the nightly to the apps
+        env:
+          CHANNEL: nightly
+          APP: ${{ matrix.app }}
+          VERSION: ${{ matrix.version }}
+          RELEASE_ANNOUNCE_TOKEN: ${{ secrets.RELEASE_ANNOUNCE_TOKEN }}
+        run: node tooling/release/announce.mjs

@@ -21,6 +21,12 @@ export type ManualCheckState =
   | { kind: "uptodate" }
   | { kind: "error" };
 
+/** Newest published versions, pushed by the backend (apps/site/convex/releases.ts). */
+export interface LatestReleases {
+  stable: string | null;
+  nightly: string | null;
+}
+
 export interface AvailableUpdate {
   /** Human-readable version of the update, e.g. "0.7.4". */
   version: string;
@@ -39,6 +45,12 @@ export interface UpdatesStore {
   clearManualCheck(): void;
   startBackgroundPolling(): void;
   stopBackgroundPolling(): void;
+  /**
+   * A new version was published. The store checks soon, after a random delay
+   * so not every installation asks GitHub at once; `urgent` (sync paused until
+   * an update) shortens it. Only a hint: the check decides.
+   */
+  releaseHint?(latest: LatestReleases, options?: { urgent?: boolean }): void;
 }
 
 let store: UpdatesStore | null = null;
