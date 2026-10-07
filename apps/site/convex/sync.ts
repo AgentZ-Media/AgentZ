@@ -4,6 +4,7 @@ import type { Doc, Id } from "./_generated/dataModel";
 import {
   internalMutation, mutation, query, type MutationCtx, type QueryCtx,
 } from "./_generated/server";
+import { requireLiveUser } from "./auth";
 import { blockFor, devRaiseDenied, markOf, raisedMark, type ClientInfo, type SyncBlock } from "./compat";
 import {
   BATCH_LIMIT, INLINE_LIMIT, MIN_FORMAT, PULL_BYTES, RECORD_LIMIT, SYNC_APPS, appArg, type SyncApp,
@@ -117,7 +118,7 @@ export const pull = query({
 export const uploadUrl = mutation({
   args: { app: v.optional(appArg), client: clientArg },
   handler: async (ctx, { app, client }) => {
-    const userId = await requireUser(ctx);
+    const userId = await requireLiveUser(ctx);
     if (!app) throw new ConvexError({ code: "CLIENT_OUTDATED", block: { reason: "version", minVersion: null } });
     await requireCompatible(ctx, userId, app, client);
     return await ctx.storage.generateUploadUrl();
@@ -161,7 +162,7 @@ export const push = mutation({
     keyId: v.optional(v.string()),
   },
   handler: async (ctx, { app, client: reported, deviceId, changes }) => {
-    const userId = await requireUser(ctx);
+    const userId = await requireLiveUser(ctx);
     if (changes.length > BATCH_LIMIT) throw new ConvexError({ code: "BATCH_TOO_LARGE" });
     const client = await requireCompatible(ctx, userId, app, reported);
     const head = await headOf(ctx, userId, app);

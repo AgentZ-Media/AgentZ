@@ -2,6 +2,7 @@ import { createClient, type GenericCtx } from "@convex-dev/better-auth";
 import { convex, crossDomain } from "@convex-dev/better-auth/plugins";
 import { requireRunMutationCtx } from "@convex-dev/better-auth/utils";
 import { betterAuth } from "better-auth/minimal";
+import { ConvexError } from "convex/values";
 import { components, internal } from "./_generated/api";
 import type { DataModel } from "./_generated/dataModel";
 import { query } from "./_generated/server";
@@ -63,6 +64,19 @@ export const createAuth = (ctx: GenericCtx<DataModel>) =>
     rateLimit: { enabled: true, storage: "database" },
     plugins: [crossDomain({ siteUrl }), convex({ authConfig })],
   });
+
+/**
+ * User ID behind a live session. A Convex JWT stays valid until it expires,
+ * also after signing out or deleting the account; writes check the session
+ * and the user themselves, so a deleted account never gets data back.
+ */
+export async function requireLiveUser(ctx: GenericCtx<DataModel>): Promise<string> {
+  const identity = await ctx.auth.getUserIdentity();
+  if (!identity || !(await authComponent.safeGetAuthUser(ctx))) {
+    throw new ConvexError({ code: "UNAUTHENTICATED" });
+  }
+  return identity.subject;
+}
 
 /** The signed-in user, or null. Apps read their account through this query. */
 export const currentUser = query({

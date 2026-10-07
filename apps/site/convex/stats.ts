@@ -1,6 +1,7 @@
 import { ConvexError, v } from "convex/values";
 import { internal } from "./_generated/api";
 import { httpAction, internalAction, internalMutation, internalQuery, mutation } from "./_generated/server";
+import { requireLiveUser } from "./auth";
 import { clientArg, requireCompatible } from "./sync";
 import { SYNC_APPS, STAT_KEYS, appArg, type SyncApp } from "./syncApps";
 
@@ -23,16 +24,14 @@ const PAGE = 1000;
 export const report = mutation({
   args: { app: appArg, client: clientArg, counts: v.record(v.string(), v.number()) },
   handler: async (ctx, { app, client, counts }) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) throw new ConvexError({ code: "UNAUTHENTICATED" });
-    await requireCompatible(ctx, identity.subject, app, client);
+    const userId = await requireLiveUser(ctx);
+    await requireCompatible(ctx, userId, app, client);
     const allowed = STAT_KEYS[app];
     for (const [key, value] of Object.entries(counts)) {
       if (!allowed.includes(key) || !Number.isInteger(value) || value < 0 || value > MAX_COUNT) {
         throw new ConvexError({ code: "INVALID_STATS" });
       }
     }
-    const userId = identity.subject;
     const existing = await ctx.db.query("sync_stats")
       .withIndex("by_user_app", (q) => q.eq("userId", userId).eq("app", app))
       .unique();
