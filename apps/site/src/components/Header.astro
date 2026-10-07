@@ -1,7 +1,7 @@
 ---
 import suiteIcon from "@agentz/design/assets/suite-app-icon.svg?url";
 import Icon from "./Icon.astro";
-import { accountPaths, catalogs, type Language, type PagePaths } from "../i18n";
+import { accountPaths, catalogs, scriptzPaths, type Language, type PagePaths } from "../i18n";
 interface Props { lang: Language; paths?: PagePaths }
 const { lang, paths } = Astro.props;
 const t = catalogs[lang];
@@ -15,7 +15,7 @@ const account = accountPaths[lang];
     <span>AgentZ <span class="brand-suite">Suite</span></span>
   </a>
   <nav class="header-nav" aria-label="AgentZ Suite">
-    <a href={`${base}#scriptz`}>{t.nav.scriptz}</a>
+    <a href={scriptzPaths[lang]}>{t.nav.scriptz}</a>
     <a href={`${base}#apps`}>{t.nav.apps}</a>
     <a class="hide-s" href="https://github.com/AgentZ-Media/AgentZ-Suite">{t.nav.source}</a>
   </nav>

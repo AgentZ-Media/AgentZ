@@ -6,9 +6,11 @@ paths:
 # Suite-Website
 
 - Statische Astro-Seite ohne Tracking, Cookies, lokalen Speicher oder externe
-  Requests. JavaScript nur als kleine Verbesserung in `src/scripts/site.ts`
-  (Einblenden, Tipp-Demo, Kopieren, Plattform-Erkennung); ohne JavaScript ist
-  alles im Endzustand lesbar, `prefers-reduced-motion` stoppt die Demo. Nur
+  Requests. JavaScript nur als Verbesserung: `src/scripts/site.ts` auf jeder
+  Seite (Punktraster, Einblenden, Kopieren, Plattform-Erkennung), dazu
+  `home.ts` (Intro und wandernder Punkt) und `scriptz-page.ts` (bedienbarer
+  Nachbau). Ohne JavaScript ist alles im Endzustand lesbar,
+  `prefers-reduced-motion` lässt Intro, wandernden Punkt und Tipp-Demo weg. Nur
   `@agentz/design` als internes Paket; keine Kit- oder Produktmodule importieren.
 - Einzige Ausnahme ist das Konto (`/konto/`, `/en/account/`) samt
   Vollbild-Anmeldung für Apps (`/konto/app/`, `/en/account/app/`, ohne Header
@@ -35,10 +37,12 @@ paths:
 - Tokens, Fonts und `.btn` aus dem Design-Paket. Keine eigenen Farbwerte; einzige
   Ausnahme ist die Charakter-Palette der Demo in `src/styles/palette.css`, die
   die ScriptZ-Palette spiegelt. Icons stammen aus `node packages/design/scripts/build-logo.mjs --app <id>`.
-- Das Demo-Fenster (`ScriptzWindow.astro`) und die Feature-Kacheln bauen die
-  echte ScriptZ-Oberfläche nach. Bei sichtbaren Änderungen an ScriptZ Nachbau
-  und die Screenshots in `public/img/shots/` (DE/EN, je 1200 und 2400 px breit,
-  WebP) mitziehen.
+- Die ganze Website ist dunkel und liegt auf einem Punktraster
+  (`dot-field.ts`); Farben des Canvas kommen zur Laufzeit aus den Tokens.
+  Formen im Raster entstehen aus den Logo-Daten (`@agentz/design/logo`).
+- Der Nachbau auf der ScriptZ-Seite (`LiveApp.astro`, `live.ts`) bildet die
+  echte ScriptZ-Oberfläche ab. Bei sichtbaren Änderungen an ScriptZ den Nachbau
+  mitziehen.
 - Im Footer steht das offizielle EU-Icon zur Kennzeichnung von KI-Inhalten
   (`AiLabel.astro`, Pfade unverändert aus dem Download der EU-Kommission) mit
   Begleittext in DE/EN. Nicht entfernen oder umzeichnen.

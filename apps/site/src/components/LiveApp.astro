@@ -1,0 +1,197 @@
+---
+// A working rebuild of the ScriptZ window: editable script, live inspector
+// and timeline, Ida, board and export dialog. Rendered finished on the
+// server; src/scripts/live.ts makes it interactive.
+import appIcon from "@agentz/design/assets/scriptz-app-icon.svg?url";
+import Icon from "./Icon.astro";
+import { catalogs, type Language } from "../i18n";
+import { demoStats, formatTime } from "../scripts/demo-model";
+import { timeline } from "../scripts/live-model";
+interface Props { lang: Language }
+const { lang } = Astro.props;
+const t = catalogs[lang];
+const d = t.demo;
+const v = t.live;
+const x = v.export;
+const stats = demoStats(d.script);
+const tl = timeline(d.script);
+const hue = (c: number) => (c ? `var(--char-${((c - 1) % 5) + 1})` : "var(--line-strong)");
+const colorOf = new Map(stats.cast.map((c) => [c.name, c.color]));
+const chips = { a: `${d.blockTypes[0]} ⌘1`, c: `${d.blockTypes[1]} ⌘2`, d: `${d.blockTypes[2]} ⌘3`, p: `${d.blockTypes[3]} ⌘4` };
+const stageGlyphs = ["idea", "writing", "ready", "shot", "online"] as const;
+const folderHues = [4, 5, 2, 3];
+const cards = v.cards.map(([title, folder, stage]) => ({ title, folder, stage }));
+const stageCounts = d.stages.map((_, i) => cards.filter((c) => c.stage === i).length + (i === 1 ? 1 : 0));
+const folderCounts = d.folderNames.map((_, i) => cards.filter((c) => c.folder === i).length + (i === 3 ? 1 : 0));
+const pct = lang === "de" ? " %" : "%";
+const ticks = Array.from({ length: tl.scale / 10 + 1 }, (_, i) => i * 10);
+const castNames = stats.cast.map((c) => c.name).join(", ");
+let speaker = "";
+---
+<div class="lv" data-theme="light" data-live data-view="editor" data-panel="insp"
+  data-script={JSON.stringify(d.script)} data-chips={JSON.stringify(chips)} data-pct={pct}
+  data-ask={d.agentAsk} data-options={JSON.stringify(d.agentOptions)} data-idea={d.idea}
+  data-folder={d.folderNames[3]} data-just={v.justNow} data-inserted={v.idaInserted}
+  data-cast-line={x.castLine} data-runtime={x.runtime} data-lang={lang}
+  role="group" aria-label={v.label}>
+
+  <aside class="lv-side">
+    <div class="lv-lights" aria-hidden="true"><i></i><i></i><i></i></div>
+    <div class="lv-brand"><img src={appIcon} alt="" width="26" height="26" /><span>ScriptZ</span></div>
+    <div class="lv-new"><Icon name="plus" />{d.newScript}<kbd>⌘N</kbd></div>
+    <button class="lv-ida-btn" type="button" data-goto-step="2"><span class="lv-face"><i></i><i></i><i></i><i></i><i></i></span><span><b>Ida</b><small>{d.agentHint}</small></span><kbd>⌘L</kbd></button>
+    <ul class="lv-nav">
+      <li><Icon name="inbox" />{d.inbox}<span>{cards.length + 1}</span></li>
+      <li data-nav="board"><button type="button" data-goto-step="3"><Icon name="stack" />{d.all}<span>{cards.length + 1 - stageCounts[0]!}</span></button></li>
+    </ul>
+    <p class="lv-head">{d.pipeline}</p>
+    <ul class="lv-nav">
+      {d.stages.map((stage, i) => <li><Icon stage={stageGlyphs[i]} />{stage}<span data-stage-count={i}>{stageCounts[i]}</span></li>)}
+    </ul>
+    <p class="lv-head">{d.folders}</p>
+    <ul class="lv-nav">
+      {d.folderNames.map((name, i) => <li><i class="lv-dot" style={`--dot: var(--char-${folderHues[i]})`}></i>{name}<span data-folder-count={i}>{folderCounts[i]}</span></li>)}
+    </ul>
+    <p class="lv-head">{d.open}</p>
+    <ul class="lv-nav"><li data-nav="editor"><button type="button" data-goto-step="0"><Icon stage="writing" /><span class="lv-ellipsis">{d.title}</span></button></li></ul>
+  </aside>
+
+  <div class="lv-main">
+    <section class="lv-editor">
+      <div class="lv-top">
+        <span class="lv-crumb">{d.folder} <i>/</i> <b>{d.title}</b></span>
+        <span class="lv-saved">{d.saved}</span>
+        <span class="lv-pill"><Icon stage="writing" /><span class="lv-pill-stage">{d.stage}</span><Icon name="down" /></span>
+        <button class="lv-pill lv-hide-s" type="button" data-goto-step="4"><Icon name="export" />{d.export}<kbd>⌘E</kbd></button>
+        <button class="lv-pill lv-hide-s" type="button" data-goto-step="2"><span class="lv-face lv-face-s"><i></i><i></i><i></i><i></i><i></i></span>Ida<kbd>⌘L</kbd></button>
+      </div>
+      <div class="lv-desk" data-desk>
+        <div class="lv-paper" data-paper spellcheck="false" autocapitalize="off" aria-label={d.title}>
+          {d.script.map(([kind, text]) => {
+            if (kind === "c") speaker = text;
+            return <p class={`blk blk-${kind}`} data-kind={kind} style={kind === "c" ? `--who: ${hue(colorOf.get(speaker) ?? 0)}` : undefined}>{text}</p>;
+          })}
+        </div>
+        <p class="lv-keys" data-keys><b>{v.yourTurn}</b>{v.keys}</p>
+      </div>
+      <div class="lv-tl">
+        <div class="lv-tl-head">
+          <span><Icon name="down" />{d.timeline}<kbd>⌘J</kbd></span>
+          <span class="lv-tl-mini" data-tl-mini aria-hidden="true"></span>
+          <b class="num" data-time>{formatTime(stats.seconds)}</b>
+        </div>
+        <div class="lv-tl-body" data-tl style={`--scale:${tl.scale}`}>
+          <div class="lv-tl-ruler num" data-tl-ruler>{ticks.map((s) => <span style={`--at:${s}`}>{formatTime(s)}</span>)}</div>
+          <div class="lv-tl-lanes" data-tl-lanes>
+            {tl.hook !== null && <span class="lv-tl-hook" style={`--at:${tl.hook}`}><i></i><i></i><i></i></span>}
+            {tl.lanes.map((lane) => (
+              <div class="lv-tl-lane" style={`--who: ${hue(lane.color)}`}>
+                <b>{lane.name || "Action"}</b>
+                <span>{lane.items.map((item) => <i style={`--at:${item.start};--len:${item.length}`}></i>)}</span>
+              </div>
+            ))}
+            <span class="lv-tl-head-line" aria-hidden="true"></span>
+          </div>
+          <p class="lv-tl-legend"><i></i>{d.hook}</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="lv-board" aria-label={v.allScripts}>
+      <p class="lv-date" data-date></p>
+      <h3>{v.allScripts}</h3>
+      <p class="lv-week-label">{v.week}</p>
+      <div class="lv-week">
+        <div><span class="lv-week-icon is-done"><Icon name="check" /></span><p><b class="num" data-week-done>2</b><span>{v.weekDone}</span></p><span class="lv-spark" aria-hidden="true">{Array.from({ length: 21 }, (_, i) => <i class:list={{ "is-on": i % 7 < 2 && i < 14 }}></i>)}</span></div>
+        <div><span class="lv-week-icon"><Icon stage="idea" /></span><p><b class="num" data-week-ideas>4</b><span>{v.weekIdeas}</span></p><span class="lv-spark" aria-hidden="true">{Array.from({ length: 21 }, (_, i) => <i class:list={{ "is-on": i % 7 < 4 && i < 7 }}></i>)}</span></div>
+      </div>
+      <div class="lv-bar">
+        <span class="lv-filter"><Icon name="search" />{v.filter}<kbd>/</kbd></span>
+        <span class="lv-seg"><span><Icon name="list" />{v.list}</span><span class="is-on"><Icon name="board" />{v.board}</span></span>
+        <span class="lv-sort">{v.sort}<Icon name="down" /></span>
+      </div>
+      <div class="lv-cols" data-cols>
+        {d.stages.map((stage, i) => (
+          <div class="lv-col" data-col={i}>
+            <p class="lv-col-head"><Icon stage={stageGlyphs[i]} /><b>{stage}</b><span class="num" data-col-count>{stageCounts[i]}</span>{i === 1 && <Icon name="plus" />}</p>
+            <div class="lv-col-cards" data-col-cards>
+              {i === 1 && <article class="lv-card is-ours" draggable="true" data-card="ours"><b>{d.title}</b><span><i style={`--dot: var(--char-${folderHues[3]})`}></i>{d.folderNames[3]}<em class="num" data-card-time>{formatTime(stats.seconds)}</em><small>{v.justNow}</small></span></article>}
+              {cards.filter((c) => c.stage === i).map((c) => (
+                <article class="lv-card" draggable="true"><b>{c.title}</b><span><i style={`--dot: var(--char-${folderHues[c.folder]})`}></i>{d.folderNames[c.folder]}{i > 0 && <em class="num">0:05</em>}<small>{v.justNow}</small></span></article>
+              ))}
+            </div>
+          </div>
+        ))}
+      </div>
+    </section>
+  </div>
+
+  <aside class="lv-insp">
+    <section>
+      <p class="lv-cap">{d.stageLabel}</p>
+      <span class="lv-steps"><i class="is-on"></i><i></i><i></i><i></i></span>
+      <p class="lv-stage"><b>{d.stage}</b><span>{d.since}</span></p>
+    </section>
+    <section class="lv-length">
+      <p class="lv-cap">{d.length}</p>
+      <p class="lv-time num" data-time>{formatTime(stats.seconds)}</p>
+      <p class="lv-stats"><span><b class="num" data-words>{stats.words}</b> {d.words}</span><span><b class="num" data-dialog>{stats.dialogWords}</b> {d.inDialog}</span><span><b class="num" data-switches>{stats.switches}</b> {d.switches}</span></p>
+    </section>
+    <section>
+      <p class="lv-cap lv-cap-row"><span>{d.cast}</span><span>{d.share}</span></p>
+      <ul class="lv-cast" data-cast>
+        {stats.cast.map((c) => (
+          <li style={`--who: ${hue(c.color)}`}>
+            <span class="lv-cast-name"><i></i>{c.name}<em class="num">{c.share}{pct}</em></span>
+            <span class="lv-cast-bar"><i style={`width:${c.share}%`}></i></span>
+          </li>
+        ))}
+      </ul>
+    </section>
+  </aside>
+
+  <aside class="lv-ida" aria-label="Ida">
+    <div class="lv-ida-head"><span class="lv-face"><i></i><i></i><i></i><i></i><i></i></span><b>Ida</b><small>Codex</small></div>
+    <div class="lv-chat" data-chat>
+      <p class="lv-msg is-ida">{v.idaHello}</p>
+    </div>
+    <div class="lv-composer"><span data-composer>{v.idaPlaceholder}</span><Icon name="up" /></div>
+  </aside>
+
+  <div class="lv-scrim" data-export-scrim></div>
+  <div class="lv-export" role="dialog" aria-label={x.title} data-export data-format="pdf">
+    <div class="lv-preview">
+      <div class="lv-pages" data-pages>
+        <div class="lv-page lv-cover" data-cover><b>{d.title}</b><span data-cover-cast>{x.castLine.replace("{names}", castNames)}</span><span data-cover-meta>{d.folder} · {x.runtime.replace("{time}", formatTime(stats.seconds))}</span></div>
+        <div class="lv-page lv-print" data-print></div>
+        <div class="lv-page lv-plain" data-plain></div>
+        <pre class="lv-page lv-file" data-file></pre>
+      </div>
+      <p class="lv-preview-cap"><b>{x.preview}</b> · <span data-preview-cap>{x.pages.replace("{n}", "2")} · A4</span></p>
+    </div>
+    <div class="lv-options">
+      <p class="lv-export-title"><b>{x.title}</b><kbd>esc</kbd></p>
+      <div class="lv-formats" role="radiogroup" aria-label="Format">
+        <label><input type="radio" name={`lv-format-${lang}`} value="pdf" checked /><span><b>{x.pdf}</b><small>{x.pdfSub}</small></span></label>
+        <label><input type="radio" name={`lv-format-${lang}`} value="txt" /><span><b>{x.txt}</b><small>{x.txtSub}</small></span></label>
+        <label><input type="radio" name={`lv-format-${lang}`} value="file" /><span><b>{x.file}</b><small>{x.fileSub}</small></span></label>
+      </div>
+      <label class="lv-toggle" data-pdf-only><span><b>{x.colors}</b><small>{x.colorsSub}</small></span><input type="checkbox" data-opt="colors" /><i></i></label>
+      <label class="lv-toggle" data-pdf-only><span><b>{x.cover}</b><small>{x.coverSub}</small></span><input type="checkbox" data-opt="cover" checked /><i></i></label>
+      <div class="lv-export-foot">
+        <span class="lv-filename"><Icon name="doc" /><span data-filename>{d.title}.pdf</span></span>
+        <button type="button" class="lv-ghost" data-goto-step="0">{x.cancel}</button>
+        <button type="button" class="lv-primary" data-export-go>{x.submit}<kbd>↵</kbd></button>
+      </div>
+    </div>
+  </div>
+
+  <div class="lv-capture" data-capture aria-hidden="true">
+    <Icon name="bulb" /><span class="lv-capture-text" data-capture-text></span><span class="lv-capture-ph" data-capture-ph>{d.ideaPlaceholder}</span><kbd>↵</kbd>
+  </div>
+  <p class="lv-toast" data-toast role="status"></p>
+  <template data-done>{x.done}</template>
+  <template data-saved-idea>{d.ideaSaved}</template>
+  <template data-insert-label>{d.insert}</template>
+  <template data-reply>{d.agentReply}</template>
+</div>
