@@ -70,6 +70,10 @@ Der Agent braucht Klartext, der Proxy speichert nichts davon.
   Inhalte über 512 Byte werden vor dem Verschlüsseln mit gzip komprimiert.
 - Der Server sieht pro Datensatz nur Record-ID, Revision, Größe, Löschmarke,
   Schlüssel-ID, zufällige Geräte-ID und Zeitpunkt.
+- Dazu meldet die App pro Konto unverschlüsselte Summen für die Zähler der
+  Website (`SyncAdapter.stats`, in ScriptZ die Anzahl der Skripte ohne das
+  unveränderte Willkommens-Skript). Nur Zahlen, nie etwas aus Inhalten; erlaubte
+  Schlüssel stehen in `STAT_KEYS` (`syncApps.ts`).
 
 ## Datenmodell in Convex
 
@@ -80,12 +84,15 @@ Der Agent braucht Klartext, der Proxy speichert nichts davon.
   nur in Änderungen übertragen werden.
 - Verschlüsselte Inhalte bis 96 KiB liegen im Dokument, größere im File
   Storage.
+- `sync_stats`: zuletzt gemeldete Summen pro Nutzer und App; ein stündlicher
+  Cron (`stats.ts`) addiert sie zu `site_stats`, `GET /stats` liefert das
+  Ergebnis an die Website.
 - `sync_heads`: Revisionszähler pro Nutzer und App. `sync_keys`: verpackter
   Datenschlüssel pro Konto (für alle Apps). `app_links`: kurzlebige Codes der
   App-Anmeldung (stündlicher Cron räumt auf).
 - Kontolöschung (`deleteUser.afterDelete`) löscht alle Sync-Daten in Batches.
 - Neue App mit Sync: Tabelle in `schema.ts`, Eintrag in `syncApps.ts`
-  (`SYNC_APPS`, `appArg`) und ein `SyncAdapter` im Modul. Ohne Eintrag in
+  (`SYNC_APPS`, `appArg`, `STAT_KEYS`) und ein `SyncAdapter` im Modul. Ohne Eintrag in
   `SYNC_APPS` kann sich die App auch nicht anmelden.
 
 ## Abgleich und Konflikte

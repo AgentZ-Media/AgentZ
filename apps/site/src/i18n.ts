@@ -67,6 +67,16 @@ const de = {
 
   landing: { title: "Punktlandung", text: "Fang mit ScriptZ an, der ersten App der Suite." },
 
+  count: { one: "Skript mit ScriptZ geschrieben", other: "Skripte mit ScriptZ geschrieben" },
+
+  meta: {
+    title: "AgentZ Suite - Desktop-Apps für Content Creator",
+    scriptzTitle: "ScriptZ - Der Skript-Editor für Kurzvideos",
+    scriptzDescription: "Kostenloser Skript-Editor für TikTok, Reels, Shorts und Sketche: Laufzeit auf die Sekunde, Hook im Blick, Board bis zum Upload. Für macOS und Windows.",
+    suiteImage: "AgentZ Suite: Alles vor dem Upload. Punkt.",
+    scriptzImage: "ScriptZ, der Skript-Editor für Kurzvideos, mit einer Skriptseite und ihrer Laufzeit.",
+  },
+
   scriptz: {
     kicker: "Die erste App",
     title: "ScriptZ",
@@ -394,6 +404,16 @@ const en: Catalog = {
   },
 
   landing: { title: "Spot on", text: "Start with ScriptZ, the first app of the suite." },
+
+  count: { one: "script written with ScriptZ", other: "scripts written with ScriptZ" },
+
+  meta: {
+    title: "AgentZ Suite - Desktop apps for content creators",
+    scriptzTitle: "ScriptZ - The script editor for short videos",
+    scriptzDescription: "Free script editor for TikTok, Reels, Shorts and sketches: runtime to the second, your hook in view, a board up to the upload. For macOS and Windows.",
+    suiteImage: "AgentZ Suite: Everything before the upload. Period.",
+    scriptzImage: "ScriptZ, the script editor for short videos, with a script page and its runtime.",
+  },
 
   scriptz: {
     kicker: "The first app",
