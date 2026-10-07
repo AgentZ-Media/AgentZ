@@ -63,6 +63,17 @@ ist er für niemanden offen. Ändern ohne Deploy, z. B.
 `npx convex env set AI_ACCESS "a@example.com,b@example.com"` (mit `--prod`
 für Produktion) oder im Convex-Dashboard.
 
+Mit demselben Key und derselben Freischaltung beantwortet der Proxy
+Entscheidungsfragen (`POST /ai/decide`, Prüfung in `convex/decisions.ts`):
+Eine App schickt einen Text (`state`) und typisierte Fragen (`noul` für
+Ja/Nein, `choice`, `score`) und bekommt nur Wahrscheinlichkeiten zurück, keinen
+Text. Das Modell legt der Server fest (`DECISION_MODEL`, sonst
+`typesafe/jev-1.13`, Jev über die Decisions-API von OpenRouter). Die Anfrage
+ist produktneutral; Apps nutzen sie über `decide()` aus
+`@agentz/kit/account` (Fehlercodes `signed-out`, `not-enabled`,
+`rate-limited`, `network`, `unavailable`, `invalid`). Auch hier speichert der
+Proxy nichts.
+
 ## Datensätze und Schutz
 
 - Ein Datensatz ist das JSON `{ entity, id, record }` einer lokalen Zeile,
