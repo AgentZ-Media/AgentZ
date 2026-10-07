@@ -15,6 +15,8 @@ const authUrl = import.meta.env.PUBLIC_CONVEX_SITE_URL ?? "";
 const runtime = JSON.stringify(t.runtime).replace(/</g, "\\u003c");
 ---
 <Base lang={lang} title={t.title} description={t.description} paths={accountPaths} noindex>
+  <!-- Opens the connection to the auth server while the page renders. -->
+  {authUrl && <link rel="preconnect" href={authUrl} crossorigin="anonymous" />}
   <section class="account" data-account data-auth-url={authUrl} data-lang={lang}>
     <script type="application/json" data-account-text set:html={runtime} />
     <div class="wrap">
@@ -113,6 +115,23 @@ const runtime = JSON.stringify(t.runtime).replace(/</g, "\\u003c");
         </div>
       </div>
     </div>
+    <script is:inline>
+      // Runs before the first paint: without a stored session token (see
+      // storedSession in scripts/authForms.ts) the sign-in form shows at once.
+      // Email links and #signup wait for scripts/account.ts, which takes over.
+      // Until then the forms must not submit natively (password in the URL).
+      (() => {
+        const root = document.currentScript.closest("[data-account]");
+        root.addEventListener("submit", (event) => { if (!("ready" in root.dataset)) event.preventDefault(); }, true);
+        if (!root.dataset.authUrl || location.search.includes("flow=") || location.hash) return;
+        try {
+          const cookies = JSON.parse(localStorage.getItem("better-auth_cookie") || "{}");
+          if (Object.keys(cookies).some((name) => name.includes("session_token") && cookies[name] && cookies[name].value)) return;
+        } catch { return; }
+        root.querySelector('[data-view="loading"]').hidden = true;
+        root.querySelector('[data-view="auth"]').hidden = false;
+      })();
+    </script>
   </section>
   <script>import "../scripts/account";</script>
 </Base>

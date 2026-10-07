@@ -58,8 +58,9 @@ die Befehlspalette, deshalb setzt das Modul `revealsSidebar: true`.
   Mit `close_finished_scripts` (Standard an) verlässt ein Skript die Liste,
   wenn es in die letzte Stufe wechselt; das angezeigte erst beim Wechsel,
   Rückgängig innerhalb von 15 s holt es zurück (`openStore.syncStatuses`).
-- **Seitenpanel**: Klick in Liste oder Board öffnet das Skript rechts neben
-  der Liste (`open_scripts_in_panel`, Standard an; ⌥-Klick umgekehrt). Es
+- **Seitenpanel**: Mit `open_scripts_in_panel` (Standard aus) öffnet ein
+  Klick in Liste oder Board das Skript rechts neben der Liste, sonst in der
+  großen Ansicht; ⌥-Klick macht jeweils das andere. Es
   ist ein vollwertiger `ScriptScreen` mit `peek` (ohne Inspector, Fokus
   und Agent). Nur Großöffnen nimmt es in „Offen" auf. Es gibt nie zwei
   `ScriptScreen` gleichzeitig.
