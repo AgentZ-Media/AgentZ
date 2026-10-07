@@ -4,6 +4,7 @@
 // request (Gemini thought signatures) and the tool calls.
 
 import { obj, type Obj } from "../toolArgs";
+import { AGENT_INCOMPLETE } from "../types";
 
 export interface WireToolCall {
   id: string;
@@ -29,6 +30,13 @@ export interface StepHandlers {
 export class StreamError extends Error {
   constructor(message: string, readonly code: number | null) {
     super(message);
+  }
+}
+
+/** The model stopped early (output limit, content filter); not retried. */
+export class IncompleteResponse extends Error {
+  constructor(readonly reason: string) {
+    super(AGENT_INCOMPLETE);
   }
 }
 
@@ -123,6 +131,12 @@ export async function readStep(body: ReadableStream<Uint8Array>, handlers: StepH
     if (typeof choice.finish_reason === "string") step.finishReason = choice.finish_reason;
     if (step.finishReason === "error") throw new StreamError(str(obj(choice.error).message) || "model error", null);
   }
+  // A stream that ends without a finish reason broke off on the way (passing,
+  // retried like a network error). A response cut at the output limit or by
+  // a content filter is incomplete: its text stays in the history, but its
+  // tool calls may be truncated and must not run.
+  if (step.finishReason === null) throw new StreamError(AGENT_INCOMPLETE, null);
+  if (step.finishReason === "length" || step.finishReason === "content_filter") throw new IncompleteResponse(step.finishReason);
   step.toolCalls = [...calls.entries()]
     .sort(([a], [b]) => a - b)
     .map(([index, call]) => ({ ...call, id: call.id || `call_${index}_${Math.random().toString(36).slice(2, 10)}` }))

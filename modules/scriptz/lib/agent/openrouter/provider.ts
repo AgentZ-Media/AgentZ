@@ -92,7 +92,11 @@ const str = (v: unknown): string => (typeof v === "string" ? v : "");
 
 function messageChars(message: WireMessage): number {
   let n = message.content.length;
-  if (message.role === "assistant") for (const call of message.tool_calls ?? []) n += call.function.arguments.length + call.function.name.length;
+  if (message.role === "assistant") {
+    for (const call of message.tool_calls ?? []) n += call.function.arguments.length + call.function.name.length;
+    // Sent back with every request (thought signatures), so they count.
+    if (message.reasoning_details?.length) n += JSON.stringify(message.reasoning_details).length;
+  }
   return n;
 }
 
@@ -261,6 +265,8 @@ class OpenRouterThread implements AgentThread {
     const messageId = `${key}-msg`;
     const reasoningId = `${key}-rsn`;
     let result: StepResult;
+    // Long tool rounds grow the transcript within a turn as well.
+    compact(this.messages);
     for (let attempt = 0; ; attempt++) {
       let shown = false;
       try {
@@ -402,6 +408,8 @@ export class OpenRouterProvider implements AgentProvider {
   model: TransportModel = { id: OPENROUTER_MODEL, label: OPENROUTER_MODEL_LABEL };
   private readonly threads = new Set<OpenRouterThread>();
   private saves = 0;
+  /** Set by dispose(): nothing that was under way may send afterwards. */
+  private disposed = false;
 
   constructor(
     readonly id: string,
@@ -410,6 +418,7 @@ export class OpenRouterProvider implements AgentProvider {
   ) {}
 
   async check(): Promise<ProviderState> {
+    if (this.disposed) return { state: "error", message: "agent provider disposed" };
     try {
       const result = await this.transport.check();
       if (result.model) this.model = result.model;
@@ -431,6 +440,7 @@ export class OpenRouterProvider implements AgentProvider {
   }
 
   async openThread(options: OpenThreadOptions): Promise<AgentThread> {
+    if (this.disposed) throw new Error("agent provider disposed");
     let record: ThreadRecord | null = null;
     if (options.resumeId && !options.ephemeral) {
       record = await this.store.get(options.resumeId).catch((error: unknown) => {
@@ -439,6 +449,8 @@ export class OpenRouterProvider implements AgentProvider {
       });
       if (record?.provider !== THREAD_KIND) record = null;
     }
+    // Switched off or hidden while the transcript loaded.
+    if (this.disposed) throw new Error("agent provider disposed");
     const messages = record ? parseMessages(record.messagesJson) : [];
     repair(messages);
     const thread = new OpenRouterThread(
@@ -465,6 +477,7 @@ export class OpenRouterProvider implements AgentProvider {
   }
 
   async dispose(): Promise<void> {
+    this.disposed = true;
     for (const thread of [...this.threads]) await thread.close();
     this.threads.clear();
   }

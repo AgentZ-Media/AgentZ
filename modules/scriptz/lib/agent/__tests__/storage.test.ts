@@ -12,6 +12,7 @@ import {
 } from "../memory";
 import { sqlAgentStorage } from "../sqlStorage";
 import { threadStore } from "../threads";
+import { emptyTrash, purgeScript } from "../../scripts";
 
 const state = { connection: null as DbConnection | null };
 const migrations = new URL("../../../../../apps/scriptz/src-tauri/migrations/", import.meta.url);
@@ -205,6 +206,24 @@ describe("harness transcripts (migration 016)", () => {
     await deleteChat("with-thread");
     expect(await threadStore.get("t3")).toBeNull();
     expect(await threadStore.get("t2")).not.toBeNull();
+  });
+
+  it("purging a script removes the transcripts of its chats, not of sessions", async () => {
+    await threadStore.save(record("t-chat", 10));
+    await threadStore.save(record("t-session", 10));
+    await saveChat(chat({ id: "script-chat", threadId: "t-chat" }));
+    await saveChat(chat({ id: "session", threadId: "t-session", kind: "session" }));
+    await purgeScript("script");
+    expect(await threadStore.get("t-chat")).toBeNull();
+    expect(await threadStore.get("t-session")).not.toBeNull();
+  });
+
+  it("emptying the trash removes the transcripts of its script chats", async () => {
+    await threadStore.save(record("t-chat", 10));
+    await saveChat(chat({ id: "script-chat", threadId: "t-chat" }));
+    database.exec("UPDATE scripts SET archived_at = 5 WHERE id = 'script'");
+    await emptyTrash();
+    expect(await threadStore.get("t-chat")).toBeNull();
   });
 
   it("is device state: no change feed entries", async () => {

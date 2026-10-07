@@ -611,8 +611,11 @@ export async function purgeScript(id: string): Promise<void> {
     [id],
   );
   // Sessions of the agent mode outlive the script (trigger in migration
-  // 010, atomic with this DELETE); script chats go with it.
+  // 010, atomic with this DELETE); script chats go with it, and so do their
+  // harness transcripts (no FK, read before the cascade removes the chats).
+  const threads = await scriptChatThreads(db, "script_id = $1", [id]);
   await db.execute("DELETE FROM scripts WHERE id = $1", [id]);
+  await deleteTranscripts(db, threads);
   await deleteScriptFts(id);
   if (parseCharsMeta(metaRows[0]?.characters_meta ?? "[]").length > 0) {
     characterUsageBus.notifyNamesDropped();
@@ -674,8 +677,31 @@ export async function emptyTrash(): Promise<void> {
     "DELETE FROM scripts_fts_map WHERE script_id IN " +
       "(SELECT id FROM scripts WHERE archived_at IS NOT NULL)",
   );
+  const threads = await scriptChatThreads(db, "script_id IN (SELECT id FROM scripts WHERE archived_at IS NOT NULL)", []);
   const res = await db.execute("DELETE FROM scripts WHERE archived_at IS NOT NULL");
+  await deleteTranscripts(db, threads);
   if (res.rowsAffected > 0) characterUsageBus.notifyNamesDropped();
+}
+
+type Db = Awaited<ReturnType<typeof getDb>>;
+
+/** Provider thread ids of the script chats matching `where` (sessions
+ *  outlive their script and keep theirs). */
+async function scriptChatThreads(db: Db, where: string, params: unknown[]): Promise<string[]> {
+  const rows = await db.select<{ thread_id: string }[]>(
+    `SELECT thread_id FROM agent_chats WHERE kind != 'session' AND thread_id IS NOT NULL AND ${where}`,
+    params,
+  );
+  return rows.map((r) => r.thread_id);
+}
+
+/** Removes harness transcripts (agent_threads, migration 016) of deleted
+ *  chats; Codex thread ids simply match no row. */
+async function deleteTranscripts(db: Db, ids: string[]): Promise<void> {
+  for (let i = 0; i < ids.length; i += 500) {
+    const chunk = ids.slice(i, i + 500);
+    await db.execute(`DELETE FROM agent_threads WHERE id IN (${chunk.map((_, k) => `$${k + 1}`).join(", ")})`, chunk);
+  }
 }
 
 // ---------- internal helpers ----------

@@ -100,6 +100,8 @@ Synchronisierung, keine Inhaltstabelle) und `daily_word_log_remote`
 `016_agent_threads` ist rein additiv: `agent_threads` hält die Transkripte
 des OpenRouter-Harness (Gerätezustand wie `agent_chats.thread_id`, keine
 Inhaltstabelle, nicht im Änderungsfeed, nie synchronisiert oder exportiert).
+Ohne Fremdschlüssel: Chat löschen, Skript endgültig löschen und Papierkorb
+leeren entfernen die Transkripte der betroffenen Skript-Chats selbst.
 Jede neue Spalte einer Inhaltstabelle braucht dasselbe: Trigger neu anlegen
 und `CONTENT_ENTITIES` ergänzen (Tests in `lib/__tests__/localChanges.test.ts`
 schlagen sonst fehl). Die Umwandlung von Kamera/Caption/SFX in Action ist bewusst keine SQL-Migration
@@ -218,7 +220,13 @@ Persönlicher Schreib-Agent mit eigenem Namen, Look und Persona.
   `transport.ts` (gehostet oder eigener Key, gleiche Anfrageform). Prompt
   Caching über `cache_control` auf Instruktionen und neuester Nachricht
   (Gemini cached nur mit Breakpoints). Alte Tool-Ausgaben und zuletzt die
-  ältesten Turns fallen erst bei etwa 1,2 Mio. Zeichen weg.
+  ältesten Turns fallen erst bei etwa 1,2 Mio. Zeichen weg (inklusive
+  `reasoning_details`, geprüft vor jedem Modellschritt). Ein Stream ohne
+  `finish_reason` gilt als abgebrochen und wird wiederholt, `length` und
+  `content_filter` als unvollständig (`AGENT_INCOMPLETE`, Tool-Aufrufe laufen
+  dann nicht). Ein entsorgter Provider (ausgeschaltet, ausgeblendet, andere
+  Anbindung) öffnet keine Threads und startet keinen Prozess mehr, auch nicht
+  für Arbeit, die beim Entsorgen schon unterwegs war.
 - **Codex isoliert.** Start mit `web_search="live"`, Shell, Apps, Plugins,
   Sub-Agenten und Codex-Gedächtnis per `features.*=false` aus, MCP-Server des
   Users pro Thread deaktiviert, Sandbox `read-only`, Freigaben werden

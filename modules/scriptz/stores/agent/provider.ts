@@ -78,6 +78,8 @@ export async function setOpenRouterKey(raw: string): Promise<void> {
     memoryKey = key || null;
   }
   setKeyHint(key ? keyHint(key) : null);
+  // A check still running for the old key must not answer for the new one.
+  invalidateStatusCheck();
 }
 
 /** The provider currently in use, without creating one. */
@@ -111,6 +113,14 @@ export function getProvider(): AgentProvider | null {
 }
 
 let statusCheck: Promise<AgentStatus> | null = null;
+/** Bumped when credentials change; older checks are then stale. */
+let statusGeneration = 0;
+
+/** Forgets a running check, so the next one asks again. */
+export function invalidateStatusCheck(): void {
+  statusCheck = null;
+  statusGeneration += 1;
+}
 
 /** One check at a time. Never re-sets "checking" while checking, so effects
  *  that react to the status cannot loop. */
@@ -124,11 +134,13 @@ export function refreshStatus(): Promise<AgentStatus> {
     return Promise.resolve(status());
   }
   if (status().state !== "checking") setStatus({ state: "checking" });
+  const generation = statusGeneration;
   const run = p.check()
     .catch((error: unknown): AgentStatus => ({ state: "error", message: error instanceof Error ? error.message : String(error) }))
     .then((next) => {
-      // A check that outlived its provider (agent switched off) is stale.
-      if (provider === p) setStatus(next);
+      // A check that outlived its provider (agent switched off) or its
+      // credentials (other key) is stale.
+      if (provider === p && generation === statusGeneration) setStatus(next);
       return next;
     })
     .finally(() => { if (statusCheck === run) statusCheck = null; });
@@ -163,7 +175,7 @@ export function resolveModel(list: readonly AgentModel[], chosen: string): Agent
 export function disposeProvider(): void {
   const p = provider;
   provider = null;
-  statusCheck = null;
+  invalidateStatusCheck();
   setStatus({ state: "checking" });
   setModels([]);
   if (p) void p.dispose();

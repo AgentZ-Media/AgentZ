@@ -7,7 +7,7 @@ import { scriptSavedBus, scriptsBus } from "../../lib/scriptsBus";
 import { foldersBus } from "../../lib/foldersBus";
 import { agentSettings } from "../agentSettings";
 import { agentUi } from "../agentUi";
-import { clearAgentHost, currentProvider, disposeProvider, hasAgentHost, refreshStatus, setAgentHost } from "./provider";
+import { clearAgentHost, currentProvider, disposeProvider, hasAgentHost, invalidateStatusCheck, refreshStatus, setAgentHost } from "./provider";
 import { clearWaiting, finishedStageIds, scheduleLearning, stopLearning } from "./learning";
 import { clearLiveChats, liveChats, unregisterChat } from "./registry";
 import { refreshSessionList, resetSessionList, sessionsVersion } from "./sessionList";
@@ -85,7 +85,10 @@ export function startAgentRuntime(services: Readonly<Record<string, unknown>>, s
     }, { defer: true }));
     // The hosted agent follows the AgentZ sign-in.
     createEffect(on(() => account.signedIn(), () => {
-      if (agentSettings.provider() === "agentz" && currentProvider()) void refreshStatus();
+      if (agentSettings.provider() !== "agentz" || !currentProvider()) return;
+      // A check of the previous session must not answer for this one.
+      invalidateStatusCheck();
+      void refreshStatus();
     }, { defer: true }));
     // Onboarding checks Codex before the agent is on; cancelling it must not
     // leave the process running.

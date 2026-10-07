@@ -6,6 +6,7 @@ import { OPENROUTER_MODEL_LABEL } from "../../lib/agent/openrouter/config";
 import {
   AGENT_KEY_INVALID,
   AGENT_NETWORK,
+  AGENT_INCOMPLETE,
   AGENT_NO_CREDITS,
   AGENT_PROCESS_EXITED,
   AGENT_RATE_LIMITED,
@@ -28,6 +29,7 @@ const ERROR_TEXT: Record<string, TranslationKey> = {
   [AGENT_NETWORK]: "agent.error.network",
   [AGENT_KEY_INVALID]: "agent.error.keyInvalid",
   [AGENT_NO_CREDITS]: "agent.error.noCredits",
+  [AGENT_INCOMPLETE]: "agent.error.incomplete",
 };
 
 /** Translated text for an `AGENT_*` error code, else null. */

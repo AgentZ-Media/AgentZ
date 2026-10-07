@@ -83,3 +83,21 @@ describe("codex provider", () => {
     expect(starts).toBe(2);
   });
 });
+
+describe("disposed codex provider", () => {
+  it("starts no app-server for a check that was still locating Codex", async () => {
+    let starts = 0;
+    let found: (value: { path: string; version: string | null }) => void = () => {};
+    const host: CodexHostLike = {
+      locate: () => new Promise((resolve) => { found = resolve; }),
+      start: async () => { starts++; throw new Error("must not start"); },
+    };
+    const provider = new CodexProvider(host);
+    const checking = provider.check();
+    await provider.dispose();
+    found({ path: "/usr/local/bin/codex", version: "1" });
+    expect(await checking).toMatchObject({ state: "error" });
+    await expect(provider.openThread({ instructions: "", tools: [] })).rejects.toThrow("disposed");
+    expect(starts).toBe(0);
+  });
+});

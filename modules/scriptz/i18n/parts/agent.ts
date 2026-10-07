@@ -98,6 +98,7 @@ export const agentDe = {
   "agent.error.network": "Keine Verbindung. Prüfe das Internet und schick die Nachricht noch einmal.",
   "agent.error.keyInvalid": "OpenRouter hat den Key abgelehnt. Prüfe ihn in den Einstellungen.",
   "agent.error.noCredits": "Auf dem OpenRouter-Konto ist kein Guthaben mehr.",
+  "agent.error.incomplete": "Die Antwort ist unvollständig abgebrochen. Versuch es noch einmal, gern mit einer kürzeren Bitte.",
 
   // ---------- proposals ----------
   "agent.option.append": "Am Ende einfügen",
@@ -482,6 +483,7 @@ export const agentEn: Record<keyof typeof agentDe, string> = {
   "agent.error.network": "No connection. Check your internet and send your message again.",
   "agent.error.keyInvalid": "OpenRouter rejected the key. Check it in the settings.",
   "agent.error.noCredits": "The OpenRouter account has no credits left.",
+  "agent.error.incomplete": "The answer broke off before it was complete. Try again, perhaps with a shorter request.",
 
   // ---------- proposals ----------
   "agent.option.append": "Add at the end",

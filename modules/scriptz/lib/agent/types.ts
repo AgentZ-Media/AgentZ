@@ -94,6 +94,8 @@ export const AGENT_RATE_LIMITED = "agent-rate-limited";
 export const AGENT_NETWORK = "agent-network";
 export const AGENT_KEY_INVALID = "agent-key-invalid";
 export const AGENT_NO_CREDITS = "agent-no-credits";
+/** The model response broke off or was cut (output limit, content filter). */
+export const AGENT_INCOMPLETE = "agent-incomplete";
 
 export interface AgentThread {
   /** Provider thread id, stored to resume the chat later. */

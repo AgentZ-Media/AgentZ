@@ -120,7 +120,7 @@ export function AgentSettings(props: { onClose(): void }) {
 
   const toggle = async (on: boolean) => {
     await agentSettings.setEnabled(on);
-    if (on && !agentSettings.onboarded()) {
+    if (on && !agentSettings.onboarded() && !agentSettings.hidden()) {
       props.onClose();
       agentUi.openOnboarding();
     }
