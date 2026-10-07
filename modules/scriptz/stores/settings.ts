@@ -46,9 +46,9 @@ const [darkPaper, setDarkPaper] = createSignal<boolean>(false);
 const [pruneUnusedCharacters, setPruneUnusedCharacters] = createSignal<boolean>(false);
 
 // A click on a script in a list or on the board opens it in the side panel
-// next to the list instead of the full script view. Default on; Alt-click
-// does the other one.
-const [openInPanel, setOpenInPanel] = createSignal<boolean>(true);
+// next to the list instead of the full script view. Default off (scripts
+// open full-size); Alt-click does the other one.
+const [openInPanel, setOpenInPanel] = createSignal<boolean>(false);
 // Scripts that reach the last stage leave the sidebar's "Open" list (the
 // script on screen stays until the writer switches away). Default on.
 const [closeFinishedScripts, setCloseFinishedScripts] = createSignal<boolean>(true);
@@ -214,7 +214,7 @@ export const settingsStore = {
     setShowWritingStats(sws === null ? true : sws === "1");
     setDarkPaper(dp === null ? false : dp === "1");
     setPruneUnusedCharacters(puc === null ? false : puc === "1");
-    setOpenInPanel(oip === null ? true : oip === "1");
+    setOpenInPanel(oip === "1");
     setCloseFinishedScripts(cfs === null ? true : cfs === "1");
     setLengthMinDefaultSecSignal(parseLengthSetting(lmin));
     setLengthMaxDefaultSecSignal(parseLengthSetting(lmax));
