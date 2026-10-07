@@ -349,3 +349,36 @@ input.field.acc-key-input {
   .acc-dot.is-busy,
   .acc-spinner { animation: none; }
 }
+
+/* ---------------- Sync paused until an update ---------------- */
+.shell-main > .acc-banner {
+  flex: 0 0 auto;
+}
+.acc-banner {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 38px;
+  padding: 6px 12px 6px calc(var(--shell-inset-left, 0px) + 14px);
+  border-bottom: 1px solid var(--accent-edge);
+  background: var(--accent-soft);
+  color: var(--accent-ink);
+  font-size: var(--fs-13);
+}
+.acc-banner > svg.i { flex: none; }
+.acc-banner-t {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
+.acc-banner-t b { flex: none; }
+.acc-banner-t span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--fg);
+}
+.acc-banner .btn { flex: none; }

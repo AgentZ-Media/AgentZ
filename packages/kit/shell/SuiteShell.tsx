@@ -11,6 +11,7 @@ import { clearToasts } from "../stores/toasts";
 import { shellUi } from "../stores/ui";
 import { AppMark, BootErrorScreen, Icon, ToastHost, dismissConfirmDialogs } from "../ui";
 import { AccountDialog } from "../account/AccountDialog";
+import { SyncPausedBanner } from "../account/SyncPausedBanner";
 import { startAccountRuntime } from "../account/account";
 import { CommandPalette } from "./CommandPalette";
 import { NavIndicator } from "./NavIndicator";
@@ -180,6 +181,7 @@ export function SuiteShell(props: SuiteShellProps) {
                 <Show when={active().sidebarFooter}>{(Footer) => <Dynamic component={Footer()} />}</Show>
               </aside>
               <main class="shell-main">
+                <Show when={props.cloud && !shellUi.focused()}><SyncPausedBanner appName={props.module.name} /></Show>
                 <Show when={nightly() && !sidebarVisible() && !shellUi.focused()}>
                   <button type="button" class="night-badge shell-night-chip" onClick={() => shellUi.openSettings("about")}
                     title={t("shell.nightly.title")} aria-label={t("shell.nightly.title")}>

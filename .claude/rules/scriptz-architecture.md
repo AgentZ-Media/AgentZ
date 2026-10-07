@@ -70,7 +70,7 @@ die Befehlspalette, deshalb setzt das Modul `revealsSidebar: true`.
 
 ## Migrationen
 
-`001_baseline` bis `014_cloud_sync` in
+`001_baseline` bis `015_sync_newer_versions` in
 `apps/scriptz/src-tauri/migrations/` sind veröffentlicht und unveränderlich. `007` ergänzt `scripts.status`,
 `status_changed_at` und den Ordner-Zielbereich. `008_agent` legt
 `agent_memory`, `agent_chats` und `agent_learned` an. `009_local_changes`
@@ -93,7 +93,9 @@ Spalte der Skriptliste gehört in eine neue Migration mit erweitertem
 Covering-Index (`lib/__tests__/queryPlans.test.ts` schlägt sonst fehl).
 `014_cloud_sync` ist rein additiv: `sync_records` (Buchführung der
 Synchronisierung, keine Inhaltstabelle) und `daily_word_log_remote`
-(Schreibstatistik anderer Geräte).
+(Schreibstatistik anderer Geräte). `015_sync_newer_versions` ergänzt
+`sync_records.extra` und `sync_parked`: Felder und Datensätze neuerer
+App-Versionen bleiben erhalten, bis ein Update sie kennt.
 Jede neue Spalte einer Inhaltstabelle braucht dasselbe: Trigger neu anlegen
 und `CONTENT_ENTITIES` ergänzen (Tests in `lib/__tests__/localChanges.test.ts`
 schlagen sonst fehl). Die Umwandlung von Kamera/Caption/SFX in Action ist bewusst keine SQL-Migration

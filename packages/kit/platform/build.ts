@@ -10,6 +10,8 @@ export interface BuildInfo {
   commit?: string;
   /** ISO timestamp of the build, when the host knows it. */
   builtAt?: string;
+  /** Running from the development server (`pnpm dev:<app>`), not an installed build. */
+  development?: boolean;
 }
 
 export const STABLE_BUILD: BuildInfo = { channel: "stable" };

@@ -41,6 +41,36 @@ export interface RemoteChange {
   record: unknown | null;
 }
 
+/**
+ * Version of the synced data. A version writes one format and reads every
+ * format up to `reads` (always including all older ones). Additive changes
+ * (new fields, entities or settings) need no new format: older versions keep
+ * unknown fields and park unknown records. Only a change older versions would
+ * misread raises it, in two releases: first `reads`, then `writes`
+ * (docs/cloud-sync.md, "Versionen und Kompatibilität").
+ */
+export interface SyncFormat {
+  reads: number;
+  writes: number;
+}
+
+/** What a device reports to the backend with every sync call. */
+export interface SyncClient extends SyncFormat {
+  /** App version, SemVer. */
+  version: string;
+  /** "stable", "nightly" or "dev" (development server). */
+  channel: string;
+}
+
+/**
+ * Why the backend pauses this device's sync until it is updated: another
+ * device wrote a newer format (`by` is its app version), or the backend no
+ * longer accepts this version.
+ */
+export type SyncBlock =
+  | { reason: "format"; format: number; by: string | null }
+  | { reason: "version"; minVersion: string | null };
+
 export interface SyncContext {
   /** Random ID of this device for the signed-in account. */
   deviceId: string;
@@ -61,10 +91,19 @@ export interface SyncContext {
  *   calls `apply(..., { force: true })`.
  * - `keepLocalCopy` runs when a local version loses a conflict against the
  *   cloud: the module may keep it as a copy (a script "(conflict copy)").
+ * - A record passed to `apply` may lack fields of `fields` (written by an
+ *   older version): those columns keep their local value or default.
  */
 export interface SyncAdapter {
   /** Entity names in dependency order: referenced entities first. */
   entities: readonly string[];
+  format: SyncFormat;
+  /**
+   * Fields of each entity's records this version understands. Fields of cloud
+   * records beyond these come from newer versions: the engine keeps them and
+   * sends them back unchanged with every upload of that record.
+   */
+  fields: Readonly<Record<string, readonly string[]>>;
   /** Highest local change cursor; polled to notice new local writes. */
   localCursor(): Promise<number>;
   readChanges(after: number, limit: number, context: SyncContext): Promise<LocalChangeBatch>;

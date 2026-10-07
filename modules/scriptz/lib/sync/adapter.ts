@@ -4,6 +4,7 @@ import { getDb } from "../db";
 import { deleteScriptFts, refreshFtsForScript } from "../fts";
 import { CONTENT_ENTITIES, type ContentEntity } from "../localChanges/entities";
 import { sqlLocalChanges } from "../localChanges/sql";
+import format from "./format.json";
 
 // ScriptZ data for the Kit sync engine. Every content table of the change feed
 // syncs as one entity; the daily word log syncs per device ("daily_words").
@@ -31,6 +32,20 @@ export const SYNCED_SETTINGS = [
 
 const WELCOME_ID_KEY = "welcome_script_id_v1";
 const WORDS = "daily_words";
+
+/** Columns that stay on the device although their table syncs. */
+const LOCAL_COLUMNS: Partial<Record<ContentEntity, readonly string[]>> = { agent_chats: ["thread_id"] };
+
+/** Fields of every synced record. format.json records them; its test fails on any change (docs/cloud-sync.md). */
+export const SYNC_FIELDS: Readonly<Record<string, readonly string[]>> = Object.fromEntries(SYNC_ENTITIES.map((entity) => [
+  entity,
+  entity === WORDS
+    ? ["date", "words_added"]
+    : CONTENT_ENTITIES[entity].columns.filter((column) => !(LOCAL_COLUMNS[entity] ?? []).includes(column)),
+]));
+
+/** Sync format of this version (format.json, docs/cloud-sync.md "Versionen und Kompatibilität"). */
+export const SYNC_FORMAT = { reads: format.reads, writes: format.writes } as const;
 
 /** Foreign keys per entity. `required`: without the parent the row is useless. */
 const REFS: Partial<Record<ContentEntity, { column: string; table: ContentEntity; required: (row: Row) => boolean }[]>> = {
@@ -105,18 +120,23 @@ export function createScriptzSyncAdapter(hooks: ScriptzSyncHooks): SyncAdapter {
     return rows[0] ? JSON.parse(rows[0].record) as Row : null;
   }
 
+  /** Writes the record's columns. A column the record lacks (written by an
+   *  older version) keeps its local value, or its default on insert. */
   async function upsert(entity: ContentEntity, row: Row): Promise<void> {
-    const columns = CONTENT_ENTITIES[entity].columns.filter((column) => !(entity === "agent_chats" && column === "thread_id"));
     const key = keyColumn(entity);
+    const columns = CONTENT_ENTITIES[entity].columns
+      .filter((column) => !(LOCAL_COLUMNS[entity] ?? []).includes(column) && (column === key || Object.hasOwn(row, column)));
     const values = columns.map((column) => row[column] ?? null);
     const placeholders = columns.map((_, i) => `$${i + 1}`).join(", ");
     const updates = columns.filter((column) => column !== key).map((column) => `${column} = excluded.${column}`);
     // A chat continued elsewhere no longer matches the local Codex thread.
-    if (entity === "agent_chats") updates.push("thread_id = CASE WHEN agent_chats.items_json IS excluded.items_json THEN agent_chats.thread_id ELSE NULL END");
+    if (entity === "agent_chats" && Object.hasOwn(row, "items_json")) {
+      updates.push("thread_id = CASE WHEN agent_chats.items_json IS excluded.items_json THEN agent_chats.thread_id ELSE NULL END");
+    }
     const db = await getDb();
     await db.execute(
       `INSERT INTO ${entity} (${columns.join(", ")}) VALUES (${placeholders})
-       ON CONFLICT(${key}) DO UPDATE SET ${updates.join(", ")}`,
+       ON CONFLICT(${key}) DO ${updates.length > 0 ? `UPDATE SET ${updates.join(", ")}` : "NOTHING"}`,
       values,
     );
   }
@@ -148,6 +168,8 @@ export function createScriptzSyncAdapter(hooks: ScriptzSyncHooks): SyncAdapter {
 
   return {
     entities: SYNC_ENTITIES,
+    format: SYNC_FORMAT,
+    fields: SYNC_FIELDS,
 
     async localCursor() {
       const db = await getDb();

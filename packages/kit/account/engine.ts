@@ -1,10 +1,10 @@
 import { flushAll } from "../lib";
 import type { KvStore } from "../platform";
-import { bookKey, DELETED, writeSyncState, type BookEntry, type SyncBook, type SyncState } from "./book";
+import { bookKey, DELETED, writeSyncState, type BookEntry, type ParkedRecord, type SyncBook, type SyncState } from "./book";
 import { canonicalJson, sha256Base64Url, toArrayBuffer, type Envelope, type RecordCipher } from "./crypto";
-import { errorCode, SessionExpiredError } from "./http";
+import { blockOf, ClientOutdatedError, errorCode, SessionExpiredError } from "./http";
 import type { CloudTransport, PushResult, WireChange, WireRecord } from "./transport";
-import type { RemoteChange, SyncAdapter, SyncChange } from "./types";
+import type { RemoteChange, SyncAdapter, SyncChange, SyncClient } from "./types";
 
 // The sync engine: the cloud is the truth, the local database the working copy.
 //
@@ -16,6 +16,9 @@ import type { RemoteChange, SyncAdapter, SyncChange } from "./types";
 // - Content already in the cloud (same hash) is never uploaded again, which
 //   also stops records written by a pull from echoing back.
 // - Cursors advance only after the server confirmed a batch.
+// - Data from newer app versions survives an older version (book.ts): fields
+//   it does not know travel back up unchanged, records it does not know are
+//   parked. After an update both reach the local tables in the first cycle.
 
 /** Settings travel as records of this reserved entity. */
 export const SETTINGS_ENTITY = "kit.settings";
@@ -35,6 +38,8 @@ export interface EngineOptions {
   kv: KvStore;
   /** Mutated in place and persisted after every confirmed step. */
   state: SyncState;
+  /** Version and format of this device, sent with every call. */
+  client: SyncClient;
   /** A local version lost against the cloud and was kept as a copy. */
   onConflictCopy?(entity: string): void;
 }
@@ -46,6 +51,8 @@ interface Candidate {
   baseRev: number;
   hash: string;
   envelope: Envelope | null;
+  /** Unknown fields merged into the envelope; kept for the next upload. */
+  extra: Record<string, unknown> | null;
 }
 
 interface Decoded extends RemoteChange {
@@ -57,16 +64,37 @@ interface Decoded extends RemoteChange {
 const hashOf = (envelope: Envelope | null) =>
   envelope ? sha256Base64Url(canonicalJson(envelope)) : Promise.resolve(DELETED);
 
+const isPlainObject = (value: unknown): value is Record<string, unknown> =>
+  value !== null && typeof value === "object" && !Array.isArray(value);
+
+/** The local record with the cloud fields this version does not know. Known fields always come from the local record. */
+const withExtra = (record: unknown, extra: Record<string, unknown> | null | undefined): unknown =>
+  extra && isPlainObject(record) ? { ...extra, ...record } : record;
+
 export function createSyncEngine(options: EngineOptions) {
-  const { app, adapter, cipher, transport, book, kv, state } = options;
+  const { app, adapter, cipher, transport, book, kv, state, client } = options;
   const order = new Map<string, number>([[SETTINGS_ENTITY, -1], ...adapter.entities.map((entity, index) => [entity, index] as const)]);
   const settingKeys = new Set(adapter.settings?.keys ?? []);
+  const fields = new Map<string, Set<string>>([
+    [SETTINGS_ENTITY, new Set(["value"])],
+    ...Object.entries(adapter.fields).map(([entity, list]) => [entity, new Set(list)] as const),
+  ]);
   const context = () => ({ deviceId: state.deviceId });
   const save = () => writeSyncState(kv, state);
 
-  async function envelopeOf(change: SyncChange): Promise<Envelope | null> {
-    return change.record === null ? null : { entity: change.entity, id: change.id, record: change.record };
+  /** Whether this version can apply records of this entity (or this setting). */
+  const knows = (entity: string, id: string) => entity === SETTINGS_ENTITY ? settingKeys.has(id) : order.has(entity);
+
+  /** Fields of a cloud record this version does not know, or null. */
+  function extraOf(entity: string, record: unknown): Record<string, unknown> | null {
+    const known = fields.get(entity);
+    if (!known || !isPlainObject(record)) return null;
+    const extra = Object.fromEntries(Object.entries(record).filter(([key]) => !known.has(key)));
+    return Object.keys(extra).length > 0 ? extra : null;
   }
+
+  const entryOf = (item: Decoded): BookEntry =>
+    ({ entity: item.entity, id: item.id, remoteId: item.remoteId, rev: item.rev, hash: item.hash, extra: extraOf(item.entity, item.record) });
 
   // ---- Upload ----
 
@@ -83,14 +111,17 @@ export function createSyncEngine(options: EngineOptions) {
     const known = await book.getMany([...latest.values()]);
     const out: Candidate[] = [];
     for (const [key, change] of latest) {
-      const envelope = await envelopeOf(change);
-      const hash = await hashOf(envelope);
       const entry = known.get(key);
+      const extra = change.record === null ? null : entry?.extra ?? null;
+      const envelope: Envelope | null = change.record === null
+        ? null
+        : { entity: change.entity, id: change.id, record: withExtra(change.record, extra) };
+      const hash = await hashOf(envelope);
       if (entry?.hash === hash) continue;
       // Never synced and gone again: the cloud never knew it.
       if (!entry && !envelope) continue;
       out.push({
-        entity: change.entity, id: change.id, envelope, hash,
+        entity: change.entity, id: change.id, envelope, hash, extra,
         remoteId: entry?.remoteId ?? await cipher.recordId(change.entity, change.id),
         baseRev: entry?.rev ?? 0,
       });
@@ -104,7 +135,7 @@ export function createSyncEngine(options: EngineOptions) {
     if (sealed.length <= INLINE_LIMIT) {
       return { recordId: candidate.remoteId, baseRev: candidate.baseRev, deleted: false, data: toArrayBuffer(sealed), size: sealed.length };
     }
-    const blob = await transport.upload(sealed);
+    const blob = await transport.upload(app, client, sealed);
     return { recordId: candidate.remoteId, baseRev: candidate.baseRev, deleted: false, blob, size: sealed.length };
   }
 
@@ -135,14 +166,14 @@ export function createSyncEngine(options: EngineOptions) {
         wires.push(wire);
         i += 1;
       }
-      const { results } = await transport.push(app, cipher.keyId, state.deviceId, wires);
+      const { results } = await transport.push(app, client, cipher.keyId, state.deviceId, wires);
       const done: BookEntry[] = [];
       const byId = new Map(results.map((result) => [result.recordId, result]));
       for (const candidate of batch) {
         const result = byId.get(candidate.remoteId);
         if (!result) continue;
         if (result.status === "ok") {
-          done.push({ entity: candidate.entity, id: candidate.id, remoteId: candidate.remoteId, rev: result.rev, hash: candidate.hash });
+          done.push({ entity: candidate.entity, id: candidate.id, remoteId: candidate.remoteId, rev: result.rev, hash: candidate.hash, extra: candidate.extra });
         } else {
           const next = await resolvePushConflict(candidate, result);
           if (next) retry.push(next);
@@ -182,6 +213,9 @@ export function createSyncEngine(options: EngineOptions) {
   }
 
   async function push(): Promise<void> {
+    // Before anything goes up: a field learned by an update must reach the
+    // local row first, or its empty local column would overwrite the cloud.
+    await adoptNewerData();
     // Settings first: they are few and the content may depend on them (stages).
     await upload(await candidatesFor(await localSettings()));
     for (;;) {
@@ -221,9 +255,7 @@ export function createSyncEngine(options: EngineOptions) {
       : [];
     const waitingKeys = new Set(waiting.map((item) => bookKey(item.entity, item.id)));
     const pending = content.filter((item) => waitingKeys.has(bookKey(item.entity, item.id)));
-    await book.put(list
-      .filter((item) => !waitingKeys.has(bookKey(item.entity, item.id)))
-      .map((item) => ({ entity: item.entity, id: item.id, remoteId: item.remoteId, rev: item.rev, hash: item.hash })));
+    await book.put(list.filter((item) => !waitingKeys.has(bookKey(item.entity, item.id))).map(entryOf));
     if (changedKeys.length > 0) await adapter.settings?.changed(changedKeys);
     return pending;
   }
@@ -241,45 +273,106 @@ export function createSyncEngine(options: EngineOptions) {
     return keys;
   }
 
+  /**
+   * Decides per cloud record against the local state: skip (already known),
+   * only update the book (same content), or apply. A local edit not uploaded
+   * yet that loses is kept as a copy first. Returns the records to apply.
+   */
+  async function integrate(decoded: Decoded[], unsynced: Set<string>): Promise<Decoded[]> {
+    const known = await book.getMany(decoded);
+    const apply: Decoded[] = [];
+    const bookOnly: BookEntry[] = [];
+    for (const item of decoded) {
+      const key = bookKey(item.entity, item.id);
+      const entry = known.get(key);
+      if (entry && entry.rev >= item.rev) continue;
+      if (entry?.hash === item.hash) { bookOnly.push({ ...entry, rev: item.rev }); continue; }
+      if (unsynced.has(key) && item.entity !== SETTINGS_ENTITY) {
+        const local = await adapter.read(item.entity, item.id, context());
+        const merged = local === null ? null : { entity: item.entity, id: item.id, record: withExtra(local, entry?.extra) };
+        if (await hashOf(merged) === item.hash) { bookOnly.push(entryOf(item)); continue; }
+        // Deleted in the cloud, edited here: the edit wins and goes up next cycle.
+        if (item.record === null && local !== null) {
+          bookOnly.push({ entity: item.entity, id: item.id, remoteId: item.remoteId, rev: item.rev, hash: DELETED, extra: entry?.extra ?? null });
+          continue;
+        }
+        if (merged !== null) await keepCopy(item.entity, item.id, merged.record);
+      }
+      apply.push(item);
+    }
+    await book.put(bookOnly);
+    return apply;
+  }
+
+  // ---- Data from newer versions ----
+
+  let adopted = false;
+
+  /**
+   * Once per engine (i.e. per app start), before the first upload: records
+   * parked by an older version that this version knows now are applied like
+   * freshly pulled ones, and booked fields it knows now reach the local tables.
+   * Local work only, no network.
+   */
+  async function adoptNewerData(): Promise<void> {
+    if (adopted) return;
+    const parked = (await book.parked()).filter((record) => knows(record.entity, record.id));
+    if (parked.length > 0) {
+      const items: Decoded[] = parked.map((record) => ({
+        entity: record.entity, id: record.id, record: record.record, remoteId: record.remoteId, rev: record.rev, hash: record.hash,
+      }));
+      const waiting = await applyAll(await integrate(items, await unsyncedKeys()));
+      if (waiting.length > 0) await applyAll(waiting, true);
+      await book.unpark(parked.map((record) => record.remoteId));
+    }
+    for (const entry of await book.withExtra()) {
+      const known = fields.get(entry.entity);
+      if (!known || !entry.extra || !knows(entry.entity, entry.id)) continue;
+      const learned = Object.entries(entry.extra).filter(([key]) => known.has(key));
+      if (learned.length === 0) continue;
+      const rest = Object.fromEntries(Object.entries(entry.extra).filter(([key]) => !known.has(key)));
+      // The local row equals the synced record in every field this version
+      // knew, so adding the learned fields restores the cloud version. Its hash
+      // stays the booked one and nothing is uploaded again.
+      const local = entry.entity === SETTINGS_ENTITY ? null : await adapter.read(entry.entity, entry.id, context());
+      if (isPlainObject(local)) {
+        const waiting = await adapter.apply([{ entity: entry.entity, id: entry.id, record: { ...local, ...Object.fromEntries(learned) } }], { ...context(), force: true });
+        if (waiting.length > 0) continue;
+      }
+      await book.put([{ ...entry, extra: Object.keys(rest).length > 0 ? rest : null }]);
+    }
+    adopted = true;
+  }
+
   async function pull(): Promise<void> {
+    await adoptNewerData();
     const unsynced = await unsyncedKeys();
     let waiting: Decoded[] = [];
     // Paging runs ahead of the saved cursor: records waiting for a parent hold
     // the saved cursor back, never the next page.
     let fetched = state.pulled;
     for (;;) {
-      const page = await transport.pull(app, fetched);
+      const page = await transport.pull(app, client, fetched);
       if (page.records.length === 0) break;
       const deletedIds = page.records.filter((record) => record.deleted).map((record) => record.recordId);
       const knownByRemote = await book.byRemoteIds(deletedIds);
+      // A parked record deleted in the cloud is gone for good.
+      await book.unpark(deletedIds);
       const decoded: Decoded[] = [];
+      const parked: ParkedRecord[] = [];
       for (const record of page.records) {
         if (record.keyId !== cipher.keyId) continue;
         const item = await decode(record, knownByRemote.get(record.recordId));
-        if (item) decoded.push(item);
-      }
-      const known = await book.getMany(decoded);
-      const apply: Decoded[] = [];
-      const bookOnly: BookEntry[] = [];
-      for (const item of decoded) {
-        const key = bookKey(item.entity, item.id);
-        const entry = known.get(key);
-        if (entry && entry.rev >= item.rev) continue;
-        if (entry?.hash === item.hash) { bookOnly.push({ ...entry, rev: item.rev }); continue; }
-        if (unsynced.has(key) && item.entity !== SETTINGS_ENTITY) {
-          const local = await adapter.read(item.entity, item.id, context());
-          const localHash = await hashOf(local === null ? null : { entity: item.entity, id: item.id, record: local });
-          if (localHash === item.hash) { bookOnly.push({ entity: item.entity, id: item.id, remoteId: item.remoteId, rev: item.rev, hash: item.hash }); continue; }
-          // Deleted in the cloud, edited here: the edit wins and goes up next cycle.
-          if (item.record === null && local !== null) {
-            bookOnly.push({ entity: item.entity, id: item.id, remoteId: item.remoteId, rev: item.rev, hash: DELETED });
-            continue;
-          }
-          if (local !== null) await keepCopy(item.entity, item.id, local);
+        if (!item) continue;
+        // Written by a newer version: kept, unapplied and unbooked, until an update knows it.
+        if (item.record !== null && !knows(item.entity, item.id)) {
+          parked.push({ remoteId: item.remoteId, entity: item.entity, id: item.id, rev: item.rev, hash: item.hash, record: item.record });
+          continue;
         }
-        apply.push(item);
+        decoded.push(item);
       }
-      await book.put(bookOnly);
+      await book.park(parked);
+      const apply = await integrate(decoded, unsynced);
       waiting = await applyAll([...waiting, ...apply]);
       const last = page.records[page.records.length - 1].rev;
       fetched = last;
@@ -313,7 +406,9 @@ export function createSyncEngine(options: EngineOptions) {
         state.lastSyncedAt = Date.now();
         await save();
       } catch (error) {
-        if (errorCode(error) === "UNAUTHENTICATED") throw new SessionExpiredError();
+        const code = errorCode(error);
+        if (code === "UNAUTHENTICATED") throw new SessionExpiredError();
+        if (code === "CLIENT_OUTDATED") throw new ClientOutdatedError(blockOf(error));
         throw error;
       }
     },

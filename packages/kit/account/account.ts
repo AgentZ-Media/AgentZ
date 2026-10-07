@@ -1,16 +1,17 @@
 import { createSignal } from "solid-js";
 import { language } from "../i18n";
 import { registerFlusher } from "../lib";
-import type { KvStore, PlatformAdapter } from "../platform";
+import { getBuildInfo, getUpdatesStore, type KvStore, type PlatformAdapter } from "../platform";
+import { baseSettingsStore } from "../stores/baseSettings";
 import { createSqlSyncBook, readSyncState, writeSyncState, type SyncBook, type SyncState } from "./book";
 import {
   createDataKey, createRecordCipher, formatRecoveryKey, fromBase64Url, parseRecoveryKey, randomBytes,
   sha256Base64Url, toArrayBuffer, toBase64Url, unwrapDataKey, wrapDataKey, type DataKey,
 } from "./crypto";
 import { createSyncEngine, type SyncEngine } from "./engine";
-import { claimSession, errorCode, fetchUser, revokeSession, SessionExpiredError } from "./http";
+import { claimSession, ClientOutdatedError, errorCode, fetchUser, revokeSession, SessionExpiredError } from "./http";
 import type { CloudTransport } from "./transport";
-import type { AccountUser, CloudConfig, SecretStore, SyncAdapter } from "./types";
+import type { AccountUser, CloudConfig, SecretStore, SyncAdapter, SyncBlock, SyncClient } from "./types";
 
 // Account runtime of one app window: browser sign-in, session, the data key
 // and the sync engine. All state is exposed as signals on `account`; the
@@ -19,7 +20,7 @@ import type { AccountUser, CloudConfig, SecretStore, SyncAdapter } from "./types
 export type AccountPhase = "off" | "signedOut" | "waiting" | "connecting" | "signedIn";
 export type KeyPhase = "none" | "checking" | "create" | "enter" | "resetting" | "ready";
 export type SyncPhase = "idle" | "syncing" | "offline" | "error";
-export type AccountDialogKind = "signIn" | "createKey" | "enterKey" | "merge";
+export type AccountDialogKind = "signIn" | "createKey" | "enterKey" | "merge" | "updateRequired";
 
 const SESSION_SECRET = "account.session";
 const KEY_SECRET = "sync.key";
@@ -45,6 +46,8 @@ const [notice, setNotice] = createSignal<"expired" | null>(null);
 const [mergeFrom, setMergeFrom] = createSignal<string | null>(null);
 const [conflictCopies, setConflictCopies] = createSignal(0);
 const [syncAvailable, setSyncAvailable] = createSignal(false);
+/** Set while the backend pauses this version's sync until it is updated. */
+const [syncBlock, setSyncBlock] = createSignal<SyncBlock | null>(null);
 
 /** Error codes shown by the dialogs (texts in the Kit catalog, account.error.*). */
 export type AccountError = "network" | "claim" | "wrongKey" | "invalidKey" | "generic";
@@ -64,6 +67,8 @@ interface Runtime {
   pendingVerifier: string | null;
   pendingKey: { dataKey: DataKey; recovery: Uint8Array } | null;
   stopEngine: (() => void) | null;
+  /** The update dialog appears once per app start, the banner stays. */
+  blockAnnounced: boolean;
 }
 let rt: Runtime | null = null;
 
@@ -217,7 +222,7 @@ async function signOut() {
   const r = rt;
   if (!r) return;
   // Upload what is still pending, but never block signing out on the network.
-  if (r.engine) await withTimeout(r.engine.push(), 3000).catch(() => {});
+  if (r.engine && !syncBlock()) await withTimeout(r.engine.push(), 3000).catch(() => {});
   stopEngine();
   if (r.token) await revokeSession(r.cloud, r.token).catch(() => {});
   await r.secrets.delete(SESSION_SECRET).catch(() => {});
@@ -388,6 +393,26 @@ function resetCloud() {
 
 // ---- Sync engine ----
 
+/** Version and sync format of this device, reported with every sync call. */
+async function clientOf(r: Runtime, adapter: SyncAdapter): Promise<SyncClient> {
+  // "0.0.0" is below every minimum version, so an unknown version never slips through.
+  const version = await r.platform.getVersion().catch(() => "0.0.0");
+  const build = r.platform.build ?? getBuildInfo();
+  return { version, channel: build.development ? "dev" : build.channel, reads: adapter.format.reads, writes: adapter.format.writes };
+}
+
+/** The backend does not let this version sync: pause until an update or a policy change. */
+function pauseForUpdate(r: Runtime, block: SyncBlock) {
+  setSyncBlock(block);
+  setSyncPhase("idle");
+  if (r.blockAnnounced) return;
+  r.blockAnnounced = true;
+  if (dialog() === null) setDialog("updateRequired");
+  // Look for the update right away, unless the user turned update checks off.
+  const updates = getUpdatesStore();
+  if (updates && baseSettingsStore.updateCheckEnabled() && updates.stage() === "idle") void updates.checkNow();
+}
+
 async function startEngine(current: AccountUser, dataKey: DataKey) {
   const r = rt;
   if (!r || !r.transport || !r.adapter || r.signal.aborted) return;
@@ -403,9 +428,11 @@ async function startEngine(current: AccountUser, dataKey: DataKey) {
   }
   state.email = current.email;
   await writeSyncState(r.kv, state);
-  const cipher = await createRecordCipher(dataKey, r.app);
+  const [cipher, client] = await Promise.all([createRecordCipher(dataKey, r.app), clientOf(r, r.adapter)]);
+  if (r.signal.aborted || !r.transport) return;
+  const transport = r.transport;
   const engine = createSyncEngine({
-    app: r.app, adapter: r.adapter, cipher, transport: r.transport, book: r.book, kv: r.kv, state,
+    app: r.app, adapter: r.adapter, cipher, transport, book: r.book, kv: r.kv, state, client,
     onConflictCopy: () => setConflictCopies((n) => n + 1),
   });
   r.engine = engine;
@@ -423,7 +450,8 @@ async function startEngine(current: AccountUser, dataKey: DataKey) {
     timer = setTimeout(() => void run(), delay);
   };
   const run = async () => {
-    if (stopped) return;
+    // While paused, only the head subscription can resume the sync.
+    if (stopped || syncBlock()) return;
     if (running) { again = true; return; }
     running = true;
     setSyncPhase("syncing");
@@ -434,8 +462,13 @@ async function startEngine(current: AccountUser, dataKey: DataKey) {
       setSyncPhase("idle");
     } catch (caught) {
       if (caught instanceof SessionExpiredError) { running = false; await expire(); return; }
+      if (caught instanceof ClientOutdatedError) { running = false; again = false; if (!stopped) pauseForUpdate(r, caught.block); return; }
       const code = errorCode(caught);
       if (code === "KEY_CHANGED" || code === "NO_KEY") { running = false; await keyChanged(); return; }
+      if (code === "DEV_FORMAT_RAISE") {
+        console.warn("[account] this development build writes a newer sync format than the account holds; "
+          + "test format changes against the dev backend (docs/cloud-sync.md)");
+      }
       console.warn("[account] sync failed", caught);
       failures += 1;
       setSyncPhase(r.transport?.connected() ? "error" : "offline");
@@ -450,7 +483,7 @@ async function startEngine(current: AccountUser, dataKey: DataKey) {
   let seen = -1;
   let firstSeen = 0;
   const poll = setInterval(async () => {
-    if (running || stopped) return;
+    if (running || stopped || syncBlock()) return;
     try {
       const cursor = await r.adapter!.localCursor();
       if (cursor <= engine.state.pushed) { seen = cursor; firstSeen = 0; return; }
@@ -459,8 +492,16 @@ async function startEngine(current: AccountUser, dataKey: DataKey) {
       seen = cursor;
     } catch { /* The next poll tries again. */ }
   }, POLL_MS);
-  const settingsPoll = setInterval(() => { if (!running) schedule(0); }, SETTINGS_POLL_MS);
-  const unwatch = r.transport.watchHead(r.app, (head) => {
+  const settingsPoll = setInterval(() => { if (!running && !syncBlock()) schedule(0); }, SETTINGS_POLL_MS);
+  const unwatch = transport.watchHead(r.app, client, (head) => {
+    if (stopped) return;
+    if (head.block) { pauseForUpdate(r, head.block); return; }
+    // The policy changed or the account's data went away (key reset).
+    if (syncBlock()) {
+      setSyncBlock(null);
+      if (dialog() === "updateRequired") setDialog(null);
+      schedule(0);
+    }
     if (head.keyId && head.keyId !== cipher.keyId && !head.resetting) { void keyChanged(); return; }
     if (head.rev > engine.state.pulled) schedule(200);
   }, () => { /* Reconnects on its own; failures surface through sync runs. */ });
@@ -468,7 +509,7 @@ async function startEngine(current: AccountUser, dataKey: DataKey) {
   if (typeof window !== "undefined") window.addEventListener("online", online);
   // Closing the window uploads pending changes, but never blocks on the network.
   const unregister = registerFlusher(async () => {
-    await withTimeout(engine.push(), 1500).catch(() => {});
+    if (!syncBlock()) await withTimeout(engine.push(), 1500).catch(() => {});
   }, "account-sync", "state");
 
   r.stopEngine = () => {
@@ -493,6 +534,7 @@ function stopEngine() {
   rt.engine = null;
   syncNowHandler = null;
   setSyncPhase("idle");
+  setSyncBlock(null);
 }
 
 async function keyChanged() {
@@ -536,6 +578,7 @@ export function startAccountRuntime(options: AccountRuntimeOptions): () => void 
     book: options.book ?? createSqlSyncBook(() => options.platform.getDb()),
     signal: controller.signal,
     token: null, transport: null, engine: null, pendingVerifier: null, pendingKey: null, stopEngine: null,
+    blockAnnounced: false,
   };
   rt = r;
   setSyncAvailable(!!options.adapter);
@@ -593,6 +636,8 @@ export const account = {
   conflictCopies,
   /** True when the module syncs data (not only signs in). */
   syncAvailable,
+  /** Why the backend pauses this version's sync, or null. */
+  syncBlock,
   enabled: () => phase() !== "off",
   signedIn: () => phase() === "signedIn",
   signIn,
@@ -608,6 +653,7 @@ export const account = {
   resetCloud,
   syncNow: () => syncNowHandler?.(),
   openKeyDialog: () => { if (keyPhase() === "enter") setDialog("enterKey"); else if (keyPhase() === "create") setDialog("createKey"); },
+  openUpdateDialog: () => { if (syncBlock() && dialog() === null) setDialog("updateRequired"); },
   closeDialog: () => {
     if (dialog() === "signIn") { cancelSignIn(); return; }
     if (dialog() === "merge") { void confirmMerge(false); return; }

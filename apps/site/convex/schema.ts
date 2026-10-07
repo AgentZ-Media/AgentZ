@@ -36,12 +36,30 @@ const recordTable = () =>
 export default defineSchema({
   scriptz_records: recordTable(),
 
-  /** Revision counter per user and app. */
+  /**
+   * Revision counter per user and app, and the highest sync format any device
+   * wrote there (compat.ts). Devices that cannot read it pause their sync.
+   * Missing on accounts from before format numbers: they hold format 1 data.
+   */
   sync_heads: defineTable({
     userId: v.string(),
     app: v.string(),
     rev: v.number(),
+    format: v.optional(v.number()),
+    /** App version that raised the format, e.g. a nightly build. */
+    formatBy: v.optional(v.string()),
   }).index("by_user_app", ["userId", "app"]),
+
+  /**
+   * Emergency switch per app, set by hand (syncPolicy.ts): versions below
+   * `minVersion` and the listed versions may not sync. Absent means no limit.
+   */
+  sync_policy: defineTable({
+    app: v.string(),
+    minVersion: v.optional(v.string()),
+    blockedVersions: v.optional(v.array(v.string())),
+    updatedAt: v.number(),
+  }).index("by_app", ["app"]),
 
   /**
    * The account's data key, wrapped (encrypted) with a key derived from the
