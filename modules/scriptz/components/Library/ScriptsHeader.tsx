@@ -7,7 +7,6 @@ import { INBOX_FOLDER_ID } from "../../lib/folders";
 import { uiStore } from "../../stores/ui";
 import { t, tPlural } from "../../i18n";
 import { StageGlyph } from "../Common/StageGlyph";
-import { library } from "../Shell/libraryData";
 import { dayLevels } from "../../lib/writingCounter";
 
 /** Placeholder for the number inside a translated sentence, so the number
@@ -68,6 +67,8 @@ export interface ScriptsHeaderProps {
   week: WeekStats;
   /** Scripts in the current scope. */
   scopeCount: number;
+  /** Open ideas in the current scope (the inbox lead). */
+  ideasCount: number;
   folderId: string | null;
   /** Formatted length range of the folder, empty without one. */
   folderRange: string;
@@ -125,12 +126,12 @@ export function ScriptsHeader(props: ScriptsHeaderProps) {
           <Match when={props.isInbox}>
             <div class="week">
               <span class="week-lbl">{t("shell.inbox.lead")}</span>
-              <Show when={library.openIdeas().length > 0}>
+              <Show when={props.ideasCount > 0}>
                 <span>
                   <StageGlyph stage="idea" />
                   {boldCount(
-                    tPlural("units.ideas", library.openIdeas().length, { count: MARK }),
-                    fmtNum(library.openIdeas().length),
+                    tPlural("units.ideas", props.ideasCount, { count: MARK }),
+                    fmtNum(props.ideasCount),
                   )}
                 </span>
               </Show>

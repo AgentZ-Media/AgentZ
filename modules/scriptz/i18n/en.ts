@@ -56,6 +56,8 @@ export const en: Record<keyof typeof de, string> = {
   "folder.new": "New folder",
   "folder.newDots": "New folder…",
   "folder.none": "No folder",
+  "folder.chips.aria": "Filter by folder",
+  "folder.chips.all": "All",
   "folder.placeholder": "e.g. TikTok",
   "folder.createTitle": "New folder",
   "folder.createSubmit": "Create",
