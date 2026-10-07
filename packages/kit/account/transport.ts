@@ -3,7 +3,7 @@ import { makeFunctionReference } from "convex/server";
 import type { CloudConfig, SyncBlock, SyncClient } from "./types";
 
 // The Convex client for keys and records. Function names mirror
-// apps/site/convex (keys.ts, sync.ts). Loaded only once someone signs in.
+// apps/site/convex (keys.ts, sync.ts, stats.ts). Loaded only once someone signs in.
 // Every sync call carries the device's version and format (`client`); the
 // backend answers CLIENT_OUTDATED when this device has to update first.
 
@@ -45,6 +45,7 @@ export interface CloudTransport {
   pull(app: string, client: SyncClient, afterRev: number): Promise<{ records: WireRecord[]; headRev: number; more: boolean }>;
   push(app: string, client: SyncClient, keyId: string, deviceId: string, changes: WireChange[]): Promise<{ results: PushResult[]; headRev: number }>;
   upload(app: string, client: SyncClient, bytes: Uint8Array): Promise<string>;
+  report(app: string, client: SyncClient, counts: Record<string, number>): Promise<void>;
   download(url: string): Promise<Uint8Array>;
   getKey(): Promise<WrappedKey | null>;
   createKey(keyId: string, wrapped: ArrayBuffer): Promise<void>;
@@ -60,6 +61,7 @@ const ref = {
   pull: makeFunctionReference<"query", { app: string; afterRev: number } & Client, { records: WireRecord[]; headRev: number; more: boolean }>("sync:pull"),
   push: makeFunctionReference<"mutation", { app: string; keyId: string; deviceId: string; changes: WireChange[] } & Client, { results: PushResult[]; headRev: number }>("sync:push"),
   uploadUrl: makeFunctionReference<"mutation", { app: string } & Client, string>("sync:uploadUrl"),
+  report: makeFunctionReference<"mutation", { app: string; counts: Record<string, number> } & Client, null>("stats:report"),
   getKey: makeFunctionReference<"query", Record<string, never>, WrappedKey | null>("keys:get"),
   createKey: makeFunctionReference<"mutation", { keyId: string; wrapped: ArrayBuffer }, null>("keys:create"),
   rewrapKey: makeFunctionReference<"mutation", { keyId: string; wrapped: ArrayBuffer }, null>("keys:rewrap"),
@@ -101,6 +103,7 @@ export function createConvexTransport(cloud: CloudConfig, sessionToken: string, 
       const { storageId } = await response.json() as { storageId: string };
       return storageId;
     },
+    report: async (app, device, counts) => { await client.mutation(ref.report, { app, client: wireClient(device), counts }); },
     async download(url) {
       const response = await fetch(url);
       if (!response.ok) throw new Error(`download failed (${response.status})`);
