@@ -56,10 +56,12 @@ app quits or when the user chooses "Restart now".
 - Installations run off the main thread: the plugin's macOS installation
   needs it for the password prompt. Nothing installs after "Quit Anyway"
   without a successful save.
-- Known limits, no data at risk: quitting macOS while no window is open
-  leaves the staged update uninstalled (it is downloaded again and installs
-  on the next quit). On Windows, reopening the app within the second the
-  installer needs to start lets the installer close that fresh instance.
+- Known limits: quitting macOS while no window is open leaves the staged
+  update uninstalled (it is downloaded again and installs on the next quit).
+  On Windows the passive NSIS installer closes running instances without the
+  save handshake: an app reopened in the moment between quitting and the
+  installer's start would be closed again, losing input typed in that
+  moment. The app's own start takes longer than that window in practice.
 
 **Known limit:** a system-initiated quit on macOS (Dock menu, logout,
 shutdown) bypasses the quit handshake; edits rely on the editor's short

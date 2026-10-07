@@ -123,6 +123,8 @@ export function createDesktopUpdates<U extends CheckedUpdate = DesktopUpdate>(
   let backgroundStarted = false;
   let pollingEpoch = 0;
   let checked: U | null = null;
+  /** The channel `checked` was found on. */
+  let checkedChannel: UpdateChannel = "stable";
   let staged: (StagedUpdate & { channel: UpdateChannel }) | null = null;
   let unlock: (() => void) | undefined;
   let startupTimer: ReturnType<typeof setTimeout> | undefined;
@@ -156,10 +158,16 @@ export function createDesktopUpdates<U extends CheckedUpdate = DesktopUpdate>(
     checking = true;
     if (manual) setManualCheck({ kind: "checking" });
     try {
-      // An update staged for the channel the user just left is never installed.
+      // An update found or staged for the channel the user just left is never installed.
+      if (checked && checkedChannel !== channel) {
+        close(checked);
+        checked = null;
+        settle();
+      }
       if (staged && staged.channel !== channel) {
         await deps.native.discard();
         staged = null;
+        settle();
       }
       const update = await deps.native.check(channel);
       // A result for a channel the user just left is never offered.
@@ -176,6 +184,7 @@ export function createDesktopUpdates<U extends CheckedUpdate = DesktopUpdate>(
         close(update);
       } else {
         checked = update;
+        checkedChannel = channel;
       }
       settle();
       if (manual) setManualCheck(checked || staged ? null : { kind: "uptodate" });
@@ -192,9 +201,15 @@ export function createDesktopUpdates<U extends CheckedUpdate = DesktopUpdate>(
   async function download(userInitiated = true): Promise<void> {
     const update = checked;
     if (disposed || !update || checking || downloading || restarting || installed) return;
-    downloading = true;
     // An update belongs to the channel it was checked for.
-    const channel = deps.updateChannel();
+    const channel = checkedChannel;
+    if (channel !== deps.updateChannel()) {
+      close(update);
+      checked = null;
+      settle();
+      return;
+    }
+    downloading = true;
     setManualCheck(null);
     setStage("downloading");
     setProgress(0);
@@ -215,8 +230,10 @@ export function createDesktopUpdates<U extends CheckedUpdate = DesktopUpdate>(
       if (disposed) return;
       if (checked === update) { close(checked); checked = null; }
       if (channel !== deps.updateChannel()) {
-        // The user switched channels meanwhile: never install this one.
+        // The user switched channels meanwhile: never install this one. The
+        // native host held only this download, an earlier one is gone too.
         await deps.native.discard();
+        staged = null;
         settle();
         return;
       }
@@ -242,6 +259,12 @@ export function createDesktopUpdates<U extends CheckedUpdate = DesktopUpdate>(
     if (!staged && !installed) {
       // Error after a failed download: the button retries the download.
       if (checked) await download(true);
+      return;
+    }
+    if (!installed && staged && staged.channel !== deps.updateChannel()) {
+      await deps.native.discard().catch(() => {});
+      staged = null;
+      settle();
       return;
     }
     restarting = true;

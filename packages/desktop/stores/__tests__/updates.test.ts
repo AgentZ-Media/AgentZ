@@ -438,3 +438,28 @@ describe("background polling", () => {
     s.dispose();
   });
 });
+
+describe("channel switches", () => {
+  it("never downloads an offer found on the channel the user left, even when the next check fails", async () => {
+    const s = setup({ version: "1.0.2-nightly.202610051500", autoInstall: false });
+    s.setChannel("nightly");
+    await s.store.checkNow();
+    s.setChannel("stable");
+    s.native.check.mockRejectedValueOnce(new Error("offline"));
+    await s.store.checkNow();
+    await s.store.download();
+    expect(s.native.download).not.toHaveBeenCalled();
+    expect(s.store.stage()).toBe("idle");
+    s.dispose();
+  });
+
+  it("does not restart into an update staged for another channel", async () => {
+    const s = setup({ staged: { version: "1.0.2-nightly.202610051500", currentVersion: "1.0.0" } });
+    await vi.waitFor(() => expect(s.store.stage()).toBe("ready"));
+    await s.store.restart();
+    expect(s.native.discard).toHaveBeenCalledOnce();
+    expect(s.native.installNow).not.toHaveBeenCalled();
+    expect(s.store.stage()).toBe("idle");
+    s.dispose();
+  });
+});
