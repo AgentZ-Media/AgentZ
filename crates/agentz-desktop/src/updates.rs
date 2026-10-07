@@ -1,19 +1,27 @@
-//! Update channels and database backups for nightly builds.
+//! Update channels, staged installation and database backups for nightly builds.
 //!
 //! The stable channel uses the endpoint from `tauri.conf.json`
 //! (`.../releases/download/<id>-latest/latest.json`). The nightly channel
 //! reads `<id>-nightly` next to it and also asks the stable channel, so a
 //! stable release newer than the last nightly is never missed. Signatures
 //! are verified by the updater plugin for both channels with the same key.
+//!
+//! A downloaded update waits here (`Staging`) until the user quits the app
+//! or chooses to restart; nothing ever restarts on its own. On macOS the quit
+//! handshake installs it while the event loop still runs (a protected
+//! /Applications may ask for a password). On Windows the plugin's installer
+//! always restarts the app (`/R`), so quitting writes the installer and starts
+//! it without `/R` once the process exits.
 
 use std::{
     fs,
     path::{Path, PathBuf},
+    sync::{Mutex, MutexGuard, PoisonError},
     time::{SystemTime, UNIX_EPOCH},
 };
 
 use serde::Serialize;
-use tauri::{AppHandle, Manager, ResourceId, State, Url, Webview, Wry};
+use tauri::{ipc::Channel, AppHandle, Manager, ResourceId, RunEvent, State, Url, Webview, Wry};
 use tauri_plugin_updater::{Update, UpdaterExt};
 
 /// Backups kept per app, including the one about to be written.
@@ -126,6 +134,204 @@ pub async fn update_check(
     }))
 }
 
+/// A downloaded, signature-checked update and its bytes.
+struct StagedUpdate {
+    update: Update,
+    bytes: Vec<u8>,
+}
+
+#[derive(Default)]
+pub struct Staging {
+    staged: Mutex<Option<StagedUpdate>>,
+    /// Windows: the installer written while quitting, started after exit.
+    #[cfg_attr(not(windows), allow(dead_code))]
+    installer: Mutex<Option<PathBuf>>,
+}
+
+/// A panic elsewhere must never make the staged update unreachable.
+fn lock<T>(mutex: &Mutex<T>) -> MutexGuard<'_, T> {
+    mutex.lock().unwrap_or_else(PoisonError::into_inner)
+}
+
+/// Same shape as the updater plugin's download events.
+#[derive(Clone, Serialize)]
+#[serde(tag = "event", content = "data")]
+pub enum DownloadEvent {
+    #[serde(rename_all = "camelCase")]
+    Started { content_length: Option<u64> },
+    #[serde(rename_all = "camelCase")]
+    Progress { chunk_length: usize },
+    Finished,
+}
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct StagedInfo {
+    version: String,
+    current_version: String,
+}
+
+fn info(update: &Update) -> StagedInfo {
+    StagedInfo {
+        version: update.version.clone(),
+        current_version: update.current_version.clone(),
+    }
+}
+
+/// Downloads and verifies the checked update `rid`, then keeps it for the
+/// installation. Replaces an update staged before.
+#[tauri::command]
+pub async fn update_download(
+    webview: Webview<Wry>,
+    staging: State<'_, Staging>,
+    rid: ResourceId,
+    on_event: Channel<DownloadEvent>,
+) -> Result<StagedInfo, String> {
+    let update = webview
+        .resources_table()
+        .get::<Update>(rid)
+        .map_err(|e| e.to_string())?;
+    let update: Update = (*update).clone();
+    let progress = on_event.clone();
+    let mut started = false;
+    let bytes = update
+        .download(
+            move |chunk_length, content_length| {
+                if !started {
+                    started = true;
+                    let _ = progress.send(DownloadEvent::Started { content_length });
+                }
+                let _ = progress.send(DownloadEvent::Progress { chunk_length });
+            },
+            move || {
+                let _ = on_event.send(DownloadEvent::Finished);
+            },
+        )
+        .await
+        .map_err(|e| e.to_string())?;
+    let staged = info(&update);
+    *lock(&staging.staged) = Some(StagedUpdate { update, bytes });
+    *lock(&staging.installer) = None;
+    Ok(staged)
+}
+
+/// The update waiting for installation, e.g. for a window reopened on macOS.
+#[tauri::command]
+pub fn update_staged(staging: State<'_, Staging>) -> Option<StagedInfo> {
+    lock(&staging.staged)
+        .as_ref()
+        .map(|staged| info(&staged.update))
+}
+
+/// Forgets the staged update (the user switched the update channel).
+#[tauri::command]
+pub fn update_discard(staging: State<'_, Staging>) {
+    *lock(&staging.staged) = None;
+    *lock(&staging.installer) = None;
+}
+
+/// Runs an installation off the main thread: synchronous commands run on it,
+/// and the plugin's macOS installation itself needs the main thread for the
+/// password prompt of a protected /Applications.
+async fn install_off_main(staging: &Staging, staged: StagedUpdate) -> Result<(), String> {
+    let (result, staged) = tauri::async_runtime::spawn_blocking(move || {
+        let result = staged.update.install(&staged.bytes).map_err(|e| e.to_string());
+        (result, staged)
+    })
+    .await
+    .map_err(|e| e.to_string())?;
+    if result.is_err() {
+        // Keep it for the next attempt, unless a newer one arrived meanwhile.
+        lock(&staging.staged).get_or_insert(staged);
+    }
+    result
+}
+
+/// Installs the staged update now; the caller restarts the app afterwards.
+/// Must follow a successful flush: Windows exits inside and restarts itself.
+#[tauri::command]
+pub async fn update_install_now(staging: State<'_, Staging>) -> Result<(), String> {
+    let staged = lock(&staging.staged)
+        .take()
+        .ok_or("no update downloaded")?;
+    *lock(&staging.installer) = None;
+    install_off_main(&staging, staged).await
+}
+
+/// Called by the quit handshake after a successful flush. Returns whether an
+/// update will be in place when the app starts the next time.
+#[tauri::command]
+pub async fn update_install_on_quit(
+    staging: State<'_, Staging>,
+    host: State<'_, HostId>,
+) -> Result<bool, String> {
+    let Some(staged) = lock(&staging.staged).take() else {
+        return Ok(false);
+    };
+    #[cfg(windows)]
+    {
+        if !staged.bytes.starts_with(b"MZ") {
+            // Not an NSIS installer (an MSI or a zipped bundle): only the
+            // plugin can install it, and it restarts the app afterwards.
+            install_off_main(&staging, staged).await?;
+            return Ok(true);
+        }
+        let path = match installer_path(&std::env::temp_dir(), host.0, &staged.update.version) {
+            Ok(path) => path,
+            Err(error) => {
+                lock(&staging.staged).get_or_insert(staged);
+                return Err(error);
+            }
+        };
+        let bytes = staged.bytes.clone();
+        let target = path.clone();
+        let written = tauri::async_runtime::spawn_blocking(move || fs::write(&target, &bytes))
+            .await
+            .map_err(|e| e.to_string())
+            .and_then(|result| result.map_err(|e| e.to_string()));
+        if let Err(error) = written {
+            lock(&staging.staged).get_or_insert(staged);
+            return Err(error);
+        }
+        *lock(&staging.installer) = Some(path);
+        Ok(true)
+    }
+    #[cfg(not(windows))]
+    {
+        let _ = host;
+        install_off_main(&staging, staged).await?;
+        Ok(true)
+    }
+}
+
+#[cfg_attr(not(any(windows, test)), allow(dead_code))]
+fn installer_path(dir: &Path, id: &str, version: &str) -> Result<PathBuf, String> {
+    if !valid_label(version) {
+        return Err("invalid update version".into());
+    }
+    Ok(dir.join(format!("{id}-{version}-setup.exe")))
+}
+
+/// Windows: starts the installer written by `update_install_on_quit` once the
+/// app is leaving. Passive (progress only) and without `/R`: the user quit,
+/// so the app stays closed until it is opened again.
+pub fn on_event(app: &AppHandle<Wry>, event: &RunEvent) {
+    #[cfg(windows)]
+    if let RunEvent::Exit = event {
+        let installer = lock(&app.state::<Staging>().installer).take();
+        if let Some(path) = installer {
+            if let Err(error) = std::process::Command::new(&path)
+                .args(["/P", "/UPDATE"])
+                .spawn()
+            {
+                eprintln!("could not start the update installer: {error}");
+            }
+        }
+    }
+    #[cfg(not(windows))]
+    let _ = (app, event);
+}
+
 pub(crate) fn valid_label(label: &str) -> bool {
     !label.is_empty()
         && label.len() <= 64
@@ -215,6 +421,16 @@ mod tests {
             None
         );
         assert_eq!(nightly_endpoint(&[], "scriptz"), None);
+    }
+
+    #[test]
+    fn names_the_installer_after_app_and_version_only() {
+        let dir = Path::new("/tmp");
+        assert_eq!(
+            installer_path(dir, "scriptz", "0.12.0-nightly.202610071200"),
+            Ok(dir.join("scriptz-0.12.0-nightly.202610071200-setup.exe"))
+        );
+        assert!(installer_path(dir, "scriptz", "../../evil").is_err());
     }
 
     #[test]
