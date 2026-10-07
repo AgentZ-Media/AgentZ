@@ -240,6 +240,17 @@
   color: var(--fg);
 }
 
+/* ---------------- Folder chips ----------------
+   One-click folder filter between the head and the tools row, the same
+   chips as on the ideas page. */
+.lib-chips {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 4px;
+}
+
 /* ---------------- Tools row ----------------
    Filter, view, grouping, sort and selection of the page, right above the
    content they control. Sticks to the top while the list scrolls. */

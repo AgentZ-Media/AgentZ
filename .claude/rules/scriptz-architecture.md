@@ -70,6 +70,11 @@ die Befehlspalette, deshalb setzt das Modul `revealsSidebar: true`.
   (`library.mode` je Seite). Spalten: offene Ideen, dann die Stufen in
   ihrer Reihenfolge (Inbox ohne die letzte). Karte ziehen setzt die Stufe
   (Undo-Toast), eine Idee auf eine Stufe wird zum Skript.
+- **Ordner-Chips** (`Common/FolderChips.tsx`): Ideen, Inbox, Alle Skripte,
+  Stufen und Ordner filtern mit einem Klick nach Ordner oder „Ohne
+  Ordner“. Der Filter liegt in der Route (`folderId` bei `ideas`, `inbox`
+  und `scripts`, dort kombinierbar mit `status`). Gezählt wird, was die
+  Seite vor dem Ordnerfilter zeigt; leere Ordner bekommen keinen Chip.
 
 ## Migrationen
 
