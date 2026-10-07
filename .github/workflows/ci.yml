@@ -92,7 +92,12 @@ jobs:
         with:
           persist-credentials: false
       - name: Install Tauri system dependencies
+        timeout-minutes: 10
+        # Short network timeouts with retries: a stalled Ubuntu mirror aborts
+        # and retries instead of hanging the job until it times out.
         run: |
+          echo 'Acquire::Retries "5"; Acquire::http::Timeout "20"; Acquire::https::Timeout "20";' \
+            | sudo tee /etc/apt/apt.conf.d/99ci-network
           sudo apt-get update
           sudo apt-get install -y --no-install-recommends \
             build-essential curl wget file libwebkit2gtk-4.1-dev \

@@ -17,9 +17,10 @@ snapshots and PDF export. Everything stays in a local SQLite database, with
 no telemetry. An optional free account syncs between devices, encrypted in
 transit and at rest.
 
-The apps are not notarized or code-signed. On first launch, macOS needs
-`xattr -cr /Applications/ScriptZ.app` and Windows SmartScreen needs
-"More info" → "Run anyway"; see the [installation notes](docs/release-notes/_install_footer.md).
+The apps are not notarized yet. On first launch, macOS needs one click on
+"Open Anyway" under System Settings → Privacy & Security, and Windows
+SmartScreen needs "More info" → "Run anyway"; see the
+[installation notes](docs/release-notes/_install_footer.md).
 Updates are signed and install from inside the app. Under *Settings →
 Updates* you can opt into **nightly builds**: untested previews of `main`,
 built at most every three hours and clearly marked by a night sky in the app.

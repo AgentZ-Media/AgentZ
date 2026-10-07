@@ -126,8 +126,10 @@ Standard an) und installiert sie beim Beenden nach dem Speichern; „Jetzt neu
 starten“ übernimmt sie sofort. Von sich aus startet sie nie neu. Windows
 startet den Installer beim Beenden ohne `/R`, die App bleibt also zu
 (`crates/agentz-desktop/README.md`).
-Die Apps sind nicht notarisiert bzw. codesigniert: macOS braucht beim ersten
-Start `xattr -cr "/Applications/<Produkt>.app"`, Windows zeigt SmartScreen.
+macOS-Builds sind nur ad-hoc signiert (`bundle.macOS.signingIdentity: "-"`),
+nicht notarisiert: Beim ersten Start braucht macOS einmal „Dennoch öffnen“ unter
+Systemeinstellungen > Datenschutz & Sicherheit. Windows ist unsigniert und
+zeigt SmartScreen.
 Der Install-Footer erklärt beides. Installationen von ScriptZ 0.8.4 und älter
 prüfen einen anderen Update-Kanal und brauchen einmal den aktuellen Installer
 aus `scriptz-latest`.
