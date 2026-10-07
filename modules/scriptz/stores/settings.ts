@@ -12,7 +12,10 @@ import {
   type StageDef,
 } from "../lib/stages";
 
-const [highlightingDefault, setHighlightingDefault] = createSignal<boolean>(false);
+// Character colours in the text for scripts without their own choice
+// (scripts.highlighting_enabled NULL). Default on; a value stored by an
+// existing install wins (see load()).
+const [highlightingDefault, setHighlightingDefault] = createSignal<boolean>(true);
 const [exportTitlePageDefault, setExportTitlePageDefault] = createSignal<boolean>(true);
 // Open scripts in focus mode. Default false for fresh installs (head bar
 // + inspector are the normal writing view); a value stored by an existing
@@ -203,7 +206,7 @@ export const settingsStore = {
       kv.getSetting("focus_typewriter"),
     ]);
     if (generation !== runtimeGeneration) return;
-    setHighlightingDefault(hd === null ? false : hd === "1");
+    setHighlightingDefault(hd === null ? true : hd === "1");
     setExportTitlePageDefault(etpd === null ? true : etpd === "1");
     setQuickModeAutoEnable(qmae === null ? false : qmae === "1");
     setFocusModeDefault(fmd === null ? false : fmd === "1");
