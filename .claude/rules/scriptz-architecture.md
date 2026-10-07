@@ -72,7 +72,7 @@ die Befehlspalette, deshalb setzt das Modul `revealsSidebar: true`.
 
 ## Migrationen
 
-`001_baseline` bis `015_agent_threads` in
+`001_baseline` bis `016_agent_threads` in
 `apps/scriptz/src-tauri/migrations/` sind veröffentlicht und unveränderlich. `007` ergänzt `scripts.status`,
 `status_changed_at` und den Ordner-Zielbereich. `008_agent` legt
 `agent_memory`, `agent_chats` und `agent_learned` an. `009_local_changes`
@@ -96,7 +96,7 @@ Covering-Index (`lib/__tests__/queryPlans.test.ts` schlägt sonst fehl).
 `014_cloud_sync` ist rein additiv: `sync_records` (Buchführung der
 Synchronisierung, keine Inhaltstabelle) und `daily_word_log_remote`
 (Schreibstatistik anderer Geräte).
-`015_agent_threads` ist rein additiv: `agent_threads` hält die Transkripte
+`016_agent_threads` ist rein additiv: `agent_threads` hält die Transkripte
 des OpenRouter-Harness (Gerätezustand wie `agent_chats.thread_id`, keine
 Inhaltstabelle, nicht im Änderungsfeed, nie synchronisiert oder exportiert).
 Jede neue Spalte einer Inhaltstabelle braucht dasselbe: Trigger neu anlegen
@@ -266,15 +266,20 @@ Persönlicher Schreib-Agent mit eigenem Namen, Look und Persona.
   überall standardmäßig `medium`. `agent.enabled = false` startet keinen
   Prozess.
 - **Ausblenden** (`agent.hidden`, nur auf diesem Gerät): eigener
-  Onboarding-Schritt „KI-Agent“ (nur mit Codex-Host) und Schalter „KI-Funktionen
-  anzeigen“ in Einstellungen > Agent. Ausgeblendet liefert
+  Onboarding-Schritt „KI-Agent“ (in jedem Desktop-Build, egal welche
+  Anbindung) und Schalter „KI-Funktionen anzeigen“ ganz oben in
+  Einstellungen > Agent; Anbindung und alles Weitere stehen darunter und
+  nur, solange der Agent eingeblendet ist. Ausgeblendet liefert
   `agentStore.available()` false, damit verschwinden Seitenleiste,
   Chat, Chips, Rechtsklick, Inspector-Lernstand, Ideen-Knöpfe und -Herkunft,
   ⌘K-Befehle und die Kürzel (`ShortcutDef.hidden`, auch aus der
   Tastatur-Übersicht); der Agent-Modus fällt aus der Navigation.
-  `agentSettings.enabled()` ist dann false (kein Prozess, kein Lernen),
-  `agent.enabled` selbst bleibt stehen. Chats und Gedächtnis bleiben erhalten.
-  `agentStore.supported()` fragt nur nach dem Codex-Host.
+  `agentSettings.enabled()` ist dann false, `agent.enabled` selbst bleibt
+  stehen. `getProvider()` liefert ausgeblendet keinen Provider und
+  `refreshStatus()` prüft nichts: kein Codex-Prozess, keine Anfrage an
+  OpenRouter oder den KI-Proxy, kein Lernen. Chats, Gedächtnis und ein
+  gespeicherter OpenRouter-Key bleiben erhalten.
+  `agentStore.supported()` fragt nur nach dem Desktop-Host (`hasAgentHost`).
 - **Aufträge** (`lib/agent/jobs.ts`): Einstieg prüfen, Kürzen, Tempo
   erhöhen, Härteres Ende, Fakten prüfen, Feedback. Der Chat zeigt nur das
   kurze Label, das Modell bekommt die englische Instruktion. Vier Türen,

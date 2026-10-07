@@ -185,7 +185,7 @@ describe("agent persistence boundary with SQLite", () => {
   });
 });
 
-describe("harness transcripts (migration 015)", () => {
+describe("harness transcripts (migration 016)", () => {
   const record = (id: string, updatedAt: number) => ({ id, provider: "openrouter", messagesJson: `[{"role":"user","content":"${id}"}]`, createdAt: 1, updatedAt });
 
   it("stores, updates and prunes transcripts; deleting a chat removes its transcript", async () => {

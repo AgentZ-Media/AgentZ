@@ -100,7 +100,11 @@ function createProvider(id: AgentProviderId): AgentProvider | null {
   }
 }
 
+/** The provider in use, created on demand. Never while the agent is hidden:
+ *  hidden means no Codex process and no request to OpenRouter or the
+ *  AgentZ proxy, whatever path asks. */
 export function getProvider(): AgentProvider | null {
+  if (agentSettings.hidden()) return null;
   if (provider) return provider;
   provider = createProvider(agentSettings.provider());
   return provider;
@@ -112,6 +116,8 @@ let statusCheck: Promise<AgentStatus> | null = null;
  *  that react to the status cannot loop. */
 export function refreshStatus(): Promise<AgentStatus> {
   if (statusCheck) return statusCheck;
+  // Hidden: keep "checking", so showing the agent again checks afresh.
+  if (agentSettings.hidden()) return Promise.resolve(status());
   const p = getProvider();
   if (!p) {
     setStatus({ state: "unavailable" });

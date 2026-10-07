@@ -10,7 +10,7 @@ Architektur und Datenfluss: [`scriptz-architecture.md`](../../.claude/rules/scri
 ## Daten schützen
 
 Identifier `de.agent-z.scriptz`, `scriptz.db`, das URL-Schema `agentz-scriptz`,
-die Migrationen `001` bis `015` sowie alle Settings- und `app_state`-Schlüssel sind fix. Neue
+die Migrationen `001` bis `016` sowie alle Settings- und `app_state`-Schlüssel sind fix. Neue
 Schemaänderungen nur als neue Migration in `src-tauri/migrations/`, registriert
 in `src-tauri/src/lib.rs`, und im `.scriptz`-Import/Export mitdenken. Neue
 Spalten einer Inhaltstabelle brauchen außerdem neu angelegte Update-Trigger
@@ -72,7 +72,7 @@ Kein `cp` der laufenden DB (WAL). Wiederherstellen bei beendeter App:
   (`releases/download/scriptz-latest/latest.json`, mit Nightly-Kanal zusätzlich
   `scriptz-nightly/latest.json`), nur mit Anmeldung das Convex-Backend
   (Sitzung, Ende-zu-Ende verschlüsselter Sync) und nur wenn der Agent
-  eingeschaltet ist je nach Anbindung der lokale Codex-Prozess, der KI-Proxy
+  eingeschaltet und nicht ausgeblendet ist je nach Anbindung der lokale Codex-Prozess, der KI-Proxy
   im Convex-Backend (`/ai/*`) oder `openrouter.ai` mit dem eigenen Key. Keine
   Telemetrie. Die CSP erlaubt dafür ausschließlich `*.convex.cloud`,
   `*.convex.site` und `https://openrouter.ai`.
