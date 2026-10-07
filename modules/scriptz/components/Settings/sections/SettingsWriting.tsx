@@ -1,4 +1,5 @@
-import { createEffect, createSignal, on, onCleanup } from "solid-js";
+import { Show, createEffect, createSignal, on, onCleanup } from "solid-js";
+import { account } from "@agentz/kit/account";
 import { registerFlusher } from "@agentz/kit/lib";
 import { createSerialSaver } from "@agentz/kit/lib";
 import { settingsStore } from "../../../stores/settings";
@@ -149,13 +150,16 @@ export function SettingsWriting(props: { onClose(): void }) {
           label={t("prefs.typewriter.label")}
         />
       </Row>
-      <Row label={t("prefs.counter.label")} help={t("prefs.counter.help")}>
-        <Switch
-          checked={settingsStore.showWritingStats()}
-          onChange={(v) => void settingsStore.setShowWritingStats(v)}
-          label={t("prefs.counter.label")}
-        />
-      </Row>
+      {/* The account takes the counter's place in the sidebar. */}
+      <Show when={!account.enabled()}>
+        <Row label={t("prefs.counter.label")} help={t("prefs.counter.help")}>
+          <Switch
+            checked={settingsStore.showWritingStats()}
+            onChange={(v) => void settingsStore.setShowWritingStats(v)}
+            label={t("prefs.counter.label")}
+          />
+        </Row>
+      </Show>
     </>
   );
 }

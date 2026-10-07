@@ -1,0 +1,63 @@
+---
+// Sign in, sign up, forgot and reset password. Shared by the account page and
+// the app sign-in page; src/scripts/authForms.ts drives it.
+import { catalogs, type Language } from "../i18n";
+interface Props { lang: Language }
+const { lang } = Astro.props;
+const t = catalogs[lang].account;
+const privacy = "/datenschutz/";
+---
+<div class="auth-card">
+  <p class="auth-notice" data-notice role="status" hidden></p>
+  <div class="seg auth-tabs" role="tablist" aria-label={t.title}>
+    <button type="button" role="tab" id="tab-signin" aria-controls="form-signin" aria-selected="true" data-tab="signIn">{t.tabs.signIn}</button>
+    <button type="button" role="tab" id="tab-signup" aria-controls="form-signup" aria-selected="false" tabindex="-1" data-tab="signUp">{t.tabs.signUp}</button>
+  </div>
+
+  <form class="auth-form" id="form-signin" role="tabpanel" aria-labelledby="tab-signin" data-form="signIn">
+    <h2>{t.signInTitle}</h2>
+    <label class="fld"><span>{t.email}</span><input class="field" type="email" name="email" autocomplete="email" placeholder={t.emailPlaceholder} required /></label>
+    <label class="fld"><span>{t.password}</span>
+      <span class="field-box pw"><input type="password" name="password" autocomplete="current-password" required /><button class="pw-toggle" type="button" data-toggle-password>{t.runtime.show}</button></span>
+    </label>
+    <p class="form-error" data-error role="alert" hidden></p>
+    <button class="btn accent btn-lg wide" type="submit">{t.signIn}</button>
+    <p class="auth-foot"><button type="button" class="link-btn" data-mode="forgot">{t.forgotLink}</button></p>
+    <p class="auth-switch">{t.noAccount} <button type="button" class="link-btn" data-tab="signUp">{t.tabs.signUp}</button></p>
+  </form>
+
+  <form class="auth-form" id="form-signup" role="tabpanel" aria-labelledby="tab-signup" data-form="signUp" hidden>
+    <h2>{t.signUpTitle}</h2>
+    <label class="fld"><span>{t.name}</span><input class="field" type="text" name="name" autocomplete="name" placeholder={t.namePlaceholder} maxlength="80" required /></label>
+    <label class="fld"><span>{t.email}</span><input class="field" type="email" name="email" autocomplete="email" placeholder={t.emailPlaceholder} required /></label>
+    <label class="fld"><span>{t.password}</span>
+      <span class="field-box pw"><input type="password" name="password" autocomplete="new-password" minlength="8" maxlength="128" aria-describedby="signup-pw-hint" required /><button class="pw-toggle" type="button" data-toggle-password>{t.runtime.show}</button></span>
+      <small id="signup-pw-hint">{t.passwordHint}</small>
+    </label>
+    <p class="form-error" data-error role="alert" hidden></p>
+    <button class="btn accent btn-lg wide" type="submit">{t.signUp}</button>
+    <p class="auth-foot">{t.privacyBefore} <a href={privacy}>{t.privacyLink}</a>{t.privacyAfter}</p>
+    <p class="auth-switch">{t.haveAccount} <button type="button" class="link-btn" data-tab="signIn">{t.tabs.signIn}</button></p>
+  </form>
+
+  <form class="auth-form" data-form="forgot" hidden>
+    <h2>{t.forgotTitle}</h2>
+    <p class="auth-lead">{t.forgotText}</p>
+    <label class="fld"><span>{t.email}</span><input class="field" type="email" name="email" autocomplete="email" placeholder={t.emailPlaceholder} required /></label>
+    <p class="form-error" data-error role="alert" hidden></p>
+    <button class="btn accent btn-lg wide" type="submit">{t.forgotSubmit}</button>
+    <p class="auth-switch"><button type="button" class="link-btn" data-tab="signIn">{t.backToSignIn}</button></p>
+  </form>
+
+  <form class="auth-form" data-form="reset" hidden>
+    <h2>{t.resetTitle}</h2>
+    <p class="auth-lead">{t.resetText}</p>
+    <label class="fld"><span>{t.newPassword}</span>
+      <span class="field-box pw"><input type="password" name="password" autocomplete="new-password" minlength="8" maxlength="128" aria-describedby="reset-pw-hint" required /><button class="pw-toggle" type="button" data-toggle-password>{t.runtime.show}</button></span>
+      <small id="reset-pw-hint">{t.passwordHint}</small>
+    </label>
+    <p class="form-error" data-error role="alert" hidden></p>
+    <button class="btn accent btn-lg wide" type="submit">{t.resetSubmit}</button>
+    <p class="auth-switch"><button type="button" class="link-btn" data-tab="signIn">{t.backToSignIn}</button></p>
+  </form>
+</div>

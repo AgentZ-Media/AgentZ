@@ -1,0 +1,17 @@
+---
+// How many scripts were written with ScriptZ, summed hourly over all synced
+// accounts (convex/stats.ts). Hidden below MIN_SCRIPTS (src/stats.ts); the browser
+// fetches the current one and counts up to it (scripts/script-count.ts).
+import { catalogs, type Language } from "../i18n";
+import { scriptCount } from "../stats";
+interface Props { lang: Language; size?: "lg" | "sm" }
+const { lang, size = "sm" } = Astro.props;
+const t = catalogs[lang].count;
+const scripts = await scriptCount();
+---
+<p class:list={["count", `count-${size}`]} data-script-count data-value={scripts ?? 0} hidden={!scripts}>
+  <span class="pulse" aria-hidden="true"></span>
+  <b class="num" data-count-value>{scripts ? new Intl.NumberFormat(lang).format(scripts) : ""}</b>
+  <span data-count-label data-one={t.one} data-other={t.other}>{scripts === 1 ? t.one : t.other}</span>
+</p>
+<script>import "../scripts/script-count";</script>

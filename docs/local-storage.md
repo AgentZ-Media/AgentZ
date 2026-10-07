@@ -1,9 +1,9 @@
-# Lokale Speicherung und Vorbereitung der Synchronisierung
+# Lokale Speicherung und Änderungsfeed
 
-Die App arbeitet ausschließlich mit ihrer lokalen SQLite-Datenbank. Es gibt
-weder eine Convex-Verbindung noch Konten, Uploads, zusätzliche Timer oder
-Netzwerkanfragen. Die hier beschriebene Änderungsverfolgung ist die lokale
-Grundlage für eine spätere Synchronisierung, keine fertige Synchronisierung.
+Die App arbeitet immer mit ihrer lokalen SQLite-Datenbank. Die hier
+beschriebene Änderungsverfolgung ist die lokale Grundlage der
+Cloud-Synchronisierung; Konto, Verschlüsselung und Abgleich beschreibt
+[`cloud-sync.md`](cloud-sync.md). Ohne Anmeldung gibt es keine Uploads.
 
 ## Schnittstellen
 
@@ -80,7 +80,7 @@ SQLite `upper()` normalisierten Schlüssel.
 
 Die Atomarität gilt für das einzelne SQL-Statement samt Triggern. Bestehende
 Fachoperationen aus mehreren Statements werden dadurch nicht zu einer einzigen
-Transaktion. Eine spätere Übertragung muss diese Abläufe und ihre Abhängigkeiten
+Transaktion. Die Übertragung muss diese Abläufe und ihre Abhängigkeiten
 berücksichtigen; der Änderungsfeed verspricht keine atomare Übertragung einer
 gesamten Benutzeraktion.
 
@@ -103,55 +103,44 @@ Migration gelöschten Datensätzen, nicht nach der Zahl der automatischen Saves.
 
 Die Änderung-ID ist `replicaId:sequence`. Solange sich ein Datensatz nicht
 ändert, liefern wiederholte Abfragen dieselbe ID. Sequenzen sind lokal und
-keine Zeitstempel oder Cloud-Versionen. Ein späterer Cloud-Empfänger muss diese
-IDs zur wiederholbaren Verarbeitung verwenden.
+keine Zeitstempel oder Cloud-Versionen. Die Synchronisierung macht
+Wiederholungen über den Inhalts-Hash unschädlich.
 
 Metadaten und Inhalte werden in einem einzigen SQLite-SELECT gelesen. Dadurch
 passen Marker und Inhalt auch bei gleichzeitigem Speichern zusammen. Die
 Seitengröße wird vor dem Laden der Inhalte begrenzt (Standard 100, maximal
 1.000 Datensätze). Große Chats können dennoch große Seiten ergeben; ein
-späterer Transport braucht zusätzlich eine Begrenzung nach übertragenen Bytes.
+Transport begrenzt deshalb zusätzlich nach übertragenen Bytes.
 Ändert sich ein schon gelesener Datensatz erneut, erhält er eine höhere Sequenz
 und erscheint wieder hinter dem bisherigen Cursor.
 
 Der Feed ist eine zusammengefasste Sicht auf aktuelle Datensätze und Löschungen,
 kein vollständiges Bearbeitungsprotokoll und keine über mehrere Seiten
-festgehaltene Momentaufnahme. Abhängige Datensätze müssen beim späteren Empfang
+festgehaltene Momentaufnahme. Abhängige Datensätze müssen beim Empfang
 entsprechend behandelt werden.
 
-## Grenze zur späteren Convex-Anbindung
+## Nutzung durch die Synchronisierung
 
-Die folgenden Aufgaben gehören ausdrücklich zur anschließenden Anbindung:
+Der Sync-Adapter (`lib/sync/adapter.ts`) liest diesen Feed ab dem
+hochgeladenen Cursor und schreibt eingehende Datensätze mit eigenen Upserts
+(nie `INSERT OR REPLACE`, das würde Kaskaden auslösen). Die Trigger erfassen
+auch diese Schreibvorgänge; die Engine erkennt sie am unveränderten
+Inhalts-Hash und lädt sie nicht erneut hoch. Für den Abgleich gilt:
 
-- Anmeldung, Kontozuordnung und getrennte Checkpoints je Konto und lokaler
-  Datenbank; vorhandene Daten dürfen bei einem Kontowechsel nicht automatisch
-  einem anderen Konto zugeordnet werden.
-- Erstabgleich und fortsetzbare Übertragung. Ein Cursor darf erst nach
-  bestätigter Annahme der zugehörigen Änderungen fortgeschrieben werden.
-- Gesonderte Serverrevisionen als Grundlage für Konflikterkennung; lokale
-  Sequenzen oder `updated_at` allein bestimmen keinen Gewinner.
-- Eingehende Änderungen mit sauberem lokalen Schreibweg, aktualisierter Suche
-  und UI sowie Vermeidung einer endlosen Rückübertragung.
-- Löschkonflikte, Aufbewahrung und sichere Bereinigung von Tombstones.
-- Gerätebezogene Interpretation der Schreibstatistik, damit Werte verschiedener
-  Geräte nicht überschrieben oder doppelt gezählt werden.
-- Sitzungen des Agent-Modus speichern Entwürfe und Versionen als Text in
-  `items_json`, nicht in eigenen Tabellen. Ein Chat ist damit eine Einheit; ein
-  Konflikt zwischen zwei Geräten betrifft den ganzen Verlauf und braucht eine
-  eigene Zusammenführung, etwa nach Eintrags-IDs.
-- Endgültiges Löschen eines Skripts löst Sitzungen per Trigger davon
-  (`script_id` wird NULL), Skript-Chats, Snapshots und Lernstand gehen per
-  Kaskade mit. Der Feed liefert dafür einzelne Marker; ein Empfänger muss
-  Löschungen und Entknüpfungen in Abhängigkeitsreihenfolge anwenden. Gleiches
-  gilt für `ideas.source_chat_id`, das beim Löschen einer Sitzung NULL wird.
-- Provider-Thread-IDs in Chats sind lokale Fortsetzungsinformationen; kopierter
-  Chatinhalt macht einen lokalen Provider-Thread nicht auf anderen Geräten
-  verfügbar.
-- Behandlung geklonter oder wiederhergestellter Datenbanken: die lokale UUID
-  reist mit der Datenbank. Zwei gleichzeitig verwendete Kopien dürfen nicht
-  dieselbe Remote-Replikatidentität beanspruchen; die spätere Anbindung muss
-  diesen Fall erkennen und gegebenenfalls eine neue Identität samt Erstabgleich
-  vergeben.
+- Cursor und Buchführung gehören zu Konto, Schlüssel und Gerät
+  (`app_state.sync.state`, Tabelle `sync_records`, Migration 014). Ein anderes
+  Konto übernimmt die Daten nur nach Rückfrage.
+- Ein Cursor rückt erst nach bestätigter Annahme vor; Konflikte erkennt die
+  Cloud-Revision, nicht `updated_at` oder die lokale Sequenz.
+- Abhängige Datensätze werden in Reihenfolge `folders`, `scripts`,
+  `agent_chats`, `ideas`, `snapshots`, `agent_memory`, `agent_learned`,
+  `character_colors` geschrieben, Löschungen umgekehrt.
+- Tombstones bleiben lokal und in der Cloud erhalten.
+- Die Schreibstatistik synchronisiert pro Gerät (`daily_word_log_remote`).
+- Provider-Thread-IDs bleiben lokal.
+- Eine geklonte oder wiederhergestellte Datenbank trägt die Geräte-ID der
+  Synchronisierung mit; zwei gleichzeitig benutzte Kopien teilen sich dann
+  deren Schreibstatistik.
 
 `.scriptz`-Importe und -Exporte sind Einzel-Skript-Dateien, kein Backup aller
 Agentendaten. Lokale

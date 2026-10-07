@@ -383,3 +383,61 @@
     display: none;
   }
 }
+
+/* ---------- step 4: sync ---------- */
+.onb-choice {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 4px;
+}
+.onb-opt {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 12px 14px;
+  border-radius: var(--r-4);
+  text-align: left;
+  box-shadow: 0 0 0 1px var(--line);
+  transition: box-shadow var(--t-fast), background var(--t-fast);
+}
+.onb-opt:hover {
+  background: var(--fill);
+}
+.onb-opt[aria-checked="true"] {
+  background: var(--accent-soft);
+  box-shadow: 0 0 0 1.5px var(--accent-edge), var(--shadow-raise);
+}
+.onb-opt svg.i {
+  margin-top: 1px;
+  color: var(--muted);
+}
+.onb-opt[aria-checked="true"] svg.i {
+  color: var(--accent-ink);
+}
+.onb-opt > span {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.onb-opt b {
+  font-size: var(--fs-14);
+}
+.onb-opt small {
+  color: var(--muted);
+  font-size: 12.5px;
+  line-height: var(--lh-snug);
+}
+.onb-sync-done {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 4px 0 0;
+  padding: 10px 12px;
+  border-radius: var(--r-3);
+  background: var(--fill);
+  font-weight: 600;
+}
+.onb-sync-done svg.i {
+  color: var(--ok);
+}

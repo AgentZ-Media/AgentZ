@@ -10,6 +10,8 @@
     "core:webview:default",
     "agentz-desktop:default",
     "agentz-desktop:codex",
+    "agentz-desktop:account",
+    "deep-link:default",
     "os:default",
     "updater:default",
     "process:default",

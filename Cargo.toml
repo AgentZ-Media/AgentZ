@@ -11,13 +11,16 @@ tauri-plugin-updater = "2"
 tauri-plugin-process = "2"
 tauri-plugin-opener = "2"
 tauri-plugin-dialog = "2"
-tauri-plugin-single-instance = "2"
+tauri-plugin-single-instance = { version = "2", features = ["deep-link"] }
+tauri-plugin-deep-link = "2"
 tauri-plugin = { version = "2", features = ["build"] }
 tauri-plugin-fs = { version = "2.5.1", default-features = false }
 tauri-plugin-sql = { version = "2", features = ["sqlite"] }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 semver = "1"
+# Native stores only; other platforms (CI on Linux) fall back to an in-memory mock.
+keyring = { version = "3", features = ["apple-native", "windows-native"] }
 
 [profile.release]
 panic = "abort"

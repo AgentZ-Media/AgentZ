@@ -1,0 +1,81 @@
+---
+// Full-screen sign-in for the desktop apps (/konto/app/, /en/account/app/).
+// The app opens it with ?app=<id>&challenge=<PKCE challenge>; after signing in,
+// "Open app" approves the challenge and returns through the app's URL scheme
+// (convex/appLink.ts). Without JavaScript or backend the page says so.
+import Base from "../layouts/Base.astro";
+import AuthForms from "./AuthForms.astro";
+import Icon from "./Icon.astro";
+import { apps, appScheme } from "../apps";
+import { appSignInPaths, catalogs, type Language } from "../i18n";
+import suiteIcon from "@agentz/design/assets/suite-app-icon.svg?url";
+import "../styles/account.css";
+import "../styles/app-signin.css";
+interface Props { lang: Language }
+const { lang } = Astro.props;
+const t = catalogs[lang];
+const s = t.appSignIn;
+const authUrl = import.meta.env.PUBLIC_CONVEX_SITE_URL ?? "";
+// The app list decides which apps may sign in and where the page returns to.
+const known = apps.map((app) => ({ id: app.id, name: app.name, scheme: appScheme(app.id), icon: `/img/${app.id}.png` }));
+const runtime = JSON.stringify({ account: t.account.runtime, page: s, apps: known }).replace(/</g, "\\u003c");
+---
+<Base lang={lang} title={s.title} description={s.description} paths={appSignInPaths} noindex bare>
+  <section class="account app-signin" data-app-signin data-auth-url={authUrl} data-lang={lang}>
+    <script type="application/json" data-app-signin-text set:html={runtime} />
+    <header class="as-top">
+      <span class="as-brand"><img src={suiteIcon} alt="" width="26" height="26" />AgentZ <span>Suite</span></span>
+      <a class="as-lang" href={appSignInPaths[lang === "de" ? "en" : "de"]} hreflang={lang === "de" ? "en" : "de"} data-keep-query>{lang === "de" ? "EN" : "DE"}</a>
+    </header>
+    <div class="as-wrap">
+      <p class="account-state js-only" data-view="loading" role="status"><span class="account-spinner" aria-hidden="true"></span>{t.account.loading}</p>
+      <noscript><p class="account-state">{t.account.noscript}</p></noscript>
+
+      <div class="account-state account-unavailable" data-view="unavailable" hidden>
+        <h1 tabindex="-1">{t.account.unavailableTitle}</h1>
+        <p>{t.account.unavailableText}</p>
+        <button class="btn btn-lg" type="button" data-action="retry"><Icon name="refresh" />{t.account.retry}</button>
+      </div>
+
+      <div class="account-state account-unavailable" data-view="invalid" hidden>
+        <h1 tabindex="-1">{s.invalidTitle}</h1>
+        <p>{s.invalidText}</p>
+      </div>
+
+      <div class="auth" data-view="auth" hidden>
+        <aside class="auth-intro" data-theme="dark">
+          <p class="eyebrow"><img class="as-app-icon" data-app-icon alt="" width="20" height="20" /><span data-app-text="kicker"></span></p>
+          <h1 tabindex="-1">{s.introTitle}</h1>
+          <p class="auth-intro-text" data-app-text="introText"></p>
+          <ul class="as-points">
+            {s.introPoints.map((point) => <li><Icon name="check" />{point}</li>)}
+          </ul>
+        </aside>
+        <AuthForms lang={lang} />
+      </div>
+
+      <div class="as-card" data-view="connect" hidden>
+        <span class="acct-avatar" data-user="initials" aria-hidden="true"></span>
+        <h1 tabindex="-1" data-user="title"></h1>
+        <p class="as-email" data-user="email"></p>
+        <p class="as-text" data-app-text="connectText"></p>
+        <p class="form-error" data-connect-error role="alert" hidden></p>
+        <button class="btn accent btn-lg wide" type="button" data-action="open"><img class="as-app-icon" data-app-icon alt="" width="20" height="20" /><span data-app-text="open"></span></button>
+        <button class="link-btn as-other" type="button" data-action="other">{s.otherAccount}</button>
+      </div>
+
+      <div class="as-card" data-view="done" hidden>
+        <img class="as-done-icon" data-app-icon alt="" width="72" height="72" />
+        <h1 tabindex="-1" data-app-text="doneTitle"></h1>
+        <p class="as-text">{s.doneText}</p>
+        <button class="btn btn-lg" type="button" data-action="reopen">{s.reopen}</button>
+        <details class="as-fallback">
+          <summary data-app-text="fallbackSummary"></summary>
+          <p data-app-text="fallbackText"></p>
+          <div class="as-code"><code data-code></code><button class="btn" type="button" data-action="copy">{s.copy}</button></div>
+        </details>
+      </div>
+    </div>
+  </section>
+  <script>import "../scripts/appSignIn";</script>
+</Base>

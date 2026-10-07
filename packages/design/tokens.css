@@ -181,6 +181,16 @@
   --selection: rgba(255, 225, 77, 0.55);
   /* kbd / chips sitting on an ink (--fg) background */
   --on-ink-fill: rgba(255, 255, 255, 0.16);
+  /* Account avatars: one hue per account (derived from its ID), white
+     initials on top (--on-swatch). Same in both themes. */
+  --avatar-1: #e0791f;
+  --avatar-2: #3a8ed4;
+  --avatar-3: #7a4ad4;
+  --avatar-4: #2fa56b;
+  --avatar-5: #d04141;
+  --avatar-6: #1a9aa0;
+  --avatar-7: #c0399a;
+  --avatar-8: #5b6bd6;
 }
 
 /* Nightly: glows turn night blue to match the sky; the accent stays. */
