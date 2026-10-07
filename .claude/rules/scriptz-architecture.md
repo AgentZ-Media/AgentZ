@@ -263,6 +263,16 @@ Persönlicher Schreib-Agent mit eigenem Namen, Look und Persona.
 - **Settings** unter `agent.*` (siehe `stores/agentSettings.ts`), Effort
   überall standardmäßig `medium`. `agent.enabled = false` startet keinen
   Prozess.
+- **Ausblenden** (`agent.hidden`, nur auf diesem Gerät): eigener
+  Onboarding-Schritt „KI-Agent“ (nur mit Codex-Host) und Schalter „KI-Funktionen
+  anzeigen“ in Einstellungen > Agent. Ausgeblendet liefert
+  `agentStore.available()` false, damit verschwinden Seitenleiste,
+  Chat, Chips, Rechtsklick, Inspector-Lernstand, Ideen-Knöpfe und -Herkunft,
+  ⌘K-Befehle und die Kürzel (`ShortcutDef.hidden`, auch aus der
+  Tastatur-Übersicht); der Agent-Modus fällt aus der Navigation.
+  `agentSettings.enabled()` ist dann false (kein Prozess, kein Lernen),
+  `agent.enabled` selbst bleibt stehen. Chats und Gedächtnis bleiben erhalten.
+  `agentStore.supported()` fragt nur nach dem Codex-Host.
 - **Aufträge** (`lib/agent/jobs.ts`): Einstieg prüfen, Kürzen, Tempo
   erhöhen, Härteres Ende, Fakten prüfen, Feedback. Der Chat zeigt nur das
   kurze Label, das Modell bekommt die englische Instruktion. Vier Türen,

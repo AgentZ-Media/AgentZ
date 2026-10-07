@@ -109,6 +109,10 @@ async function setupScriptz(ctx: ModuleContext): Promise<ModuleRuntime> {
       void uiStore.applyFocusForScript(id, () => active() && navStore.activeScriptId() === id);
     }));
     createEffect(() => ctx.shell.setFocused(navStore.route().kind === "script" && uiStore.focusMode()));
+    // A hidden agent leaves no way back into its mode, not even ⌘[.
+    createEffect(() => {
+      if (!agentStore.available()) untrack(() => navStore.dropAgentRoutes());
+    });
     // Connect the agent in the background when it is on (learning needs it).
     createEffect(() => {
       if (agentStore.available() && agentSettings.enabled() && agentSettings.onboarded() && agentStore.status().state === "checking") {

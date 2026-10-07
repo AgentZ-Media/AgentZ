@@ -509,7 +509,7 @@ export function IdeasPage() {
                                           }}
                                           onConvert={(i) => void convertIdea(i)}
                                           onWriteWithAgent={agentModeAvailable() ? (i) => void writeIdeaWithAgent(i) : undefined}
-                                          onOpenSession={(chatId) => void navStore.openAgent(chatId)}
+                                          onOpenSession={agentModeAvailable() ? (chatId) => void navStore.openAgent(chatId) : undefined}
                                           onDelete={(i) => void removeIdeas([i])}
                                           onMove={(i, fid) => void moveIdeas([i], fid)}
                                           onOpenScript={(sid, title) => navStore.openScript(sid, title)}
