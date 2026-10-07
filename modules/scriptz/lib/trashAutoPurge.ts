@@ -4,6 +4,7 @@
 // deletes go through the change feed like a manual purge, so a signed-in
 // device also removes the cloud copies.
 
+import { registerFlusher } from "@agentz/kit/lib";
 import { api } from "./api";
 import { scriptsBus } from "./scriptsBus";
 
@@ -28,24 +29,28 @@ export async function runTrashPurge(now: number = Date.now()): Promise<number> {
 }
 
 /** Starts the background passes. Returns a stop function; a pass still in
- *  flight finishes, but no new one starts. */
+ *  flight finishes, but no new one starts. Closing and quitting wait for a
+ *  pass in flight (as UI state, so navigation never waits), so a quit never
+ *  cuts a delete off from its search index cleanup. */
 export function startTrashAutoPurge(): () => void {
   let stopped = false;
-  let running = false;
+  let inFlight: Promise<void> | null = null;
   const pass = () => {
-    if (stopped || running) return;
-    running = true;
-    runTrashPurge()
+    if (stopped || inFlight) return;
+    inFlight = runTrashPurge()
+      .then(() => undefined)
       .catch((err) => console.warn("[scriptz] automatic trash cleanup failed", err))
       .finally(() => {
-        running = false;
+        inFlight = null;
       });
   };
+  const unregister = registerFlusher(() => inFlight ?? undefined, "trash-auto-purge", "state");
   const boot = setTimeout(pass, TRASH_PURGE_BOOT_DELAY_MS);
   const interval = setInterval(pass, TRASH_PURGE_INTERVAL_MS);
   return () => {
     stopped = true;
     clearTimeout(boot);
     clearInterval(interval);
+    unregister();
   };
 }

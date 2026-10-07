@@ -7,6 +7,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { createRequire } from "node:module";
 import type { DatabaseSync as SQLiteDatabase, SQLInputValue } from "node:sqlite";
 import { readFileSync, readdirSync } from "node:fs";
+import { flushAll } from "@agentz/kit/lib";
 import { getPlatformAdapter, setPlatformAdapter, type DbConnection, type PlatformAdapter } from "@agentz/kit/platform";
 import { upsertScriptFts } from "../fts";
 import { purgeExpiredTrash } from "../scripts";
@@ -143,6 +144,26 @@ describe("automatic trash cleanup", () => {
     addScript("late", NOW - 60 * DAY);
     await vi.advanceTimersByTimeAsync(2 * TRASH_PURGE_INTERVAL_MS);
     expect(ids("scripts")).toEqual(["late", "live"]);
+  });
+
+  it("lets close and quit wait for a pass in flight", async () => {
+    vi.useFakeTimers({ now: NOW });
+    let finish!: (n: number) => void;
+    const purge = vi.fn(() => new Promise<number>((resolve) => (finish = resolve)));
+    setStorageAdapter({ ...getStorageAdapter(), purgeExpiredTrash: purge });
+    const stop = startTrashAutoPurge();
+    await vi.advanceTimersByTimeAsync(TRASH_PURGE_BOOT_DELAY_MS);
+    expect(purge).toHaveBeenCalledTimes(1);
+
+    let flushed = false;
+    const flush = flushAll(60_000, ["state"]).then((r) => (flushed = r.ok));
+    await vi.advanceTimersByTimeAsync(10);
+    expect(flushed).toBe(false);
+    finish(0);
+    await flush;
+    expect(flushed).toBe(true);
+
+    stop();
   });
 
   it("reports the purge count without a list reload when nothing expired", async () => {
