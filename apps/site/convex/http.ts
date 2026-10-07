@@ -2,6 +2,7 @@ import { httpRouter } from "convex/server";
 import { corsRouter } from "convex-helpers/server/cors";
 import { approve, claim } from "./appLink";
 import { APP_ORIGINS, authComponent, createAuth } from "./auth";
+import { serve as serveStats } from "./stats";
 
 const http = httpRouter();
 
@@ -19,5 +20,8 @@ const appLinks = corsRouter(http, {
 });
 appLinks.route({ path: "/app-link/approve", method: "POST", handler: approve });
 appLinks.route({ path: "/app-link/claim", method: "POST", handler: claim });
+
+// Public counters for the website (stats.ts). No cookies, no user data.
+http.route({ path: "/stats", method: "GET", handler: serveStats });
 
 export default http;

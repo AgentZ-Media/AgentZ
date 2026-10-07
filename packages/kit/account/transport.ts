@@ -3,7 +3,7 @@ import { makeFunctionReference } from "convex/server";
 import type { CloudConfig } from "./types";
 
 // The Convex client for keys and records. Function names mirror
-// apps/site/convex (keys.ts, sync.ts). Loaded only once someone signs in.
+// apps/site/convex (keys.ts, sync.ts, stats.ts). Loaded only once someone signs in.
 
 export interface WireRecord {
   recordId: string;
@@ -37,6 +37,7 @@ export interface CloudTransport {
   pull(app: string, afterRev: number): Promise<{ records: WireRecord[]; headRev: number; more: boolean }>;
   push(app: string, keyId: string, deviceId: string, changes: WireChange[]): Promise<{ results: PushResult[]; headRev: number }>;
   upload(bytes: Uint8Array): Promise<string>;
+  report(app: string, counts: Record<string, number>): Promise<void>;
   download(url: string): Promise<Uint8Array>;
   getKey(): Promise<WrappedKey | null>;
   createKey(keyId: string, wrapped: ArrayBuffer): Promise<void>;
@@ -50,6 +51,7 @@ const ref = {
   head: makeFunctionReference<"query", { app: string }, Head>("sync:head"),
   pull: makeFunctionReference<"query", { app: string; afterRev: number }, { records: WireRecord[]; headRev: number; more: boolean }>("sync:pull"),
   push: makeFunctionReference<"mutation", { app: string; keyId: string; deviceId: string; changes: WireChange[] }, { results: PushResult[]; headRev: number }>("sync:push"),
+  report: makeFunctionReference<"mutation", { app: string; counts: Record<string, number> }, null>("stats:report"),
   uploadUrl: makeFunctionReference<"mutation", Record<string, never>, string>("sync:uploadUrl"),
   getKey: makeFunctionReference<"query", Record<string, never>, WrappedKey | null>("keys:get"),
   createKey: makeFunctionReference<"mutation", { keyId: string; wrapped: ArrayBuffer }, null>("keys:create"),
@@ -88,6 +90,7 @@ export function createConvexTransport(cloud: CloudConfig, sessionToken: string, 
       const { storageId } = await response.json() as { storageId: string };
       return storageId;
     },
+    report: async (app, counts) => { await client.mutation(ref.report, { app, counts }); },
     async download(url) {
       const response = await fetch(url);
       if (!response.ok) throw new Error(`download failed (${response.status})`);
