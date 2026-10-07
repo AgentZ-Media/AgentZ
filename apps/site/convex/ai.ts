@@ -8,7 +8,9 @@ import { createAuth } from "./auth";
 // used for anything else. The app runs the agent loop itself (tools execute
 // locally), each request here is one model step.
 //
-// Free and without limits for now; usage limits belong here later.
+// Open only to the accounts in AI_ACCESS for now (see hasAccess); the apps
+// show "coming soon" to everyone else. Free and without limits for those
+// accounts; usage limits belong here later.
 
 const OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions";
 /** Fallback when OPENROUTER_MODEL is not set. Same id as
@@ -39,6 +41,19 @@ function model() {
   return { id, label: MODEL_LABELS[id] ?? id };
 }
 
+type AccountUser = { id: string; email: string; emailVerified: boolean };
+
+/** Who may use the hosted agent: AI_ACCESS in the Convex environment,
+ *  separated by commas. "*" opens it to every account, an entry with "@" is
+ *  an e-mail address (verified accounts only, sign-up does not require a
+ *  verification), any other entry an account ID. Unset or empty: nobody. */
+export function hasAccess(user: AccountUser, list = process.env.AI_ACCESS ?? ""): boolean {
+  const entries = list.split(",").map((entry) => entry.trim().toLowerCase()).filter(Boolean);
+  if (entries.includes("*")) return true;
+  if (entries.includes(user.id.toLowerCase())) return true;
+  return user.emailVerified && entries.includes(user.email.trim().toLowerCase());
+}
+
 type Ctx = Parameters<Parameters<typeof httpAction>[0]>[0];
 
 /** The user of the app's session (bearer token from the app sign-in), null
@@ -51,11 +66,14 @@ async function signedInUser(ctx: Ctx, request: Request) {
 }
 
 /** 401 only for a missing session: the app signs out on 401, a failed check
- *  (auth or database hiccup) must not end the session of the whole suite. */
+ *  (auth or database hiccup) must not end the session of the whole suite.
+ *  403 "not_enabled" for an account without access (the app shows "coming
+ *  soon"). */
 async function authorize(ctx: Ctx, request: Request) {
   try {
     const user = await signedInUser(ctx, request);
-    return user ? { user } : { response: json({ error: "unauthorized" }, 401) };
+    if (!user) return { response: json({ error: "unauthorized" }, 401) };
+    return hasAccess(user) ? { user } : { response: json({ error: "not_enabled" }, 403) };
   } catch (error) {
     console.warn("session check failed", error instanceof Error ? error.message : String(error));
     return { response: json({ error: "unavailable" }, 503) };

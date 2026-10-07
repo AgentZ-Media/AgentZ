@@ -90,6 +90,28 @@
   opacity: 0.5;
   border-style: dashed;
 }
+/* Not open to this account yet: visible, but not a choice. */
+.ag-prov-it.is-soon {
+  border-style: dashed;
+  cursor: default;
+}
+.ag-prov-it.is-soon .ag-prov-rd,
+.ag-prov-it.is-soon small {
+  opacity: 0.55;
+}
+.ag-prov-soon {
+  display: inline-block;
+  margin-left: 6px;
+  padding: 0 6px;
+  border-radius: var(--r-pill);
+  background: var(--fill);
+  color: var(--muted);
+  font-size: 10.5px;
+  font-weight: 600;
+  line-height: 16px;
+  vertical-align: 1px;
+  white-space: nowrap;
+}
 .ag-prov-rd {
   width: 16px;
   height: 16px;

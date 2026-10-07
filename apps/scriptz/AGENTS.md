@@ -74,7 +74,9 @@ Kein `cp` der laufenden DB (WAL). Wiederherstellen bei beendeter App:
   `scriptz-nightly/latest.json`), nur mit Anmeldung das Convex-Backend
   (Sitzung, Ende-zu-Ende verschlüsselter Sync) und nur wenn der Agent
   eingeschaltet und nicht ausgeblendet ist je nach Anbindung der lokale Codex-Prozess, der KI-Proxy
-  im Convex-Backend (`/ai/*`) oder `openrouter.ai` mit dem eigenen Key. Keine
+  im Convex-Backend (`/ai/*`) oder `openrouter.ai` mit dem eigenen Key;
+  angemeldet fragt die Anbindungswahl zusätzlich `/ai/status` nach der
+  Freischaltung des AgentZ-Kontos. Keine
   Telemetrie. Die CSP erlaubt dafür ausschließlich `*.convex.cloud`,
   `*.convex.site` und `https://openrouter.ai`.
 - **Nightly-Sicherungen** liegen unter
