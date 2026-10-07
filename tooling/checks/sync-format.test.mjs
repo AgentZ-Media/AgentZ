@@ -36,6 +36,12 @@ describe("formatProblems", () => {
   });
 });
 
+describe("releases without a format file", () => {
+  it("count as format 1, so writing format 2 still needs a reading release first", () => {
+    assert.match(formatProblems({ app: "scriptz", current: { reads: 2, writes: 2 }, released: { reads: 1, writes: 1 }, tag: "scriptz-v0.11.0" })[0], /reads only up to 1/);
+  });
+});
+
 describe("checkSyncFormats", () => {
   it("passes on this repository", () => {
     const { problems } = checkSyncFormats(fileURLToPath(new URL("../../", import.meta.url)));

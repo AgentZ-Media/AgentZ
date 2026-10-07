@@ -186,10 +186,19 @@ export function createSqlSyncBook(getDb: () => Promise<DbConnection>): SyncBook 
     async parked() {
       const db = await getDb();
       const rows = await db.select<ParkedRow[]>("SELECT remote_id, entity, entity_id, rev, hash, record, upload FROM sync_parked ORDER BY rev");
-      return rows.map((row) => ({
-        remoteId: row.remote_id, entity: row.entity, id: row.entity_id, rev: row.rev, hash: row.hash,
-        record: JSON.parse(row.record) as unknown, upload: row.upload === 1,
-      }));
+      const out: ParkedRecord[] = [];
+      for (const row of rows) {
+        let record: unknown;
+        try {
+          record = JSON.parse(row.record);
+        } catch {
+          // A damaged row must not stop every sync; a newer cloud version replaces it.
+          console.warn("[account] skipping an unreadable parked record", row.remote_id);
+          continue;
+        }
+        out.push({ remoteId: row.remote_id, entity: row.entity, id: row.entity_id, rev: row.rev, hash: row.hash, record, upload: row.upload === 1 });
+      }
+      return out;
     },
     async unpark(remoteIds) {
       if (remoteIds.length === 0) return;

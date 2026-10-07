@@ -71,7 +71,10 @@ export function checkSyncFormats(root, { requireTags = false } = {}) {
       try {
         released = JSON.parse(git(root, ["show", `${tag}:modules/${app}/lib/sync/format.json`]));
       } catch {
-        notes.push(`${app}: ${tag} has no sync format yet, nothing to compare.`);
+        // Older releases synced format 1 data or nothing at all (compat.ts reads
+        // accounts without a mark as format 1).
+        released = { reads: 1, writes: 1 };
+        notes.push(`${app}: ${tag} has no sync format file, compared as format 1.`);
       }
     } else {
       notes.push(`${app}: no stable release yet, nothing to compare.`);

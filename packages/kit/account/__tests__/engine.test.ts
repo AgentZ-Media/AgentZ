@@ -49,7 +49,7 @@ function createServer() {
           const error = outdated(client);
           if (error) throw error;
           const results: PushResult[] = [];
-          const before = head;
+          let wroteContent = false;
           for (const change of changes) {
             pushes.push(change);
             const existing = records.get(change.recordId);
@@ -60,13 +60,14 @@ function createServer() {
               continue;
             }
             head += 1;
+            if (!change.deleted) wroteContent = true;
             records.set(change.recordId, {
               recordId: change.recordId, rev: head, deleted: change.deleted, data: change.data,
               blobUrl: change.blob ? `blob:${change.blob}` : undefined, keyId: pushKey, deviceId,
             });
             results.push({ recordId: change.recordId, status: "ok", rev: head });
           }
-          if (head !== before && client.writes > format) { format = client.writes; formatBy = client.version; }
+          if (wroteContent && client.writes > format) { format = client.writes; formatBy = client.version; }
           return { results, headRev: head };
         },
         async upload(_app, _client, bytes) {

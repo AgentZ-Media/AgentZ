@@ -154,6 +154,8 @@ export const push = mutation({
       throw new ConvexError({ code: "DEV_FORMAT_RAISE", format: mark.format, writes: client.writes });
     }
     let rev = head?.rev ?? 0;
+    /** Content in this client's format was written (deletions carry none). */
+    let wroteContent = false;
     const now = Date.now();
     const results = [];
     for (const item of changes) {
@@ -182,6 +184,7 @@ export const push = mutation({
         continue;
       }
       rev += 1;
+      if (!item.deleted) wroteContent = true;
       const fields = {
         rev, deleted: item.deleted, data: item.data, blob: item.blob, size: item.deleted ? 0 : item.size,
         keyId, deviceId, updatedAt: now,
@@ -195,8 +198,8 @@ export const push = mutation({
       results.push({ recordId: item.recordId, status: "ok" as const, rev });
     }
     // Records in this client's format exist from now on: devices that cannot
-    // read it pause (compat.ts). Only written records raise the mark.
-    const raised = rev !== (head?.rev ?? 0) ? raisedMark(client, mark) : null;
+    // read it pause (compat.ts). Only written content raises the mark.
+    const raised = wroteContent ? raisedMark(client, mark) : null;
     const format = raised ? { format: raised.format, formatBy: client.version } : {};
     if (head) {
       if (rev !== head.rev) await ctx.db.patch(head._id, { rev, ...format });
