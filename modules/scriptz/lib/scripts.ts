@@ -625,21 +625,29 @@ export async function purgeScript(id: string): Promise<void> {
  *  untouched existing scripts immediately - without backfill the label
  *  there would stay hidden until the next save.
  *
+ *  `all: true` recounts every script (lib/runtimeBackfill.ts does that
+ *  once when the formula in lib/runtime.ts changes). Only these two
+ *  derived columns are written, and only where the value differs; content
+ *  and `updated_at` stay untouched.
+ *
  *  Idempotent: scripts that have already been saved no longer pass
  *  the WHERE filter and are not touched.
  *  Read errors on individual content_json blobs don't kill the entire
- *  backfill - the affected row stays on the sentinel and the
+ *  backfill - the affected row keeps its values and the
  *  next real save normalizes it. */
-export async function backfillRuntimeStats(): Promise<void> {
+export async function backfillRuntimeStats(opts: { all?: boolean } = {}): Promise<void> {
   const db = await getDb();
-  const rows = await db.select<{ id: string; content_json: string }[]>(
-    `SELECT id, content_json FROM scripts
-     WHERE dialog_word_count = $1 OR direction_block_count = $1`,
-    [RUNTIME_STATS_SENTINEL],
+  const rows = await db.select<{ id: string; content_json: string; dialog_word_count: number; direction_block_count: number }[]>(
+    opts.all
+      ? "SELECT id, content_json, dialog_word_count, direction_block_count FROM scripts"
+      : `SELECT id, content_json, dialog_word_count, direction_block_count FROM scripts
+         WHERE dialog_word_count = $1 OR direction_block_count = $1`,
+    opts.all ? [] : [RUNTIME_STATS_SENTINEL],
   );
   for (const r of rows) {
     try {
       const stats = runtimeStatsFromContent(r.content_json);
+      if (stats.dialogWords === r.dialog_word_count && stats.directionBlocks === r.direction_block_count) continue;
       await db.execute(
         `UPDATE scripts
            SET dialog_word_count = $1, direction_block_count = $2
