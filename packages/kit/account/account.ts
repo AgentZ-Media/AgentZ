@@ -26,6 +26,8 @@ const PROFILE_STATE = "account.profile";
 const POLL_MS = 3000;
 const SETTINGS_POLL_MS = 30_000;
 const QUIET_PUSH_MS = 15_000;
+/** Background runs finish quickly; only a longer one shows "syncing". */
+const SYNCING_SHOWN_MS = 1000;
 
 const [phase, setPhase] = createSignal<AccountPhase>("off");
 const [user, setUser] = createSignal<AccountUser | null>(null);
@@ -338,7 +340,7 @@ async function startEngine(current: AccountUser) {
     if (running) { again = true; return; }
     running = true;
     const startedAt = resumed;
-    setSyncPhase("syncing");
+    const shown = setTimeout(() => setSyncPhase("syncing"), SYNCING_SHOWN_MS);
     try {
       await engine.sync();
       failures = 0;
@@ -364,6 +366,7 @@ async function startEngine(current: AccountUser) {
       setSyncPhase(r.transport?.connected() ? "error" : "offline");
       schedule(Math.min(60_000, 5000 * 2 ** Math.min(failures, 4)));
     } finally {
+      clearTimeout(shown);
       running = false;
     }
     if (again && !stopped) { again = false; schedule(0); }
