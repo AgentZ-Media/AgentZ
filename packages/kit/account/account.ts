@@ -414,8 +414,10 @@ function pauseForUpdate(r: Runtime, block: SyncBlock) {
   const busy = updates?.stage() === "downloading" || updates?.stage() === "installing";
   if (changed && updates && baseSettingsStore.updateCheckEnabled() && !busy) void updates.checkNow();
   if (r.blockAnnounced) return;
-  // Never on top of another dialog: the banner and the account button say it too.
-  if (dialog() !== null || shellUi.anyDialogOpen()) return;
+  // Never on top of another dialog (shell or product): the banner and the
+  // account button say it too.
+  const modalOpen = typeof document !== "undefined" && document.querySelector('[aria-modal="true"]') !== null;
+  if (dialog() !== null || shellUi.anyDialogOpen() || modalOpen) return;
   r.blockAnnounced = true;
   setDialog("updateRequired");
 }

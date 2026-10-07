@@ -365,7 +365,6 @@ export function createSyncEngine(options: EngineOptions) {
   async function adoptNewerData(): Promise<void> {
     if (adopted) return;
     await applyParked(false);
-    const unsynced = await unsyncedKeys();
     for (const entry of await book.withExtra()) {
       const known = fields.get(entry.entity);
       if (!known || !entry.extra || !knows(entry.entity, entry.id) || entry.entity === SETTINGS_ENTITY) continue;
@@ -375,11 +374,10 @@ export function createSyncEngine(options: EngineOptions) {
       const local = await adapter.read(entry.entity, entry.id, context());
       if (isPlainObject(local)) {
         // The local row equals the synced record in every field this version
-        // knew; the new columns hold their default. Adding the learned values
-        // restores the cloud version, its hash stays the booked one. A row
-        // edited since the update keeps every learned field it already set.
-        const edited = unsynced.has(bookKey(entry.entity, entry.id));
-        const fill = learned.filter((key) => !edited || local[key] === null || local[key] === undefined);
+        // knew; the new columns are still NULL. Adding the learned values
+        // restores the cloud version, its hash stays the booked one. A field
+        // the user already set since the update keeps its value.
+        const fill = learned.filter((key) => local[key] === null || local[key] === undefined);
         const record = { ...local, ...Object.fromEntries(fill.map((key) => [key, entry.extra![key]])) };
         const waiting = await adapter.apply([{ entity: entry.entity, id: entry.id, record }], { ...context(), force: true });
         if (waiting.length > 0) continue;
