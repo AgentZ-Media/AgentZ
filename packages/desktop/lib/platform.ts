@@ -3,6 +3,8 @@ import { open as openDialog, save } from "@tauri-apps/plugin-dialog";
 import { mkdir, readFile, writeFile } from "@tauri-apps/plugin-fs";
 import { openUrl, revealItemInDir } from "@tauri-apps/plugin-opener";
 import { getVersion } from "@tauri-apps/api/app";
+import { invoke } from "@tauri-apps/api/core";
+import { getCurrent as getCurrentDeepLinks, onOpenUrl } from "@tauri-apps/plugin-deep-link";
 import { platform as osPlatform } from "@tauri-apps/plugin-os";
 import {
   STABLE_BUILD,
@@ -106,9 +108,11 @@ async function desktopWriteFileTo(path: string, bytes: Uint8Array): Promise<void
 /** Set by the nightly workflow at build time (see `.github/workflows/nightly.yml`).
  *  Local builds and stable releases leave them empty. */
 export function readBuildInfo(env: Record<string, unknown> = import.meta.env): BuildInfo {
-  if (env.VITE_AGENTZ_BUILD_CHANNEL !== "nightly") return STABLE_BUILD;
+  // The development server reports itself to the sync backend (compat.ts).
+  const development = env.DEV === true ? { development: true } : {};
+  if (env.VITE_AGENTZ_BUILD_CHANNEL !== "nightly") return env.DEV === true ? { ...STABLE_BUILD, ...development } : STABLE_BUILD;
   const text = (value: unknown) => (typeof value === "string" && value.trim() ? value.trim() : undefined);
-  return { channel: "nightly", commit: text(env.VITE_AGENTZ_BUILD_COMMIT), builtAt: text(env.VITE_AGENTZ_BUILD_TIME) };
+  return { channel: "nightly", commit: text(env.VITE_AGENTZ_BUILD_COMMIT), builtAt: text(env.VITE_AGENTZ_BUILD_TIME), ...development };
 }
 
 // Lazy plugin-sql connection. Cached, with reset-on-failure so a
@@ -143,6 +147,19 @@ export function createDesktopPlatform(id: string): PlatformAdapter {
     openFile: desktopOpenFile,
     pickDirectory: desktopPickDirectory,
     writeFileTo: desktopWriteFileTo,
+    // Keychain (macOS) / Credential Manager (Windows), see crates/agentz-desktop/src/secrets.rs.
+    secrets: {
+      get: (key) => invoke<string | null>("plugin:agentz-desktop|secret_get", { key }),
+      set: (key, value) => invoke("plugin:agentz-desktop|secret_set", { key, value }),
+      delete: (key) => invoke("plugin:agentz-desktop|secret_delete", { key }),
+    },
+    async onOpenUrl(handler) {
+      const stop = await onOpenUrl(handler);
+      // A URL that launched the app arrives before any listener exists.
+      const initial = await getCurrentDeepLinks().catch(() => null);
+      if (initial?.length) handler(initial);
+      return stop;
+    },
   };
   return tauriAdapter;
 }

@@ -10,6 +10,7 @@ tauri-plugin = { workspace = true }
 [dependencies]
 tauri = { workspace = true }
 tauri-plugin-single-instance = { workspace = true }
+tauri-plugin-deep-link = { workspace = true }
 tauri-plugin-window-state = { workspace = true }
 tauri-plugin-os = { workspace = true }
 tauri-plugin-updater = { workspace = true }
@@ -21,3 +22,4 @@ tauri-plugin-sql = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
 semver = { workspace = true }
+keyring = { workspace = true }

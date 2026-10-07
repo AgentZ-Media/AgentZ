@@ -4,11 +4,19 @@ fn main() {
         "finish_exit",
         "set_menu_language",
         "update_check",
+        "update_download",
+        "update_staged",
+        "update_discard",
+        "update_install_now",
+        "update_install_on_quit",
         "prepare_database_backup",
         "codex_locate",
         "codex_start",
         "codex_send",
         "codex_stop",
+        "secret_get",
+        "secret_set",
+        "secret_delete",
     ])
     .build();
 }

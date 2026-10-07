@@ -10,6 +10,9 @@ import { baseSettingsStore, startBaseSettingsRuntime } from "../stores/baseSetti
 import { clearToasts } from "../stores/toasts";
 import { shellUi } from "../stores/ui";
 import { AppMark, BootErrorScreen, Icon, ToastHost, dismissConfirmDialogs } from "../ui";
+import { AccountDialog } from "../account/AccountDialog";
+import { SyncPausedBanner } from "../account/SyncPausedBanner";
+import { startAccountRuntime } from "../account/account";
 import { CommandPalette } from "./CommandPalette";
 import { NavIndicator } from "./NavIndicator";
 import { NightSky } from "./NightSky";
@@ -102,6 +105,9 @@ export function SuiteShell(props: SuiteShellProps) {
         const flush = activeRuntime.flushPending.bind(activeRuntime);
         onDispose(registerFlusher((timeoutMs) => flush(timeoutMs), `module:${props.module.id}`));
       }
+      if (props.cloud) {
+        onDispose(startAccountRuntime({ cloud: props.cloud, app: props.module.id, platform, kv, adapter: activeRuntime.sync }));
+      }
       setRuntime(activeRuntime);
       const registry = createShortcutRegistry(shortcuts, () => runtime()?.shortcutContext?.() ?? "shell", () =>
         shellUi.settingsOpen() || shellUi.paletteOpen() || shellUi.onboardingOpen() ||
@@ -175,6 +181,7 @@ export function SuiteShell(props: SuiteShellProps) {
                 <Show when={active().sidebarFooter}>{(Footer) => <Dynamic component={Footer()} />}</Show>
               </aside>
               <main class="shell-main">
+                <Show when={props.cloud && !shellUi.focused()}><SyncPausedBanner appName={props.module.name} /></Show>
                 <Show when={nightly() && !sidebarVisible() && !shellUi.focused()}>
                   <button type="button" class="night-badge shell-night-chip" onClick={() => shellUi.openSettings("about")}
                     title={t("shell.nightly.title")} aria-label={t("shell.nightly.title")}>
@@ -191,7 +198,8 @@ export function SuiteShell(props: SuiteShellProps) {
             </div>
             <For each={active().overlays}>{(Overlay) => <Overlay />}</For>
             <SettingsDialog module={props.module} settings={active().settings} shell={shellUi}
-              shortcuts={shortcuts()} hasOnboarding={!!active().onboarding} />
+              shortcuts={shortcuts()} hasOnboarding={!!active().onboarding} account={!!props.cloud} />
+            <Show when={props.cloud}><AccountDialog appName={props.module.name} /></Show>
             <Show when={active().onboarding}>{(definition) =>
               <Dynamic component={definition().component} open={shellUi.onboardingOpen()} complete={completeOnboarding} />
             }</Show>

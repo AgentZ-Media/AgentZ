@@ -68,9 +68,13 @@ export async function loadDailyWords(days = 365): Promise<DailyWordEntry[]> {
   start.setDate(start.getDate() - (days - 1));
   const startKey = localDateKey(start);
   const db = await getDb();
+  // Words from other devices (cloud sync) count too, per local day.
   const rows = await db.select<DailyWordEntry[]>(
-    `SELECT date, words_added FROM daily_word_log
-     WHERE date >= $1 ORDER BY date ASC`,
+    `SELECT date, SUM(words_added) AS words_added FROM (
+       SELECT date, words_added FROM daily_word_log WHERE date >= $1
+       UNION ALL
+       SELECT date, words_added FROM daily_word_log_remote WHERE date >= $1
+     ) GROUP BY date ORDER BY date ASC`,
     [startKey],
   );
   const map = new Map(rows.map((r) => [r.date, r.words_added]));

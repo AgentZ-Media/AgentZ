@@ -3,6 +3,11 @@
 
 import type { Accessor } from "solid-js";
 
+/**
+ * - available: found, not downloaded yet
+ * - ready: downloaded; installs when the app quits, or now with `restart()`
+ * - installing: saving, backing up and installing for a restart
+ */
 export type UpdateStage =
   | "idle"
   | "available"
@@ -16,6 +21,12 @@ export type ManualCheckState =
   | { kind: "uptodate" }
   | { kind: "error" };
 
+/** Newest published versions, pushed by the backend (apps/site/convex/releases.ts). */
+export interface LatestReleases {
+  stable: string | null;
+  nightly: string | null;
+}
+
 export interface AvailableUpdate {
   /** Human-readable version of the update, e.g. "0.7.4". */
   version: string;
@@ -27,11 +38,19 @@ export interface UpdatesStore {
   progress: Accessor<number>;
   manualCheck: Accessor<ManualCheckState | null>;
   checkNow(): Promise<void>;
-  downloadAndInstall(): Promise<void>;
+  /** Downloads the available update; it installs on quit. */
+  download(): Promise<void>;
+  /** Saves, installs the downloaded update and restarts. Only on request. */
   restart(): Promise<void>;
   clearManualCheck(): void;
   startBackgroundPolling(): void;
   stopBackgroundPolling(): void;
+  /**
+   * A new version was published. The store checks soon, after a random delay
+   * so not every installation asks GitHub at once; `urgent` (sync paused until
+   * an update) shortens it. Only a hint: the check decides.
+   */
+  releaseHint?(latest: LatestReleases, options?: { urgent?: boolean }): void;
 }
 
 let store: UpdatesStore | null = null;

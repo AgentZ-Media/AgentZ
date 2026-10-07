@@ -1,8 +1,17 @@
 [default]
-description = "Allows the main desktop host to announce readiness, acknowledge a requested exit, check its update channel and prepare a database backup before nightly updates."
-permissions = ["allow-ready", "allow-finish-exit", "allow-set-menu-language", "allow-update-check", "allow-prepare-database-backup"]
+description = "Allows the main desktop host to announce readiness, acknowledge a requested exit, check its update channel, download and stage an update, install it on quit or restart, and prepare a database backup before nightly updates."
+permissions = [
+  "allow-ready", "allow-finish-exit", "allow-set-menu-language", "allow-update-check",
+  "allow-update-download", "allow-update-staged", "allow-update-discard", "allow-update-install-now",
+  "allow-update-install-on-quit", "allow-prepare-database-backup",
+]
 
 [[set]]
 identifier = "codex"
 description = "Allows locating and running the Codex CLI as `codex app-server` with allowlisted config overrides."
 permissions = ["allow-codex-locate", "allow-codex-start", "allow-codex-send", "allow-codex-stop"]
+
+[[set]]
+identifier = "account"
+description = "Allows keeping the account session and the sync data key in the operating system's credential store."
+permissions = ["allow-secret-get", "allow-secret-set", "allow-secret-delete"]

@@ -11,6 +11,7 @@ import { flushAll } from "@agentz/kit/lib";
 import { language, t } from "@agentz/kit/i18n";
 import { baseSettingsStore, pushToast, shellUi } from "@agentz/kit/stores";
 import { BootErrorScreen } from "@agentz/kit/ui";
+import { readCloudConfig } from "@agentz/kit/account";
 import { createDesktopPlatform } from "./lib/platform";
 import { createEditingLock } from "./lib/editingLock";
 import { startDesktopLifecycle } from "./lib/lifecycle";
@@ -40,6 +41,8 @@ export function bootDesktopApp(options: DesktopAppOptions): DesktopApp {
   const platform = createDesktopPlatform(options.id);
   const kv = createSqlKvStore(() => platform.getDb());
   const lock = createEditingLock(root);
+  // Public backend addresses; VITE_AGENTZ_* overrides point a build elsewhere.
+  const cloud = readCloudConfig(import.meta.env) ?? undefined;
   let disposed = false;
   let disposeRender: (() => void) | undefined;
   let stopLifecycle: (() => void) | undefined;
@@ -89,6 +92,9 @@ export function bootDesktopApp(options: DesktopAppOptions): DesktopApp {
           if (error) console.warn("[desktop] close flush failed", error);
           pushToast(t("persistence.saveFailed"), "error");
         },
+        // Closing the window ends the app everywhere but on macOS, where it
+        // stays in the Dock; a downloaded update installs when the app ends.
+        beforeLeave: (kind) => kind === "exit" || platform.platform !== "macos" ? updates.prepareExit() : Promise.resolve(),
         confirmUnsaved: (kind) => ask(t("persistence.unsavedBody"), {
           title: t("persistence.unsavedTitle"), kind: "warning",
           okLabel: t(kind === "exit" ? "persistence.unsavedQuit" : "persistence.unsavedClose"),
@@ -106,6 +112,7 @@ export function bootDesktopApp(options: DesktopAppOptions): DesktopApp {
           baseSettingsStore.updateCheckEnabled();
           baseSettingsStore.hourlyUpdateCheck();
           baseSettingsStore.updateChannel();
+          baseSettingsStore.autoInstallUpdates();
           updates.store.stopBackgroundPolling();
           if (loaded) updates.store.startBackgroundPolling();
         });
@@ -117,7 +124,7 @@ export function bootDesktopApp(options: DesktopAppOptions): DesktopApp {
           }
         });
         onCleanup(() => updates.store.stopBackgroundPolling());
-        return <SuiteShell module={module} platform={platform} kv={kv} services={options.services}
+        return <SuiteShell module={module} platform={platform} kv={kv} services={options.services} cloud={cloud}
           footer={<UpdateIndicator store={updates.store} />} />;
       }
       disposeRender = render(() => <App />, root);

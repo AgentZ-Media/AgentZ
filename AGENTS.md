@@ -13,7 +13,7 @@ im `paths`-Frontmatter) und die `AGENTS.md` des jeweiligen App-Ordners.
 |---|---|---|
 | `apps/<app>/` | `@agentz/<app>-app` | Dünne Tauri-Schale: App-ID, Icons, Capabilities, SQL-Migrationen. |
 | `modules/<app>/` | `@agentz/<app>` | Produkt: Routen, UI, Fachlogik, Storage, eigene i18n. Exportiert ein `AppModule`. |
-| `packages/kit/` | `@agentz/kit` | Produktneutral: `SuiteShell`, UI, i18n-Engine, Basis-Settings, Navigation, Shortcuts, Toasts, `KvStore`, Speicherkoordination. |
+| `packages/kit/` | `@agentz/kit` | Produktneutral: `SuiteShell`, UI, i18n-Engine, Basis-Settings, Navigation, Shortcuts, Toasts, `KvStore`, Speicherkoordination, Konto und Ende-zu-Ende verschlüsselter Sync (`account/`). |
 | `packages/desktop/` | `@agentz/desktop` | Tauri-Host: Plattformadapter, Updater, Fenster-/Quit-Lebenszyklus, `@agentz/desktop/vite`. |
 | `crates/agentz-desktop/` | Rust | Standard-Plugins, macOS-Menü, Single-Instance, Quit-Handshake, Kit-Baseline-SQL (`src/baseline.sql`). |
 | `packages/design/` | `@agentz/design` | Tokens, CSS-Primitive, Schriften, Icons, Logos. Kein Framework. |
@@ -47,6 +47,17 @@ zwischen Produkten. Details: [`suite-architecture.md`](.claude/rules/suite-archi
 - **Speichern über den Flush-Koordinator** (`registerFlusher`). Inhalt
   (`content`, Standard) blockiert Navigation, Export und Snapshots, UI-Zustand
   (`state`) nie. Schließen und Beenden warten auf beides.
+- **Sync nur verschlüsselt.** Inhalte gehen ausschließlich über die
+  Kit-Engine in die Cloud, verschlüsselt auf dem Gerät; keine Secrets in den
+  Apps (siehe [`docs/cloud-sync.md`](docs/cloud-sync.md)).
+- **Sync-Format nur in zwei Schritten brechen.** Neue Felder, Entitäten und
+  Einstellungen sind additiv und brauchen nur einen Eintrag in
+  `modules/<app>/lib/sync/format.json` (neue synchronisierte Spalten ohne
+  Standardwert, also `NULL`). Umbenennen, Umdeuten oder Entfernen:
+  erst ein Release, das `reads` anhebt, dann eines, das `writes` anhebt
+  (`pnpm check:sync-format`). Convex-Funktionen und -Schema nur erweitern,
+  Production deployt schon beim Merge
+  (siehe „Versionen und Kompatibilität“ in [`docs/cloud-sync.md`](docs/cloud-sync.md)).
 - **Farben nur als `var(--token)`** außerhalb von `packages/design`.
   Ausnahmen: Inhaltsfarben als Daten (Charakter-Palette) und OS-Nachbauten
   (`check:colors`).
@@ -72,7 +83,7 @@ pnpm dev:site                         # Website lokal
 pnpm dev:site:backend                 # Konto-Backend (Convex-Dev-Deployment)
 pnpm build:site                       # Website bauen
 pnpm lint && pnpm typecheck && pnpm test
-pnpm check:colors && pnpm check:astro
+pnpm check:colors && pnpm check:astro && pnpm check:sync-format
 pnpm build:frontends                  # Vite-Builds ohne native Bundles
 cargo check --workspace --locked
 pnpm new-app <id> "<Name>"            # neue App erzeugen

@@ -14,7 +14,9 @@ Suite-Grenzen in [`suite-architecture.md`](suite-architecture.md).
 
 - `module.tsx`: `scriptzModule.setup(ctx)` startet Produkt-Settings,
   Navigation, Layout und Bibliothekspräferenzen, seedet das Welcome-Skript,
-  füllt Runtime-Statistiken nach, migriert Legacy-Blöcke und startet erst
+  füllt Runtime-Statistiken nach (`lib/runtimeBackfill.ts`: nach einer
+  Formeländerung einmal alle Skripte, Flag `migration.runtime_stats_v2`),
+  migriert Legacy-Blöcke und startet erst
   danach Ideen-, Statistik- und Bibliotheks-Resources. Liefert Routen
   (Inbox, Skripte, Ideen, Skript, Papierkorb, Agent-Modus), Sidebar, Overlays
   (QuickCapture, Neues Skript, Export, Stufen-Undo), Befehle, Shortcuts,
@@ -58,8 +60,9 @@ die Befehlspalette, deshalb setzt das Modul `revealsSidebar: true`.
   Mit `close_finished_scripts` (Standard an) verlässt ein Skript die Liste,
   wenn es in die letzte Stufe wechselt; das angezeigte erst beim Wechsel,
   Rückgängig innerhalb von 15 s holt es zurück (`openStore.syncStatuses`).
-- **Seitenpanel**: Klick in Liste oder Board öffnet das Skript rechts neben
-  der Liste (`open_scripts_in_panel`, Standard an; ⌥-Klick umgekehrt). Es
+- **Seitenpanel**: Mit `open_scripts_in_panel` (Standard aus) öffnet ein
+  Klick in Liste oder Board das Skript rechts neben der Liste, sonst in der
+  großen Ansicht; ⌥-Klick macht jeweils das andere. Es
   ist ein vollwertiger `ScriptScreen` mit `peek` (ohne Inspector, Fokus
   und Agent). Nur Großöffnen nimmt es in „Offen" auf. Es gibt nie zwei
   `ScriptScreen` gleichzeitig.
@@ -75,7 +78,7 @@ die Befehlspalette, deshalb setzt das Modul `revealsSidebar: true`.
 
 ## Migrationen
 
-`001_baseline` bis `013_large_library_indexes` in
+`001_baseline` bis `015_sync_newer_versions` in
 `apps/scriptz/src-tauri/migrations/` sind veröffentlicht und unveränderlich. `007` ergänzt `scripts.status`,
 `status_changed_at` und den Ordner-Zielbereich. `008_agent` legt
 `agent_memory`, `agent_chats` und `agent_learned` an. `009_local_changes`
@@ -96,6 +99,11 @@ Spalten der Skriptliste (`idx_scripts_summary`, sie liegen in der Zeile hinter
 (`lib/fts.ts` löscht darüber statt per Vollscan über `script_id`). Eine neue
 Spalte der Skriptliste gehört in eine neue Migration mit erweitertem
 Covering-Index (`lib/__tests__/queryPlans.test.ts` schlägt sonst fehl).
+`014_cloud_sync` ist rein additiv: `sync_records` (Buchführung der
+Synchronisierung, keine Inhaltstabelle) und `daily_word_log_remote`
+(Schreibstatistik anderer Geräte). `015_sync_newer_versions` ergänzt
+`sync_records.extra` und `sync_parked`: Felder und Datensätze neuerer
+App-Versionen bleiben erhalten, bis ein Update sie kennt.
 Jede neue Spalte einer Inhaltstabelle braucht dasselbe: Trigger neu anlegen
 und `CONTENT_ENTITIES` ergänzen (Tests in `lib/__tests__/localChanges.test.ts`
 schlagen sonst fehl). Die Umwandlung von Kamera/Caption/SFX in Action ist bewusst keine SQL-Migration
@@ -137,6 +145,14 @@ Farben; neue Namen bekommen die nächste freie Palettenfarbe. Die app-weite
 Farb-Registry `character_colors` wächst mit und lässt sich in den
 Einstellungen aufräumen (manuell oder automatisch nach 4 s Ruhe,
 `characterAutoPrune.ts`); das Löschen prüft die Nutzung erneut.
+
+## Papierkorb
+
+„Löschen“ setzt `scripts.archived_at`. Nach 30 Tagen
+(`TRASH_RETENTION_DAYS`) löscht `lib/trashAutoPurge.ts` den Eintrag
+endgültig (kurz nach dem Start, dann stündlich, `api.purgeExpiredTrash`);
+jede Zeile im Papierkorb zeigt die verbleibenden Tage. Mit Konto folgt die
+Cloud über den Änderungsfeed.
 
 ## Färbung, Hook und Bewegung
 
@@ -246,8 +262,14 @@ Persönlicher Schreib-Agent mit eigenem Namen, Look und Persona.
   nummeriert, solange der Chat offen ist.
 - **Kontext Länge.** Der Skript-Chat bekommt Längenziel und Sprechtempo in
   den Instruktionen, Sitzungen vor jeder Nachricht eine Zeile `[Session: ...]`
-  mit Ordner, Ziel, Wortbudget, Entwürfen und gespeicherten Ideen
-  (`lib/agent/writingContext.ts`, gleiche Formel wie die Zeitleiste).
+  mit Ordner, Ziel, Wortbudget, Entwürfen samt gemessener Laufzeit und
+  gespeicherten Ideen (`lib/agent/writingContext.ts`, gleiche Formel wie die
+  Zeitleiste).
+- **Laufzeiten rechnet nur die App.** `get_current_script`, `read_script`
+  und `list_scripts` liefern `runtime` nach `lib/runtime.ts` mit der WPM aus
+  den Einstellungen. Der Prompt verbietet dem Modell, selbst Wörter zu
+  zählen oder Laufzeiten zu nennen, die es nicht von der App hat; zu einem
+  gerade geschriebenen Entwurf nennt es keine Zeit, die zeigt das Panel.
 
 ## Agent-Modus
 
@@ -303,3 +325,14 @@ Sidebar, `Mod+L` außerhalb eines Skripts, `Mod+Shift+L` überall, ⌘K, Ideen-S
 - Suche (⌘K): `api.globalSearch` -> FTS5 BM25 -> Treffer mit `<mark>`.
 - PDF: `exportPdf.ts` (pdf-lib, A4, Widow/Orphan) mit den TTFs aus
   `assets/fonts/` per `?url`; gespeichert über `PlatformAdapter.saveAs`.
+
+## Synchronisierung
+
+Konto und Abgleich gehören dem Kit ([`cloud-sync.md`](../../docs/cloud-sync.md)).
+ScriptZ liefert `lib/sync/adapter.ts` (Tabellen, Reihenfolge, Fremdschlüssel,
+Konfliktkopien für Skripte und Ideen, `SYNCED_SETTINGS`) und `stores/sync.ts`
+(Busse, Agent-Store, Settings neu laden). Eingehende Skripte laden ein offenes
+Skript über `remoteScriptBus` neu. Im Sidebar-Fuß sitzt der Konto-Button des
+Kits an der Stelle des Schreibzählers; die Aktivität bleibt über ⌘K erreichbar.
+Der letzte Onboarding-Schritt fragt „nur dieses Gerät“ oder „Anmelden oder
+kostenlos registrieren“.

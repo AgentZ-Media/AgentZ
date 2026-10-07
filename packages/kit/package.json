@@ -13,6 +13,7 @@
     "./stores": "./stores/index.ts",
     "./lib": "./lib/index.ts",
     "./ui": "./ui/index.ts",
+    "./account": "./account/index.ts",
     "./styles.css": "./styles.css",
     "./shell": "./shell/index.ts"
   },
@@ -23,6 +24,7 @@
   },
   "dependencies": {
     "@agentz/design": "workspace:*",
+    "convex": "catalog:",
     "solid-js": "catalog:"
   },
   "devDependencies": {

@@ -158,19 +158,28 @@ describe("agent mode drafts", () => {
     expect(draftWords(blocks)).toBe(212);
   });
 
-  it("counts every action block like the script runtime", () => {
+  it("counts action blocks like the script runtime (empty ones add nothing)", () => {
     const blocks = [
       { type: "action" as const, text: "" },
+      { type: "action" as const, text: "Ein Büro." },
       { type: "character" as const, text: "TIMO" },
       { type: "dialog" as const, text: ` ${"wort  ".repeat(10)}` },
     ];
     const json = JSON.stringify({
       root: { type: "root", children: blocks.map((b) => ({ type: `scriptz-${b.type}`, children: [{ type: "text", text: b.text }] })) },
     });
-    // 10 words at 60 WPM = 10 s, plus 2 s for the empty action line.
+    // 10 words at 60 WPM = 10 s, plus 2 s for the one action line with text.
     expect(draftRuntime(blocks, 60)).toBe(12);
     expect(draftRuntime(blocks, 60)).toBe(runtimeSeconds(runtimeStatsFromContent(json), 60));
-    expect(draftWords(blocks)).toBe(10);
+    expect(draftWords(blocks)).toBe(12);
+  });
+
+  it("keeps the runtime when a draft becomes a script", () => {
+    const blocks = parseDraftBody(`ACTION: Ein Büro.\nTIMO: ${"wort ".repeat(70).trim()}\nACTION: Er geht.`);
+    const json = contentJsonFromBlocks(blocks);
+    // The caret line at the end of the new script is no extra beat.
+    expect(runtimeSeconds(runtimeStatsFromContent(json), 210)).toBe(draftRuntime(blocks, 210));
+    expect(draftRuntime(blocks, 210)).toBe(24);
   });
 
   it("round-trips blocks as draft text and exports plain text", () => {

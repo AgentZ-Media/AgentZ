@@ -35,3 +35,7 @@ export function withSavedContent<T extends ScriptSummary>(row: T, saved: ScriptS
     characters: saved.characters,
   };
 }
+
+/** A script's stored content was replaced from outside the editor (cloud
+ *  sync). An open editor showing it reloads; the value is the script ID. */
+export const remoteScriptBus = createEventBus<string>();
