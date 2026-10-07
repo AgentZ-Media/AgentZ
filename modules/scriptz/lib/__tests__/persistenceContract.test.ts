@@ -5,7 +5,7 @@ import type { TestStorage } from "../../test/storage";
 
 const SETTINGS = {
   theme: "dark",
-  highlighting_default: "1",
+  highlighting_default: "0",
   export_title_page_default: "0",
   update_check_enabled: "0",
   hourly_update_check: "0",
@@ -84,7 +84,7 @@ describe("persisted settings contract", () => {
       panel: s.openInPanel(), closeFinished: s.closeFinishedScripts(), typewriter: s.focusTypewriter(),
       channel: base.updateChannel(),
     }).toEqual({
-      theme: "dark", highlighting: true, updates: false, hourly: false, quick: true,
+      theme: "dark", highlighting: false, updates: false, hourly: false, quick: true,
       exportTitlePage: false,
       wpm: 175, focus: true, stats: false, paper: true, language: "en", min: 30, max: 90, prune: true,
       stages: [{ id: "writing" }, { id: "ready", label: "Fertig geschrieben" }, { id: "shot" }],
