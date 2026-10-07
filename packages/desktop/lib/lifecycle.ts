@@ -89,7 +89,9 @@ export async function startDesktopLifecycle(ports: LifecyclePorts, signal?: Abor
         return;
       }
       previousFailed = false;
-      await settled(ports.beforeLeave?.(exitId !== undefined ? "exit" : "close"), BEFORE_LEAVE_TIMEOUT_MS);
+      // Only after everything was saved: leaving without saving ("quit
+      // anyway") must not install an update on top of it.
+      if (result.ok) await settled(ports.beforeLeave?.(exitId !== undefined ? "exit" : "close"), BEFORE_LEAVE_TIMEOUT_MS);
       // A quit requested during the last step joins this one.
       exitId = pendingExit ?? exitId;
       pendingExit = undefined;

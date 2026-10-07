@@ -53,6 +53,13 @@ app quits or when the user chooses "Restart now".
 - Restart now: a Tauri restart cannot be prevented and the Windows installer
   ends the process itself (and restarts it), so the updater must lock editing
   and flush successfully **before** `update_install_now` and `relaunch()`.
+- Installations run off the main thread: the plugin's macOS installation
+  needs it for the password prompt. Nothing installs after "Quit Anyway"
+  without a successful save.
+- Known limits, no data at risk: quitting macOS while no window is open
+  leaves the staged update uninstalled (it is downloaded again and installs
+  on the next quit). On Windows, reopening the app within the second the
+  installer needs to start lets the installer close that fresh instance.
 
 **Known limit:** a system-initiated quit on macOS (Dock menu, logout,
 shutdown) bypasses the quit handshake; edits rely on the editor's short

@@ -284,6 +284,44 @@ describe("installing on quit", () => {
   });
 });
 
+describe("races", () => {
+  it("never keeps a download for a channel the user left while it ran", async () => {
+    const s = setup({ version: "1.0.2-nightly.202610051500", autoInstall: false });
+    s.setChannel("nightly");
+    await s.store.checkNow();
+    const pending = deferred<StagedUpdate>();
+    s.native.download.mockReturnValueOnce(pending.promise);
+    const downloading = s.store.download();
+    s.setChannel("stable");
+    pending.resolve({ version: "1.0.2-nightly.202610051500", currentVersion: "1.0.0" });
+    await downloading;
+    expect(s.native.discard).toHaveBeenCalledOnce();
+    expect(s.store.stage()).toBe("idle");
+    await s.prepareExit();
+    expect(s.native.installOnQuit).not.toHaveBeenCalled();
+    s.dispose();
+  });
+
+  it("installs on quit what a closed window finished downloading", async () => {
+    const s = setup({ autoInstall: false });
+    await vi.waitFor(() => expect(s.native.staged).toHaveBeenCalledOnce());
+    s.native.staged.mockResolvedValueOnce({ version: "1.0.1", currentVersion: "1.0.0" });
+    await s.prepareExit();
+    expect(s.native.installOnQuit).toHaveBeenCalledOnce();
+    s.dispose();
+  });
+
+  it("drops a nightly a closed window left behind once the app is on the stable channel", async () => {
+    const s = setup({ autoInstall: false });
+    await vi.waitFor(() => expect(s.native.staged).toHaveBeenCalledOnce());
+    s.native.staged.mockResolvedValueOnce({ version: "1.0.2-nightly.202610051500", currentVersion: "1.0.0" });
+    await s.prepareExit();
+    expect(s.native.discard).toHaveBeenCalledOnce();
+    expect(s.native.installOnQuit).not.toHaveBeenCalled();
+    s.dispose();
+  });
+});
+
 describe("nightly channel", () => {
   it("checks the selected channel", async () => {
     const s = setup();

@@ -165,4 +165,19 @@ describe("leaving the app", () => {
     expect(state.ports.beforeLeave).toHaveBeenCalledWith("close");
     stop();
   });
+
+  it("never runs the last step when the user quits without saving", async () => {
+    const flush = vi.fn(async () => ({ ok: false, failed: ["editor"], contentFailed: ["editor"] }));
+    const state = setup(flush);
+    state.ports.beforeLeave = vi.fn(async () => {});
+    vi.mocked(state.ports.confirmUnsaved).mockResolvedValue(true);
+    const stop = await startDesktopLifecycle(state.ports);
+    state.exit(1);
+    await vi.waitFor(() => expect(state.ports.finishExit).toHaveBeenCalledWith(1, false));
+    state.exit(2);
+    await vi.waitFor(() => expect(state.ports.finishExit).toHaveBeenCalledWith(2, true));
+    expect(state.ports.beforeLeave).not.toHaveBeenCalled();
+    stop();
+  });
 });
+

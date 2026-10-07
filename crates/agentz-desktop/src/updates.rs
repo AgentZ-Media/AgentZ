@@ -230,55 +230,76 @@ pub fn update_discard(staging: State<'_, Staging>) {
     *lock(&staging.installer) = None;
 }
 
+/// Runs an installation off the main thread: synchronous commands run on it,
+/// and the plugin's macOS installation itself needs the main thread for the
+/// password prompt of a protected /Applications.
+async fn install_off_main(staging: &Staging, staged: StagedUpdate) -> Result<(), String> {
+    let (result, staged) = tauri::async_runtime::spawn_blocking(move || {
+        let result = staged.update.install(&staged.bytes).map_err(|e| e.to_string());
+        (result, staged)
+    })
+    .await
+    .map_err(|e| e.to_string())?;
+    if result.is_err() {
+        // Keep it for the next attempt, unless a newer one arrived meanwhile.
+        lock(&staging.staged).get_or_insert(staged);
+    }
+    result
+}
+
 /// Installs the staged update now; the caller restarts the app afterwards.
 /// Must follow a successful flush: Windows exits inside and restarts itself.
 #[tauri::command]
-pub fn update_install_now(staging: State<'_, Staging>) -> Result<(), String> {
+pub async fn update_install_now(staging: State<'_, Staging>) -> Result<(), String> {
     let staged = lock(&staging.staged)
         .take()
         .ok_or("no update downloaded")?;
     *lock(&staging.installer) = None;
-    if let Err(error) = staged.update.install(&staged.bytes) {
-        *lock(&staging.staged) = Some(staged);
-        return Err(error.to_string());
-    }
-    Ok(())
+    install_off_main(&staging, staged).await
 }
 
 /// Called by the quit handshake after a successful flush. Returns whether an
 /// update will be in place when the app starts the next time.
 #[tauri::command]
-pub fn update_install_on_quit(
+pub async fn update_install_on_quit(
     staging: State<'_, Staging>,
     host: State<'_, HostId>,
 ) -> Result<bool, String> {
+    let Some(staged) = lock(&staging.staged).take() else {
+        return Ok(false);
+    };
     #[cfg(windows)]
     {
-        let guard = lock(&staging.staged);
-        let Some(staged) = guard.as_ref() else {
-            return Ok(false);
-        };
         if !staged.bytes.starts_with(b"MZ") {
             // Not an NSIS installer (an MSI or a zipped bundle): only the
             // plugin can install it, and it restarts the app afterwards.
-            staged.update.install(&staged.bytes).map_err(|e| e.to_string())?;
+            install_off_main(&staging, staged).await?;
             return Ok(true);
         }
-        let path = installer_path(&std::env::temp_dir(), host.0, &staged.update.version)?;
-        fs::write(&path, &staged.bytes).map_err(|e| e.to_string())?;
+        let path = match installer_path(&std::env::temp_dir(), host.0, &staged.update.version) {
+            Ok(path) => path,
+            Err(error) => {
+                lock(&staging.staged).get_or_insert(staged);
+                return Err(error);
+            }
+        };
+        let bytes = staged.bytes.clone();
+        let target = path.clone();
+        let written = tauri::async_runtime::spawn_blocking(move || fs::write(&target, &bytes))
+            .await
+            .map_err(|e| e.to_string())
+            .and_then(|result| result.map_err(|e| e.to_string()));
+        if let Err(error) = written {
+            lock(&staging.staged).get_or_insert(staged);
+            return Err(error);
+        }
         *lock(&staging.installer) = Some(path);
         Ok(true)
     }
     #[cfg(not(windows))]
     {
         let _ = host;
-        let Some(staged) = lock(&staging.staged).take() else {
-            return Ok(false);
-        };
-        if let Err(error) = staged.update.install(&staged.bytes) {
-            *lock(&staging.staged) = Some(staged);
-            return Err(error.to_string());
-        }
+        install_off_main(&staging, staged).await?;
         Ok(true)
     }
 }

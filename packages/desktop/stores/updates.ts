@@ -128,6 +128,8 @@ export function createDesktopUpdates<U extends CheckedUpdate = DesktopUpdate>(
   let startupTimer: ReturnType<typeof setTimeout> | undefined;
   let hourlyTimer: ReturnType<typeof setInterval> | undefined;
 
+  /** A natively staged update found without its check: a nightly belongs to that channel. */
+  const channelOf = (update: StagedUpdate): UpdateChannel => isNightlyVersion(update.version) ? "nightly" : deps.updateChannel();
   const close = (update: U | null) => { void update?.close().catch(() => {}); };
   const release = () => { const current = unlock; unlock = undefined; current?.(); };
 
@@ -141,7 +143,7 @@ export function createDesktopUpdates<U extends CheckedUpdate = DesktopUpdate>(
   // A window reopened on macOS finds the update its predecessor downloaded.
   void deps.native.staged().then((found) => {
     if (disposed || !found || staged) return;
-    staged = { ...found, channel: deps.updateChannel() };
+    staged = { ...found, channel: channelOf(found) };
     if (!downloading && !restarting) settle();
   }).catch(() => {});
 
@@ -191,6 +193,8 @@ export function createDesktopUpdates<U extends CheckedUpdate = DesktopUpdate>(
     const update = checked;
     if (disposed || !update || checking || downloading || restarting || installed) return;
     downloading = true;
+    // An update belongs to the channel it was checked for.
+    const channel = deps.updateChannel();
     setManualCheck(null);
     setStage("downloading");
     setProgress(0);
@@ -209,8 +213,14 @@ export function createDesktopUpdates<U extends CheckedUpdate = DesktopUpdate>(
         } else if (event.event === "Finished") setProgress(100);
       });
       if (disposed) return;
-      staged = { ...result, channel: deps.updateChannel() };
       if (checked === update) { close(checked); checked = null; }
+      if (channel !== deps.updateChannel()) {
+        // The user switched channels meanwhile: never install this one.
+        await deps.native.discard();
+        settle();
+        return;
+      }
+      staged = { ...result, channel };
       settle();
     } catch (error) {
       if (disposed) return;
@@ -289,8 +299,19 @@ export function createDesktopUpdates<U extends CheckedUpdate = DesktopUpdate>(
    * leaves the app as it is and the update is downloaded again later.
    */
   async function prepareExit(): Promise<void> {
-    if (disposed || !staged || restarting || installed) return;
+    if (disposed || restarting || installed) return;
     try {
+      // A download a closed window started may have finished since.
+      if (!staged) {
+        const found = await deps.native.staged();
+        if (found) staged = { ...found, channel: channelOf(found) };
+      }
+      if (!staged) return;
+      if (staged.channel !== deps.updateChannel()) {
+        await deps.native.discard();
+        staged = null;
+        return;
+      }
       if (updateNeedsBackup(staged)) await options.backupDatabase(`before-${staged.version}`);
       if (await deps.native.installOnQuit()) installed = true;
     } catch (error) {
