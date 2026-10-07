@@ -12,7 +12,7 @@ Cloud die Wahrheit.
 | Konto, Krypto, Engine, UI | `packages/kit/account/` (`@agentz/kit/account`) | Anmeldung, Sitzung, Datenschlüssel, Sync-Engine, Avatar, Konto-Button, Dialoge, Einstellungsseite „Konto“ |
 | Adapter je App | z. B. `modules/scriptz/lib/sync/adapter.ts` | Welche Tabellen, in welcher Reihenfolge, wie eingehende Datensätze geschrieben werden, Konfliktkopien |
 | Desktop-Host | `packages/desktop/lib/platform.ts`, `crates/agentz-desktop/src/secrets.rs` | Schlüsselbund (`PlatformAdapter.secrets`), URL-Schema `agentz-<id>://` (`onOpenUrl`) |
-| Backend | `apps/site/convex/` | `sync.ts`, `keys.ts`, `appLink.ts`, `schema.ts`, `syncApps.ts` |
+| Backend | `apps/site/convex/` | `sync.ts`, `keys.ts`, `appLink.ts`, `schema.ts`, `syncApps.ts`, `compat.ts`, `syncPolicy.ts` |
 | Anmeldeseite | `apps/site/src/components/AppSignIn.astro` (`/konto/app/`, `/en/account/app/`) | Vollbild-Anmeldung für Apps |
 
 Die Shell startet das Konto (`startAccountRuntime`), wenn der Host eine
@@ -78,19 +78,24 @@ und die Dev-Ports 1420, 1430, … .
 - `sync_stats`: zuletzt gemeldete Summen pro Nutzer und App; ein stündlicher
   Cron (`stats.ts`) addiert sie zu `site_stats`, `GET /stats` liefert das
   Ergebnis an die Website.
-- `sync_heads`: Revisionszähler pro Nutzer und App. `sync_keys`: verpackter
+- `sync_heads`: Revisionszähler pro Nutzer und App, dazu das höchste je
+  geschriebene Datenformat (`format`, `formatBy`). `sync_keys`: verpackter
   Datenschlüssel pro Konto (für alle Apps). `app_links`: kurzlebige Codes der
-  App-Anmeldung (stündlicher Cron räumt auf).
+  App-Anmeldung (stündlicher Cron räumt auf). `sync_policy`: Notbremse pro App
+  (siehe unten).
 - Kontolöschung (`deleteUser.afterDelete`) löscht alle Sync-Daten in Batches.
 - Neue App mit Sync: Tabelle in `schema.ts`, Eintrag in `syncApps.ts`
-  (`SYNC_APPS`, `appArg`, `STAT_KEYS`) und ein `SyncAdapter` im Modul. Ohne Eintrag in
-  `SYNC_APPS` kann sich die App auch nicht anmelden.
+  (`SYNC_APPS`, `appArg`, `STAT_KEYS`), ein `SyncAdapter` im Modul und
+  `lib/sync/format.json` (Format 1, siehe „Versionen und Kompatibilität“).
+  Ohne Eintrag in `SYNC_APPS` kann sich die App auch nicht anmelden.
 
 ## Abgleich und Konflikte
 
 Lokal führt die Tabelle `sync_records` (Migration der App, `baseline.sql` für
-neue Apps) pro Datensatz Record-ID, Cloud-Revision und Inhalts-Hash;
-`app_state.sync.state` hält Konto, Schlüssel-ID, Geräte-ID und beide Cursor.
+neue Apps) pro Datensatz Record-ID, Cloud-Revision, Inhalts-Hash und die
+Felder, die diese Version nicht kennt (`extra`); `sync_parked` hält ganze
+Datensätze unbekannter Art (siehe unten). `app_state.sync.state` hält Konto,
+Schlüssel-ID, Geräte-ID und beide Cursor.
 
 Ein Durchlauf schreibt zuerst ungespeichertes Tippen (`flushAll` mit `content`),
 lädt dann lokale Änderungen hoch und holt danach die Cloud-Änderungen:
@@ -111,6 +116,105 @@ lädt dann lokale Änderungen hoch und holt danach die Cloud-Änderungen:
 - Abmelden lässt alle Daten auf dem Gerät; bei erneuter Anmeldung mit demselben
   Konto geht alles Neue hoch. Ein anderes Konto fragt einmal, ob die lokalen
   Daten übernommen werden sollen.
+
+## Versionen und Kompatibilität
+
+Auf den Geräten eines Kontos laufen oft verschiedene Versionen einer App:
+Stable und Nightly, ein Gerät ist schon aktualisiert, das andere nicht. Der
+Server kann die Inhalte nicht lesen, deshalb sichern drei Stufen ab, dass eine
+ältere Version neuere Daten weder verliert noch falsch liest.
+
+**1. Vorwärtskompatibel (Normalfall, keine Update-Pflicht).** Jede Version
+kennt ihre Felder pro Entität (`SyncAdapter.fields`). Die Engine
+(`packages/kit/account/engine.ts`) behandelt Neues so:
+
+- Unbekannte Felder eines Datensatzes landen in `sync_records.extra` und gehen
+  bei jedem Upload dieses Datensatzes unverändert mit. Eine ältere Version
+  kann einen Datensatz also bearbeiten, ohne neuere Felder zu löschen.
+- Datensätze einer unbekannten Entität und unbekannte Einstellungen werden
+  geparkt (`sync_parked`), weder angewendet noch gebucht. Eine neuere Fassung
+  ersetzt sie, eine Löschung in der Cloud entfernt sie.
+- Eine Konfliktkopie behält die unbekannten Felder ihres Originals.
+- Ersetzt ein neuer Schlüssel oder ein anderes Konto die Cloud-Kopie
+  (`resetForNewCloud`), bleiben Extras und geparkte Datensätze erhalten und
+  gehen mit allem anderen erneut hoch, auch wenn kein neueres Gerät mehr
+  existiert.
+- Nach einem Update übernimmt der erste Durchlauf, noch vor dem ersten Upload,
+  alles, was die neue Version kennt: geparkte Datensätze werden angewendet
+  (wartet einer auf seine Eltern, erst am Ende des nächsten vollständigen
+  Abholens), bekannte Extras in die lokalen Zeilen geschrieben. Erst danach
+  wird hochgeladen, damit eine neue, noch leere Spalte nie den Cloud-Wert
+  überschreibt. Hat der Nutzer ein solches Feld seit dem Update schon selbst
+  gesetzt, gewinnt sein Wert; „noch leer“ heißt `NULL`. Neue synchronisierte
+  Spalten deshalb ohne Standardwert (also `NULL`) anlegen.
+- Fehlt einem eingehenden Datensatz eine Spalte (geschrieben von einer älteren
+  Version), behält die lokale Zeile ihren Wert; ein neuer Datensatz bekommt
+  den Standardwert.
+
+Neue Spalten, Entitäten und Einstellungen brauchen deshalb kein neues Format.
+
+**2. Datenformat (bei echten Brüchen).** Jede Version meldet bei jedem Aufruf
+Version, Kanal (`stable`, `nightly`, `dev`) und ihr Format: welches sie
+schreibt (`writes`) und bis zu welchem sie liest (`reads`, immer inklusive
+aller älteren). Der Server merkt sich pro Konto und App das höchste je
+geschriebene Format. Kann ein Gerät es nicht lesen, bekommt es
+`CLIENT_OUTDATED` und pausiert seinen Sync, bis es aktualisiert ist. Der
+Schalter fällt also nicht beim Deploy, sondern erst, wenn ein Gerät dieses
+Kontos wirklich Daten im neuen Format schreibt, und nur für dieses Konto.
+
+Ein Bruch (Umbenennen, geänderte Bedeutung oder Typ, Aufteilen) läuft in zwei
+Releases:
+
+1. Release N hebt `reads` an und versteht beide Formen, schreibt aber weiter
+   das alte Format.
+2. Ein späteres Release hebt `writes` an.
+
+`pnpm check:sync-format` (CI) erzwingt die Reihenfolge: `main` darf nur
+schreiben, was das letzte Stable-Release lesen kann, und muss lesen, was es
+schreibt. Weil Nightlies aus `main` gebaut werden, sperrt ein Nightly so nie
+die Stable-Geräte desselben Kontos. Das Format steht pro App in
+`modules/<app>/lib/sync/format.json` zusammen mit allen synchronisierten
+Entitäten, Feldern und Einstellungen; ein Test im Modul schlägt bei jeder
+Änderung fehl, bis sie dort eingetragen und als additiv oder Bruch
+eingeordnet ist.
+
+**3. Notbremse.** `sync_policy` sperrt pro App Versionen unter `minVersion`
+und einzelne `blockedVersions`, etwa eine Version, die fehlerhafte Daten
+schreibt. Gesetzt wird sie nur per Terminal, Geräte merken die Änderung live:
+
+```bash
+npx convex run --prod syncPolicy:set '{"app":"scriptz","blockedVersions":["0.12.1"]}'
+npx convex run --prod syncPolicy:set '{"app":"scriptz"}'   # alle Grenzen aufheben
+```
+
+`minVersion` nie über die neueste veröffentlichte Version setzen, sonst gibt
+es kein Update, das hilft. Nightlies einer Version liegen unter ihr
+(`0.12.1-nightly.…` < `0.12.1`).
+
+**Pause in der App.** Während der Pause bleibt die App voll benutzbar,
+lokale Änderungen sammeln sich und gehen nach dem Update hoch. Einmal pro
+App-Start erscheint ein Dialog, dauerhaft ein Band über dem Inhalt (nicht im
+Fokusmodus) und der Status „Update nötig“ am Konto-Button. Beide bieten den
+nächsten Schritt: Update suchen, laden, neu starten oder, wenn die neuere
+Version bisher nur als Nightly existiert, den Weg in die Update-Einstellungen.
+Das Live-Abo auf `sync:head` hebt die Pause auf, sobald der Server sie nicht
+mehr verlangt (Policy geändert, Cloud-Daten zurückgesetzt).
+
+**Entwicklung.** `pnpm dev:<app>` spricht standardmäßig mit Production und
+dem echten Konto. Ein Dev-Build darf ein Konto mit Daten nie auf ein neueres
+Format heben (`DEV_FORMAT_RAISE`); Formatänderungen gegen das Dev-Deployment
+testen (`VITE_AGENTZ_CONVEX_URL`, `VITE_AGENTZ_CONVEX_SITE_URL`), dort ist
+`ALLOW_DEV_FORMAT_RAISE=1` gesetzt.
+
+**Versionen ohne Angabe.** Wer weder Version noch Format meldet (Nightlies
+von vor dieser Prüfung), bekommt `CLIENT_OUTDATED`. Bewusst ohne Übergang:
+Diese Versionen kennen weder `extra` noch `sync_parked` und würden Felder
+neuerer Versionen löschen.
+
+**Convex-API.** Production deployt beim Merge auf `main`, also vor jedem
+Release. Funktionen und Schema deshalb nur erweitern (neue Funktionen,
+optionale Argumente und Felder). Entfernen oder verschärfen erst, wenn
+`minVersion` über allen Versionen liegt, die das Alte noch nutzen.
 
 ## ScriptZ
 
@@ -141,7 +245,10 @@ Geräten gleichzeitig benutzt, gewinnt die letzte Fassung.
 
 - `packages/kit/account/__tests__/`: Krypto (Schlüssel, Verpackung, Bindung,
   Kompression) und Engine mit einer Cloud-Attrappe (Echo, Konfliktkopie,
-  Bearbeiten gegen Löschen, Eltern-Reihenfolge, File Storage, fremde Schlüssel).
+  Bearbeiten gegen Löschen, Eltern-Reihenfolge, File Storage, fremde
+  Schlüssel, Daten neuerer Versionen, Formatsperre).
 - `modules/scriptz/lib/sync/__tests__/adapter.test.ts`: zwei echte
-  SQLite-Datenbanken mit allen Migrationen.
+  SQLite-Datenbanken mit allen Migrationen; `format.test.ts` hält
+  `format.json` aktuell.
+- `apps/site/tests/compat.test.mjs`: Versionsvergleich, Formatsperre, Policy.
 - Backend gegen das Dev-Deployment testen (`pnpm dev:site:backend`).

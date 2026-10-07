@@ -64,6 +64,17 @@ ausgeben oder committen, außerhalb des Repos gesichert halten.
 `gh workflow run release.yml --ref main -f app=<app>` ist immer ein
 Probelauf: baut beide Installer ohne Signatur und veröffentlicht nichts.
 
+## Sync-Format
+
+Apps mit Sync führen ihr Datenformat in `modules/<app>/lib/sync/format.json`
+(`reads`, `writes`). `pnpm check:sync-format` (CI) vergleicht `main` mit dem
+letzten Stable-Tag `<app>-vX.Y.Z`: `writes` darf dessen `reads` nicht
+übersteigen, `reads` nicht unter dessen `writes` fallen. Ein Formatbruch
+braucht deshalb zwei Releases, erst `reads` anheben, dann `writes`. Mit dem
+Tag ändert sich der Vergleich; nach einem Release mit neuem `reads` kann der
+nächste PR `writes` anheben. Details: „Versionen und Kompatibilität“ in
+[`docs/cloud-sync.md`](../../docs/cloud-sync.md).
+
 ## Nightly
 
 `.github/workflows/nightly.yml` läuft alle drei Stunden (und per
