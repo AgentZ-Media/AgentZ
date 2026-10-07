@@ -17,16 +17,16 @@ export function announcement(env) {
   const { app, version } = channel === 'stable'
     ? parseTag(env.RELEASE_TAG ?? '')
     : { app: validateAppId(env.APP ?? ''), version: env.VERSION ?? '' };
-  parseVersion(version);
+  const { pre } = parseVersion(version);
   // Pre-releases (rc) never move the stable pointer, so apps would find nothing.
-  if (channel === 'stable' && version.includes('-')) return { skip: `${app} ${version} is a pre-release` };
+  if (channel === 'stable' && pre.length > 0) return { skip: `${app} ${version} is a pre-release` };
   if (channel === 'nightly' && !NIGHTLY.test(version)) throw new Error(`Not a nightly version: ${version}`);
   return { app, channel, version };
 }
 
 const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
-export async function announce({ url, token, body, fetchImpl = fetch, attempts = 3, delayMs = 5000 }) {
+export async function announce({ url, token, body, fetchImpl = fetch, attempts = 3, delayMs = 5000, timeoutMs = 15_000 }) {
   let last = '';
   for (let attempt = 1; attempt <= attempts; attempt++) {
     try {
@@ -34,6 +34,8 @@ export async function announce({ url, token, body, fetchImpl = fetch, attempts =
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body: JSON.stringify(body),
+        // Covers reading the body too: a slow server never holds up the release.
+        signal: AbortSignal.timeout(timeoutMs),
       });
       const text = await response.text();
       if (response.ok) return { ok: true, text };

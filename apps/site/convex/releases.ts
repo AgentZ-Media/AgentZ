@@ -68,10 +68,11 @@ export const announce = httpAction(async (ctx, request) => {
     return json({ error: "invalid_request" }, 400);
   }
   const { app, channel, version } = body;
+  const parsed = typeof version === "string" ? parseVersion(version) : null;
   const valid = isSyncApp(app) && (channel === "stable" || channel === "nightly")
-    && typeof version === "string" && parseVersion(version) !== null
+    && typeof version === "string" && parsed !== null
     // Stable never carries a pre-release; nightly always is one.
-    && (channel === "nightly" ? NIGHTLY.test(version) : !version.includes("-"));
+    && (channel === "nightly" ? NIGHTLY.test(version) : parsed.pre.length === 0);
   if (!valid) return json({ error: "invalid_request" }, 400);
   const updated = await ctx.runMutation(internal.releases.record, { app, channel, version });
   return json({ updated });

@@ -371,7 +371,12 @@ export function createDesktopUpdates<U extends CheckedUpdate = DesktopUpdate>(
       if (hintTimer !== undefined && hintDue <= due) return;
       clearTimeout(hintTimer);
       hintDue = due;
-      hintTimer = setTimeout(() => { hintTimer = undefined; void poll(false); }, delay);
+      hintTimer = setTimeout(function fire() {
+        // Busy with a check, download or restart: keep the hint for later.
+        if (checking || downloading || restarting) { hintTimer = setTimeout(fire, 30_000); return; }
+        hintTimer = undefined;
+        void poll(false);
+      }, delay);
     }).catch(() => {});
   }
 

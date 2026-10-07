@@ -9,8 +9,9 @@ describe('announcement', () => {
       { app: 'scriptz', channel: 'nightly', version: '0.12.1-nightly.202610071200' });
   });
 
-  it('skips stable pre-releases, which never move the pointer', () => {
+  it('skips stable pre-releases, which never move the pointer, but not build metadata', () => {
     assert.match(announcement({ CHANNEL: 'stable', RELEASE_TAG: 'scriptz-v1.0.0-rc.1' }).skip, /pre-release/);
+    assert.equal(announcement({ CHANNEL: 'stable', RELEASE_TAG: 'scriptz-v1.0.0+build-42' }).version, '1.0.0+build-42');
   });
 
   it('rejects anything else', () => {
@@ -32,6 +33,12 @@ describe('announce', () => {
     assert.equal(result.ok, true);
     assert.equal(calls[0][1].headers.Authorization, 'Bearer t');
     assert.deepEqual(JSON.parse(calls[0][1].body), { app: 'scriptz', channel: 'stable', version: '1.0.0' });
+  });
+
+  it('gives up on a server that never answers', async () => {
+    const result = await announce({ url: 'u', token: 't', body: {}, delayMs: 0, attempts: 1, timeoutMs: 20, fetchImpl: (_url, init) =>
+      new Promise((_resolve, reject) => init.signal.addEventListener('abort', () => reject(new Error('aborted')))) });
+    assert.equal(result.ok, false);
   });
 
   it('retries server and network errors but not a rejected request', async () => {

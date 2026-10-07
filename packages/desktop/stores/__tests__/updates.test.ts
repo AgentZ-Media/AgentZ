@@ -507,3 +507,22 @@ describe("release hints", () => {
   });
 });
 
+
+describe("release hints while busy", () => {
+  it("keeps a hint that fires during a download and checks afterwards", async () => {
+    vi.useFakeTimers();
+    const s = setup();
+    const pending = deferred<StagedUpdate>();
+    s.native.download.mockReturnValueOnce(pending.promise);
+    await s.store.checkNow();
+    s.publish("1.0.2");
+    s.store.releaseHint?.({ stable: "1.0.2", nightly: null });
+    await vi.advanceTimersByTimeAsync(150_000);
+    expect(s.native.check).toHaveBeenCalledOnce();
+    pending.resolve({ version: "1.0.1", currentVersion: "1.0.0" });
+    await vi.advanceTimersByTimeAsync(30_000);
+    expect(s.native.check).toHaveBeenCalledTimes(2);
+    await vi.waitFor(() => expect(s.store.available()).toEqual({ version: "1.0.2" }));
+    s.dispose();
+  });
+});
