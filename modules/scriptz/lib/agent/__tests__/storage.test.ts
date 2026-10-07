@@ -11,6 +11,8 @@ import {
   MemoryFullError, restoreMemory, updateMemory,
 } from "../memory";
 import { sqlAgentStorage } from "../sqlStorage";
+import { threadStore } from "../threads";
+import { emptyTrash, purgeExpiredTrash, purgeScript } from "../../scripts";
 
 const state = { connection: null as DbConnection | null };
 const migrations = new URL("../../../../../apps/scriptz/src-tauri/migrations/", import.meta.url);
@@ -181,5 +183,64 @@ describe("agent persistence boundary with SQLite", () => {
     expect(insert).toHaveBeenCalledOnce();
     expect(memoryVersion()).toBe(version);
     expect(await listMemory()).toEqual([]);
+  });
+});
+
+describe("harness transcripts (migration 016)", () => {
+  const record = (id: string, updatedAt: number) => ({ id, provider: "openrouter", messagesJson: `[{"role":"user","content":"${id}"}]`, createdAt: 1, updatedAt });
+
+  it("stores, updates and prunes transcripts; deleting a chat removes its transcript", async () => {
+    await threadStore.save(record("t1", 10));
+    await threadStore.save({ ...record("t1", 20), provider: "other", createdAt: 99, messagesJson: "[]" });
+    // Provider and creation time stay as first saved.
+    expect(await threadStore.get("t1")).toEqual({ id: "t1", provider: "openrouter", messagesJson: "[]", createdAt: 1, updatedAt: 20 });
+    expect(await threadStore.get("missing")).toBeNull();
+
+    await threadStore.save(record("t2", 30));
+    await threadStore.save(record("t3", 40));
+    await threadStore.prune(2);
+    expect(await threadStore.get("t1")).toBeNull();
+    expect(await threadStore.get("t2")).not.toBeNull();
+
+    await saveChat(chat({ id: "with-thread", threadId: "t3" }));
+    await deleteChat("with-thread");
+    expect(await threadStore.get("t3")).toBeNull();
+    expect(await threadStore.get("t2")).not.toBeNull();
+  });
+
+  it("purging a script removes the transcripts of its chats, not of sessions", async () => {
+    await threadStore.save(record("t-chat", 10));
+    await threadStore.save(record("t-session", 10));
+    await saveChat(chat({ id: "script-chat", threadId: "t-chat" }));
+    await saveChat(chat({ id: "session", threadId: "t-session", kind: "session" }));
+    await purgeScript("script");
+    expect(await threadStore.get("t-chat")).toBeNull();
+    expect(await threadStore.get("t-session")).not.toBeNull();
+  });
+
+  it("emptying the trash removes the transcripts of its script chats", async () => {
+    await threadStore.save(record("t-chat", 10));
+    await saveChat(chat({ id: "script-chat", threadId: "t-chat" }));
+    database.exec("UPDATE scripts SET archived_at = 5 WHERE id = 'script'");
+    await emptyTrash();
+    expect(await threadStore.get("t-chat")).toBeNull();
+  });
+
+  it("the automatic trash cleanup removes the transcripts of expired script chats only", async () => {
+    await threadStore.save(record("t-chat", 10));
+    await saveChat(chat({ id: "script-chat", threadId: "t-chat" }));
+    database.exec("UPDATE scripts SET archived_at = 50 WHERE id = 'script'");
+    // Not expired yet: script and transcript stay.
+    expect(await purgeExpiredTrash(40)).toBe(0);
+    expect(await threadStore.get("t-chat")).not.toBeNull();
+    expect(await purgeExpiredTrash(50)).toBe(1);
+    expect(await threadStore.get("t-chat")).toBeNull();
+  });
+
+  it("is device state: no change feed entries", async () => {
+    const before = database.prepare("SELECT COUNT(*) AS n FROM local_changes").get() as { n: number };
+    await threadStore.save(record("t1", 10));
+    const after = database.prepare("SELECT COUNT(*) AS n FROM local_changes").get() as { n: number };
+    expect(after.n).toBe(before.n);
   });
 });

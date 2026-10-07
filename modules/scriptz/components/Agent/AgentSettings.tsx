@@ -1,7 +1,7 @@
 import { For, Show, createEffect, createMemo } from "solid-js";
 import { Icon, Row, SectionHead, Switch, confirmDialog } from "@agentz/kit/ui";
 import { pushToast } from "@agentz/kit/stores";
-import { CodexSetupInstructions } from "./CodexSetupInstructions";
+import { ProviderPicker, ProviderSetup } from "./ProviderSetup";
 import { t } from "../../i18n";
 import { resolveLearnStage } from "../../lib/agent/learnStage";
 import { finalStageId, scriptStages, stageLabel } from "../../lib/stages";
@@ -67,7 +67,7 @@ export function ModelSelect(props: { value: string; onChange(v: string): void; l
         class="btn icon"
         title={t("agent.prefs.model.refresh")}
         aria-label={t("agent.prefs.model.refresh")}
-        // Off means off: reloading would start Codex.
+        // Off means off: reloading would start the provider.
         disabled={agentStore.modelsLoading() || !agentSettings.enabled()}
         onClick={() => void agentStore.refreshModels().catch(() => {})}
       >
@@ -118,20 +118,9 @@ export function AgentSettings(props: { onClose(): void }) {
     return list.find((m) => m.id === id) ?? chatModel();
   });
 
-  const codexLine = () => {
-    const status = agentStore.status();
-    if (!agentSettings.enabled()) return t("agent.status.off");
-    if (status.state === "ready") return status.account ? t("agent.prefs.codex.readyAs", { account: status.account }) : t("agent.prefs.codex.ready");
-    if (status.state === "checking") return t("agent.status.checking");
-    if (status.state === "missing") return t("agent.state.missing.title");
-    if (status.state === "logged-out") return t("agent.state.loggedOut.title");
-    if (status.state === "error") return t("agent.state.error.title");
-    return t("agent.state.unavailable");
-  };
-
   const toggle = async (on: boolean) => {
     await agentSettings.setEnabled(on);
-    if (on && !agentSettings.onboarded()) {
+    if (on && !agentSettings.onboarded() && !agentSettings.hidden()) {
       props.onClose();
       agentUi.openOnboarding();
     }
@@ -168,25 +157,9 @@ export function AgentSettings(props: { onClose(): void }) {
         </Row>
         <div class="srow ag-prov-row">
           <div><b>{t("agent.prefs.connection")}</b></div>
-          <div class="ag-prov">
-            <div class="ag-prov-it is-on" aria-current="true">
-              <span class="ag-prov-rd" />
-              <div>
-                <b>{t("agent.prefs.codex")}</b>
-                <small classList={{ "is-ready": agentSettings.enabled() && ready() }}><i />{codexLine()}</small>
-              </div>
-            </div>
-            <div class="ag-prov-it is-off" aria-disabled="true">
-              <span class="ag-prov-rd" />
-              <div><b>{t("agent.prefs.openrouter")}</b><small>{t("agent.prefs.later")}</small></div>
-            </div>
-            <div class="ag-prov-it is-off" aria-disabled="true">
-              <span class="ag-prov-rd" />
-              <div><b>{t("agent.prefs.local")}</b><small>{t("agent.prefs.later")}</small></div>
-            </div>
-          </div>
-          <Show when={agentSettings.enabled() && (agentStore.status().state === "missing" || agentStore.status().state === "logged-out")}>
-            <CodexSetupInstructions install={agentStore.status().state === "missing"} />
+          <ProviderPicker showStatus check={agentSettings.enabled()} />
+          <Show when={agentSettings.enabled()}>
+            <ProviderSetup />
           </Show>
           <Show when={agentSettings.enabled() && !ready() && agentStore.status().state !== "checking"}>
             <div class="ag-prov-retry">

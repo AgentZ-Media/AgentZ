@@ -5,7 +5,7 @@ import { pushToast } from "@agentz/kit/stores";
 import { t, tPlural } from "../../i18n";
 import type { ChatItem } from "../../lib/agent/chats";
 import { markdownToPlain } from "../../lib/agent/markdown";
-import { AGENT_PROCESS_EXITED } from "../../lib/agent/types";
+import { agentErrorText } from "./ProviderSetup";
 import { hasDraft, splitDraftSegments } from "../../lib/agent/drafts";
 import { sourceHost, type ClaimVerdict, type ProposalTarget } from "../../lib/agent/proposals";
 import { isAgentJob, type AgentJobId } from "../../lib/agent/jobs";
@@ -551,7 +551,8 @@ export function MemoryNotice(props: { item: Item<"memory">; ctx: ItemContext }) 
 export function ErrorRow(props: { message: string }) {
   const usage = () => /usage ?limit|usageLimitExceeded|rate ?limit/i.test(props.message);
   const text = () => {
-    if (props.message === AGENT_PROCESS_EXITED) return t("agent.error.exited");
+    const known = agentErrorText(props.message);
+    if (known) return known;
     return usage() ? t("agent.error.usage") : t("agent.error", { message: cleanError(props.message) });
   };
   return (

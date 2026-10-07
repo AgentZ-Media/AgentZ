@@ -18,6 +18,45 @@
   padding: 10px 11px;
   border: 1px solid var(--line);
   border-radius: var(--r-pop);
+  background: var(--surface);
+  color: var(--fg);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.ag-prov-it:hover:not(.is-on) {
+  border-color: var(--line-strong);
+}
+.ag-prov-it:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+}
+/* In the onboarding the cards stack: the column is narrow. */
+.ag-onb .ag-prov {
+  grid-template-columns: minmax(0, 1fr);
+  gap: 6px;
+  margin-top: 16px;
+}
+.ag-onb .ag-prov-it {
+  padding: 8px 11px;
+}
+.ag-key-form {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+.ag-key-form .field {
+  flex: 1 1 220px;
+  min-width: 0;
+  height: 30px;
+}
+.ag-key-hint {
+  flex: 1 1 auto;
+  color: var(--fg);
+}
+.ag-setup-btn {
+  align-self: flex-start;
 }
 .ag-prov-it b {
   display: block;
@@ -50,6 +89,28 @@
 .ag-prov-it.is-off {
   opacity: 0.5;
   border-style: dashed;
+}
+/* Not open to this account yet: visible, but not a choice. */
+.ag-prov-it.is-soon {
+  border-style: dashed;
+  cursor: default;
+}
+.ag-prov-it.is-soon .ag-prov-rd,
+.ag-prov-it.is-soon small {
+  opacity: 0.55;
+}
+.ag-prov-soon {
+  display: inline-block;
+  margin-left: 6px;
+  padding: 0 6px;
+  border-radius: var(--r-pill);
+  background: var(--fill);
+  color: var(--muted);
+  font-size: 10.5px;
+  font-weight: 600;
+  line-height: 16px;
+  vertical-align: 1px;
+  white-space: nowrap;
 }
 .ag-prov-rd {
   width: 16px;

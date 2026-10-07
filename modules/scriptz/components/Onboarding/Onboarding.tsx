@@ -507,7 +507,7 @@ function PreviewAgent() {
     { icon: "spark" as const, l: t("onb.agent.capPropose") },
     { icon: "bulb" as const, l: t("onb.agent.capLearn") },
     { icon: "shield" as const, l: t("onb.agent.capLocked") },
-    { icon: "user" as const, l: t("onb.agent.capCodex") },
+    { icon: "user" as const, l: t("onb.agent.capConnect") },
   ];
   return (
     <div class="onb-caps" classList={{ "is-off": agentSettings.hidden() }}>

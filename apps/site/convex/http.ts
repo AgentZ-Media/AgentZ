@@ -1,5 +1,6 @@
 import { httpRouter } from "convex/server";
 import { corsRouter } from "convex-helpers/server/cors";
+import { chat, status } from "./ai";
 import { approve, claim } from "./appLink";
 import { APP_ORIGINS, authComponent, createAuth } from "./auth";
 import { announce } from "./releases";
@@ -21,6 +22,15 @@ const appLinks = corsRouter(http, {
 });
 appLinks.route({ path: "/app-link/approve", method: "POST", handler: approve });
 appLinks.route({ path: "/app-link/claim", method: "POST", handler: claim });
+
+// Hosted agent of the apps (ai.ts): bearer session from the app sign-in.
+const ai = corsRouter(http, {
+  allowedOrigins: APP_ORIGINS,
+  allowedHeaders: ["Content-Type", "Authorization"],
+  allowCredentials: false,
+});
+ai.route({ path: "/ai/status", method: "GET", handler: status });
+ai.route({ path: "/ai/chat", method: "POST", handler: chat });
 
 // Release and nightly workflows announce new versions (releases.ts). No CORS:
 // only the workflows call it, with a bearer secret.

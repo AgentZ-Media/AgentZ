@@ -2,7 +2,7 @@
 import { getDb } from "../db";
 import { parseItems, type ChatRecord, type LearnedState, type SessionHead } from "./chats";
 import type { MemoryEntry, MemoryKind, MemorySource, MemoryScope } from "./memory";
-import type { AgentStorage } from "./storage";
+import type { AgentStorage, ThreadRecord } from "./storage";
 
 interface ChatRow {
   id: string;
@@ -70,6 +70,8 @@ async function saveChat(chat: ChatRecord, itemsJson?: string): Promise<void> {
 /** Deletes a chat; `ideas.source_chat_id` falls back to NULL (migration 010). */
 async function deleteChat(id: string): Promise<void> {
   const db = await getDb();
+  // The harness transcript goes with its chat (Codex threads live in Codex).
+  await db.execute(`DELETE FROM agent_threads WHERE id = (SELECT thread_id FROM agent_chats WHERE id = $1)`, [id]);
   await db.execute(`DELETE FROM agent_chats WHERE id = $1`, [id]);
 }
 
@@ -246,8 +248,44 @@ async function clearMemory(): Promise<void> {
   await db.execute("DELETE FROM agent_learned");
 }
 
+interface ThreadRow {
+  id: string;
+  provider: string;
+  messages_json: string;
+  created_at: number;
+  updated_at: number;
+}
+
+async function getThread(id: string): Promise<ThreadRecord | null> {
+  const db = await getDb();
+  const rows = await db.select<ThreadRow[]>(`SELECT * FROM agent_threads WHERE id = $1`, [id]);
+  const row = rows[0];
+  return row
+    ? { id: row.id, provider: row.provider, messagesJson: row.messages_json, createdAt: row.created_at, updatedAt: row.updated_at }
+    : null;
+}
+
+/** Upserts a transcript; provider and creation time stay as first saved. */
+async function saveThread(thread: ThreadRecord): Promise<void> {
+  const db = await getDb();
+  await db.execute(
+    `INSERT INTO agent_threads (id, provider, messages_json, created_at, updated_at) VALUES ($1, $2, $3, $4, $5)
+     ON CONFLICT(id) DO UPDATE SET messages_json = excluded.messages_json, updated_at = excluded.updated_at`,
+    [thread.id, thread.provider, thread.messagesJson, thread.createdAt, thread.updatedAt],
+  );
+}
+
+async function pruneThreads(keep: number): Promise<void> {
+  const db = await getDb();
+  await db.execute(
+    `DELETE FROM agent_threads WHERE id NOT IN (SELECT id FROM agent_threads ORDER BY updated_at DESC LIMIT $1)`,
+    [Math.max(0, keep)],
+  );
+}
+
 export const sqlAgentStorage: AgentStorage = {
   latestChat, getChat, saveChat, deleteChat, listSessions, listSessionHeads, getChats, learnedState, markLearned,
   listMemory, getMemoryEntry, countMemoryScope, insertMemory,
   updateMemory, deleteMemory, restoreMemory, clearMemory,
+  getThread, saveThread, pruneThreads,
 };

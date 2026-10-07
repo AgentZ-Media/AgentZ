@@ -2,7 +2,7 @@ import { createSignal } from "solid-js";
 import { createStore, produce, reconcile, unwrap } from "solid-js/store";
 import { t } from "../../i18n";
 import { api } from "../../lib/api";
-import { effortOrDefault } from "../../lib/agent/codex/provider";
+import { effortOrDefault } from "../../lib/agent/types";
 import { getChat, saveChat, type ChatItem, type ChatKind, type ChatRecord, type SavedIdeaRef } from "../../lib/agent/chats";
 import type { InstructionMode } from "../../lib/agent/prompt";
 import { createChatTools, type ToolHost } from "../../lib/agent/tools";
@@ -105,7 +105,7 @@ export function createChat(source: ChatSource): ChatSession {
     const now = Date.now();
     if (!record) {
       record = {
-        id: chatId(), kind: kind(), scriptId: scriptId(), provider: "codex", threadId: thread?.id ?? null,
+        id: chatId(), kind: kind(), scriptId: scriptId(), provider: agentSettings.provider(), threadId: thread?.id ?? null,
         title: title(), folderId: folderId(), items: [], createdAt: now, updatedAt: now,
       };
     }
