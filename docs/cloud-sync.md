@@ -12,7 +12,7 @@ Cloud die Wahrheit.
 | Konto, Krypto, Engine, UI | `packages/kit/account/` (`@agentz/kit/account`) | Anmeldung, Sitzung, Datenschlüssel, Sync-Engine, Avatar, Konto-Button, Dialoge, Einstellungsseite „Konto“ |
 | Adapter je App | z. B. `modules/scriptz/lib/sync/adapter.ts` | Welche Tabellen, in welcher Reihenfolge, wie eingehende Datensätze geschrieben werden, Konfliktkopien |
 | Desktop-Host | `packages/desktop/lib/platform.ts`, `crates/agentz-desktop/src/secrets.rs` | Schlüsselbund (`PlatformAdapter.secrets`), URL-Schema `agentz-<id>://` (`onOpenUrl`) |
-| Backend | `apps/site/convex/` | `sync.ts`, `keys.ts`, `appLink.ts`, `schema.ts`, `syncApps.ts`, `compat.ts`, `syncPolicy.ts`, `releases.ts` |
+| Backend | `apps/site/convex/` | `sync.ts`, `keys.ts`, `appLink.ts`, `schema.ts`, `syncApps.ts`, `compat.ts`, `syncPolicy.ts`, `releases.ts`, KI-Proxy `ai.ts` |
 | Anmeldeseite | `apps/site/src/components/AppSignIn.astro` (`/konto/app/`, `/en/account/app/`) | Vollbild-Anmeldung für Apps |
 
 Die Shell startet das Konto (`startAccountRuntime`), wenn der Host eine
@@ -43,6 +43,15 @@ laufen mit `Authorization: Bearer`. Convex-Funktionen bekommen ein kurzlebiges
 JWT über `/api/auth/convex/token`. Erlaubte Origins der Apps stehen in
 `APP_ORIGINS` (`convex/auth.ts`): `tauri://localhost`, `http://tauri.localhost`
 und die Dev-Ports 1420, 1430, … .
+
+Weitere Dienste des Backends erreicht ein Modul über
+`account.backendFetch(path, init)` mit derselben Sitzung; eine abgelaufene
+Sitzung meldet die App ab. So spricht der KI-Agent mit dem KI-Proxy
+(`convex/ai.ts`, `GET /ai/status`, `POST /ai/chat`): Der Proxy prüft die
+Sitzung, setzt das Modell (`OPENROUTER_MODEL`) und den Key
+(`OPENROUTER_API_KEY`, beide nur als Convex-Umgebungsvariablen) und reicht
+den Stream von OpenRouter unverändert durch. Diese Anfragen sind kein Sync:
+Der Agent braucht Klartext, der Proxy speichert nichts davon.
 
 ## Verschlüsselung
 
@@ -234,8 +243,11 @@ Synchronisiert werden alle Inhaltstabellen des Änderungsfeeds
 `SYNCED_SETTINGS` (`lib/sync/adapter.ts`); Darstellung, Modelle und die
 Codex-Installation bleiben pro Gerät. Gerätebezogen bleiben außerdem:
 
-- Codex-Thread-IDs (`agent_chats.thread_id`); ändert sich ein Chat auf einem
-  anderen Gerät, beginnt der lokale Thread neu.
+- Provider-Thread-IDs (`agent_chats.thread_id`) und die Transkripte des
+  OpenRouter-Harness (`agent_threads`); ändert sich ein Chat auf einem
+  anderen Gerät, beginnt der lokale Thread neu. Die Agent-Anbindung
+  (`agent.provider`) und der eigene OpenRouter-Key (Schlüsselbund) gelten pro
+  Gerät.
 - das unveränderte Willkommens-Skript jeder Installation;
 - die Schreibstatistik: jedes Gerät lädt seine Tageswerte als `daily_words`
   (`<Geräte-ID>:<Datum>`) hoch, fremde Geräte landen in

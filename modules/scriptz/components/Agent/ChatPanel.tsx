@@ -2,7 +2,7 @@ import { For, Match, Show, Switch, createEffect, createMemo, createSignal, on, o
 import { Icon } from "@agentz/kit/ui";
 import { K } from "@agentz/kit/platform";
 import { shellUi } from "@agentz/kit/stores";
-import { CodexSetupInstructions } from "./CodexSetupInstructions";
+import { ProviderSetup, agentErrorText, providerErrorTitle, providerStatusLine } from "./ProviderSetup";
 import { t } from "../../i18n";
 import { api } from "../../lib/api";
 import { scriptsBus } from "../../lib/scriptsBus";
@@ -172,18 +172,19 @@ export function GateView(props: { gate: "off" | "setup" | "status" }) {
             <Match when={agentStore.status().state === "missing"}>
               <h3>{t("agent.state.missing.title")}</h3>
               <p>{t("agent.state.missing.body", { name: name() })}</p>
-              <CodexSetupInstructions install />
+              <ProviderSetup />
             </Match>
             <Match when={agentStore.status().state === "logged-out"}>
-              <h3>{t("agent.state.loggedOut.title")}</h3>
-              <CodexSetupInstructions install={false} />
+              <h3>{providerStatusLine()}</h3>
+              <ProviderSetup />
             </Match>
             <Match when={agentStore.status().state === "unavailable"}>
               <p>{t("agent.state.unavailable")}</p>
             </Match>
             <Match when={agentStore.status().state === "error"}>
-              <h3>{t("agent.state.error.title")}</h3>
-              <p>{(agentStore.status() as { message?: string }).message ?? ""}</p>
+              <h3>{providerErrorTitle()}</h3>
+              <p>{agentErrorText((agentStore.status() as { message?: string }).message) ?? (agentStore.status() as { message?: string }).message ?? ""}</p>
+              <Show when={agentSettings.provider() === "openrouter"}><ProviderSetup /></Show>
             </Match>
           </Switch>
           <Show when={agentStore.status().state !== "checking" && agentStore.status().state !== "unavailable"}>

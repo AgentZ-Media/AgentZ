@@ -52,3 +52,25 @@ describe("agentSettings.hidden", () => {
     expect(agentSettings.enabled()).toBe(false);
   });
 });
+
+describe("hidden agent and providers", () => {
+  it("creates no provider and checks nothing while hidden", async () => {
+    const { clearAgentHost, disposeProvider, getProvider, refreshStatus, setAgentHost, status } = await import("../agent/provider");
+    let located = 0;
+    setAgentHost({ codexHost: { locate: async () => { located++; return null; }, start: async () => { throw new Error("not in tests"); } } }, null);
+    try {
+      await start({ "agent.enabled": "1", "agent.onboarded": "1", "agent.hidden": "1" });
+      expect(getProvider()).toBeNull();
+      await refreshStatus();
+      expect(located).toBe(0);
+      expect(status().state).toBe("checking");
+      await agentSettings.setHidden(false);
+      expect(getProvider()).not.toBeNull();
+      await refreshStatus();
+      expect(located).toBe(1);
+    } finally {
+      disposeProvider();
+      clearAgentHost();
+    }
+  });
+});

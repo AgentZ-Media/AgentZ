@@ -20,6 +20,7 @@ const MIGRATION_013_LARGE_LIBRARY_INDEXES: &str =
 const MIGRATION_014_CLOUD_SYNC: &str = include_str!("../migrations/014_cloud_sync.sql");
 const MIGRATION_015_SYNC_NEWER_VERSIONS: &str =
     include_str!("../migrations/015_sync_newer_versions.sql");
+const MIGRATION_016_AGENT_THREADS: &str = include_str!("../migrations/016_agent_threads.sql");
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
@@ -112,6 +113,12 @@ pub fn run() {
             version: 15,
             description: "cloud sync: keep data of newer app versions",
             sql: MIGRATION_015_SYNC_NEWER_VERSIONS,
+            kind: MigrationKind::Up,
+        },
+        Migration {
+            version: 16,
+            description: "transcripts of the in-app agent harness",
+            sql: MIGRATION_016_AGENT_THREADS,
             kind: MigrationKind::Up,
         },
     ];

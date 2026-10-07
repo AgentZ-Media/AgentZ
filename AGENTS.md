@@ -17,7 +17,7 @@ im `paths`-Frontmatter) und die `AGENTS.md` des jeweiligen App-Ordners.
 | `packages/desktop/` | `@agentz/desktop` | Tauri-Host: Plattformadapter, Updater, Fenster-/Quit-Lebenszyklus, `@agentz/desktop/vite`. |
 | `crates/agentz-desktop/` | Rust | Standard-Plugins, macOS-Menü, Single-Instance, Quit-Handshake, Kit-Baseline-SQL (`src/baseline.sql`). |
 | `packages/design/` | `@agentz/design` | Tokens, CSS-Primitive, Schriften, Icons, Logos. Kein Framework. |
-| `apps/site/` | `@agentz/site` | Astro-Website (DE/EN) mit App-Liste und Konto; Backend in `apps/site/convex/` (Convex + Better Auth, Mails über Resend). |
+| `apps/site/` | `@agentz/site` | Astro-Website (DE/EN) mit App-Liste und Konto; Backend in `apps/site/convex/` (Convex + Better Auth, Mails über Resend, KI-Proxy `ai.ts` zu OpenRouter). |
 | `tooling/` | | Generator (`new-app`), Release-Skripte, Prüfungen, Test-Preset. |
 
 Abhängigkeitsrichtung (ESLint erzwingt sie):
@@ -49,7 +49,16 @@ zwischen Produkten. Details: [`suite-architecture.md`](.claude/rules/suite-archi
   (`state`) nie. Schließen und Beenden warten auf beides.
 - **Sync nur verschlüsselt.** Inhalte gehen ausschließlich über die
   Kit-Engine in die Cloud, verschlüsselt auf dem Gerät; keine Secrets in den
-  Apps (siehe [`docs/cloud-sync.md`](docs/cloud-sync.md)).
+  Apps (siehe [`docs/cloud-sync.md`](docs/cloud-sync.md)). Einzige Ausnahme
+  ist der KI-Agent, den der Nutzer selbst einschaltet; der OpenRouter-Key der
+  Suite liegt nur in Convex (`OPENROUTER_API_KEY`), nie in einer App.
+- **KI-Parität.** Alle Anbindungen eines Agenten (heute Codex, AgentZ-Konto,
+  eigener OpenRouter-Key) können genau dasselbe: gleiche Instruktionen,
+  gleiche Tools, gleiche Ereignisse, gleiche Oberfläche. Prompts, Tools,
+  Gedächtnis und Lernen leben oberhalb des Provider-Interfaces und kennen den
+  Provider nicht; ein Provider übersetzt nur sein Protokoll. Jede Änderung an
+  Prompts, Tools oder Fähigkeiten muss mit allen Anbindungen funktionieren
+  und im Paritätstest stehen (siehe [`scriptz-architecture.md`](.claude/rules/scriptz-architecture.md), Abschnitt „Agent“).
 - **Sync-Format nur in zwei Schritten brechen.** Neue Felder, Entitäten und
   Einstellungen sind additiv und brauchen nur einen Eintrag in
   `modules/<app>/lib/sync/format.json` (neue synchronisierte Spalten ohne

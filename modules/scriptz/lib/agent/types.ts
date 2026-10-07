@@ -1,9 +1,10 @@
 // Provider-neutral agent types.
 //
-// Everything above the provider layer (chat store, tools, learning, UI)
-// speaks only these types. A provider (today: Codex app-server, later e.g.
-// OpenRouter or a local model) maps its own wire protocol onto them, so a
-// new provider never touches the chat, the tools or the memory.
+// Everything above the provider layer (chat store, instructions, tools,
+// learning, UI) speaks only these types. A provider (Codex app-server, the
+// OpenRouter harness) maps its own wire protocol onto them, so a provider
+// never touches the chat, the prompts, the tools or the memory, and every
+// provider runs exactly the same agent.
 
 /** Reasoning effort. Providers expose the subset a model supports. */
 export type AgentEffort = "none" | "minimal" | "low" | "medium" | "high" | "xhigh";
@@ -23,6 +24,13 @@ export interface AgentModel {
   defaultEffort: AgentEffort;
   /** The provider's recommended default model. */
   isDefault: boolean;
+}
+
+/** The wanted effort if the model supports it, else the model's default. */
+export function effortOrDefault(model: AgentModel | undefined, wanted: AgentEffort): AgentEffort {
+  if (!model) return wanted;
+  if (model.efforts.includes(wanted)) return wanted;
+  return model.efforts.includes(model.defaultEffort) ? model.defaultEffort : model.efforts[0] ?? wanted;
 }
 
 export type ProviderState =
@@ -80,6 +88,14 @@ export interface TurnResult {
 /** `TurnResult.error` when the provider process died mid-turn; the UI shows
  *  a translated hint instead of the raw code. */
 export const AGENT_PROCESS_EXITED = "agent-process-exited";
+/** `TurnResult.error` codes of the OpenRouter harness, also shown translated. */
+export const AGENT_SIGNED_OUT = "agent-signed-out";
+export const AGENT_RATE_LIMITED = "agent-rate-limited";
+export const AGENT_NETWORK = "agent-network";
+export const AGENT_KEY_INVALID = "agent-key-invalid";
+export const AGENT_NO_CREDITS = "agent-no-credits";
+/** The model response broke off or was cut (output limit, content filter). */
+export const AGENT_INCOMPLETE = "agent-incomplete";
 
 export interface AgentThread {
   /** Provider thread id, stored to resume the chat later. */

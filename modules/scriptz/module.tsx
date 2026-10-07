@@ -30,7 +30,7 @@ import { getScriptzShortcuts } from "./components/Shell/shortcuts";
 import { scriptzAbout, scriptzModuleSettings } from "./components/Settings/moduleSettings";
 import { createScriptzCommands } from "./components/Palette/commands";
 import { agentSettings, startAgentSettingsRuntime } from "./stores/agentSettings";
-import { startAgentUiRuntime } from "./stores/agentUi";
+import { agentUi, startAgentUiRuntime } from "./stores/agentUi";
 import { agentStore, startAgentRuntime } from "./stores/agent";
 import { createScriptzSync } from "./stores/sync";
 import { AgentOnboarding } from "./components/Agent/AgentOnboarding";
@@ -82,7 +82,7 @@ async function setupScriptz(ctx: ModuleContext): Promise<ModuleRuntime> {
     ctx.onDispose(startLibraryData());
     ctx.onDispose(startCharacterAutoPrune(() => settingsStore.pruneUnusedCharacters()));
     ctx.onDispose(startTrashAutoPurge());
-    ctx.onDispose(startAgentRuntime(ctx.services));
+    ctx.onDispose(startAgentRuntime(ctx.services, ctx.platform.secrets));
     createEffect(() => {
       if (!library.scriptsReady()) return;
       const list = library.scripts();
@@ -111,10 +111,18 @@ async function setupScriptz(ctx: ModuleContext): Promise<ModuleRuntime> {
       void uiStore.applyFocusForScript(id, () => active() && navStore.activeScriptId() === id);
     }));
     createEffect(() => ctx.shell.setFocused(navStore.route().kind === "script" && uiStore.focusMode()));
-    // A hidden agent leaves no way back into its mode, not even ⌘[.
+    // A hidden agent leaves no way back into its mode, not even ⌘[, and no
+    // agent dialog open. The route is tracked too: a navigation that waited
+    // for a flush may land on the agent mode after hiding.
     createEffect(() => {
-      if (!agentStore.available()) untrack(() => navStore.dropAgentRoutes());
+      if (agentStore.available()) return;
+      if (agentUi.onboardingOpen()) agentUi.closeOnboarding();
+      if (agentUi.memoryOpen()) agentUi.closeMemory();
+      if (navStore.route().kind === "agent") untrack(() => navStore.dropAgentRoutes());
     });
+    createEffect(on(agentStore.available, (available) => {
+      if (!available) untrack(() => navStore.dropAgentRoutes());
+    }));
     // Connect the agent in the background when it is on (learning needs it).
     createEffect(() => {
       if (agentStore.available() && agentSettings.enabled() && agentSettings.onboarded() && agentStore.status().state === "checking") {

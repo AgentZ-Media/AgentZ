@@ -11,7 +11,6 @@ import { obj, type Obj } from "../toolArgs";
 import {
   DEFAULT_EFFORT,
   isAgentEffort,
-  type AgentEffort,
   type AgentEvent,
   type AgentModel,
   type AgentProvider,
@@ -261,8 +260,13 @@ export class CodexProvider implements AgentProvider {
 
   constructor(private readonly host: CodexHostLike) {}
 
+  /** Set by dispose(): work that was already under way when the agent was
+   *  switched off or hidden must not start the app-server again. */
+  private disposed = false;
+
   /** Running client; starts (or restarts after a crash) the app-server. */
   client(): Promise<RpcClient> {
+    if (this.disposed) return Promise.reject(new Error("agent provider disposed"));
     if (this.rpc) {
       return this.rpc.then((client) => {
         if (!client.isClosed) return client;
@@ -279,6 +283,10 @@ export class CodexProvider implements AgentProvider {
   private async boot(): Promise<RpcClient> {
     const process = await this.host.start(LAUNCH_CONFIG);
     const client = new RpcClient(process);
+    if (this.disposed) {
+      await client.close().catch(() => {});
+      throw new Error("agent provider disposed");
+    }
     client.onClose(() => {
       // Threads live inside the dead process; a fresh one starts on demand.
       for (const thread of [...this.threads.values()]) thread.abandon();
@@ -423,16 +431,11 @@ export class CodexProvider implements AgentProvider {
   }
 
   async dispose(): Promise<void> {
+    this.disposed = true;
     for (const thread of [...this.threads.values()]) thread.waiter?.resolve({ status: "interrupted" });
     this.threads.clear();
     const rpc = this.rpc;
     this.rpc = null;
     if (rpc) await rpc.then((client) => client.close()).catch(() => {});
   }
-}
-
-export function effortOrDefault(model: AgentModel | undefined, wanted: AgentEffort): AgentEffort {
-  if (!model) return wanted;
-  if (model.efforts.includes(wanted)) return wanted;
-  return model.efforts.includes(model.defaultEffort) ? model.defaultEffort : model.efforts[0] ?? wanted;
 }

@@ -3,7 +3,7 @@ import { pushToast } from "@agentz/kit/stores";
 import { t, tPlural } from "../../i18n";
 import { api } from "../../lib/api";
 import { scriptStages } from "../../lib/stages";
-import { effortOrDefault } from "../../lib/agent/codex/provider";
+import { effortOrDefault } from "../../lib/agent/types";
 import { learnStageIds } from "../../lib/agent/learnStage";
 import { learnChange, worthRelearning } from "../../lib/agent/learnChange";
 import { latestChat, learnedState, markLearned, saveChat } from "../../lib/agent/chats";
@@ -19,7 +19,7 @@ import { navStore } from "../nav";
 import { liveBlocks } from "../../components/Agent/editorBridge";
 import { library } from "../../components/Shell/libraryData";
 import { currentProvider, ensureModels, getProvider, refreshStatus, resolveModel, status } from "./provider";
-import { foldersMap, persona } from "./instructions";
+import { currentPace, foldersMap, persona } from "./instructions";
 import { memoryItem } from "./chatItems";
 import { byScript, liveChats } from "./registry";
 
@@ -275,7 +275,7 @@ async function learnBatch(targets: LearnTarget[], kind: "finished" | "existing",
     ...createChatTools({
       scriptId: sourceId, liveBlocks: () => (sourceId ? liveBlocks(sourceId) : null), selection: () => null,
       onProposal: () => {}, onClaims: () => {}, onMemory: record,
-      memorySource: "script", memorySourceScriptId: sourceId,
+      memorySource: "script", memorySourceScriptId: sourceId, wpm: () => currentPace().wpm,
     }).filter((tool) => ["read_script", "list_scripts", "search_scripts", "list_folders"].includes(tool.name)),
     ...createMemoryTools({ scriptId: sourceId, onMemory: record, memorySource: "script", memorySourceScriptId: sourceId }),
   ];
@@ -402,5 +402,5 @@ async function appendLearnedToChat(scriptId: string, changes: MemoryChange[]): P
   const now = Date.now();
   await saveChat(chat
     ? { ...chat, items: [...chat.items, ...items], updatedAt: now }
-    : { id: crypto.randomUUID(), kind: "script", scriptId, provider: "codex", threadId: null, title: null, folderId: null, items, createdAt: now, updatedAt: now });
+    : { id: crypto.randomUUID(), kind: "script", scriptId, provider: agentSettings.provider(), threadId: null, title: null, folderId: null, items, createdAt: now, updatedAt: now });
 }

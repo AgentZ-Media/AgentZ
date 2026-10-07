@@ -1,6 +1,7 @@
 import { For, Match, Show, Switch, createEffect, createMemo, createSignal, onCleanup, type JSX } from "solid-js";
 import { AppMark, DialogFrame, Icon } from "@agentz/kit/ui";
-import { CodexSetupInstructions } from "./CodexSetupInstructions";
+import { ProviderPicker, ProviderSetup, agentErrorText, providerErrorTitle } from "./ProviderSetup";
+import { OPENROUTER_MODEL_LABEL } from "../../lib/agent/openrouter/config";
 import { t, tPlural, type TranslationKey } from "../../i18n";
 import type { AgentEffort } from "../../lib/agent/types";
 import { agentStore } from "../../stores/agent";
@@ -30,7 +31,8 @@ const CYCLE_KEYS: Record<string, TranslationKey> = {
 };
 
 /** First-time setup of the agent (and "edit personality" from Settings):
- *  welcome, Codex check with model choice, name + look + personality. */
+ *  welcome, connection (Codex, AgentZ account or own key) with model
+ *  choice, name + look + personality. */
 export function AgentOnboarding() {
   const [step, setStep] = createSignal(0);
   const [name, setName] = createSignal("");
@@ -66,7 +68,7 @@ export function AgentOnboarding() {
     wasOpen = open;
   });
 
-  // Step 2 checks Codex and loads the live model list.
+  // Step 2 checks the chosen provider and loads its model list.
   createEffect(() => {
     if (!agentUi.onboardingOpen() || step() !== 1) return;
     void (async () => {
@@ -154,25 +156,26 @@ export function AgentOnboarding() {
           </Match>
           <Match when={step() === 1}>
             <div class="onb-eyebrow">{t("agent.onb.step", { n: 2, total: steps() })} · {t("agent.onb.codex.eyebrow")}</div>
-            <h2 class="onb-h ag-onb-h2">{t("agent.onb.codex.title")}</h2>
-            <p class="onb-p">{t("agent.onb.codex.body")}</p>
-            <Show when={agentStore.status().state === "missing" || agentStore.status().state === "logged-out"}>
-              <CodexSetupInstructions install={agentStore.status().state === "missing"} />
-            </Show>
+            <h2 class="onb-h ag-onb-h2">{t("agent.onb.connect.title")}</h2>
+            <p class="onb-p">{t("agent.onb.connect.body")}</p>
+            <ProviderPicker showStatus={false} check onChange={() => setModel("")} />
+            <ProviderSetup />
             <Show when={agentStore.status().state === "ready" && agentStore.models().length > 0}>
               <div class="ag-onb-models">
-                <div class="ag-f-lbl">{t("agent.onb.codex.model")}</div>
-                <div class="ag-onb-model-list" role="radiogroup" aria-label={t("agent.onb.codex.model")}>
-                  <For each={agentStore.models()}>
-                    {(m) => (
-                      <button type="button" role="radio" class="ag-onb-model" aria-checked={model() === m.id || (!model() && m.isDefault)} onClick={() => setModel(m.id)}>
-                        <span class="ag-prov-rd" />
-                        <b>{m.label}</b>
-                        <Show when={m.isDefault}><small>{t("agent.onb.codex.recommended")}</small></Show>
-                      </button>
-                    )}
-                  </For>
-                </div>
+                <Show when={agentStore.models().length > 1}>
+                  <div class="ag-f-lbl">{t("agent.onb.codex.model")}</div>
+                  <div class="ag-onb-model-list" role="radiogroup" aria-label={t("agent.onb.codex.model")}>
+                    <For each={agentStore.models()}>
+                      {(m) => (
+                        <button type="button" role="radio" class="ag-onb-model" aria-checked={model() === m.id || (!model() && m.isDefault)} onClick={() => setModel(m.id)}>
+                          <span class="ag-prov-rd" />
+                          <b>{m.label}</b>
+                          <Show when={m.isDefault}><small>{t("agent.onb.codex.recommended")}</small></Show>
+                        </button>
+                      )}
+                    </For>
+                  </div>
+                </Show>
                 <div class="ag-onb-effort">
                   <div class="ag-f-lbl">{t("agent.prefs.effort")}</div>
                   <EffortControl
@@ -182,7 +185,11 @@ export function AgentOnboarding() {
                     label={t("agent.prefs.effort")}
                   />
                 </div>
-                <div class="ag-onb-hint">{t("agent.onb.codex.modelHint", { count: agentStore.models().length })}</div>
+                <div class="ag-onb-hint">
+                  {agentSettings.provider() === "codex"
+                    ? t("agent.onb.codex.modelHint", { count: agentStore.models().length })
+                    : t("agent.onb.model.fixed", { model: agentStore.models()[0]?.label ?? OPENROUTER_MODEL_LABEL })}
+                </div>
               </div>
             </Show>
           </Match>
@@ -312,21 +319,28 @@ function StageWelcome(props: { look: AgentLook }) {
 function StageCodex() {
   const status = () => agentStore.status();
   const ready = () => status().state === "ready";
+  const provider = () => agentSettings.provider();
   const command = () => <code>codex login</code>;
   const split = (text: string) => {
     const [a, b] = text.split("{command}");
     return <>{a}{command()}{b ?? ""}</>;
   };
+  const head = () => (provider() === "codex" ? "codex app-server" : `${provider() === "agentz" ? "AgentZ" : "OpenRouter"} · ${OPENROUTER_MODEL_LABEL}`);
+  const found = () => t(provider() === "codex" ? "agent.onb.codex.found" : provider() === "agentz" ? "agent.onb.agentz.found" : "agent.onb.openrouter.found");
+  const errorBody = () => {
+    const message = (status() as { message?: string }).message;
+    return agentErrorText(message) ?? message;
+  };
   return (
     <div class="ag-stage-col">
       <div class="ag-chk">
-        <div class="ag-chk-h"><i classList={{ "is-ready": ready() }} />codex app-server</div>
+        <div class="ag-chk-h"><i classList={{ "is-ready": ready() }} />{head()}</div>
         <Switch>
           <Match when={status().state === "checking"}>
             <div class="ag-chk-it"><span class="ag-spin" /><div><b>{t("agent.onb.codex.checking")}</b></div></div>
           </Match>
           <Match when={ready()}>
-            <ChkRow icon="check" title={t("agent.onb.codex.found")} />
+            <ChkRow icon="check" title={found()} />
             <ChkRow icon="check" title={t("agent.onb.codex.login")} body={(status() as { account: string | null }).account ?? undefined} />
             <ChkRow icon="check" title={t("agent.onb.codex.tools")} body={t("agent.onb.codex.toolsBody")} />
             <ChkRow icon="check" title={t("agent.onb.codex.locked")} body={t("agent.onb.codex.lockedBody")} />
@@ -334,12 +348,18 @@ function StageCodex() {
           <Match when={status().state === "missing"}>
             <ChkRow icon="x" bad title={t("agent.state.missing.title")} body={t("agent.state.missing.body", { name: agentSettings.displayName() })} />
           </Match>
-          <Match when={status().state === "logged-out"}>
+          <Match when={status().state === "logged-out" && provider() === "codex"}>
             <ChkRow icon="check" title={t("agent.onb.codex.found")} />
             <ChkRow icon="x" bad title={t("agent.state.loggedOut.title")} bodyEl={split(t("agent.state.loggedOut.body"))} />
           </Match>
+          <Match when={status().state === "logged-out" && provider() === "agentz"}>
+            <ChkRow icon="x" bad title={t("agent.provider.agentz.signedOut")} body={t("agent.onb.agentz.signedOutBody")} />
+          </Match>
+          <Match when={status().state === "logged-out" && provider() === "openrouter"}>
+            <ChkRow icon="x" bad title={t("agent.provider.openrouter.noKey")} body={t("agent.onb.openrouter.noKeyBody")} />
+          </Match>
           <Match when={status().state === "error" || status().state === "unavailable"}>
-            <ChkRow icon="x" bad title={t("agent.state.error.title")} body={(status() as { message?: string }).message} />
+            <ChkRow icon="x" bad title={providerErrorTitle()} body={errorBody()} />
           </Match>
         </Switch>
       </div>

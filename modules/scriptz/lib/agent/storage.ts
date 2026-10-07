@@ -34,4 +34,19 @@ export interface AgentStorage {
   restoreMemory(entry: MemoryEntry): Promise<void>;
   /** Clears memory and learned markers together, leaving chat history intact. */
   clearMemory(): Promise<void>;
+  /** Transcript of an in-app harness thread (OpenRouter), or null. Device
+   *  state like `ChatRecord.threadId`: never synced or exported. */
+  getThread(id: string): Promise<ThreadRecord | null>;
+  saveThread(thread: ThreadRecord): Promise<void>;
+  /** Keeps the `keep` most recently updated transcripts. */
+  pruneThreads(keep: number): Promise<void>;
+}
+
+export interface ThreadRecord {
+  id: string;
+  provider: string;
+  /** Provider wire messages, serialized by the provider. */
+  messagesJson: string;
+  createdAt: number;
+  updatedAt: number;
 }
