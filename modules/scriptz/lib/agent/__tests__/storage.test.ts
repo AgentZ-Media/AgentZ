@@ -12,7 +12,7 @@ import {
 } from "../memory";
 import { sqlAgentStorage } from "../sqlStorage";
 import { threadStore } from "../threads";
-import { emptyTrash, purgeScript } from "../../scripts";
+import { emptyTrash, purgeExpiredTrash, purgeScript } from "../../scripts";
 
 const state = { connection: null as DbConnection | null };
 const migrations = new URL("../../../../../apps/scriptz/src-tauri/migrations/", import.meta.url);
@@ -223,6 +223,17 @@ describe("harness transcripts (migration 016)", () => {
     await saveChat(chat({ id: "script-chat", threadId: "t-chat" }));
     database.exec("UPDATE scripts SET archived_at = 5 WHERE id = 'script'");
     await emptyTrash();
+    expect(await threadStore.get("t-chat")).toBeNull();
+  });
+
+  it("the automatic trash cleanup removes the transcripts of expired script chats only", async () => {
+    await threadStore.save(record("t-chat", 10));
+    await saveChat(chat({ id: "script-chat", threadId: "t-chat" }));
+    database.exec("UPDATE scripts SET archived_at = 50 WHERE id = 'script'");
+    // Not expired yet: script and transcript stay.
+    expect(await purgeExpiredTrash(40)).toBe(0);
+    expect(await threadStore.get("t-chat")).not.toBeNull();
+    expect(await purgeExpiredTrash(50)).toBe(1);
     expect(await threadStore.get("t-chat")).toBeNull();
   });
 
