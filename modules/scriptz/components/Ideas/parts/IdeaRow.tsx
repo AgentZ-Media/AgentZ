@@ -3,6 +3,7 @@ import { Icon } from "@agentz/kit/ui";
 import type { Idea, ScriptSummary } from "../../../lib/types";
 import { navStore } from "../../../stores/nav";
 import { agentSettings } from "../../../stores/agentSettings";
+import { agentModeAvailable } from "../../AgentMode/actions";
 import { t } from "../../../i18n";
 import { StageGlyph } from "../../Common/StageGlyph";
 import { folderColor } from "../../Common/folderColor";
@@ -57,7 +58,7 @@ export function IdeaRow(props: IdeaRowProps) {
         </Match>
       </Switch>
       <div class="ti">
-        <Show when={props.idea.source_chat_id}>
+        <Show when={props.idea.source_chat_id && agentModeAvailable()}>
           <span class="i-by-agent" title={t("agentMode.ideas.byAgent", { name: agentSettings.displayName() })}>
             <AgentAvatar look={agentSettings.look()} size={14} state="still" />
           </span>

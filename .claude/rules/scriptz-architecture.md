@@ -14,7 +14,9 @@ Suite-Grenzen in [`suite-architecture.md`](suite-architecture.md).
 
 - `module.tsx`: `scriptzModule.setup(ctx)` startet Produkt-Settings,
   Navigation, Layout und Bibliothekspräferenzen, seedet das Welcome-Skript,
-  füllt Runtime-Statistiken nach, migriert Legacy-Blöcke und startet erst
+  füllt Runtime-Statistiken nach (`lib/runtimeBackfill.ts`: nach einer
+  Formeländerung einmal alle Skripte, Flag `migration.runtime_stats_v2`),
+  migriert Legacy-Blöcke und startet erst
   danach Ideen-, Statistik- und Bibliotheks-Resources. Liefert Routen
   (Inbox, Skripte, Ideen, Skript, Papierkorb, Agent-Modus), Sidebar, Overlays
   (QuickCapture, Neues Skript, Export, Stufen-Undo), Befehle, Shortcuts,
@@ -68,6 +70,11 @@ die Befehlspalette, deshalb setzt das Modul `revealsSidebar: true`.
   (`library.mode` je Seite). Spalten: offene Ideen, dann die Stufen in
   ihrer Reihenfolge (Inbox ohne die letzte). Karte ziehen setzt die Stufe
   (Undo-Toast), eine Idee auf eine Stufe wird zum Skript.
+- **Ordner-Chips** (`Common/FolderChips.tsx`): Ideen, Inbox, Alle Skripte,
+  Stufen und Ordner filtern mit einem Klick nach Ordner oder „Ohne
+  Ordner“. Der Filter liegt in der Route (`folderId` bei `ideas`, `inbox`
+  und `scripts`, dort kombinierbar mit `status`). Gezählt wird, was die
+  Seite vor dem Ordnerfilter zeigt; leere Ordner bekommen keinen Chip.
 
 ## Migrationen
 
@@ -124,7 +131,11 @@ schlagen sonst fehl). Die Umwandlung von Kamera/Caption/SFX in Action ist bewuss
 - Die letzte Stufe gilt als erledigt (`isFinalStage`). Die Inbox (Route
   `inbox`, ganz oben in der Sidebar und nur sichtbar, solange etwas offen ist)
   zeigt offene Ideen und alle Skripte davor (`library.inProgress`). Eigene
-  Stufen brauchen dort keine Anpassung.
+  Stufen brauchen dort keine Anpassung. Bei Gruppierung nach Stufe trägt nur
+  der Gruppenkopf das Stufen-Symbol. Ideen stehen als kompakte Zeilen
+  darunter: die neuesten 10, zweispaltig (`library.inboxIdeas`, zeilenweise
+  links, rechts) 20, der Rest hinter „weitere anzeigen“; ein Filter zeigt
+  alle Treffer.
 - Zielbereich in Sekunden je Ordner oder global
   (`length_min_default_sec`/`length_max_default_sec`, leer = aus). Auflösung:
   Ordner -> Standard -> keiner (`resolveLengthRange`).
@@ -238,6 +249,16 @@ Persönlicher Schreib-Agent mit eigenem Namen, Look und Persona.
 - **Settings** unter `agent.*` (siehe `stores/agentSettings.ts`), Effort
   überall standardmäßig `medium`. `agent.enabled = false` startet keinen
   Prozess.
+- **Ausblenden** (`agent.hidden`, nur auf diesem Gerät): eigener
+  Onboarding-Schritt „KI-Agent“ (nur mit Codex-Host) und Schalter „KI-Funktionen
+  anzeigen“ in Einstellungen > Agent. Ausgeblendet liefert
+  `agentStore.available()` false, damit verschwinden Seitenleiste,
+  Chat, Chips, Rechtsklick, Inspector-Lernstand, Ideen-Knöpfe und -Herkunft,
+  ⌘K-Befehle und die Kürzel (`ShortcutDef.hidden`, auch aus der
+  Tastatur-Übersicht); der Agent-Modus fällt aus der Navigation.
+  `agentSettings.enabled()` ist dann false (kein Prozess, kein Lernen),
+  `agent.enabled` selbst bleibt stehen. Chats und Gedächtnis bleiben erhalten.
+  `agentStore.supported()` fragt nur nach dem Codex-Host.
 - **Aufträge** (`lib/agent/jobs.ts`): Einstieg prüfen, Kürzen, Tempo
   erhöhen, Härteres Ende, Fakten prüfen, Feedback. Der Chat zeigt nur das
   kurze Label, das Modell bekommt die englische Instruktion. Vier Türen,
@@ -255,8 +276,14 @@ Persönlicher Schreib-Agent mit eigenem Namen, Look und Persona.
   nummeriert, solange der Chat offen ist.
 - **Kontext Länge.** Der Skript-Chat bekommt Längenziel und Sprechtempo in
   den Instruktionen, Sitzungen vor jeder Nachricht eine Zeile `[Session: ...]`
-  mit Ordner, Ziel, Wortbudget, Entwürfen und gespeicherten Ideen
-  (`lib/agent/writingContext.ts`, gleiche Formel wie die Zeitleiste).
+  mit Ordner, Ziel, Wortbudget, Entwürfen samt gemessener Laufzeit und
+  gespeicherten Ideen (`lib/agent/writingContext.ts`, gleiche Formel wie die
+  Zeitleiste).
+- **Laufzeiten rechnet nur die App.** `get_current_script`, `read_script`
+  und `list_scripts` liefern `runtime` nach `lib/runtime.ts` mit der WPM aus
+  den Einstellungen. Der Prompt verbietet dem Modell, selbst Wörter zu
+  zählen oder Laufzeiten zu nennen, die es nicht von der App hat; zu einem
+  gerade geschriebenen Entwurf nennt es keine Zeit, die zeigt das Panel.
 
 ## Agent-Modus
 

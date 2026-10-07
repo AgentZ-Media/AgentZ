@@ -1,5 +1,5 @@
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from "vitest";
-import { cleanup, render, waitFor } from "@solidjs/testing-library";
+import { cleanup, fireEvent, render, waitFor } from "@solidjs/testing-library";
 import { getTestStorage, setTestStorage, type TestStorage } from "../../../test/storage";
 import "../../../lib/api";
 import type { Idea, ScriptStatus, ScriptSummary } from "../../../lib/types";
@@ -8,10 +8,11 @@ import { scriptsBus } from "../../../lib/scriptsBus";
 import { ideasBus } from "../../../lib/ideasBus";
 import { navStore, startNavRuntime } from "../../../stores/nav";
 import { startIdeasStore } from "../../../stores/ideas";
-import { t } from "../../../i18n";
+import { t, tPlural } from "../../../i18n";
 import { library, startLibraryData } from "../../Shell/libraryData";
 import { Sidebar } from "../../Shell/Sidebar";
 import { ScriptsPage } from "../ScriptsPage";
+import { libraryPrefs } from "../prefs";
 
 const originalAdapter = getTestStorage();
 let stopNav: () => void;
@@ -29,8 +30,13 @@ function script(id: string, title: string, status: ScriptStatus): ScriptSummary 
   };
 }
 
-function idea(id: string, title: string, usedAt: number | null = null): Idea {
-  return { id, title, notes: "", created_at: 1, used_at: usedAt, script_id: null, folder_id: null };
+function idea(id: string, title: string, usedAt: number | null = null, createdAt = 1): Idea {
+  return { id, title, notes: "", created_at: createdAt, used_at: usedAt, script_id: null, folder_id: null };
+}
+
+/** `count` open ideas, "Idea 1" the newest. */
+function manyIdeas(count: number): Idea[] {
+  return Array.from({ length: count }, (_, i) => idea(`n${i + 1}`, `Idea ${i + 1}`, null, 1000 - i));
 }
 
 beforeAll(() => {
@@ -58,6 +64,7 @@ beforeEach(async () => {
 afterEach(() => {
   cleanup();
   resetScriptStages();
+  libraryPrefs.setIdeaColumns(1);
 });
 afterAll(() => {
   stopNav();
@@ -87,14 +94,45 @@ describe("inbox", () => {
     expect(view.getByRole("heading", { level: 1 }).textContent).toBe(t("shell.nav.inbox"));
   });
 
-  it("lays idea rows out in the same grid columns as script rows", async () => {
+  it("leaves the stage glyph to the group head when grouped by stage", async () => {
     const view = render(() => <ScriptsPage />);
-    const ideaRow = await view.findByRole("button", { name: "Fresh idea" });
-    const scriptRow = view.getByRole("button", { name: `Script ${stageIds()[0]}` });
-    const columns = (row: HTMLElement) =>
-      [...row.children].map((c) => c.className.split(" ")[0]).filter((c) => c !== "lrow-act");
-    expect(columns(ideaRow).length).toBe(columns(scriptRow).length);
-    expect(columns(ideaRow).indexOf("lrow-t")).toBe(columns(scriptRow).indexOf("lrow-t"));
+    const row = await view.findByRole("button", { name: `Script ${stageIds()[0]}` });
+    expect(row.classList.contains("no-glyph")).toBe(true);
+    expect(row.querySelector(".lrow-glyph")).toBeNull();
+  });
+
+  it("lists the ten newest ideas and the rest behind show more", async () => {
+    ideas = manyIdeas(13);
+    ideasBus.bump();
+    const view = render(() => <ScriptsPage />);
+    await view.findByRole("button", { name: "Idea 1" });
+    const rows = () => [...view.container.querySelectorAll<HTMLElement>(".lrow.is-idea")];
+    expect(rows().map((r) => r.getAttribute("aria-label"))).toEqual(
+      Array.from({ length: 10 }, (_, i) => `Idea ${i + 1}`),
+    );
+
+    fireEvent.click(view.getByRole("button", { name: tPlural("shell.inbox.moreIdeas", 3) }));
+    expect(rows()).toHaveLength(13);
+    fireEvent.click(view.getByRole("button", { name: t("shell.inbox.fewerIdeas") }));
+    expect(rows()).toHaveLength(10);
+  });
+
+  it("shows up to twenty ideas in two columns, filled row by row", async () => {
+    ideas = manyIdeas(25);
+    ideasBus.bump();
+    const view = render(() => <ScriptsPage />);
+    await view.findByRole("button", { name: "Idea 1" });
+    const toggle = view.getByRole("button", { name: t("shell.inbox.twoColumns") });
+    fireEvent.click(toggle);
+
+    expect(toggle.getAttribute("aria-pressed")).toBe("true");
+    expect(libraryPrefs.ideaColumns()).toBe(2);
+    const list = view.container.querySelector(".irows")!;
+    expect(list.classList.contains("is-two")).toBe(true);
+    // One grid in reading order: the CSS grid puts Idea 1 left, Idea 2 right.
+    const rows = [...list.querySelectorAll(".lrow.is-idea")].map((r) => r.getAttribute("aria-label"));
+    expect(rows).toEqual(Array.from({ length: 20 }, (_, i) => `Idea ${i + 1}`));
+    expect(view.getByRole("button", { name: tPlural("shell.inbox.moreIdeas", 5) })).toBeTruthy();
   });
 
   it("shows the empty state once everything reached the last stage", async () => {

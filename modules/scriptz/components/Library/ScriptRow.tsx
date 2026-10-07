@@ -19,6 +19,9 @@ export interface ScriptRowProps {
   selected: boolean;
   /** Shown in the side panel right now (row is marked). */
   peek?: boolean;
+  /** The group head already shows the stage: no glyph column outside the
+   *  select mode, which needs it for the checkbox. */
+  hideGlyph?: boolean;
   /** Row click / Enter. `inverse`: Alt-click, open the other way than the
    *  "open in side panel" setting says. */
   onOpen: (inverse: boolean) => void;
@@ -70,7 +73,7 @@ function thumbLines(id: string, cast: ScriptCharacter[]): ThumbLine[] {
   return lines.slice(0, 6);
 }
 
-/** Row of the scripts overview: stage glyph, title +
+/** Row of the scripts overview: stage glyph (unless the group shows it), title +
  *  subtitle, folder, cast, runtime vs. target range, last edit. Hovering
  *  swaps the date for "open" and "⋯". */
 export function ScriptRow(props: ScriptRowProps) {
@@ -97,6 +100,7 @@ export function ScriptRow(props: ScriptRowProps) {
   const activate = (e?: MouseEvent | KeyboardEvent) =>
     props.selectMode ? props.onToggleSelect(e) : props.onOpen(e?.altKey ?? false);
   const title = () => s().title || t("common.untitled");
+  const showGlyph = () => props.selectMode || !props.hideGlyph;
 
   return (
     <div
@@ -108,6 +112,7 @@ export function ScriptRow(props: ScriptRowProps) {
         "is-selected": props.selectMode && props.selected,
         "is-dragging": dragging(),
         "is-peek": !!props.peek && !props.selectMode,
+        "no-glyph": !showGlyph(),
       }}
       aria-label={title()}
       aria-pressed={props.selectMode ? props.selected : undefined}
@@ -142,18 +147,20 @@ export function ScriptRow(props: ScriptRowProps) {
         }
       }}
     >
-      <span class="lrow-glyph">
-        <Show
-          when={props.selectMode}
-          fallback={<StageGlyph stage={s().status} class={library.justFinished(s().id) ? "is-finishing" : undefined} />}
-        >
-          <span class="lrow-check" aria-hidden="true">
-            <Show when={props.selected}>
-              <Icon name="check" size={11} />
-            </Show>
-          </span>
-        </Show>
-      </span>
+      <Show when={showGlyph()}>
+        <span class="lrow-glyph">
+          <Show
+            when={props.selectMode}
+            fallback={<StageGlyph stage={s().status} class={library.justFinished(s().id) ? "is-finishing" : undefined} />}
+          >
+            <span class="lrow-check" aria-hidden="true">
+              <Show when={props.selected}>
+                <Icon name="check" size={11} />
+              </Show>
+            </span>
+          </Show>
+        </span>
+      </Show>
       <span class="lrow-thumb" aria-hidden="true">
         <For each={thumbLines(s().id, cast())}>
           {(line) => <i class={`is-${line.kind}`} style={line.color ? { "--who": line.color } : undefined} />}

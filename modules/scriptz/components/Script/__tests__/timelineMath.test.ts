@@ -28,7 +28,7 @@ const blocks: TimingBlock[] = [
   { key: "d1", kind: "dialog", text: "So ich bin fertig" }, // 4 words = 2 s
   { key: "c2", kind: "character", text: "axel" },
   { key: "d2", kind: "dialog", text: "Hast du mal auf die Uhr geschaut" }, // 7 words = 3.5 s
-  { key: "a2", kind: "action", text: "" },
+  { key: "a2", kind: "action", text: "" }, // empty, no beat
   { key: "d3", kind: "dialog", text: "Nein" }, // still AXEL, 0.5 s
   { key: "c3", kind: "character", text: "TIMO" },
   { key: "d4", kind: "dialog", text: "" }, // empty, no segment
@@ -39,7 +39,7 @@ describe("liveStats", () => {
     const s = liveStats(blocks, WPM);
     expect(s.words).toBe(5 + 1 + 4 + 1 + 7 + 1 + 1);
     expect(s.dialogWords).toBe(12);
-    expect(s.actionBlocks).toBe(2);
+    expect(s.actionBlocks).toBe(1); // the empty action block is no beat
     // TIMO -> AXEL (change), AXEL -> AXEL (no change)
     expect(s.speakerChanges).toBe(1);
   });
@@ -137,7 +137,7 @@ describe("playheadSec", () => {
   });
   it("sits at the end past the last timed block", () => {
     expect(playheadSec(blocks, segs, "d4")).toBeCloseTo(segmentsEnd(segs));
-    expect(segmentsEnd(segs)).toBeCloseTo(2 + 2 + 3.5 + 2 + 0.5);
+    expect(segmentsEnd(segs)).toBeCloseTo(2 + 2 + 3.5 + 0.5);
   });
   it("uses the next timed block for a parenthetical", () => {
     const withParen: TimingBlock[] = [

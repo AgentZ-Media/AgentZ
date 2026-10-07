@@ -50,7 +50,7 @@ export function getScriptzShortcuts(): ShortcutDef[] {
     }),
     entry("agent", "agent.shortcut", ["Mod+L"], "app", {
       matches: letter("l"),
-      enabled: () => agentStore.available(),
+      hidden: () => !agentStore.available(),
       run: () => {
         // In a script: the chat next to the paper. Elsewhere: the agent mode.
         const id = navStore.activeScriptId();
@@ -61,7 +61,7 @@ export function getScriptzShortcuts(): ShortcutDef[] {
     }),
     entry("agentMode", "agentMode.shortcut", ["Mod+Shift+L"], "app", {
       matches: letter("l", true),
-      enabled: () => agentStore.available(),
+      hidden: () => !agentStore.available(),
       run: () => {
         // From a script whose chat is a session: that session, big.
         const id = navStore.activeScriptId();

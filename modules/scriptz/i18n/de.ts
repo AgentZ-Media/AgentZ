@@ -62,6 +62,8 @@ export const de = {
   "folder.new": "Neuer Ordner",
   "folder.newDots": "Neuer Ordner…",
   "folder.none": "Kein Ordner",
+  "folder.chips.aria": "Nach Ordner filtern",
+  "folder.chips.all": "Alle",
   "folder.placeholder": "z. B. TikTok",
   "folder.createTitle": "Neuer Ordner",
   "folder.createSubmit": "Anlegen",

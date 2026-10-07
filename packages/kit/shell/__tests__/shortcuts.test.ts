@@ -45,6 +45,14 @@ describe("shortcut registry", () => {
     expect(run).toHaveBeenCalledTimes(2);
   });
 
+  it("neither dispatches nor lets through hidden entries", () => {
+    const run = vi.fn();
+    const event = key("i");
+    createShortcutRegistry(() => [{ ...definition(run), hidden: () => true }]).handle(event);
+    expect(run).not.toHaveBeenCalled();
+    expect(event.defaultPrevented).toBe(false);
+  });
+
   it("does not dispatch documentation-only entries", () => {
     const event = key("i");
     createShortcutRegistry(() => [{ ...definition(), run: undefined }]).handle(event);

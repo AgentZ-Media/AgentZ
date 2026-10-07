@@ -227,7 +227,7 @@ export function IdeaEditor(props: IdeaEditorProps) {
               ariaLabel={t("ideasPage.detail.folder")}
             />
             <span class="ix-meta">{t("ideasPage.detail.created", { date: created() })}</span>
-            <Show when={cur().source_chat_id}>
+            <Show when={props.onOpenSession && cur().source_chat_id}>
               {(chatId) => (
                 <button
                   type="button"

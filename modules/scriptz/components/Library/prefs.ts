@@ -11,10 +11,14 @@ export type SortKey = "updated" | "created" | "title";
 export type ViewMode = "list" | "board";
 /** Pages with their own list/board choice (all folders share one). */
 export type ViewScope = "inbox" | "all" | "folder";
+/** Columns of the inbox idea list. */
+export type IdeaColumns = 1 | 2;
 
 const PREFS_KEY = "library.view";
 // Separate key: "library.view" keeps its stored shape.
 const MODE_KEY = "library.mode";
+// Inbox idea list layout, JSON {"columns":1|2}.
+const IDEAS_KEY = "library.inboxIdeas";
 // Done stages are folded away by default.
 const DEFAULT_COLLAPSED = ["shot", "online"];
 
@@ -22,6 +26,7 @@ const [grouping, setGroupingSignal] = createSignal<Grouping>("stage");
 const [sort, setSortSignal] = createSignal<SortKey>("updated");
 const [collapsed, setCollapsedSignal] = createSignal<Set<string>>(new Set(DEFAULT_COLLAPSED));
 const [modes, setModes] = createSignal<Partial<Record<ViewScope, ViewMode>>>({});
+const [ideaColumns, setIdeaColumnsSignal] = createSignal<IdeaColumns>(1);
 
 let runtime: {
   active: boolean;
@@ -29,18 +34,21 @@ let runtime: {
   kv: KvStore;
   writer: ReturnType<typeof createStatePersistence>;
   modeWriter: ReturnType<typeof createStatePersistence>;
+  ideasWriter: ReturnType<typeof createStatePersistence>;
   stop(): void;
 } | undefined;
 export function startLibraryPrefs(kv = getKvStore()): () => void {
   if (runtime?.active) return runtime.stop;
   const writer = createStatePersistence(kv, PREFS_KEY);
   const modeWriter = createStatePersistence(kv, MODE_KEY);
+  const ideasWriter = createStatePersistence(kv, IDEAS_KEY);
   setGroupingSignal("stage"); setSortSignal("updated"); setCollapsedSignal(new Set(DEFAULT_COLLAPSED)); setModes({});
+  setIdeaColumnsSignal(1);
   const current = {
-    active: true, loaded: false, kv, writer, modeWriter,
+    active: true, loaded: false, kv, writer, modeWriter, ideasWriter,
     stop() {
       if (!current.active) return;
-      current.active = false; writer.dispose(); modeWriter.dispose();
+      current.active = false; writer.dispose(); modeWriter.dispose(); ideasWriter.dispose();
       if (runtime === current) runtime = undefined;
     },
   };
@@ -89,6 +97,12 @@ export const libraryPrefs = {
     setModes(next);
     runtime?.modeWriter.schedule(JSON.stringify(next));
   },
+  /** One or two columns for the inbox ideas; one until chosen otherwise. */
+  ideaColumns,
+  setIdeaColumns(v: IdeaColumns) {
+    setIdeaColumnsSignal(v);
+    runtime?.ideasWriter.schedule(JSON.stringify({ columns: v }));
+  },
   isCollapsed: (key: string) => collapsed().has(key),
   toggleCollapsed(key: string) {
     const next = new Set(collapsed());
@@ -112,6 +126,18 @@ export const libraryPrefs = {
       setModes(next);
     } catch {
       /* list everywhere */
+    }
+  },
+  /** Inbox idea layout (own key, read once at boot). */
+  async loadIdeaLayout(isActive: () => boolean = () => true): Promise<void> {
+    const current = ensureRuntime();
+    try {
+      const raw = await current.kv.getAppState(IDEAS_KEY);
+      if (!raw || !current.active || !isActive()) return;
+      const { columns } = JSON.parse(raw) as { columns?: unknown };
+      if (columns === 1 || columns === 2) setIdeaColumnsSignal(columns);
+    } catch {
+      /* one column */
     }
   },
   async load(isActive: () => boolean = () => true): Promise<void> {

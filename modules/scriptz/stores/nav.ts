@@ -12,8 +12,9 @@ export type Route =
        *  scripts without a folder (see lib/folders.ts). */
       folderId?: string | null;
     }
-  /** Work in progress: open ideas and every script before the last stage. */
-  | { kind: "inbox" }
+  /** Work in progress: open ideas and every script before the last stage.
+   *  `folderId` filters it like the scripts route. */
+  | { kind: "inbox"; folderId?: string | null }
   | { kind: "ideas"; folderId?: string | null }
   | { kind: "script"; scriptId: string }
   | { kind: "trash" }
@@ -86,6 +87,11 @@ export const navStore = {
     const current = navigation.route();
     return current.kind === "agent" ? current.chatId : null;
   },
+  /** Removes the agent mode from the history (agent hidden); the current
+   *  view moves on when it shows the agent mode. */
+  dropAgentRoutes() {
+    navigation.reconcile((route) => route.kind !== "agent");
+  },
   openAgent(chatId: string): Promise<void> {
     return navigation.go({ kind: "agent", chatId });
   },
@@ -96,8 +102,8 @@ export const navStore = {
   openScripts(filter: { status?: ScriptStatus | null; folderId?: string | null } = {}): Promise<void> {
     return navigation.go({ kind: "scripts", ...filter });
   },
-  openInbox(): Promise<void> {
-    return navigation.go({ kind: "inbox" });
+  openInbox(folderId?: string | null): Promise<void> {
+    return navigation.go(folderId ? { kind: "inbox", folderId } : { kind: "inbox" });
   },
   openIdeas(folderId?: string | null): Promise<void> {
     return navigation.go({ kind: "ideas", folderId: folderId ?? null });
