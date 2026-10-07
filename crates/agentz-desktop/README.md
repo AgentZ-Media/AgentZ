@@ -39,9 +39,20 @@ On macOS the process stays in the Dock and a Dock click reopens the window;
 a Quit that arrives while the window closes still completes. A second app
 launch focuses the existing window.
 
-**Updates:** a Tauri restart cannot be prevented and the Windows installer
-ends the process itself, so the updater must lock editing and flush
-successfully **before** `install()` and `relaunch()`.
+**Updates:** the app never restarts on its own. `update_download` verifies
+and stages an update in the native host (`Staging`); it installs when the
+app quits or when the user chooses "Restart now".
+
+- Quit: after the successful flush, the frontend calls
+  `update_install_on_quit`. macOS installs the bundle right there, while the
+  event loop still runs (a protected `/Applications` may ask for a password).
+  Windows writes the NSIS installer to the temp folder and starts it on
+  `RunEvent::Exit` with `/P /UPDATE` but without `/R`, so the app stays closed.
+  Closing the window on macOS keeps the update for the real quit; a reopened
+  window finds it through `update_staged`.
+- Restart now: a Tauri restart cannot be prevented and the Windows installer
+  ends the process itself (and restarts it), so the updater must lock editing
+  and flush successfully **before** `update_install_now` and `relaunch()`.
 
 **Known limit:** a system-initiated quit on macOS (Dock menu, logout,
 shutdown) bypasses the quit handshake; edits rely on the editor's short

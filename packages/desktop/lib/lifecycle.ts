@@ -15,10 +15,22 @@ export interface LifecyclePorts {
   failed(error?: unknown): void;
   /** Asked after a repeated failed save: leave anyway and lose the changes? */
   confirmUnsaved(kind: "close" | "exit"): Promise<boolean>;
+  /** Last step before leaving, after everything was saved (e.g. installing a
+   *  downloaded update). Errors are swallowed; it never keeps the app open. */
+  beforeLeave?(kind: "close" | "exit"): Promise<void>;
 }
 
 /** If an authorized exit does not end the process, editing comes back. */
 const EXIT_UNLOCK_FALLBACK_MS = 3000;
+/** A hanging last step (installer, backup) never blocks leaving for longer. */
+const BEFORE_LEAVE_TIMEOUT_MS = 60_000;
+
+async function settled(work: Promise<void> | undefined, ms: number): Promise<void> {
+  if (!work) return;
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  await Promise.race([work.catch(() => {}), new Promise<void>((done) => { timer = setTimeout(done, ms); })]);
+  clearTimeout(timer);
+}
 
 /** Every close is synchronously prevented, including duplicate requests.
  * Native quit and window close share one pending transaction. */
@@ -77,6 +89,14 @@ export async function startDesktopLifecycle(ports: LifecyclePorts, signal?: Abor
         return;
       }
       previousFailed = false;
+      await settled(ports.beforeLeave?.(exitId !== undefined ? "exit" : "close"), BEFORE_LEAVE_TIMEOUT_MS);
+      // A quit requested during the last step joins this one.
+      exitId = pendingExit ?? exitId;
+      pendingExit = undefined;
+      if (disposed) {
+        if (exitId !== undefined) await ports.finishExit(exitId, false);
+        return;
+      }
       if (exitId !== undefined) {
         await ports.finishExit(exitId, true);
         leaving = true;

@@ -3,6 +3,11 @@
 
 import type { Accessor } from "solid-js";
 
+/**
+ * - available: found, not downloaded yet
+ * - ready: downloaded; installs when the app quits, or now with `restart()`
+ * - installing: saving, backing up and installing for a restart
+ */
 export type UpdateStage =
   | "idle"
   | "available"
@@ -27,7 +32,9 @@ export interface UpdatesStore {
   progress: Accessor<number>;
   manualCheck: Accessor<ManualCheckState | null>;
   checkNow(): Promise<void>;
-  downloadAndInstall(): Promise<void>;
+  /** Downloads the available update; it installs on quit. */
+  download(): Promise<void>;
+  /** Saves, installs the downloaded update and restarts. Only on request. */
   restart(): Promise<void>;
   clearManualCheck(): void;
   startBackgroundPolling(): void;

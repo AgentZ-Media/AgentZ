@@ -114,6 +114,12 @@ nächste PR `writes` anheben. Details: „Versionen und Kompatibilität“ in
 Updater-Endpoint: `https://github.com/AgentZ-Media/AgentZ-Suite/releases/download/<app>-latest/latest.json`,
 für Nightlies zusätzlich `.../<app>-nightly/latest.json` (abgeleitet in
 `crates/agentz-desktop/src/updates.rs`).
+
+In der App: Gefundene Updates lädt sie im Hintergrund (`update_auto_install`,
+Standard an) und installiert sie beim Beenden nach dem Speichern; „Jetzt neu
+starten“ übernimmt sie sofort. Von sich aus startet sie nie neu. Windows
+startet den Installer beim Beenden ohne `/R`, die App bleibt also zu
+(`crates/agentz-desktop/README.md`).
 Die Apps sind nicht notarisiert bzw. codesigniert: macOS braucht beim ersten
 Start `xattr -cr "/Applications/<Produkt>.app"`, Windows zeigt SmartScreen.
 Der Install-Footer erklärt beides. Installationen von ScriptZ 0.8.4 und älter

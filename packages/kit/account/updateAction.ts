@@ -31,7 +31,7 @@ export function syncUpdateState(appName: string): SyncUpdateState {
   const offered = store.available()?.version;
   const tooOld = block?.reason === "version" && !!block.minVersion && !!offered
     && (compareVersions(offered, block.minVersion) ?? 0) < 0;
-  if (tooOld && (store.stage() === "available" || store.stage() === "error")) {
+  if (tooOld && (store.stage() === "available" || store.stage() === "ready" || store.stage() === "error")) {
     return { note: t("account.update.notYet"), action: { label: t("account.update.checkAgain"), run: check } };
   }
   switch (store.stage()) {
@@ -40,14 +40,14 @@ export function syncUpdateState(appName: string): SyncUpdateState {
     case "installing":
       return { note: null, action: { label: t("account.update.installing") } };
     case "ready":
-      return { note: null, action: { label: t("account.update.restart"), run: () => void store.restart() } };
+      return { note: t("account.update.readyNote"), action: { label: t("account.update.restart"), run: () => void store.restart() } };
     case "available":
       return {
         note: null,
-        action: { label: t("account.update.install", { version: offered ?? "" }), run: () => void store.downloadAndInstall() },
+        action: { label: t("account.update.install", { version: offered ?? "" }), run: () => void store.download() },
       };
     case "error":
-      return { note: t("account.update.failed"), action: { label: t("account.update.retry"), run: () => void store.downloadAndInstall() } };
+      return { note: t("account.update.failed"), action: { label: t("account.update.retry"), run: () => void store.restart() } };
     case "idle":
       break;
   }

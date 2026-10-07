@@ -92,6 +92,9 @@ export function bootDesktopApp(options: DesktopAppOptions): DesktopApp {
           if (error) console.warn("[desktop] close flush failed", error);
           pushToast(t("persistence.saveFailed"), "error");
         },
+        // Closing the window ends the app everywhere but on macOS, where it
+        // stays in the Dock; a downloaded update installs when the app ends.
+        beforeLeave: (kind) => kind === "exit" || platform.platform !== "macos" ? updates.prepareExit() : Promise.resolve(),
         confirmUnsaved: (kind) => ask(t("persistence.unsavedBody"), {
           title: t("persistence.unsavedTitle"), kind: "warning",
           okLabel: t(kind === "exit" ? "persistence.unsavedQuit" : "persistence.unsavedClose"),
@@ -109,6 +112,7 @@ export function bootDesktopApp(options: DesktopAppOptions): DesktopApp {
           baseSettingsStore.updateCheckEnabled();
           baseSettingsStore.hourlyUpdateCheck();
           baseSettingsStore.updateChannel();
+          baseSettingsStore.autoInstallUpdates();
           updates.store.stopBackgroundPolling();
           if (loaded) updates.store.startBackgroundPolling();
         });
