@@ -86,6 +86,11 @@ export const navStore = {
     const current = navigation.route();
     return current.kind === "agent" ? current.chatId : null;
   },
+  /** Removes the agent mode from the history (agent hidden); the current
+   *  view moves on when it shows the agent mode. */
+  dropAgentRoutes() {
+    navigation.reconcile((route) => route.kind !== "agent");
+  },
   openAgent(chatId: string): Promise<void> {
     return navigation.go({ kind: "agent", chatId });
   },

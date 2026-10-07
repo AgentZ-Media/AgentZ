@@ -16,7 +16,7 @@ export function createShortcutRegistry(
     // pays for the context (the dialog check may query the whole page).
     let activeContext: ShortcutContext | null = null;
     for (const definition of definitions()) {
-      if (!definition.run || !definition.matches || definition.enabled?.() === false) continue;
+      if (!definition.run || !definition.matches || definition.enabled?.() === false || definition.hidden?.()) continue;
       if (!definition.matches(event)) continue;
       activeContext ??= isDialogOpen() ? "dialog" : context();
       const inContext = definition.contexts.includes(activeContext)

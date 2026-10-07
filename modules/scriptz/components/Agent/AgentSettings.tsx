@@ -151,88 +151,100 @@ export function AgentSettings(props: { onClose(): void }) {
 
   return (
     <>
-      <SectionHead title={t("agent.prefs.title")} sub={t("agent.prefs.sub", { name: name() })} onClose={props.onClose} />
-      <Row label={t("agent.prefs.enabled")} help={t("agent.prefs.enabled.help")}>
-        <Switch checked={agentSettings.enabled()} onChange={(v) => void toggle(v)} label={t("agent.prefs.enabled")} />
+      <SectionHead
+        title={t("agent.prefs.title")}
+        sub={agentSettings.hidden() ? t("agent.prefs.subHidden") : t("agent.prefs.sub", { name: name() })}
+        onClose={props.onClose}
+      />
+      <Row
+        label={t("agent.prefs.visible")}
+        help={agentSettings.onboarded() ? t("agent.prefs.visible.helpReady", { name: name() }) : t("agent.prefs.visible.help", { name: name() })}
+      >
+        <Switch checked={!agentSettings.hidden()} onChange={(v) => void agentSettings.setHidden(!v)} label={t("agent.prefs.visible")} />
       </Row>
-      <div class="srow ag-prov-row">
-        <div><b>{t("agent.prefs.connection")}</b></div>
-        <div class="ag-prov">
-          <div class="ag-prov-it is-on" aria-current="true">
-            <span class="ag-prov-rd" />
-            <div>
-              <b>{t("agent.prefs.codex")}</b>
-              <small classList={{ "is-ready": agentSettings.enabled() && ready() }}><i />{codexLine()}</small>
+      <Show when={!agentSettings.hidden()}>
+        <Row label={t("agent.prefs.enabled")} help={t("agent.prefs.enabled.help")}>
+          <Switch checked={agentSettings.enabled()} onChange={(v) => void toggle(v)} label={t("agent.prefs.enabled")} />
+        </Row>
+        <div class="srow ag-prov-row">
+          <div><b>{t("agent.prefs.connection")}</b></div>
+          <div class="ag-prov">
+            <div class="ag-prov-it is-on" aria-current="true">
+              <span class="ag-prov-rd" />
+              <div>
+                <b>{t("agent.prefs.codex")}</b>
+                <small classList={{ "is-ready": agentSettings.enabled() && ready() }}><i />{codexLine()}</small>
+              </div>
+            </div>
+            <div class="ag-prov-it is-off" aria-disabled="true">
+              <span class="ag-prov-rd" />
+              <div><b>{t("agent.prefs.openrouter")}</b><small>{t("agent.prefs.later")}</small></div>
+            </div>
+            <div class="ag-prov-it is-off" aria-disabled="true">
+              <span class="ag-prov-rd" />
+              <div><b>{t("agent.prefs.local")}</b><small>{t("agent.prefs.later")}</small></div>
             </div>
           </div>
-          <div class="ag-prov-it is-off" aria-disabled="true">
-            <span class="ag-prov-rd" />
-            <div><b>{t("agent.prefs.openrouter")}</b><small>{t("agent.prefs.later")}</small></div>
-          </div>
-          <div class="ag-prov-it is-off" aria-disabled="true">
-            <span class="ag-prov-rd" />
-            <div><b>{t("agent.prefs.local")}</b><small>{t("agent.prefs.later")}</small></div>
-          </div>
+          <Show when={agentSettings.enabled() && (agentStore.status().state === "missing" || agentStore.status().state === "logged-out")}>
+            <CodexSetupInstructions install={agentStore.status().state === "missing"} />
+          </Show>
+          <Show when={agentSettings.enabled() && !ready() && agentStore.status().state !== "checking"}>
+            <div class="ag-prov-retry">
+              <button type="button" class="btn" onClick={() => void agentStore.refreshStatus()}>{t("agent.state.retry")}</button>
+            </div>
+          </Show>
         </div>
-        <Show when={agentSettings.enabled() && (agentStore.status().state === "missing" || agentStore.status().state === "logged-out")}>
-          <CodexSetupInstructions install={agentStore.status().state === "missing"} />
-        </Show>
-        <Show when={agentSettings.enabled() && !ready() && agentStore.status().state !== "checking"}>
-          <div class="ag-prov-retry">
-            <button type="button" class="btn" onClick={() => void agentStore.refreshStatus()}>{t("agent.state.retry")}</button>
-          </div>
-        </Show>
-      </div>
-      <Row label={t("agent.prefs.model")} help={t("agent.prefs.model.help")}>
-        <ModelSelect value={agentSettings.model()} onChange={(v) => void agentSettings.setModel(v)} label={t("agent.prefs.model")} />
-      </Row>
-      <Row label={t("agent.prefs.effort")} help={t("agent.prefs.effort.help")}>
-        <EffortControl model={chatModel()} value={agentSettings.effort()} onChange={(v) => void agentSettings.setEffort(v)} label={t("agent.prefs.effort")} />
-      </Row>
-      <Row label={t("agent.prefs.learnScripts")} help={t("agent.prefs.learnScripts.help", { name: name() })}>
-        <Switch checked={agentSettings.learnFromScripts()} onChange={(v) => void agentSettings.setLearnFromScripts(v)} label={t("agent.prefs.learnScripts")} />
-      </Row>
-      <Row label={t("agent.prefs.learnStage")} help={t("agent.prefs.learnStage.help", { name: name() })}>
-        <LearnStageSelect label={t("agent.prefs.learnStage")} disabled={!agentSettings.learnFromScripts()} />
-      </Row>
-      <Row label={t("agent.prefs.learnChat")} help={t("agent.prefs.learnChat.help")}>
-        <Switch checked={agentSettings.learnFromChat()} onChange={(v) => void agentSettings.setLearnFromChat(v)} label={t("agent.prefs.learnChat")} />
-      </Row>
-      <Row label={t("agent.prefs.learnModel")} help={t("agent.prefs.learnModel.help")}>
-        <ModelSelect
-          value={agentSettings.learnModel()}
-          onChange={(v) => void agentSettings.setLearnModel(v)}
-          label={t("agent.prefs.learnModel")}
-          sameLabel={t("agent.prefs.learnModel.same")}
-        />
-      </Row>
-      <Row label={t("agent.prefs.learnEffort")}>
-        <EffortControl model={learnModel()} value={agentSettings.learnEffort()} onChange={(v) => void agentSettings.setLearnEffort(v)} label={t("agent.prefs.learnEffort")} />
-      </Row>
-      <Row label={t("agent.prefs.relearn")} help={t("agent.prefs.relearn.help", { name: name() })}>
-        <Show
-          when={agentStore.bootstrap().running}
-          fallback={
-            <button type="button" class="btn" disabled={!agentSettings.enabled() || !ready()} onClick={() => void agentStore.startBootstrap()}>
-              {t("agent.prefs.relearn.start")}
-            </button>
-          }
-        >
+        <Row label={t("agent.prefs.model")} help={t("agent.prefs.model.help")}>
+          <ModelSelect value={agentSettings.model()} onChange={(v) => void agentSettings.setModel(v)} label={t("agent.prefs.model")} />
+        </Row>
+        <Row label={t("agent.prefs.effort")} help={t("agent.prefs.effort.help")}>
+          <EffortControl model={chatModel()} value={agentSettings.effort()} onChange={(v) => void agentSettings.setEffort(v)} label={t("agent.prefs.effort")} />
+        </Row>
+        <Row label={t("agent.prefs.learnScripts")} help={t("agent.prefs.learnScripts.help", { name: name() })}>
+          <Switch checked={agentSettings.learnFromScripts()} onChange={(v) => void agentSettings.setLearnFromScripts(v)} label={t("agent.prefs.learnScripts")} />
+        </Row>
+        <Row label={t("agent.prefs.learnStage")} help={t("agent.prefs.learnStage.help", { name: name() })}>
+          <LearnStageSelect label={t("agent.prefs.learnStage")} disabled={!agentSettings.learnFromScripts()} />
+        </Row>
+        <Row label={t("agent.prefs.learnChat")} help={t("agent.prefs.learnChat.help")}>
+          <Switch checked={agentSettings.learnFromChat()} onChange={(v) => void agentSettings.setLearnFromChat(v)} label={t("agent.prefs.learnChat")} />
+        </Row>
+        <Row label={t("agent.prefs.learnModel")} help={t("agent.prefs.learnModel.help")}>
+          <ModelSelect
+            value={agentSettings.learnModel()}
+            onChange={(v) => void agentSettings.setLearnModel(v)}
+            label={t("agent.prefs.learnModel")}
+            sameLabel={t("agent.prefs.learnModel.same")}
+          />
+        </Row>
+        <Row label={t("agent.prefs.learnEffort")}>
+          <EffortControl model={learnModel()} value={agentSettings.learnEffort()} onChange={(v) => void agentSettings.setLearnEffort(v)} label={t("agent.prefs.learnEffort")} />
+        </Row>
+        <Row label={t("agent.prefs.relearn")} help={t("agent.prefs.relearn.help", { name: name() })}>
+          <Show
+            when={agentStore.bootstrap().running}
+            fallback={
+              <button type="button" class="btn" disabled={!agentSettings.enabled() || !ready()} onClick={() => void agentStore.startBootstrap()}>
+                {t("agent.prefs.relearn.start")}
+              </button>
+            }
+          >
+            <span class="ag-row-btns">
+              <span class="ag-relearn-n">{t("agent.prefs.relearn.running", { done: agentStore.bootstrap().done, total: agentStore.bootstrap().total })}</span>
+              <button type="button" class="btn ghost" onClick={() => agentStore.cancelBootstrap()}>{t("agent.onb.learn.cancel")}</button>
+            </span>
+          </Show>
+        </Row>
+        <Row label={t("agent.prefs.persona")} help={t("agent.prefs.persona.help")}>
+          <button type="button" class="btn" onClick={() => { props.onClose(); agentUi.openOnboarding(agentSettings.onboarded() ? 2 : 0); }}>{t("agent.prefs.persona.edit")}</button>
+        </Row>
+        <Row label={t("agent.prefs.memory")} help={t("agent.prefs.memory.help", { name: name() })}>
           <span class="ag-row-btns">
-            <span class="ag-relearn-n">{t("agent.prefs.relearn.running", { done: agentStore.bootstrap().done, total: agentStore.bootstrap().total })}</span>
-            <button type="button" class="btn ghost" onClick={() => agentStore.cancelBootstrap()}>{t("agent.onb.learn.cancel")}</button>
+            <button type="button" class="btn" onClick={() => { props.onClose(); agentUi.openMemory(); }}>{t("agent.prefs.memory.open")}</button>
+            <button type="button" class="btn ghost" onClick={() => void reset()}>{t("agent.prefs.memory.reset")}</button>
           </span>
-        </Show>
-      </Row>
-      <Row label={t("agent.prefs.persona")} help={t("agent.prefs.persona.help")}>
-        <button type="button" class="btn" onClick={() => { props.onClose(); agentUi.openOnboarding(agentSettings.onboarded() ? 2 : 0); }}>{t("agent.prefs.persona.edit")}</button>
-      </Row>
-      <Row label={t("agent.prefs.memory")} help={t("agent.prefs.memory.help", { name: name() })}>
-        <span class="ag-row-btns">
-          <button type="button" class="btn" onClick={() => { props.onClose(); agentUi.openMemory(); }}>{t("agent.prefs.memory.open")}</button>
-          <button type="button" class="btn ghost" onClick={() => void reset()}>{t("agent.prefs.memory.reset")}</button>
-        </span>
-      </Row>
+        </Row>
+      </Show>
     </>
   );
 }

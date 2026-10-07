@@ -72,7 +72,10 @@ export const agentStore = {
   learning,
   waiting,
   learnedVersion,
-  available: hasCodexHost,
+  /** The host can run the agent at all (desktop with Codex host). */
+  supported: hasCodexHost,
+  /** The agent is offered in the UI: supported and not hidden by the user. */
+  available: () => hasCodexHost() && !agentSettings.hidden(),
   refreshStatus,
   refreshModels,
   /** Clears memory and learned markers; every script may be learned again. */

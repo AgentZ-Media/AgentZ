@@ -47,6 +47,8 @@ export interface ShortcutDef {
   displayKeys?: Accessor<string[]>;
   contexts: readonly ShortcutContext[];
   enabled?: Accessor<boolean>;
+  /** Feature switched off by the user: neither dispatched nor listed. */
+  hidden?: Accessor<boolean>;
   /** Optional: local Lexical/list handlers stay local, but remain documented here. */
   matches?: (event: KeyboardEvent) => boolean;
   run?: (event: KeyboardEvent) => void;
