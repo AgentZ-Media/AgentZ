@@ -1,0 +1,33 @@
+---
+// The ScriptZ page: the working rebuild of the app, switched by step tabs
+// (src/scripts/scriptz-page.ts).
+import Base from "../layouts/Base.astro";
+import "../styles/scriptz.css";
+import LiveApp from "./LiveApp.astro";
+import { catalogs, scriptzPaths, type Language } from "../i18n";
+interface Props { lang: Language }
+const { lang } = Astro.props;
+const t = catalogs[lang];
+const v = t.live;
+---
+<Base lang={lang} title="ScriptZ" description={t.scriptz.lead} paths={scriptzPaths}>
+  <section class="demo" aria-labelledby="scriptz-title">
+    <div class="page-head">
+      <p class="kicker">{t.scriptz.kicker}</p>
+      <h1 id="scriptz-title">{t.scriptz.title}</h1>
+      <p class="lead">{t.scriptz.lead} {v.intro}</p>
+    </div>
+    <div class="demo-bar">
+      <ol class="demo-steps" data-steps>
+        {v.steps.map((s, i) => <li><button type="button" data-goto-step={i} aria-current={i === 0 ? "step" : undefined}><span class="num">{i + 1}</span>{s.label}</button></li>)}
+      </ol>
+      <div class="demo-copy" data-step-copy>
+        {v.steps.map((s, i) => <div class:list={["demo-step", { "is-on": i === 0 }]}><h2>{s.title}</h2><p>{s.text}</p></div>)}
+      </div>
+    </div>
+    <div class="demo-stage" data-stage>
+      <div class="demo-scaler" data-scaler><LiveApp lang={lang} /></div>
+    </div>
+  </section>
+  <script>import "../scripts/scriptz-page";</script>
+</Base>
