@@ -8,7 +8,7 @@
 
 import type { LengthRange } from "../../lib/lengthGoal";
 import { wordCount } from "../../lib/lex";
-import { MIN_RUNTIME_SEC, SECONDS_PER_DIRECTION_BLOCK } from "../../lib/runtime";
+import { isActionBeat, runtimeSeconds } from "../../lib/runtime";
 import type { TimelineSegment, TimingBlock } from "../../lib/timing";
 
 /** The three hook marks after the first line of dialog, by priority:
@@ -32,7 +32,7 @@ export interface LiveStats {
   words: number;
   /** Words in dialog blocks only. */
   dialogWords: number;
-  /** Number of action blocks (each one is a 2 s beat). */
+  /** Number of action blocks with text (each one is a 2 s beat). */
   actionBlocks: number;
   /** How often the speaker changes between consecutive dialog lines. */
   speakerChanges: number;
@@ -66,7 +66,7 @@ export function liveStats(blocks: TimingBlock[], wpm: number): LiveStats {
       continue;
     }
     if (b.kind === "action") {
-      actionBlocks += 1;
+      if (isActionBeat(b.text)) actionBlocks += 1;
       continue;
     }
     if (b.kind === "paren") continue;
@@ -89,9 +89,7 @@ export function liveStats(blocks: TimingBlock[], wpm: number): LiveStats {
     })
     .sort((a, b) => b.words - a.words || order.indexOf(a.name) - order.indexOf(b.name));
 
-  const safeWpm = Math.max(1, wpm);
-  const rawSec = (dialogWords / safeWpm) * 60 + actionBlocks * SECONDS_PER_DIRECTION_BLOCK;
-  const runtimeSec = Math.max(MIN_RUNTIME_SEC, Math.round(rawSec));
+  const runtimeSec = runtimeSeconds({ dialogWords, directionBlocks: actionBlocks }, wpm);
 
   return { words, dialogWords, actionBlocks, speakerChanges, runtimeSec, cast };
 }
