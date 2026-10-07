@@ -628,14 +628,15 @@ export async function purgeScript(id: string): Promise<void> {
  *  `all: true` recounts every script (lib/runtimeBackfill.ts does that
  *  once when the formula in lib/runtime.ts changes). Only these two
  *  derived columns are written, and only where the value differs; content
- *  and `updated_at` stay untouched.
+ *  and `updated_at` stay untouched. The change feed records rewritten
+ *  rows like any column change, so a signed-in device uploads them once.
  *
  *  Idempotent: scripts that have already been saved no longer pass
  *  the WHERE filter and are not touched.
- *  Read errors on individual content_json blobs don't kill the entire
- *  backfill - the affected row keeps its values and the
- *  next real save normalizes it. */
-export async function backfillRuntimeStats(opts: { all?: boolean } = {}): Promise<void> {
+ *  Errors on individual rows don't kill the entire backfill - the affected
+ *  row keeps its values and the result is false, so the caller can retry
+ *  on a later boot. */
+export async function backfillRuntimeStats(opts: { all?: boolean } = {}): Promise<boolean> {
   const db = await getDb();
   const rows = await db.select<{ id: string; content_json: string; dialog_word_count: number; direction_block_count: number }[]>(
     opts.all
@@ -644,6 +645,7 @@ export async function backfillRuntimeStats(opts: { all?: boolean } = {}): Promis
          WHERE dialog_word_count = $1 OR direction_block_count = $1`,
     opts.all ? [] : [RUNTIME_STATS_SENTINEL],
   );
+  let complete = true;
   for (const r of rows) {
     try {
       const stats = runtimeStatsFromContent(r.content_json);
@@ -655,9 +657,11 @@ export async function backfillRuntimeStats(opts: { all?: boolean } = {}): Promis
         [stats.dialogWords, stats.directionBlocks, r.id],
       );
     } catch (err) {
+      complete = false;
       console.warn("[scriptz] runtime-stats backfill failed for", r.id, err);
     }
   }
+  return complete;
 }
 
 export async function emptyTrash(): Promise<void> {
