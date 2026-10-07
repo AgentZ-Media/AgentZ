@@ -468,6 +468,7 @@ export function ScriptsPage() {
                 inboxIdeas={inboxIdeas()}
                 ideasClosed={data.ideasClosed()}
                 ideasCanCollapse={!needle()}
+                ideasFiltered={!!needle()}
                 peekId={peekStore.scriptId()}
                 onNewScript={newScriptHere}
                 onToggleSelect={toggleSelect}
