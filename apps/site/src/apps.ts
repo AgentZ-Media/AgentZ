@@ -20,6 +20,9 @@ export const apps: readonly SuiteApp[] = [
   /* @new-app:entries:end */
 ];
 
+/** URL scheme the desktop app registers; the app sign-in page returns through it. */
+export const appScheme = (id: string) => `agentz-${id}`;
+
 export function appLinks(id: string) {
   const release = `https://github.com/AgentZ-Media/AgentZ-Suite/releases/download/${id}-latest`;
   return {

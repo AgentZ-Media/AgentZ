@@ -9,6 +9,9 @@ fn main() {
         "codex_start",
         "codex_send",
         "codex_stop",
+        "secret_get",
+        "secret_set",
+        "secret_delete",
     ])
     .build();
 }

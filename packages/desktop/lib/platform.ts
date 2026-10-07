@@ -3,6 +3,8 @@ import { open as openDialog, save } from "@tauri-apps/plugin-dialog";
 import { mkdir, readFile, writeFile } from "@tauri-apps/plugin-fs";
 import { openUrl, revealItemInDir } from "@tauri-apps/plugin-opener";
 import { getVersion } from "@tauri-apps/api/app";
+import { invoke } from "@tauri-apps/api/core";
+import { getCurrent as getCurrentDeepLinks, onOpenUrl } from "@tauri-apps/plugin-deep-link";
 import { platform as osPlatform } from "@tauri-apps/plugin-os";
 import {
   STABLE_BUILD,
@@ -143,6 +145,19 @@ export function createDesktopPlatform(id: string): PlatformAdapter {
     openFile: desktopOpenFile,
     pickDirectory: desktopPickDirectory,
     writeFileTo: desktopWriteFileTo,
+    // Keychain (macOS) / Credential Manager (Windows), see crates/agentz-desktop/src/secrets.rs.
+    secrets: {
+      get: (key) => invoke<string | null>("plugin:agentz-desktop|secret_get", { key }),
+      set: (key, value) => invoke("plugin:agentz-desktop|secret_set", { key, value }),
+      delete: (key) => invoke("plugin:agentz-desktop|secret_delete", { key }),
+    },
+    async onOpenUrl(handler) {
+      const stop = await onOpenUrl(handler);
+      // A URL that launched the app arrives before any listener exists.
+      const initial = await getCurrentDeepLinks().catch(() => null);
+      if (initial?.length) handler(initial);
+      return stop;
+    },
   };
   return tauriAdapter;
 }

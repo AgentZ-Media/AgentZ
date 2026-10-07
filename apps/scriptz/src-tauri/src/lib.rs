@@ -17,6 +17,7 @@ const MIGRATION_012_AGENT_LEARNED_TEXT: &str =
     include_str!("../migrations/012_agent_learned_text.sql");
 const MIGRATION_013_LARGE_LIBRARY_INDEXES: &str =
     include_str!("../migrations/013_large_library_indexes.sql");
+const MIGRATION_014_CLOUD_SYNC: &str = include_str!("../migrations/014_cloud_sync.sql");
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
@@ -97,6 +98,12 @@ pub fn run() {
             version: 13,
             description: "indexes for large libraries, search index map",
             sql: MIGRATION_013_LARGE_LIBRARY_INDEXES,
+            kind: MigrationKind::Up,
+        },
+        Migration {
+            version: 14,
+            description: "cloud sync bookkeeping and other devices' word counts",
+            sql: MIGRATION_014_CLOUD_SYNC,
             kind: MigrationKind::Up,
         },
     ];

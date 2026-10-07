@@ -3,6 +3,7 @@
 mod codex;
 mod lifecycle;
 mod menu;
+mod secrets;
 mod updates;
 
 use tauri::{plugin::TauriPlugin, Manager, Wry};
@@ -23,9 +24,14 @@ pub fn builder(config: Config) -> tauri::Builder<Wry> {
         .manage(lifecycle::Lifecycle::default())
         .manage(updates::HostId(config.id))
         // Must be first: a second process must never open the app database.
+        // With its deep-link feature it also forwards `agentz-<id>://` URLs
+        // that start a second process (Windows) to the running app.
         .plugin(tauri_plugin_single_instance::init(|app, _, _| {
             lifecycle::show_main(app);
         }))
+        // URL scheme `agentz-<id>` (tauri.conf.json): the website returns the
+        // app sign-in through it.
+        .plugin(tauri_plugin_deep_link::init())
         .plugin(tauri_plugin_window_state::Builder::default().build())
         .plugin(tauri_plugin_os::init())
         .plugin(tauri_plugin_updater::Builder::new().build())
@@ -52,10 +58,22 @@ fn host_plugin() -> TauriPlugin<Wry> {
             codex::codex_locate,
             codex::codex_start,
             codex::codex_send,
-            codex::codex_stop
+            codex::codex_stop,
+            secrets::secret_get,
+            secrets::secret_set,
+            secrets::secret_delete
         ])
         .setup(|app, _| {
             app.manage(codex::Codex::default());
+            // Installers register the scheme; development builds on Windows
+            // and Linux register it at runtime (macOS only via the bundle).
+            #[cfg(all(debug_assertions, any(windows, target_os = "linux")))]
+            {
+                use tauri_plugin_deep_link::DeepLinkExt;
+                if let Err(error) = app.deep_link().register_all() {
+                    eprintln!("could not register URL scheme: {error}");
+                }
+            }
             // Only macOS gets an app menu; Windows keeps a plain window frame.
             #[cfg(target_os = "macos")]
             app.set_menu(menu::build(app, "en")?)?;
