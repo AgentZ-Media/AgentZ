@@ -1,18 +1,25 @@
 # AgentZ Suite website
 
-Static Astro site: German at `/`, English at `/en/`, German legal pages at
-`/impressum/` and `/datenschutz/`, the account at `/konto/` and `/en/account/`.
+Static Astro site: German at `/`, English at `/en/`, the ScriptZ page at
+`/scriptz/` and `/en/scriptz/`, German legal pages at `/impressum/` and
+`/datenschutz/`, the account at `/konto/` and `/en/account/`.
 No tracking, cookies or analytics. Only the account page stores anything or
 talks to a server (see below). Fonts, colors and buttons come from
 `@agentz/design`; Kit and product modules are never imported.
 
-The landing page shows a rebuilt, animated ScriptZ window
-(`src/components/ScriptzWindow.astro`), feature tiles with small looping demos
-(`Features.astro`) and real screenshots (`public/img/shots/<lang>-<view>-<width>.webp`).
-`src/scripts/site.ts` runs on every page: reveal on scroll, the typing demo,
-the copy button and the platform-specific download button. Without JavaScript
-every section shows its final state; reduced motion stops the demo. The demo
-paper uses iA Writer Quattro (SIL OFL, `src/assets/fonts/`).
+Every page is dark and sits on one dot grid: a canvas behind the page
+(`src/scripts/dot-field.ts`), started by `src/scripts/site.ts`, which also
+handles reveal on scroll, the copy button and the platform-specific download
+button. The home page (`src/components/Home.astro`, `src/scripts/home.ts`)
+drives the field itself: it opens with a zoom-out from one giant dot into the
+suite Z, and a yellow dot travels down the page with the scroll position
+(`src/scripts/dot-journey.ts`), from the period of the headline to the period
+of "Punktlandung". The ScriptZ page shows a working rebuild of the app
+(`src/components/LiveApp.astro`, `src/scripts/live.ts`): editable script with
+ScriptZ's smart Enter, live inspector and timeline, Ida, board and export
+dialog. Without JavaScript every page shows its final state with static dots;
+reduced motion skips the intro and the travelling dot. The demo paper uses
+iA Writer Quattro (SIL OFL, `src/assets/fonts/`).
 
 The footer carries the official EU icon for labelling AI-generated content
 (`src/components/AiLabel.astro`, paths taken unchanged from the European
