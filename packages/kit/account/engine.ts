@@ -198,6 +198,23 @@ export function createSyncEngine(options: EngineOptions) {
     }
   }
 
+  // ---- Public counters ----
+
+  let reported = "";
+  /** Sends the adapter's totals when they changed; never fails a cycle. */
+  async function report(): Promise<void> {
+    if (!adapter.stats) return;
+    try {
+      const counts = await adapter.stats();
+      const key = canonicalJson(counts);
+      if (key === reported) return;
+      await transport.report(app, counts);
+      reported = key;
+    } catch (error) {
+      console.warn("[account] stats report failed", error);
+    }
+  }
+
   // ---- Download ----
 
   /** Applies cloud records in dependency order; returns those still waiting for a parent. */
@@ -312,6 +329,7 @@ export function createSyncEngine(options: EngineOptions) {
         if (copied) await push();
         state.lastSyncedAt = Date.now();
         await save();
+        await report();
       } catch (error) {
         if (errorCode(error) === "UNAUTHENTICATED") throw new SessionExpiredError();
         throw error;
