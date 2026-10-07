@@ -6,13 +6,13 @@ import {
 } from "./_generated/server";
 import { blockFor, devRaiseDenied, markOf, raisedMark, type ClientInfo, type SyncBlock } from "./compat";
 import {
-  BATCH_LIMIT, INLINE_LIMIT, PULL_BYTES, RECORD_LIMIT, SYNC_APPS, appArg, type SyncApp,
+  BATCH_LIMIT, INLINE_LIMIT, MIN_FORMAT, PULL_BYTES, RECORD_LIMIT, SYNC_APPS, appArg, type SyncApp,
 } from "./syncApps";
 
-// Encrypted record sync for the desktop apps. Devices push changed records
-// with the revision they last saw (baseRev) and pull everything after their
-// cursor. The server never decrypts anything; it only orders writes and
-// detects when a device wrote on top of an outdated revision.
+// Record sync for the desktop apps. Devices push changed records with the
+// revision they last saw (baseRev) and pull everything after their cursor.
+// The server orders writes and detects when a device wrote on top of an
+// outdated revision; it never interprets record contents.
 //
 // Every call carries the device's version and sync format (`client`). A
 // device that cannot read the account's data or that the policy excludes
@@ -27,7 +27,7 @@ async function requireUser(ctx: Ctx): Promise<string> {
   return identity.subject;
 }
 
-const keyOf = (ctx: Ctx, userId: string) =>
+const legacyKeyOf = (ctx: Ctx, userId: string) =>
   ctx.db.query("sync_keys").withIndex("by_user", (q) => q.eq("userId", userId)).unique();
 
 const headOf = (ctx: Ctx, userId: string, app: SyncApp) =>
@@ -49,7 +49,7 @@ export const clientArg = v.optional(v.object({
 
 async function blockOf(ctx: Ctx, userId: string, app: SyncApp, client: ClientInfo | undefined): Promise<SyncBlock | null> {
   const [head, policy] = await Promise.all([headOf(ctx, userId, app), policyOf(ctx, app)]);
-  return blockFor(client, markOf(head), policy);
+  return blockFor(client, markOf(head), policy, MIN_FORMAT[app]);
 }
 
 /** Throws CLIENT_OUTDATED (with the reason) unless this device may sync. */
@@ -76,16 +76,16 @@ function wire(record: RecordDoc, url?: string) {
 }
 
 /**
- * Current revision and key of the account, and whether this device may sync;
- * devices subscribe to this. Never throws for an outdated device, so the
+ * Current revision of the account, and whether this device may sync; devices
+ * subscribe to this. Never throws for an outdated device, so the
  * subscription keeps running and lifts the pause when the policy changes.
  */
 export const head = query({
   args: { app: appArg, client: clientArg },
   handler: async (ctx, { app, client }) => {
     const userId = await requireUser(ctx);
-    const [head, key, block] = await Promise.all([headOf(ctx, userId, app), keyOf(ctx, userId), blockOf(ctx, userId, app, client)]);
-    return { rev: head?.rev ?? 0, keyId: key?.keyId ?? null, resetting: key?.resetting ?? false, block };
+    const [head, block] = await Promise.all([headOf(ctx, userId, app), blockOf(ctx, userId, app, client)]);
+    return { rev: head?.rev ?? 0, block };
   },
 });
 
@@ -139,19 +139,30 @@ const change = v.object({
  * deleted record is no conflict.
  */
 export const push = mutation({
-  args: { app: appArg, client: clientArg, keyId: v.string(), deviceId: v.string(), changes: v.array(change) },
-  handler: async (ctx, { app, client: reported, keyId, deviceId, changes }) => {
+  args: {
+    app: appArg, client: clientArg, deviceId: v.string(), changes: v.array(change),
+    /** Sent only by end-to-end encrypted versions; MIN_FORMAT turns them away. */
+    keyId: v.optional(v.string()),
+  },
+  handler: async (ctx, { app, client: reported, deviceId, changes }) => {
     const userId = await requireUser(ctx);
     if (changes.length > BATCH_LIMIT) throw new ConvexError({ code: "BATCH_TOO_LARGE" });
     const client = await requireCompatible(ctx, userId, app, reported);
-    const key = await keyOf(ctx, userId);
-    if (!key || key.resetting) throw new ConvexError({ code: "NO_KEY" });
-    if (key.keyId !== keyId) throw new ConvexError({ code: "KEY_CHANGED" });
-
     const head = await headOf(ctx, userId, app);
     const mark = markOf(head);
-    if (devRaiseDenied(client, mark, process.env.ALLOW_DEV_FORMAT_RAISE === "1")) {
-      throw new ConvexError({ code: "DEV_FORMAT_RAISE", format: mark.format, writes: client.writes });
+    // A current app took over: end-to-end encrypted data of older app
+    // versions (formats below MIN_FORMAT) is unreadable for it and goes away.
+    const legacyKey = await legacyKeyOf(ctx, userId);
+    const drop = new Set<SyncApp>(legacyKey ? Object.keys(SYNC_APPS) as SyncApp[] : []);
+    if (mark.format > 0 && mark.format < MIN_FORMAT[app]) drop.add(app);
+    if (legacyKey) await ctx.db.delete(legacyKey._id);
+    for (const name of drop) {
+      await ctx.scheduler.runAfter(0, internal.sync.dropEncrypted, { userId, app: name, cursor: null });
+    }
+    // Formats below MIN_FORMAT are paused everywhere: moving past them is no raise.
+    const served = { ...mark, format: Math.max(mark.format, MIN_FORMAT[app]) };
+    if (devRaiseDenied(client, served, process.env.ALLOW_DEV_FORMAT_RAISE === "1")) {
+      throw new ConvexError({ code: "DEV_FORMAT_RAISE", format: served.format, writes: client.writes });
     }
     let rev = head?.rev ?? 0;
     /** Content in this client's format was written (deletions carry none). */
@@ -187,7 +198,7 @@ export const push = mutation({
       if (!item.deleted) wroteContent = true;
       const fields = {
         rev, deleted: item.deleted, data: item.data, blob: item.blob, size: item.deleted ? 0 : item.size,
-        keyId, deviceId, updatedAt: now,
+        deviceId, updatedAt: now,
       };
       if (existing) {
         if (existing.blob && existing.blob !== item.blob) await ctx.storage.delete(existing.blob);
@@ -212,15 +223,32 @@ export const push = mutation({
 
 const PURGE_BATCH = 200;
 
+/** Deletes end-to-end encrypted records of older app versions, page by page. */
+export const dropEncrypted = internalMutation({
+  args: { userId: v.string(), app: appArg, cursor: v.union(v.string(), v.null()) },
+  handler: async (ctx, { userId, app, cursor }) => {
+    const page = await recordsOf(ctx, app)
+      .withIndex("by_user_rev", (q) => q.eq("userId", userId))
+      .paginate({ numItems: PURGE_BATCH, cursor });
+    for (const record of page.page) {
+      if (record.keyId === undefined) continue;
+      if (record.blob) await ctx.storage.delete(record.blob);
+      await ctx.db.delete(record._id);
+    }
+    if (!page.isDone) {
+      await ctx.scheduler.runAfter(0, internal.sync.dropEncrypted, { userId, app, cursor: page.continueCursor });
+    }
+  },
+});
+
 /**
- * Removes a user's cloud data in batches: every app's records and files, the
- * revision counters, the reported totals and, unless `keepKey`, the key itself. Used for a key
- * reset (keepKey: the new key stays, `resetting` is cleared at the end) and
- * when the account is deleted.
+ * Removes a user's cloud data in batches when the account is deleted: every
+ * app's records and files, the revision counters, the reported totals and
+ * the sign-in codes.
  */
 export const purge = internalMutation({
-  args: { userId: v.string(), keepKey: v.boolean() },
-  handler: async (ctx, { userId, keepKey }) => {
+  args: { userId: v.string() },
+  handler: async (ctx, { userId }) => {
     for (const app of Object.keys(SYNC_APPS) as SyncApp[]) {
       const batch = await recordsOf(ctx, app)
         .withIndex("by_user_rev", (q) => q.eq("userId", userId))
@@ -230,7 +258,7 @@ export const purge = internalMutation({
           if (record.blob) await ctx.storage.delete(record.blob);
           await ctx.db.delete(record._id);
         }
-        await ctx.scheduler.runAfter(0, internal.sync.purge, { userId, keepKey });
+        await ctx.scheduler.runAfter(0, internal.sync.purge, { userId });
         return;
       }
     }
@@ -238,12 +266,9 @@ export const purge = internalMutation({
     for (const head of heads) await ctx.db.delete(head._id);
     const stats = await ctx.db.query("sync_stats").withIndex("by_user_app", (q) => q.eq("userId", userId)).collect();
     for (const row of stats) await ctx.db.delete(row._id);
-    const key = await keyOf(ctx, userId);
-    if (key && keepKey) await ctx.db.patch(key._id, { resetting: false, updatedAt: Date.now() });
-    else if (key) await ctx.db.delete(key._id);
-    if (!keepKey) {
-      const links = await ctx.db.query("app_links").filter((q) => q.eq(q.field("userId"), userId)).collect();
-      for (const link of links) await ctx.db.delete(link._id);
-    }
+    const legacyKey = await legacyKeyOf(ctx, userId);
+    if (legacyKey) await ctx.db.delete(legacyKey._id);
+    const links = await ctx.db.query("app_links").filter((q) => q.eq(q.field("userId"), userId)).collect();
+    for (const link of links) await ctx.db.delete(link._id);
   },
 });

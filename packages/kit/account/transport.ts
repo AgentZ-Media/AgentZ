@@ -3,8 +3,8 @@ import { makeFunctionReference } from "convex/server";
 import type { LatestReleases } from "../platform";
 import type { CloudConfig, SyncBlock, SyncClient } from "./types";
 
-// The Convex client for keys and records. Function names mirror
-// apps/site/convex (keys.ts, sync.ts, stats.ts). Loaded only once someone signs in.
+// The Convex client for records. Function names mirror apps/site/convex
+// (sync.ts, stats.ts, releases.ts). Loaded only once someone signs in.
 // Every sync call carries the device's version and format (`client`); the
 // backend answers CLIENT_OUTDATED when this device has to update first.
 
@@ -14,7 +14,8 @@ export interface WireRecord {
   deleted: boolean;
   data?: ArrayBuffer;
   blobUrl?: string;
-  keyId: string;
+  /** Set only on end-to-end encrypted records of older app versions; devices skip them. */
+  keyId?: string;
   deviceId: string;
 }
 
@@ -33,27 +34,20 @@ export type PushResult =
 
 export interface Head {
   rev: number;
-  keyId: string | null;
-  resetting: boolean;
   /** Set while this device may not sync; null otherwise. */
   block: SyncBlock | null;
 }
-export interface WrappedKey { keyId: string; wrapped: ArrayBuffer; resetting: boolean }
 
 export interface CloudTransport {
   head(app: string, client: SyncClient): Promise<Head>;
   watchHead(app: string, client: SyncClient, onHead: (head: Head) => void, onError: (error: Error) => void): () => void;
   pull(app: string, client: SyncClient, afterRev: number): Promise<{ records: WireRecord[]; headRev: number; more: boolean }>;
-  push(app: string, client: SyncClient, keyId: string, deviceId: string, changes: WireChange[]): Promise<{ results: PushResult[]; headRev: number }>;
+  push(app: string, client: SyncClient, deviceId: string, changes: WireChange[]): Promise<{ results: PushResult[]; headRev: number }>;
   upload(app: string, client: SyncClient, bytes: Uint8Array): Promise<string>;
   /** Newest published versions of the app; optional for test transports. */
   watchReleases?(app: string, onReleases: (latest: LatestReleases) => void): () => void;
   report(app: string, client: SyncClient, counts: Record<string, number>): Promise<void>;
   download(url: string): Promise<Uint8Array>;
-  getKey(): Promise<WrappedKey | null>;
-  createKey(keyId: string, wrapped: ArrayBuffer): Promise<void>;
-  rewrapKey(keyId: string, wrapped: ArrayBuffer): Promise<void>;
-  resetKey(keyId: string, wrapped: ArrayBuffer): Promise<void>;
   connected(): boolean;
   close(): void;
 }
@@ -62,13 +56,9 @@ type Client = { client: SyncClient };
 const ref = {
   head: makeFunctionReference<"query", { app: string } & Client, Head>("sync:head"),
   pull: makeFunctionReference<"query", { app: string; afterRev: number } & Client, { records: WireRecord[]; headRev: number; more: boolean }>("sync:pull"),
-  push: makeFunctionReference<"mutation", { app: string; keyId: string; deviceId: string; changes: WireChange[] } & Client, { results: PushResult[]; headRev: number }>("sync:push"),
+  push: makeFunctionReference<"mutation", { app: string; deviceId: string; changes: WireChange[] } & Client, { results: PushResult[]; headRev: number }>("sync:push"),
   uploadUrl: makeFunctionReference<"mutation", { app: string } & Client, string>("sync:uploadUrl"),
   report: makeFunctionReference<"mutation", { app: string; counts: Record<string, number> } & Client, null>("stats:report"),
-  getKey: makeFunctionReference<"query", Record<string, never>, WrappedKey | null>("keys:get"),
-  createKey: makeFunctionReference<"mutation", { keyId: string; wrapped: ArrayBuffer }, null>("keys:create"),
-  rewrapKey: makeFunctionReference<"mutation", { keyId: string; wrapped: ArrayBuffer }, null>("keys:rewrap"),
-  resetKey: makeFunctionReference<"mutation", { keyId: string; wrapped: ArrayBuffer }, null>("keys:reset"),
   releases: makeFunctionReference<"query", { app: string }, LatestReleases>("releases:latest"),
 };
 
@@ -104,7 +94,7 @@ export function createConvexTransport(cloud: CloudConfig, sessionToken: string, 
       return () => unsubscribe();
     },
     pull: (app, device, afterRev) => client.query(ref.pull, { app, client: wireClient(device), afterRev }),
-    push: (app, device, keyId, deviceId, changes) => client.mutation(ref.push, { app, client: wireClient(device), keyId, deviceId, changes }),
+    push: (app, device, deviceId, changes) => client.mutation(ref.push, { app, client: wireClient(device), deviceId, changes }),
     async upload(app, device, bytes) {
       const url = await client.mutation(ref.uploadUrl, { app, client: wireClient(device) });
       const response = await fetch(url, { method: "POST", headers: { "Content-Type": "application/octet-stream" }, body: bytes.slice().buffer as ArrayBuffer });
@@ -118,10 +108,6 @@ export function createConvexTransport(cloud: CloudConfig, sessionToken: string, 
       if (!response.ok) throw new Error(`download failed (${response.status})`);
       return new Uint8Array(await response.arrayBuffer());
     },
-    getKey: () => client.query(ref.getKey, {}),
-    createKey: async (keyId, wrapped) => { await client.mutation(ref.createKey, { keyId, wrapped }); },
-    rewrapKey: async (keyId, wrapped) => { await client.mutation(ref.rewrapKey, { keyId, wrapped }); },
-    resetKey: async (keyId, wrapped) => { await client.mutation(ref.resetKey, { keyId, wrapped }); },
     connected: () => client.connectionState().isWebSocketConnected,
     close: () => { void client.close(); },
   };

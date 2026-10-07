@@ -1,5 +1,5 @@
 //! Small secrets in the operating system's credential store (macOS Keychain,
-//! Windows Credential Manager): the account session and the sync data key.
+//! Windows Credential Manager), such as the account session.
 //! Entries belong to the app's bundle identifier, so the development build
 //! and the installed app share them, like they share the database.
 

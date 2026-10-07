@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import { fileURLToPath } from "node:url";
-import { checkSyncFormats, formatProblems, latestStableTag } from "./sync-format.mjs";
+import { checkSyncFormats, formatProblems, latestStableTag, releasedFormat } from "./sync-format.mjs";
 
 describe("latestStableTag", () => {
   it("picks the newest stable release of the app by SemVer", () => {
@@ -37,8 +37,20 @@ describe("formatProblems", () => {
 });
 
 describe("releases without a format file", () => {
-  it("count as format 1, so writing format 2 still needs a reading release first", () => {
-    assert.match(formatProblems({ app: "scriptz", current: { reads: 2, writes: 2 }, released: { reads: 1, writes: 1 }, tag: "scriptz-v0.11.0" })[0], /reads only up to 1/);
+  it("count as format 1 when they sync, so writing format 2 still needs a reading release first", () => {
+    const released = releasedFormat({ formatText: null, hasSync: true });
+    assert.deepEqual(released, { reads: 1, writes: 1 });
+    assert.match(formatProblems({ app: "scriptz", current: { reads: 2, writes: 2 }, released, tag: "scriptz-v0.11.0" })[0], /reads only up to 1/);
+  });
+
+  it("protect nothing when they do not sync at all", () => {
+    const released = releasedFormat({ formatText: null, hasSync: false });
+    assert.equal(released, null);
+    assert.deepEqual(formatProblems({ app: "scriptz", current: { reads: 2, writes: 2 }, released, tag: "scriptz-v0.11.0" }), []);
+  });
+
+  it("use the release's format file when there is one", () => {
+    assert.deepEqual(releasedFormat({ formatText: '{"reads":2,"writes":2}', hasSync: true }), { reads: 2, writes: 2 });
   });
 });
 

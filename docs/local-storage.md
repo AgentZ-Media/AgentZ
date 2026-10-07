@@ -2,7 +2,7 @@
 
 Die App arbeitet immer mit ihrer lokalen SQLite-Datenbank. Die hier
 beschriebene Änderungsverfolgung ist die lokale Grundlage der
-Cloud-Synchronisierung; Konto, Verschlüsselung und Abgleich beschreibt
+Cloud-Synchronisierung; Konto und Abgleich beschreibt
 [`cloud-sync.md`](cloud-sync.md). Ohne Anmeldung gibt es keine Uploads.
 
 ## Schnittstellen

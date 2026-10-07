@@ -1,8 +1,8 @@
 import { flushAll } from "../lib";
 import type { KvStore } from "../platform";
 import { bookKey, DELETED, writeSyncState, type BookEntry, type ParkedRecord, type SyncBook, type SyncState } from "./book";
-import { canonicalJson, sha256Base64Url, toArrayBuffer, type Envelope, type RecordCipher } from "./crypto";
 import { blockOf, ClientOutdatedError, errorCode, SessionExpiredError } from "./http";
+import { canonicalJson, decodeRecord, encodeRecord, recordIdOf, sha256Base64Url, toArrayBuffer, type Envelope } from "./records";
 import type { CloudTransport, PushResult, WireChange, WireRecord } from "./transport";
 import type { RemoteChange, SyncAdapter, SyncChange, SyncClient } from "./types";
 
@@ -32,7 +32,6 @@ export const INLINE_LIMIT = 96 * 1024;
 export interface EngineOptions {
   app: string;
   adapter: SyncAdapter;
-  cipher: RecordCipher;
   transport: CloudTransport;
   book: SyncBook;
   kv: KvStore;
@@ -74,7 +73,7 @@ const withExtra = (record: unknown, extra: Record<string, unknown> | null | unde
   extra && isPlainObject(record) ? { ...extra, ...record } : record;
 
 export function createSyncEngine(options: EngineOptions) {
-  const { app, adapter, cipher, transport, book, kv, state, client } = options;
+  const { app, adapter, transport, book, kv, state, client } = options;
   const order = new Map<string, number>([[SETTINGS_ENTITY, -1], ...adapter.entities.map((entity, index) => [entity, index] as const)]);
   const settingKeys = new Set(adapter.settings?.keys ?? []);
   const fields = new Map<string, Set<string>>([
@@ -125,7 +124,7 @@ export function createSyncEngine(options: EngineOptions) {
       out.push({
         entity: change.entity, id: change.id, envelope, hash, extra,
         // Empty after the cloud copy was replaced (book.resetForNewCloud).
-        remoteId: entry?.remoteId || await cipher.recordId(change.entity, change.id),
+        remoteId: entry?.remoteId || recordIdOf(change.entity, change.id),
         baseRev: entry?.rev ?? 0,
       });
     }
@@ -134,12 +133,12 @@ export function createSyncEngine(options: EngineOptions) {
 
   async function toWire(candidate: Candidate): Promise<WireChange> {
     if (!candidate.envelope) return { recordId: candidate.remoteId, baseRev: candidate.baseRev, deleted: true, size: 0 };
-    const sealed = await cipher.encrypt(candidate.remoteId, candidate.envelope);
-    if (sealed.length <= INLINE_LIMIT) {
-      return { recordId: candidate.remoteId, baseRev: candidate.baseRev, deleted: false, data: toArrayBuffer(sealed), size: sealed.length };
+    const bytes = await encodeRecord(candidate.envelope);
+    if (bytes.length <= INLINE_LIMIT) {
+      return { recordId: candidate.remoteId, baseRev: candidate.baseRev, deleted: false, data: toArrayBuffer(bytes), size: bytes.length };
     }
-    const blob = await transport.upload(app, client, sealed);
-    return { recordId: candidate.remoteId, baseRev: candidate.baseRev, deleted: false, blob, size: sealed.length };
+    const blob = await transport.upload(app, client, bytes);
+    return { recordId: candidate.remoteId, baseRev: candidate.baseRev, deleted: false, blob, size: bytes.length };
   }
 
   async function decode(record: WireRecord, known?: BookEntry): Promise<Decoded | null> {
@@ -147,9 +146,9 @@ export function createSyncEngine(options: EngineOptions) {
       if (!known) return null;
       return { entity: known.entity, id: known.id, record: null, remoteId: record.recordId, rev: record.rev, hash: DELETED };
     }
-    const sealed = record.data ? new Uint8Array(record.data) : record.blobUrl ? await transport.download(record.blobUrl) : null;
-    if (!sealed) return null;
-    const envelope = await cipher.decrypt(record.recordId, sealed);
+    const bytes = record.data ? new Uint8Array(record.data) : record.blobUrl ? await transport.download(record.blobUrl) : null;
+    if (!bytes) return null;
+    const envelope = await decodeRecord(bytes);
     return { entity: envelope.entity, id: envelope.id, record: envelope.record, remoteId: record.recordId, rev: record.rev, hash: await hashOf(envelope) };
   }
 
@@ -169,16 +168,19 @@ export function createSyncEngine(options: EngineOptions) {
         wires.push(wire);
         i += 1;
       }
-      const { results } = await transport.push(app, client, cipher.keyId, state.deviceId, wires);
+      const { results } = await transport.push(app, client, state.deviceId, wires);
       const done: BookEntry[] = [];
       const byId = new Map(results.map((result) => [result.recordId, result]));
       for (const candidate of batch) {
         const result = byId.get(candidate.remoteId);
         if (!result) continue;
         if (result.status === "ok" && candidate.parked) {
-          // Still unknown to this version: it stays parked, now under the current key.
-          await book.park([{ ...candidate.parked, remoteId: candidate.remoteId, rev: result.rev, upload: false }]);
+          // Still unknown to this version: it stays parked, now as the cloud's
+          // current version. The old entry goes first: its record ID may be
+          // the same (moved to another account) or an outdated one (records
+          // of end-to-end encrypted versions).
           await book.unpark([candidate.parked.remoteId]);
+          await book.park([{ ...candidate.parked, remoteId: candidate.remoteId, rev: result.rev, upload: false }]);
         } else if (result.status === "ok") {
           done.push({ entity: candidate.entity, id: candidate.id, remoteId: candidate.remoteId, rev: result.rev, hash: candidate.hash, extra: candidate.extra });
         } else {
@@ -199,7 +201,7 @@ export function createSyncEngine(options: EngineOptions) {
       return null;
     }
     const current = result.current;
-    // The cloud lost the record (key reset) or deleted it: the local edit wins.
+    // The cloud lost the record or deleted it: the local edit wins.
     if (!current || current.deleted) {
       if (!candidate.envelope) {
         await book.put([{ entity: candidate.entity, id: candidate.id, remoteId: candidate.remoteId, rev: result.rev, hash: DELETED }]);
@@ -229,7 +231,7 @@ export function createSyncEngine(options: EngineOptions) {
     options.onConflictCopy?.(entity);
   }
 
-  /** Parked records whose cloud copy was replaced go up again under the current key. */
+  /** Parked records whose cloud copy was replaced go up again. */
   async function uploadParked(): Promise<void> {
     const pending = (await book.parked()).filter((record) => record.upload);
     if (pending.length === 0) return;
@@ -238,7 +240,7 @@ export function createSyncEngine(options: EngineOptions) {
       const envelope: Envelope = { entity: record.entity, id: record.id, record: record.record };
       candidates.push({
         entity: record.entity, id: record.id, envelope, hash: await hashOf(envelope), extra: null, parked: record,
-        remoteId: await cipher.recordId(record.entity, record.id), baseRev: 0,
+        remoteId: recordIdOf(record.entity, record.id), baseRev: 0,
       });
     }
     await upload(candidates);
@@ -414,15 +416,17 @@ export function createSyncEngine(options: EngineOptions) {
     for (;;) {
       const page = await transport.pull(app, client, fetched);
       if (page.records.length === 0) break;
-      const deletedIds = page.records.filter((record) => record.deleted).map((record) => record.recordId);
+      // End-to-end encrypted records of older app versions are unreadable;
+      // the backend deletes them (sync.dropEncrypted).
+      const readable = page.records.filter((record) => !record.keyId);
+      const deletedIds = readable.filter((record) => record.deleted).map((record) => record.recordId);
       const knownByRemote = await book.byRemoteIds(deletedIds);
       // A newer version of a parked record replaces it below (or applies it,
       // if this version knows it now); a deletion removes it for good.
-      await book.unpark(page.records.map((record) => record.recordId));
+      await book.unpark(readable.map((record) => record.recordId));
       const decoded: Decoded[] = [];
       const parked: ParkedRecord[] = [];
-      for (const record of page.records) {
-        if (record.keyId !== cipher.keyId) continue;
+      for (const record of readable) {
         const item = await decode(record, knownByRemote.get(record.recordId));
         if (!item) continue;
         // Written by a newer version: kept, unapplied and unbooked, until an update knows it.

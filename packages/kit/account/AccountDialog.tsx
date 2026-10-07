@@ -1,15 +1,13 @@
 import { Match, Show, Switch, createEffect, createSignal, on } from "solid-js";
 import { t, tPlural } from "../i18n";
 import { pushToast } from "../stores/toasts";
-import { confirmDialog, DialogFrame, Icon } from "../ui";
-import { getPlatformAdapter } from "../platform";
+import { DialogFrame, Icon } from "../ui";
 import { account } from "./account";
 import { syncUpdateState } from "./updateAction";
 
 /**
- * Dialogs of the account flow: waiting for the browser sign-in, the recovery
- * key (create, rotate, reset), unlocking a new device, moving local data
- * to another account and the update this version needs to keep syncing.
+ * Dialogs of the account flow: waiting for the browser sign-in, moving local
+ * data to another account and the update this version needs to keep syncing.
  * Rendered once by the SuiteShell.
  */
 export function AccountDialog(props: { appName: string }) {
@@ -17,8 +15,6 @@ export function AccountDialog(props: { appName: string }) {
   const label = () => {
     switch (kind()) {
       case "signIn": return t("account.dlg.signIn.title");
-      case "createKey": return t("account.dlg.key.newTitle");
-      case "enterKey": return t("account.dlg.unlock.title");
       case "merge": return t("account.dlg.merge.title");
       case "updateRequired": return t("account.update.title");
       default: return "";
@@ -34,8 +30,6 @@ export function AccountDialog(props: { appName: string }) {
       class="acc-dlg" closeOnBackdrop={false}>
       <Switch>
         <Match when={kind() === "signIn"}><SignInBody appName={props.appName} /></Match>
-        <Match when={kind() === "createKey"}><RecoveryKeyBody /></Match>
-        <Match when={kind() === "enterKey"}><UnlockBody /></Match>
         <Match when={kind() === "merge"}><MergeBody /></Match>
         <Match when={kind() === "updateRequired"}><UpdateRequiredBody appName={props.appName} /></Match>
       </Switch>
@@ -51,7 +45,7 @@ function ErrorLine() {
   );
 }
 
-function Head(props: { icon: "cloud" | "shield" | "users" | "refresh"; title: string }) {
+function Head(props: { icon: "cloud" | "users" | "refresh"; title: string }) {
   return (
     <div class="acc-dlg-head">
       <span class="acc-dlg-icon"><Icon name={props.icon} size={20} /></span>
@@ -87,95 +81,6 @@ function SignInBody(props: { appName: string }) {
         </form>
       </details>
     </div>
-  );
-}
-
-function RecoveryKeyBody() {
-  const [saved, setSaved] = createSignal(false);
-  const [copied, setCopied] = createSignal(false);
-  const [busy, setBusy] = createSignal(false);
-  const reason = () => account.keyReason();
-  const title = () => reason() === "rotate" ? t("account.dlg.key.rotateTitle")
-    : reason() === "reset" ? t("account.dlg.key.resetTitle") : t("account.dlg.key.newTitle");
-  const text = () => reason() === "rotate" ? t("account.dlg.key.rotateText")
-    : reason() === "reset" ? t("account.dlg.key.resetText") : t("account.dlg.key.newText");
-  const copy = async () => {
-    try {
-      await navigator.clipboard.writeText(account.recoveryText() ?? "");
-      setCopied(true);
-      setTimeout(() => setCopied(false), 1800);
-    } catch { /* The key stays selectable. */ }
-  };
-  const saveFile = async () => {
-    const body = t("account.dlg.key.fileText", { email: account.user()?.email ?? "", key: account.recoveryText() ?? "" });
-    try {
-      await getPlatformAdapter().saveAs(
-        { suggestedName: t("account.dlg.key.fileName"), mimeType: "text/plain", filters: [{ name: "Text", extensions: ["txt"] }] },
-        new TextEncoder().encode(body),
-      );
-    } catch { /* Cancelled or not writable; copying still works. */ }
-  };
-  const confirm = async () => {
-    setBusy(true);
-    try { await account.confirmRecoverySaved(); } finally { setBusy(false); }
-  };
-  return (
-    <div class="acc-dlg-body">
-      <Head icon="shield" title={title()} />
-      <p class="acc-text">{text()}</p>
-      <div class="acc-key">
-        <code>{account.recoveryText()}</code>
-        <div class="acc-key-actions">
-          <button type="button" class="btn sm" onClick={() => void copy()}>{copied() ? t("account.dlg.key.copied") : t("account.dlg.key.copy")}</button>
-          <button type="button" class="btn sm" onClick={() => void saveFile()}>{t("account.dlg.key.save")}</button>
-        </div>
-      </div>
-      <p class="acc-hint">{t("account.dlg.key.warning")}</p>
-      <label class="acc-check">
-        <input type="checkbox" checked={saved()} onChange={(event) => setSaved(event.currentTarget.checked)} />
-        <span>{t("account.dlg.key.confirm")}</span>
-      </label>
-      <ErrorLine />
-      <div class="acc-actions">
-        <button type="button" class="btn ghost" onClick={() => account.closeDialog()}>{t("account.dlg.unlock.later")}</button>
-        <button type="button" class="btn accent" disabled={!saved() || busy()} onClick={() => void confirm()}>
-          {reason() === "rotate" ? t("account.dlg.key.done") : t("account.dlg.key.start")}
-        </button>
-      </div>
-    </div>
-  );
-}
-
-function UnlockBody() {
-  const [value, setValue] = createSignal("");
-  const [busy, setBusy] = createSignal(false);
-  const submit = async (event: Event) => {
-    event.preventDefault();
-    setBusy(true);
-    try { await account.unlock(value()); } finally { setBusy(false); }
-  };
-  const lost = async () => {
-    const ok = await confirmDialog({
-      title: t("account.dlg.unlock.lostTitle"), body: t("account.dlg.unlock.lostBody"),
-      confirmLabel: t("account.dlg.unlock.lostConfirm"), danger: true,
-    });
-    if (ok) account.resetCloud();
-  };
-  return (
-    <form class="acc-dlg-body" onSubmit={(event) => void submit(event)}>
-      <Head icon="shield" title={t("account.dlg.unlock.title")} />
-      <p class="acc-text">{account.keyReason() === "changed" ? t("account.dlg.unlock.changed") : t("account.dlg.unlock.text")}</p>
-      <input class="field acc-key-input" value={value()} data-autofocus
-        onInput={(event) => { setValue(event.currentTarget.value); account.clearError(); }}
-        placeholder={t("account.dlg.unlock.placeholder")} spellcheck={false} autocomplete="off" autocapitalize="characters" />
-      <ErrorLine />
-      <div class="acc-actions">
-        <button type="button" class="btn ghost sm acc-lost" onClick={() => void lost()}>{t("account.dlg.unlock.lost")}</button>
-        <span class="acc-sp" />
-        <button type="button" class="btn ghost" onClick={() => account.closeDialog()}>{t("account.dlg.unlock.later")}</button>
-        <button type="submit" class="btn accent" disabled={!value().trim() || busy()}>{t("account.dlg.unlock.submit")}</button>
-      </div>
-    </form>
   );
 }
 

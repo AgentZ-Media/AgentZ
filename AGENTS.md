@@ -13,7 +13,7 @@ im `paths`-Frontmatter) und die `AGENTS.md` des jeweiligen App-Ordners.
 |---|---|---|
 | `apps/<app>/` | `@agentz/<app>-app` | Dünne Tauri-Schale: App-ID, Icons, Capabilities, SQL-Migrationen. |
 | `modules/<app>/` | `@agentz/<app>` | Produkt: Routen, UI, Fachlogik, Storage, eigene i18n. Exportiert ein `AppModule`. |
-| `packages/kit/` | `@agentz/kit` | Produktneutral: `SuiteShell`, UI, i18n-Engine, Basis-Settings, Navigation, Shortcuts, Toasts, `KvStore`, Speicherkoordination, Konto und Ende-zu-Ende verschlüsselter Sync (`account/`). |
+| `packages/kit/` | `@agentz/kit` | Produktneutral: `SuiteShell`, UI, i18n-Engine, Basis-Settings, Navigation, Shortcuts, Toasts, `KvStore`, Speicherkoordination, Konto und Sync zwischen Geräten (`account/`). |
 | `packages/desktop/` | `@agentz/desktop` | Tauri-Host: Plattformadapter, Updater, Fenster-/Quit-Lebenszyklus, `@agentz/desktop/vite`. |
 | `crates/agentz-desktop/` | Rust | Standard-Plugins, macOS-Menü, Single-Instance, Quit-Handshake, Kit-Baseline-SQL (`src/baseline.sql`). |
 | `packages/design/` | `@agentz/design` | Tokens, CSS-Primitive, Schriften, Icons, Logos. Kein Framework. |
@@ -32,6 +32,22 @@ apps/site -> packages/design
 Kein Tauri in Kit oder Modulen, kein Produktwissen im Kit, keine Importe
 zwischen Produkten. Details: [`suite-architecture.md`](.claude/rules/suite-architecture.md).
 
+## Zielgruppe: Menschen ohne Technikwissen
+
+Wir bauen für Content Creator, die ihre Arbeit machen wollen, nicht für
+Entwickler. Für Funktionen, Texte und Optik gilt deshalb:
+
+- **Einfach vor vollständig.** Wenige, gut gewählte Standards statt vieler
+  Optionen. Was ein normaler Nutzer nicht versteht oder nicht braucht, kommt
+  nicht in die Oberfläche.
+- **Alltagssprache.** Keine Fachbegriffe wie Schlüssel, Token, Sync-Konflikt
+  oder Migration in sichtbaren Texten; kurz sagen, was passiert und was zu tun ist.
+- **Ruhige, klare Optik.** Eine Hauptaktion pro Ansicht, verständliche
+  Beschriftungen, nichts, was man erst lernen muss.
+- **Keine Technik-Hürden.** Abläufe wie bei großen Apps (registrieren,
+  anmelden, fertig). Sicherheit und Technik laufen unsichtbar im Hintergrund
+  und dürfen den Nutzer nichts aufbewahren oder abtippen lassen.
+
 ## Regeln, die nicht aus dem Code offensichtlich sind
 
 - **Daten der installierten App sind heilig.** Bundle-Identifier, DB-Name
@@ -47,9 +63,8 @@ zwischen Produkten. Details: [`suite-architecture.md`](.claude/rules/suite-archi
 - **Speichern über den Flush-Koordinator** (`registerFlusher`). Inhalt
   (`content`, Standard) blockiert Navigation, Export und Snapshots, UI-Zustand
   (`state`) nie. Schließen und Beenden warten auf beides.
-- **Sync nur verschlüsselt.** Inhalte gehen ausschließlich über die
-  Kit-Engine in die Cloud, verschlüsselt auf dem Gerät; keine Secrets in den
-  Apps (siehe [`docs/cloud-sync.md`](docs/cloud-sync.md)).
+- **Sync nur über die Kit-Engine.** Inhalte gehen ausschließlich über sie in
+  die Cloud; keine Secrets in den Apps (siehe [`docs/cloud-sync.md`](docs/cloud-sync.md)).
 - **Sync-Format nur in zwei Schritten brechen.** Neue Felder, Entitäten und
   Einstellungen sind additiv und brauchen nur einen Eintrag in
   `modules/<app>/lib/sync/format.json` (neue synchronisierte Spalten ohne

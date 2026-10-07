@@ -4,10 +4,11 @@ import { httpAction, internalAction, internalMutation, internalQuery, mutation }
 import { clientArg, requireCompatible } from "./sync";
 import { SYNC_APPS, STAT_KEYS, appArg, type SyncApp } from "./syncApps";
 
-// Public counters for the website ("1,234 scripts written"). Records are end-to-end
-// encrypted, so the server cannot count scripts itself: each signed-in device
-// reports its account's plain totals (sync_stats), an hourly job sums them up
-// (site_stats) and GET /stats serves that sum. The website reaches it through
+// Public counters for the website ("1,234 scripts written"). The server never
+// interprets record contents, and only the device knows which scripts count
+// (not the unedited welcome script): each signed-in device reports its
+// account's totals (sync_stats), an hourly job sums them up (site_stats) and
+// GET /stats serves that sum. The website reaches it through
 // a Vercel rewrite whose CDN keeps the answer for an hour, so page views
 // almost never reach Convex.
 

@@ -7,7 +7,7 @@ import { readFileSync, readdirSync } from "node:fs";
 import { join } from "node:path";
 import type { DatabaseSync as SQLiteDatabase, SQLInputValue } from "node:sqlite";
 import {
-  createDataKey, createRecordCipher, createSqlSyncBook, createSyncEngine,
+  createSqlSyncBook, createSyncEngine, decodeRecord, encodeRecord, RECORD_SCHEME, recordIdOf,
   type CloudTransport, type PushResult, type SyncClient, type SyncState, type WireRecord,
 } from "@agentz/kit/account";
 import { createSqlKvStore, setKvStore, setPlatformAdapter, type DbConnection, type PlatformAdapter } from "@agentz/kit/platform";
@@ -42,14 +42,14 @@ function createServer() {
   const records = new Map<string, WireRecord>();
   let pushes = 0;
   const reports: Record<string, number>[] = [];
-  const transport = (keyId: string): CloudTransport => ({
-    head: async () => ({ rev: head, keyId, resetting: false, block: null }),
+  const transport = (): CloudTransport => ({
+    head: async () => ({ rev: head, block: null }),
     watchHead: () => () => {},
     async pull(_app, _client, afterRev) {
       const list = [...records.values()].filter((r) => r.rev > afterRev).sort((a, b) => a.rev - b.rev);
       return { records: list.slice(0, 3), headRev: head, more: list.length > 3 };
     },
-    async push(_app, _client, pushKey, deviceId, changes) {
+    async push(_app, _client, deviceId, changes) {
       const results: PushResult[] = [];
       for (const change of changes) {
         pushes += 1;
@@ -62,7 +62,7 @@ function createServer() {
           continue;
         }
         head += 1;
-        records.set(change.recordId, { recordId: change.recordId, rev: head, deleted: change.deleted, data: change.data, keyId: pushKey, deviceId });
+        records.set(change.recordId, { recordId: change.recordId, rev: head, deleted: change.deleted, data: change.data, deviceId });
         results.push({ recordId: change.recordId, status: "ok", rev: head });
       }
       return { results, headRev: head };
@@ -70,26 +70,20 @@ function createServer() {
     report: async (_app, _client, counts) => { reports.push({ ...counts }); },
     upload: async () => { throw new Error("not used"); },
     download: async () => { throw new Error("not used"); },
-    getKey: async () => null,
-    createKey: async () => {},
-    rewrapKey: async () => {},
-    resetKey: async () => {},
     connected: () => true,
     close: () => {},
   });
   /** A record as a newer app version would have written it. */
-  async function inject(entity: string, id: string, record: unknown, key = sharedKey) {
-    const cipher = await createRecordCipher(key, "scriptz");
-    const recordId = await cipher.recordId(entity, id);
-    const sealed = await cipher.encrypt(recordId, { entity, id, record });
+  async function inject(entity: string, id: string, record: unknown) {
+    const recordId = recordIdOf(entity, id);
+    const bytes = await encodeRecord({ entity, id, record });
     head += 1;
-    records.set(recordId, { recordId, rev: head, deleted: false, data: sealed.slice().buffer as ArrayBuffer, keyId: key.keyId, deviceId: "newer" });
+    records.set(recordId, { recordId, rev: head, deleted: false, data: bytes.slice().buffer as ArrayBuffer, deviceId: "newer" });
   }
-  /** The cloud's current version of a record, decrypted. */
-  async function read(entity: string, id: string, key = sharedKey) {
-    const cipher = await createRecordCipher(key, "scriptz");
-    const record = records.get(await cipher.recordId(entity, id));
-    return record?.data ? (await cipher.decrypt(record.recordId, new Uint8Array(record.data))).record as Record<string, unknown> : null;
+  /** The cloud's current version of a record. */
+  async function read(entity: string, id: string) {
+    const record = records.get(recordIdOf(entity, id));
+    return record?.data ? (await decodeRecord(new Uint8Array(record.data))).record as Record<string, unknown> : null;
   }
   return { transport, pushes: () => pushes, reports, inject, read };
 }
@@ -99,7 +93,7 @@ const client: SyncClient = { version: "1.0.0", channel: "stable", ...SYNC_FORMAT
 const dbs: SQLiteDatabase[] = [];
 afterEach(() => { for (const db of dbs.splice(0)) db.close(); });
 
-async function device(name: string, server: ReturnType<typeof createServer>, key = sharedKey) {
+async function device(name: string, server: ReturnType<typeof createServer>) {
   const db = openDatabase();
   dbs.push(db);
   const conn = connection(db);
@@ -108,11 +102,10 @@ async function device(name: string, server: ReturnType<typeof createServer>, key
   const activate = () => { setPlatformAdapter(platform); setKvStore(kv); };
   const applied: AppliedSummary[] = [];
   const adapter = createScriptzSyncAdapter({ applied: (summary) => applied.push(summary), settingsChanged: () => {}, copySuffix: () => "Konfliktkopie" });
-  const state: SyncState = { userId: "u", email: "u@x", keyId: key.keyId, deviceId: name, pushed: 0, pulled: 0, lastSyncedAt: null };
+  const state: SyncState = { userId: "u", email: "u@x", keyId: RECORD_SCHEME, deviceId: name, pushed: 0, pulled: 0, lastSyncedAt: null };
   const book = createSqlSyncBook(async () => conn);
   const engine = createSyncEngine({
-    app: "scriptz", adapter, cipher: await createRecordCipher(key, "scriptz"),
-    transport: server.transport(key.keyId), book, kv, state, client,
+    app: "scriptz", adapter, transport: server.transport(), book, kv, state, client,
   });
   return {
     db, applied, book,
@@ -121,7 +114,6 @@ async function device(name: string, server: ReturnType<typeof createServer>, key
     async sync() { activate(); await engine.sync(); },
   };
 }
-let sharedKey = createDataKey();
 
 const SEED = `
   INSERT INTO folders VALUES ('folder', 'Sketche', 1, 2, 15, 60);
@@ -141,7 +133,6 @@ const SEED = `
 
 describe("ScriptZ sync adapter", () => {
   it("copies every kind of content to a second device and keeps device-local details local", async () => {
-    sharedKey = createDataKey();
     const server = createServer();
     const a = await device("A", server);
     const b = await device("B", server);
@@ -169,7 +160,6 @@ describe("ScriptZ sync adapter", () => {
   });
 
   it("keeps the local thread while a chat did not change and drops it when it did", async () => {
-    sharedKey = createDataKey();
     const server = createServer();
     const a = await device("A", server);
     const b = await device("B", server);
@@ -188,7 +178,6 @@ describe("ScriptZ sync adapter", () => {
   });
 
   it("keeps a script edited on two devices as a conflict copy", async () => {
-    sharedKey = createDataKey();
     const server = createServer();
     const a = await device("A", server);
     const b = await device("B", server);
@@ -206,7 +195,6 @@ describe("ScriptZ sync adapter", () => {
   });
 
   it("deletes a script with its snapshots and chats on the other device", async () => {
-    sharedKey = createDataKey();
     const server = createServer();
     const a = await device("A", server);
     const b = await device("B", server);
@@ -222,7 +210,6 @@ describe("ScriptZ sync adapter", () => {
   });
 
   it("leaves the unedited welcome script of each installation out", async () => {
-    sharedKey = createDataKey();
     const server = createServer();
     const a = await device("A", server);
     const b = await device("B", server);
@@ -238,7 +225,6 @@ describe("ScriptZ sync adapter", () => {
   });
 
   it("keeps what a newer version wrote: unknown fields travel along, unknown records wait", async () => {
-    sharedKey = createDataKey();
     const server = createServer();
     const a = await device("A", server);
     a.run(SEED);
@@ -264,7 +250,6 @@ describe("ScriptZ sync adapter", () => {
   });
 
   it("leaves columns a record lacks untouched", async () => {
-    sharedKey = createDataKey();
     const server = createServer();
     const a = await device("A", server);
     a.run(SEED);
@@ -277,7 +262,6 @@ describe("ScriptZ sync adapter", () => {
   });
 
   it("keeps data of newer versions in the database when the cloud copy is replaced", async () => {
-    sharedKey = createDataKey();
     const server = createServer();
     const a = await device("A", server);
     a.run(SEED);
@@ -296,7 +280,6 @@ describe("ScriptZ sync adapter", () => {
   });
 
   it("counts the scripts for the website, without the unedited welcome script", async () => {
-    sharedKey = createDataKey();
     const server = createServer();
     const a = await device("A", server);
     a.run(`INSERT INTO scripts (id, title, content_json, created_at, updated_at) VALUES ('welcome', 'Willkommen', '{"root":{"children":[]}}', 5, 5);

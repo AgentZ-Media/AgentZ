@@ -40,6 +40,16 @@ describe("blockFor", () => {
       { reason: "format", format: 2, by: "0.11.0-nightly.202611011200" });
   });
 
+  it("turns away versions that write a format the server no longer accepts", () => {
+    // ScriptZ format 1 was end-to-end encrypted; MIN_FORMAT is 2.
+    assert.deepEqual(blockFor(client("0.11.1-nightly.202610061200", 1), { format: 1, by: null }, null, 2),
+      { reason: "version", minVersion: null });
+    assert.deepEqual(blockFor(client("0.11.1-nightly.202610061200", 1), none, { minVersion: "0.11.0" }, 2),
+      { reason: "version", minVersion: "0.11.0" });
+    assert.equal(blockFor(client("0.12.0", 2), { format: 1, by: null }, null, 2), null);
+    assert.equal(blockFor(client("0.12.0", 2), none, null, 2), null);
+  });
+
   it("treats versions from before the check as outdated", () => {
     assert.deepEqual(blockFor(undefined, none, null), { reason: "version", minVersion: null });
     assert.deepEqual(blockFor(undefined, none, { minVersion: "0.10.0" }), { reason: "version", minVersion: "0.10.0" });

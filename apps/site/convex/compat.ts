@@ -8,6 +8,8 @@
 //   deploy, and only for the account that actually has newer data.
 // - Policy: per app a minimum version and blocked versions, set by hand
 //   (syncPolicy.ts) for emergencies such as a version that writes bad data.
+// A third, fixed gate belongs to the deployment: formats the server no longer
+// accepts at all (MIN_FORMAT in syncApps.ts).
 
 /** What a device reports with every sync call. */
 export interface ClientInfo {
@@ -95,8 +97,11 @@ export function markOf(head: { rev: number; format?: number; formatBy?: string }
   return { format: head.format ?? (head.rev > 0 ? 1 : 0), by: head.formatBy ?? null };
 }
 
-/** Why this client may not sync, or null when it may. */
-export function blockFor(client: ClientInfo | undefined | null, mark: FormatMark, policy: SyncPolicy | null): SyncBlock | null {
+/**
+ * Why this client may not sync, or null when it may. `minFormat` is the oldest
+ * format the server accepts; a version writing an older one is outdated.
+ */
+export function blockFor(client: ClientInfo | undefined | null, mark: FormatMark, policy: SyncPolicy | null, minFormat = 1): SyncBlock | null {
   const minVersion = policy?.minVersion ?? null;
   // Versions from before the compatibility check report nothing at all.
   if (!validClient(client)) return { reason: "version", minVersion };
@@ -106,6 +111,7 @@ export function blockFor(client: ClientInfo | undefined | null, mark: FormatMark
     const order = compareVersions(client.version, minVersion);
     if (order === null || order < 0) return { reason: "version", minVersion };
   }
+  if (client.writes < minFormat) return { reason: "version", minVersion };
   if (mark.format > client.reads) return { reason: "format", format: mark.format, by: mark.by };
   return null;
 }

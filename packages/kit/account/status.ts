@@ -9,14 +9,7 @@ export function syncStatus(): { text: string; tone: SyncTone } {
   if (!account.signedIn()) return { text: t("account.signInHint"), tone: "off" };
   if (!account.syncAvailable()) return { text: t("account.status.localOnly"), tone: "off" };
   if (account.syncBlock()) return { text: t("account.status.updateRequired"), tone: "warn" };
-  switch (account.keyPhase()) {
-    case "none":
-    case "checking": return { text: t("account.status.checking"), tone: "busy" };
-    case "enter": return { text: t("account.status.locked"), tone: "warn" };
-    case "create": return { text: t("account.status.setup"), tone: "warn" };
-    case "resetting": return { text: t("account.status.resetting"), tone: "busy" };
-    case "ready": break;
-  }
+  if (!account.syncReady()) return { text: t("account.status.checking"), tone: "busy" };
   switch (account.syncPhase()) {
     case "syncing": return { text: t("account.status.syncing"), tone: "busy" };
     case "offline": return { text: t("account.status.offline"), tone: "warn" };

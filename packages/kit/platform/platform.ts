@@ -70,7 +70,7 @@ export interface OpenFileResult {
 
 // ===== Secrets =====
 //
-// A few small secrets (account session, sync data key) in the operating
+// A few small secrets (the account session) in the operating
 // system's credential store. Hosts without one leave `secrets` unset; the
 // account then keeps them in memory for the session only.
 

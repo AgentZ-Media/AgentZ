@@ -49,6 +49,16 @@ export function formatProblems({ app, current, released, tag }) {
   return problems;
 }
 
+/**
+ * Format of a released version: its format.json; format 1 if it synced
+ * before format files existed; null if it has no sync at all, so nothing on
+ * its devices can be paused.
+ */
+export function releasedFormat({ formatText, hasSync }) {
+  if (formatText) return JSON.parse(formatText);
+  return hasSync ? { reads: 1, writes: 1 } : null;
+}
+
 function git(root, args) {
   return execFileSync("git", args, { cwd: root, encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] });
 }
@@ -68,13 +78,19 @@ export function checkSyncFormats(root, { requireTags = false } = {}) {
     const tag = latestStableTag(allTags, app);
     let released = null;
     if (tag) {
+      let formatText = null;
       try {
-        released = JSON.parse(git(root, ["show", `${tag}:modules/${app}/lib/sync/format.json`]));
+        formatText = git(root, ["show", `${tag}:modules/${app}/lib/sync/format.json`]);
       } catch {
-        // Older releases synced format 1 data or nothing at all (compat.ts reads
-        // accounts without a mark as format 1).
-        released = { reads: 1, writes: 1 };
-        notes.push(`${app}: ${tag} has no sync format file, compared as format 1.`);
+        // Older releases synced format 1 data (compat.ts reads accounts
+        // without a mark as format 1) or nothing at all.
+      }
+      const hasSync = formatText !== null || git(root, ["ls-tree", "--name-only", tag, `modules/${app}/lib/sync/`]).trim() !== "";
+      released = releasedFormat({ formatText, hasSync });
+      if (!formatText) {
+        notes.push(released
+          ? `${app}: ${tag} has no sync format file, compared as format 1.`
+          : `${app}: ${tag} does not sync yet, nothing to compare.`);
       }
     } else {
       notes.push(`${app}: no stable release yet, nothing to compare.`);

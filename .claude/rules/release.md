@@ -73,7 +73,8 @@ Probelauf: baut beide Installer ohne Signatur und veröffentlicht nichts.
 Apps mit Sync führen ihr Datenformat in `modules/<app>/lib/sync/format.json`
 (`reads`, `writes`). `pnpm check:sync-format` (CI) vergleicht `main` mit dem
 letzten Stable-Tag `<app>-vX.Y.Z`: `writes` darf dessen `reads` nicht
-übersteigen, `reads` nicht unter dessen `writes` fallen. Ein Formatbruch
+übersteigen, `reads` nicht unter dessen `writes` fallen (ein Stable-Tag ganz
+ohne Sync zählt nicht). Ein Formatbruch
 braucht deshalb zwei Releases, erst `reads` anheben, dann `writes`. Mit dem
 Tag ändert sich der Vergleich; nach einem Release mit neuem `reads` kann der
 nächste PR `writes` anheben. Details: „Versionen und Kompatibilität“ in
