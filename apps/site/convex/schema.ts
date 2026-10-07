@@ -28,12 +28,20 @@ const recordTable = () =>
      * (sync_keys). Devices skip them; `sync.dropEncrypted` deletes them.
      */
     keyId: v.optional(v.string()),
+    /**
+     * Rank of a migration upload from end-to-end encrypted versions (twice the
+     * old revision, plus one for a local change): a higher rank replaces this
+     * record while the rank is even (no local change). Cleared by every
+     * normal write.
+     */
+    legacyRank: v.optional(v.number()),
     /** Random ID of the writing device, lets a device skip its own echo. */
     deviceId: v.string(),
     updatedAt: v.number(),
   })
     .index("by_user_rev", ["userId", "rev"])
-    .index("by_user_record", ["userId", "recordId"]);
+    .index("by_user_record", ["userId", "recordId"])
+    .index("by_blob", ["blob"]);
 
 export default defineSchema({
   scriptz_records: recordTable(),

@@ -58,9 +58,17 @@ und die Dev-Ports 1420, 1430, … .
 - `SyncState.keyId` (`app_state.sync.state`) hält das Datensatzschema
   (`RECORD_SCHEME`), nur für die lokale Buchführung. Weicht es ab, weil eine
   ältere Version Ende-zu-Ende verschlüsselt synchronisiert hat (dort stand die
-  Schlüssel-ID), beginnt die Buchführung per `resetForNewCloud` neu: Extras und
-  geparkte Datensätze bleiben und gehen mit allem anderen erneut hoch, ein
-  alter Datenschlüssel im Schlüsselbund (`sync.key`) wird gelöscht. Ob eine
+  Schlüssel-ID), migriert das Gerät (`book.startMigration`): Die Buchführung
+  verliert ihre Record-IDs, behält aber alte Revision und Hash jedes
+  Datensatzes. Alles geht erneut hoch, auch Extras, geparkte Datensätze und
+  Einträge außerhalb des Änderungsfeeds (etwa Tageswerte anderer Geräte), je
+  mit Rang `legacyRank` = 2 × alte Revision, +1 bei lokaler Änderung seitdem.
+  Der Server lässt einen höheren Rang einen niedrigeren ersetzen; so gewinnt
+  die zuletzt synchronisierte Fassung, egal welches Gerät zuerst migriert.
+  Eine unveränderte ältere Fassung weicht ohne Konfliktkopie, eine lokale
+  Änderung auf älterem Stand wird wie sonst zur Konfliktkopie. Jeder normale
+  Schreibvorgang löscht den Rang, danach gilt die neue Fassung. Ein alter
+  Datenschlüssel im Schlüsselbund (`sync.key`) wird gelöscht. Ob eine
   Version die Daten lesen kann, entscheidet allein das Datenformat (siehe
   „Versionen und Kompatibilität“).
 - Ende-zu-Ende verschlüsselte Datensätze älterer Versionen (ScriptZ-Format 1)
@@ -79,7 +87,9 @@ und die Dev-Ports 1420, 1430, … .
   Pro lokaler Zeile gibt es genau ein Dokument mit der letzten Fassung; Seiten
   sind auf 100 Datensätze und 4 MB begrenzt, damit auch zehntausende Skripte
   nur in Änderungen übertragen werden.
-- Datensätze bis 96 KiB liegen im Dokument, größere im File Storage.
+- Datensätze bis 96 KiB liegen im Dokument, größere im File Storage. Ein
+  Upload darf nur eine Datei referenzieren, die existiert, die angegebene
+  Größe hat und noch zu keinem Datensatz gehört (Index `by_blob`).
 - `sync_stats`: zuletzt gemeldete Summen pro Nutzer und App; ein stündlicher
   Cron (`stats.ts`) addiert sie zu `site_stats`, `GET /stats` liefert das
   Ergebnis an die Website.
@@ -247,7 +257,10 @@ stündliche Prüfung findet das Update trotzdem.
 Release. Funktionen und Schema deshalb nur erweitern (neue Funktionen,
 optionale Argumente und Felder). Entfernen oder verschärfen erst, wenn
 `minVersion` oder `MIN_FORMAT` alle Versionen ausschließt, die das Alte noch
-nutzen (so entfielen `keys.ts` und `push.keyId` mit Format 1).
+nutzen (so entfiel `keys.ts` mit Format 1; `push` nimmt `keyId` nur
+optional an, damit Format-1-Versionen `CLIENT_OUTDATED` statt eines
+Validierungsfehlers bekommen, und `purge` versteht `keepKey` alter
+Schlüssel-Resets als Löschen der verschlüsselten Datensätze).
 
 ## ScriptZ
 

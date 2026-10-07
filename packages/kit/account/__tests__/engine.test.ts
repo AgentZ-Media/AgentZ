@@ -14,6 +14,8 @@ function createServer() {
   let format = 0;
   let formatBy: string | null = null;
   const records = new Map<string, WireRecord>();
+  /** legacyRank of records written by a migration upload (sync.ts). */
+  const ranks = new Map<string, number>();
   const blobs = new Map<string, Uint8Array>();
   const pushes: WireChange[] = [];
   /** Fault injection: the pull call with this number (1-based) fails once. */
@@ -62,13 +64,17 @@ function createServer() {
             pushes.push(change);
             const existing = records.get(change.recordId);
             const current = existing?.rev ?? 0;
-            if (change.baseRev !== current) {
+            const stored = ranks.get(change.recordId);
+            const outranks = change.legacyRank !== undefined && stored !== undefined && stored % 2 === 0 && change.legacyRank > stored;
+            if (change.baseRev !== current && !outranks) {
               if (existing?.deleted && change.deleted) results.push({ recordId: change.recordId, status: "ok", rev: existing.rev });
-              else results.push({ recordId: change.recordId, status: "conflict", rev: current, current: existing ? { ...existing } : null });
+              else results.push({ recordId: change.recordId, status: "conflict", rev: current, current: existing ? { ...existing, legacyRank: stored } : null });
               continue;
             }
             head += 1;
             if (!change.deleted) wroteContent = true;
+            if (change.legacyRank === undefined) ranks.delete(change.recordId);
+            else ranks.set(change.recordId, change.legacyRank);
             records.set(change.recordId, {
               recordId: change.recordId, rev: head, deleted: change.deleted, data: change.data,
               blobUrl: change.blob ? `blob:${change.blob}` : undefined, deviceId,
@@ -193,7 +199,7 @@ function createDevice(name: string, initial: DeviceSchema = V1) {
       get children() { return table("children"); },
       get notes() { return table("notes"); },
     },
-    write, remove, adapter, kv, settings, copies, book: createMemorySyncBook(),
+    write, remove, adapter, kv, settings, copies, feed, book: createMemorySyncBook(),
     /** Installs a newer version: new columns exist from now on, with their defaults. */
     upgrade(next: DeviceSchema) {
       schema = next;
@@ -604,6 +610,82 @@ describe("data from newer versions", () => {
     expect(newCloud.pushes.length).toBe(pushes);
   });
 
+  it.each(["older", "newer"] as const)("lets the newest synced version win when several devices migrate, the %s state first", async (first) => {
+    // Stand-in for the end-to-end encrypted cloud: both devices synced there,
+    // B saw more of it than A before the switch.
+    const oldCloud = createServer();
+    const a = createDevice("a");
+    const b = createDevice("b");
+    a.write("parents", { id: "p1", title: "Folder" });
+    a.write("children", { id: "c1", title: "v1" });
+    a.write("children", { id: "c2", title: "Deleted later" });
+    a.write("children", { id: "c3", title: "v1" });
+    const oldA = await connect(a, oldCloud, "A");
+    const oldB = await connect(b, oldCloud, "B");
+    await oldA.sync();
+    await oldB.sync();
+    b.write("parents", { id: "p1", title: "Renamed on B" });
+    b.write("children", { id: "c1", title: "v2 from B" });
+    b.remove("children", "c2");
+    b.write("children", { id: "c3", title: "v2 from B" });
+    await oldB.sync();
+    // A never pulled B's changes and edits c3 on its older state.
+    a.write("children", { id: "c3", title: "A's edit on v1" });
+
+    const migrate = async (device: Device, id: string) => {
+      await device.book.startMigration();
+      await device.kv.setAppState("test.state", JSON.stringify({ userId: "u", email: "u@x", keyId: RECORD_SCHEME, deviceId: id, pushed: 0, pulled: 0, lastSyncedAt: null }));
+    };
+    const newCloud = createServer();
+    await migrate(a, "A");
+    await migrate(b, "B");
+    const newA = await connect(a, newCloud, "A");
+    const newB = await connect(b, newCloud, "B");
+    const [one, two] = first === "older" ? [newA, newB] : [newB, newA];
+    await one.sync();
+    await two.sync();
+    await one.sync();
+    for (const device of [a, b]) {
+      expect(device.tables.parents.get("p1")?.title).toBe("Renamed on B");
+      expect(device.tables.children.get("c1")?.title).toBe("v2 from B");
+      expect(device.tables.children.has("c2")).toBe(false);
+      // A's change on v1 and B's v2 both count: the first upload stays,
+      // the other becomes a copy, like any conflict.
+      const [main, copy, copyId] = first === "older"
+        ? ["A's edit on v1", "v2 from B (copy)", "c3-copy-b"]
+        : ["v2 from B", "A's edit on v1 (copy)", "c3-copy-a"];
+      expect(device.tables.children.get("c3")?.title).toBe(main);
+      expect(device.tables.children.get(copyId)?.title).toBe(copy);
+    }
+    // Older unchanged versions just yield, without copies.
+    expect([...a.copies, ...b.copies]).toEqual([first === "older" ? "c3-copy-b" : "c3-copy-a"]);
+    // Done: nothing waits for a migration upload and nothing goes up again.
+    expect(await a.book.legacy()).toEqual([]);
+    expect(await b.book.legacy()).toEqual([]);
+    const pushes = newCloud.pushes.length;
+    await newA.sync();
+    await newB.sync();
+    expect(newCloud.pushes.length).toBe(pushes);
+  });
+
+  it("uploads migration entries the change feed does not bring", async () => {
+    const oldCloud = createServer();
+    const a = createDevice("a");
+    const b = createDevice("b");
+    a.write("children", { id: "c1", title: "From A" });
+    await (await connect(a, oldCloud, "A")).sync();
+    await (await connect(b, oldCloud, "B")).sync();
+    // B's feed only knows what it wrote itself, like remote daily word counts.
+    b.feed.clear();
+    await b.book.startMigration();
+    await b.kv.setAppState("test.state", JSON.stringify({ userId: "u", email: "u@x", keyId: RECORD_SCHEME, deviceId: "B", pushed: 0, pulled: 0, lastSyncedAt: null }));
+    const newCloud = createServer();
+    await (await connect(b, newCloud, "B")).sync();
+    const fresh = createDevice("fresh");
+    await (await connect(fresh, newCloud, "F")).sync();
+    expect(fresh.tables.children.get("c1")?.title).toBe("From A");
+  });
+
   it("moves bookkeeping of end-to-end encrypted versions over without losing newer data", async () => {
     const server = createServer();
     const older = createDevice("old", V1);
@@ -613,7 +695,7 @@ describe("data from newer versions", () => {
     older.book.entries.set("children\u0000c1", { entity: "children", id: "c1", remoteId: "hmac-c1", rev: 4, hash: "old", extra: { mood: "calm" } });
     await older.book.park([{ remoteId: "hmac-n1", entity: "notes", id: "n1", rev: 5, hash: "old", record: { id: "n1", title: "Note" } }]);
     server.addEncrypted();
-    await older.book.resetForNewCloud();
+    await older.book.startMigration();
     await older.kv.setAppState("test.state", JSON.stringify({ userId: "u", email: "u@x", keyId: RECORD_SCHEME, deviceId: "O", pushed: 0, pulled: 0, lastSyncedAt: null }));
     await (await connect(older, server, "O")).sync();
     const fresh = createDevice("fresh", V2);

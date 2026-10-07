@@ -16,8 +16,13 @@ import type { DbConnection, KvStore } from "../platform";
 export interface BookEntry {
   entity: string;
   id: string;
-  /** Server record ID (`<entity>/<id>`); empty while the cloud copy was replaced (resetForNewCloud). */
+  /** Server record ID (`<entity>/<id>`); empty while the cloud copy was replaced (resetForNewCloud, startMigration). */
   remoteId: string;
+  /**
+   * Cloud revision. With an empty remoteId and a rev above 0 it is the
+   * revision of the end-to-end encrypted cloud this entry came from
+   * (startMigration): the migration upload ranks by it.
+   */
   rev: number;
   /** Hash of the synced content; DELETED for a synced deletion. */
   hash: string;
@@ -46,8 +51,8 @@ export interface SyncState {
   email: string;
   /**
    * Record scheme the bookkeeping belongs to (RECORD_SCHEME). End-to-end
-   * encrypted versions stored their data key ID here; their bookkeeping starts
-   * over (book.resetForNewCloud). Named `keyId` in the stored JSON.
+   * encrypted versions stored their data key ID here; their bookkeeping is
+   * migrated (book.startMigration). Named `keyId` in the stored JSON.
    */
   keyId: string;
   deviceId: string;
@@ -100,6 +105,17 @@ export interface SyncBook {
    * they are uploaded again with everything else.
    */
   resetForNewCloud(): Promise<void>;
+  /**
+   * The cloud copy of an end-to-end encrypted version is replaced by plain
+   * records: record IDs no longer apply, but every entry keeps its old
+   * revision and hash. All devices of the account share that revision order,
+   * so the migration upload can let the newest synced version win
+   * (engine.ts, legacyRank) instead of whichever device migrates first.
+   * Parked records go up again like after resetForNewCloud.
+   */
+  startMigration(): Promise<void>;
+  /** Entries still waiting for their migration upload (empty remoteId, old rev above 0). */
+  legacy(): Promise<BookEntry[]>;
 }
 
 export const bookKey = (entity: string, id: string) => `${entity}\u0000${id}`;
@@ -234,6 +250,16 @@ export function createSqlSyncBook(getDb: () => Promise<DbConnection>): SyncBook 
       // rev 0 lets any copy the new cloud already has win over the re-upload.
       await db.execute("UPDATE sync_parked SET rev = 0, upload = 1");
     },
+    async startMigration() {
+      const db = await getDb();
+      await db.execute("UPDATE sync_records SET remote_id = ''");
+      await db.execute("UPDATE sync_parked SET rev = 0, upload = 1");
+    },
+    async legacy() {
+      const db = await getDb();
+      const rows = await db.select<Row[]>(`SELECT ${COLUMNS} FROM sync_records r WHERE r.remote_id = '' AND r.rev > 0`);
+      return rows.map(toEntry);
+    },
   };
 }
 
@@ -291,6 +317,13 @@ export function createMemorySyncBook(): SyncBook & { entries: Map<string, BookEn
         else entries.set(key, { ...entry, remoteId: "", rev: 0, hash: "" });
       }
       for (const [key, record] of parkedRecords) parkedRecords.set(key, { ...record, rev: 0, upload: true });
+    },
+    async startMigration() {
+      for (const [key, entry] of entries) entries.set(key, { ...entry, remoteId: "" });
+      for (const [key, record] of parkedRecords) parkedRecords.set(key, { ...record, rev: 0, upload: true });
+    },
+    async legacy() {
+      return [...entries.values()].filter((entry) => !entry.remoteId && entry.rev > 0).map(copyEntry);
     },
   };
 }

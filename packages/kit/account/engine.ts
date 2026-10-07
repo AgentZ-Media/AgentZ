@@ -54,6 +54,12 @@ interface Candidate {
   extra: Record<string, unknown> | null;
   /** A parked record uploaded again after the cloud copy was replaced. */
   parked?: ParkedRecord;
+  /**
+   * Migration upload of an entry from end-to-end encrypted versions
+   * (book.startMigration): twice its old revision, plus one if it changed
+   * locally since. The backend lets a higher rank replace a lower one.
+   */
+  legacyRank?: number;
 }
 
 interface Decoded extends RemoteChange {
@@ -118,27 +124,31 @@ export function createSyncEngine(options: EngineOptions) {
         ? null
         : { entity: change.entity, id: change.id, record: withExtra(change.record, extra) };
       const hash = await hashOf(envelope);
-      if (entry?.hash === hash) continue;
+      // Waiting for its migration upload: goes up even when unchanged.
+      const legacy = !!entry && !entry.remoteId && entry.rev > 0;
+      if (!legacy && entry?.hash === hash) continue;
       // Never synced and gone again: the cloud never knew it.
       if (!entry && !envelope) continue;
       out.push({
         entity: change.entity, id: change.id, envelope, hash, extra,
-        // Empty after the cloud copy was replaced (book.resetForNewCloud).
+        // Empty after the cloud copy was replaced (book.resetForNewCloud, startMigration).
         remoteId: entry?.remoteId || recordIdOf(change.entity, change.id),
-        baseRev: entry?.rev ?? 0,
+        baseRev: legacy ? 0 : entry?.rev ?? 0,
+        legacyRank: legacy && entry ? entry.rev * 2 + (entry.hash === hash ? 0 : 1) : undefined,
       });
     }
     return out;
   }
 
   async function toWire(candidate: Candidate): Promise<WireChange> {
-    if (!candidate.envelope) return { recordId: candidate.remoteId, baseRev: candidate.baseRev, deleted: true, size: 0 };
+    const rank = candidate.legacyRank === undefined ? {} : { legacyRank: candidate.legacyRank };
+    if (!candidate.envelope) return { recordId: candidate.remoteId, baseRev: candidate.baseRev, deleted: true, size: 0, ...rank };
     const bytes = await encodeRecord(candidate.envelope);
     if (bytes.length <= INLINE_LIMIT) {
-      return { recordId: candidate.remoteId, baseRev: candidate.baseRev, deleted: false, data: toArrayBuffer(bytes), size: bytes.length };
+      return { recordId: candidate.remoteId, baseRev: candidate.baseRev, deleted: false, data: toArrayBuffer(bytes), size: bytes.length, ...rank };
     }
     const blob = await transport.upload(app, client, bytes);
-    return { recordId: candidate.remoteId, baseRev: candidate.baseRev, deleted: false, blob, size: bytes.length };
+    return { recordId: candidate.remoteId, baseRev: candidate.baseRev, deleted: false, blob, size: bytes.length, ...rank };
   }
 
   async function decode(record: WireRecord, known?: BookEntry): Promise<Decoded | null> {
@@ -201,17 +211,28 @@ export function createSyncEngine(options: EngineOptions) {
       return null;
     }
     const current = result.current;
+    // A migration upload without local changes is only an older synced
+    // version and yields to the cloud without a copy, unless the cloud holds
+    // another device's change on an even older version: then both count.
+    const rank = candidate.legacyRank;
+    const theirs = current?.legacyRank;
+    const yields = rank !== undefined && rank % 2 === 0
+      && !(theirs !== undefined && theirs % 2 === 1 && theirs < rank);
     // The cloud lost the record or deleted it: the local edit wins.
     if (!current || current.deleted) {
       if (!candidate.envelope) {
         await book.put([{ entity: candidate.entity, id: candidate.id, remoteId: candidate.remoteId, rev: result.rev, hash: DELETED }]);
         return null;
       }
+      if (current && yields) {
+        await applyAll([{ entity: candidate.entity, id: candidate.id, record: null, remoteId: candidate.remoteId, rev: result.rev, hash: DELETED }]);
+        return null;
+      }
       return { ...candidate, baseRev: result.rev };
     }
     const remote = await decode(current);
     if (!remote) return null;
-    if (remote.hash !== candidate.hash && candidate.envelope) {
+    if (remote.hash !== candidate.hash && candidate.envelope && !yields) {
       await keepCopy(candidate.entity, candidate.id, candidate.envelope.record);
     }
     await applyAll([remote]);
@@ -246,6 +267,34 @@ export function createSyncEngine(options: EngineOptions) {
     await upload(candidates);
   }
 
+  let migrated = false;
+
+  /**
+   * Migration entries the change feed did not bring up (records of other
+   * devices such as their daily word counts, settings): uploaded from the
+   * local tables with their rank. Once per engine; afterwards the book has
+   * none left.
+   */
+  async function uploadLegacy(): Promise<void> {
+    if (migrated) return;
+    const pending = await book.legacy();
+    for (let i = 0; i < pending.length; i += READ_BATCH) {
+      const changes: SyncChange[] = [];
+      for (const entry of pending.slice(i, i + READ_BATCH)) {
+        if (!knows(entry.entity, entry.id)) continue;
+        if (entry.entity === SETTINGS_ENTITY) {
+          const value = await kv.getSetting(entry.id);
+          changes.push({ entity: entry.entity, id: entry.id, record: value === null ? null : { value } });
+          continue;
+        }
+        changes.push({ entity: entry.entity, id: entry.id, record: await adapter.read(entry.entity, entry.id, context()) });
+      }
+      const candidates = await candidatesFor(changes);
+      if (candidates.length > 0) await upload(candidates);
+    }
+    migrated = true;
+  }
+
   async function push(): Promise<void> {
     // Before anything goes up: a field learned by an update must reach the
     // local row first, or its empty local column would overwrite the cloud.
@@ -263,8 +312,9 @@ export function createSyncEngine(options: EngineOptions) {
       }
       // Resolving conflicts writes locally (copies, cloud versions): read on
       // until only already synced records come back.
-      if (!batch.more && candidates.length === 0) return;
+      if (!batch.more && candidates.length === 0) break;
     }
+    await uploadLegacy();
   }
 
   // ---- Public counters ----
@@ -337,8 +387,9 @@ export function createSyncEngine(options: EngineOptions) {
     for (const item of decoded) {
       const key = bookKey(item.entity, item.id);
       const entry = known.get(key);
-      if (entry && entry.rev >= item.rev) continue;
-      if (entry?.hash === item.hash) { bookOnly.push({ ...entry, rev: item.rev }); continue; }
+      // A migration entry's rev belongs to the old cloud: no comparison.
+      if (entry && entry.remoteId && entry.rev >= item.rev) continue;
+      if (entry?.hash === item.hash) { bookOnly.push({ ...entry, remoteId: item.remoteId, rev: item.rev }); continue; }
       if (unsynced.has(key) && item.entity !== SETTINGS_ENTITY) {
         const local = await adapter.read(item.entity, item.id, context());
         const merged = local === null ? null : { entity: item.entity, id: item.id, record: withExtra(local, entry?.extra) };

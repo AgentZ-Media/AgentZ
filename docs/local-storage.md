@@ -127,7 +127,7 @@ hochgeladenen Cursor und schreibt eingehende Datensätze mit eigenen Upserts
 auch diese Schreibvorgänge; die Engine erkennt sie am unveränderten
 Inhalts-Hash und lädt sie nicht erneut hoch. Für den Abgleich gilt:
 
-- Cursor und Buchführung gehören zu Konto, Schlüssel und Gerät
+- Cursor und Buchführung gehören zu Konto, Datensatzschema und Gerät
   (`app_state.sync.state`, Tabelle `sync_records`, Migration 014). Ein anderes
   Konto übernimmt die Daten nur nach Rückfrage. Daten neuerer App-Versionen
   (`sync_records.extra`, `sync_parked`, Migration 015) gehören ebenfalls dazu.

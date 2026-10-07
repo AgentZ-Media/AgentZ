@@ -71,6 +71,7 @@ function wire(record: RecordDoc, url?: string) {
     data: record.data,
     blobUrl: url,
     keyId: record.keyId,
+    legacyRank: record.legacyRank,
     deviceId: record.deviceId,
   };
 }
@@ -130,13 +131,28 @@ const change = v.object({
   data: v.optional(v.bytes()),
   blob: v.optional(v.id("_storage")),
   size: v.number(),
+  /** Migration upload from end-to-end encrypted versions: replaces a lower rank. */
+  legacyRank: v.optional(v.number()),
 });
+
+/** A file of this upload: it exists, has the stated size and no record uses it yet. */
+async function checkBlob(ctx: MutationCtx, blob: Id<"_storage">, size: number): Promise<boolean> {
+  const meta = await ctx.db.system.get(blob);
+  if (!meta || meta.size !== size) return false;
+  for (const app of Object.keys(SYNC_APPS) as SyncApp[]) {
+    const used = await recordsOf(ctx, app).withIndex("by_blob", (q) => q.eq("blob", blob)).first();
+    if (used) return false;
+  }
+  return true;
+}
 
 /**
  * Writes changes whose baseRev matches the stored revision. Any other change
  * comes back as a conflict carrying the current record, so the device can
  * apply the cloud version and keep its own as a copy. Deleting an already
- * deleted record is no conflict.
+ * deleted record is no conflict. A migration upload (legacyRank) also
+ * replaces an unchanged older version that another migration wrote with a
+ * lower rank: the newer synced version wins, whichever device migrates first.
  */
 export const push = mutation({
   args: {
@@ -159,8 +175,9 @@ export const push = mutation({
     for (const name of drop) {
       await ctx.scheduler.runAfter(0, internal.sync.dropEncrypted, { userId, app: name, cursor: null });
     }
-    // Formats below MIN_FORMAT are paused everywhere: moving past them is no raise.
-    const served = { ...mark, format: Math.max(mark.format, MIN_FORMAT[app]) };
+    // Formats below MIN_FORMAT are paused everywhere: moving past them is no
+    // raise. A fresh account (format 0) stays free to start in any format.
+    const served = mark.format > 0 ? { ...mark, format: Math.max(mark.format, MIN_FORMAT[app]) } : mark;
     if (devRaiseDenied(client, served, process.env.ALLOW_DEV_FORMAT_RAISE === "1")) {
       throw new ConvexError({ code: "DEV_FORMAT_RAISE", format: served.format, writes: client.writes });
     }
@@ -176,12 +193,24 @@ export const push = mutation({
       if (item.data && (item.data.byteLength > INLINE_LIMIT || item.size !== item.data.byteLength)) {
         throw new ConvexError({ code: "INVALID_CHANGE", recordId: item.recordId });
       }
+      if (!Number.isSafeInteger(item.size) || item.size < 0) throw new ConvexError({ code: "INVALID_CHANGE", recordId: item.recordId });
       if (item.size > RECORD_LIMIT) throw new ConvexError({ code: "RECORD_TOO_LARGE", recordId: item.recordId });
+      if (item.legacyRank !== undefined && (!Number.isSafeInteger(item.legacyRank) || item.legacyRank < 0)) {
+        throw new ConvexError({ code: "INVALID_CHANGE", recordId: item.recordId });
+      }
+      // Only a fresh upload of this device: never another record's file.
+      if (item.blob && !(await checkBlob(ctx, item.blob, item.size))) {
+        throw new ConvexError({ code: "INVALID_CHANGE", recordId: item.recordId });
+      }
       const existing = await recordsOf(ctx, app)
         .withIndex("by_user_record", (q) => q.eq("userId", userId).eq("recordId", item.recordId))
         .unique();
       const current = existing?.rev ?? 0;
-      if (item.baseRev !== current) {
+      // Only an unchanged older version (even rank) is replaced; a change
+      // uploaded by another migrating device (odd rank) stays a conflict.
+      const outranks = item.legacyRank !== undefined && existing?.legacyRank !== undefined
+        && existing.legacyRank % 2 === 0 && item.legacyRank > existing.legacyRank;
+      if (item.baseRev !== current && !outranks) {
         if (existing?.deleted && item.deleted) {
           results.push({ recordId: item.recordId, status: "ok" as const, rev: existing.rev });
         } else {
@@ -198,7 +227,7 @@ export const push = mutation({
       if (!item.deleted) wroteContent = true;
       const fields = {
         rev, deleted: item.deleted, data: item.data, blob: item.blob, size: item.deleted ? 0 : item.size,
-        deviceId, updatedAt: now,
+        legacyRank: item.legacyRank, deviceId, updatedAt: now,
       };
       if (existing) {
         if (existing.blob && existing.blob !== item.blob) await ctx.storage.delete(existing.blob);
@@ -221,7 +250,8 @@ export const push = mutation({
   },
 });
 
-const PURGE_BATCH = 200;
+/** Records per cleanup step: 50 inline records stay far below the 16 MiB a mutation may read. */
+const PURGE_BATCH = 50;
 
 /** Deletes end-to-end encrypted records of older app versions, page by page. */
 export const dropEncrypted = internalMutation({
@@ -247,8 +277,19 @@ export const dropEncrypted = internalMutation({
  * the sign-in codes.
  */
 export const purge = internalMutation({
-  args: { userId: v.string() },
-  handler: async (ctx, { userId }) => {
+  args: {
+    userId: v.string(),
+    /** Set by jobs scheduled for key resets of end-to-end encrypted versions. */
+    keepKey: v.optional(v.boolean()),
+  },
+  handler: async (ctx, { userId, keepKey }) => {
+    // A key reset only ever concerned encrypted records: remove just those.
+    if (keepKey) {
+      for (const app of Object.keys(SYNC_APPS) as SyncApp[]) {
+        await ctx.scheduler.runAfter(0, internal.sync.dropEncrypted, { userId, app, cursor: null });
+      }
+      return;
+    }
     for (const app of Object.keys(SYNC_APPS) as SyncApp[]) {
       const batch = await recordsOf(ctx, app)
         .withIndex("by_user_rev", (q) => q.eq("userId", userId))
@@ -258,7 +299,7 @@ export const purge = internalMutation({
           if (record.blob) await ctx.storage.delete(record.blob);
           await ctx.db.delete(record._id);
         }
-        await ctx.scheduler.runAfter(0, internal.sync.purge, { userId });
+        await ctx.scheduler.runAfter(0, internal.sync.purge, { userId, keepKey: false });
         return;
       }
     }

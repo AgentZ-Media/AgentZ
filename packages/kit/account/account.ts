@@ -283,8 +283,9 @@ async function startEngine(current: AccountUser) {
   } else if (state.keyId !== RECORD_SCHEME) {
     // Synced by an end-to-end encrypted version: its cloud records are
     // unreadable now and go away. Everything is uploaded again, including
-    // what only this device still holds from newer versions.
-    await r.book.resetForNewCloud();
+    // what only this device still holds from newer versions; the old
+    // revisions decide which device's version wins (book.startMigration).
+    await r.book.startMigration();
     await r.secrets.delete(LEGACY_KEY_SECRET).catch(() => {});
     state = { ...state, keyId: RECORD_SCHEME, pushed: 0, pulled: 0 };
   }

@@ -40,6 +40,8 @@ function connection(db: SQLiteDatabase): DbConnection {
 function createServer() {
   let head = 0;
   const records = new Map<string, WireRecord>();
+  /** legacyRank of migration uploads, as sync.ts keeps it. */
+  const ranks = new Map<string, number>();
   let pushes = 0;
   const reports: Record<string, number>[] = [];
   const transport = (): CloudTransport => ({
@@ -55,12 +57,16 @@ function createServer() {
         pushes += 1;
         const existing = records.get(change.recordId);
         const current = existing?.rev ?? 0;
-        if (change.baseRev !== current) {
+        const stored = ranks.get(change.recordId);
+        const outranks = change.legacyRank !== undefined && stored !== undefined && stored % 2 === 0 && change.legacyRank > stored;
+        if (change.baseRev !== current && !outranks) {
           results.push(existing?.deleted && change.deleted
             ? { recordId: change.recordId, status: "ok", rev: current }
-            : { recordId: change.recordId, status: "conflict", rev: current, current: existing ?? null });
+            : { recordId: change.recordId, status: "conflict", rev: current, current: existing ? { ...existing, legacyRank: stored } : null });
           continue;
         }
+        if (change.legacyRank === undefined) ranks.delete(change.recordId);
+        else ranks.set(change.recordId, change.legacyRank);
         head += 1;
         records.set(change.recordId, { recordId: change.recordId, rev: head, deleted: change.deleted, data: change.data, deviceId });
         results.push({ recordId: change.recordId, status: "ok", rev: head });
@@ -102,16 +108,19 @@ async function device(name: string, server: ReturnType<typeof createServer>) {
   const activate = () => { setPlatformAdapter(platform); setKvStore(kv); };
   const applied: AppliedSummary[] = [];
   const adapter = createScriptzSyncAdapter({ applied: (summary) => applied.push(summary), settingsChanged: () => {}, copySuffix: () => "Konfliktkopie" });
-  const state: SyncState = { userId: "u", email: "u@x", keyId: RECORD_SCHEME, deviceId: name, pushed: 0, pulled: 0, lastSyncedAt: null };
   const book = createSqlSyncBook(async () => conn);
-  const engine = createSyncEngine({
-    app: "scriptz", adapter, transport: server.transport(), book, kv, state, client,
+  const connectTo = (cloud: ReturnType<typeof createServer>) => createSyncEngine({
+    app: "scriptz", adapter, transport: cloud.transport(), book, kv, client,
+    state: { userId: "u", email: "u@x", keyId: RECORD_SCHEME, deviceId: name, pushed: 0, pulled: 0, lastSyncedAt: null } satisfies SyncState,
   });
+  let engine = connectTo(server);
   return {
     db, applied, book,
     run(sql: string) { db.exec(sql); },
     rows: (sql: string) => db.prepare(sql).all(),
     async sync() { activate(); await engine.sync(); },
+    /** What account.ts does for bookkeeping of an end-to-end encrypted version. */
+    async migrate(cloud: ReturnType<typeof createServer>) { await book.startMigration(); engine = connectTo(cloud); },
   };
 }
 
@@ -277,6 +286,54 @@ describe("ScriptZ sync adapter", () => {
     ]);
     expect(a.rows("SELECT entity_id, rev, upload FROM sync_parked")).toEqual([{ entity_id: "board", rev: 0, upload: 1 }]);
     expect((await a.book.parked())[0]).toMatchObject({ entity: "storyboards", record: { id: "board", frames: 3 }, upload: true });
+  });
+
+  it("migrates several devices from the encrypted cloud without losing newer data", async () => {
+    const oldCloud = createServer();
+    const a = await device("A", oldCloud);
+    const b = await device("B", oldCloud);
+    a.run(SEED);
+    await a.sync();
+    await b.sync();
+    // B sees more of the old cloud than A: a renamed folder and a longer chat.
+    b.run(`UPDATE folders SET name = 'Neu', updated_at = 9 WHERE id = 'folder';
+           UPDATE agent_chats SET items_json = '[{"kind":"user","id":"m","text":"Hallo"},{"kind":"user","id":"n","text":"Noch was"}]', updated_at = 9 WHERE id = 'chat';
+           INSERT INTO daily_word_log VALUES ('2026-10-06', 7);`);
+    await b.sync();
+    const newCloud = createServer();
+    await a.migrate(newCloud);
+    await b.migrate(newCloud);
+    // The device with the older state goes first; A's own words came from its feed.
+    await a.sync();
+    await b.sync();
+    await a.sync();
+    for (const d of [a, b]) {
+      expect(d.rows("SELECT name FROM folders")).toEqual([{ name: "Neu" }]);
+      expect(d.rows("SELECT updated_at FROM agent_chats")).toEqual([{ updated_at: 9 }]);
+    }
+    expect(a.rows("SELECT id FROM scripts")).toEqual([{ id: "script" }]);
+    expect(await a.book.legacy()).toEqual([]);
+    // B uploaded A's word count it only knew as a remote value: a new device gets both.
+    const c = await device("C", newCloud);
+    await c.sync();
+    expect(c.rows("SELECT device_id, date, words_added FROM daily_word_log_remote ORDER BY device_id")).toEqual([
+      { device_id: "A", date: "2026-10-05", words_added: 42 }, { device_id: "B", date: "2026-10-06", words_added: 7 },
+    ]);
+  });
+
+  it("keeps the word counts of a device that never migrates", async () => {
+    const oldCloud = createServer();
+    const a = await device("A", oldCloud);
+    const b = await device("B", oldCloud);
+    a.run(SEED);
+    await a.sync();
+    await b.sync();
+    const newCloud = createServer();
+    await b.migrate(newCloud);
+    await b.sync();
+    const c = await device("C", newCloud);
+    await c.sync();
+    expect(c.rows("SELECT device_id, date, words_added FROM daily_word_log_remote")).toEqual([{ device_id: "A", date: "2026-10-05", words_added: 42 }]);
   });
 
   it("counts the scripts for the website, without the unedited welcome script", async () => {

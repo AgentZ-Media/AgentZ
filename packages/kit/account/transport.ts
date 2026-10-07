@@ -16,6 +16,8 @@ export interface WireRecord {
   blobUrl?: string;
   /** Set only on end-to-end encrypted records of older app versions; devices skip them. */
   keyId?: string;
+  /** Rank of a migration upload (engine.ts); absent once written normally. */
+  legacyRank?: number;
   deviceId: string;
 }
 
@@ -26,6 +28,8 @@ export interface WireChange {
   data?: ArrayBuffer;
   blob?: string;
   size: number;
+  /** Migration upload from end-to-end encrypted versions (engine.ts). */
+  legacyRank?: number;
 }
 
 export type PushResult =
