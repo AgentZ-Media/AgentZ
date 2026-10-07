@@ -23,7 +23,7 @@ const command = `xattr -cr "/Applications/${app?.name ?? "ScriptZ"}.app"`;
       <p class="kicker">{t.firstRun}</p>
       <div class="note"><b>macOS</b><p>{t.macHint}</p><div class="cmd"><code>{command}</code><button class="btn" type="button" data-copy={command} data-copied={t.copied}>{t.copy}</button></div></div>
       <div class="note"><b>Windows</b><p>{t.winHint}</p></div>
-      <a class="releases" href="https://github.com/AgentZ-Media/AgentZ-Suite/releases">{t.releases}<Icon name="right" /></a>
+      <a class="releases" href="https://github.com/AgentZ-Media/AgentZ-Suite/releases" target="_blank" rel="noopener noreferrer">{t.releases}<Icon name="right" /></a>
     </div>
   </div>
 )}

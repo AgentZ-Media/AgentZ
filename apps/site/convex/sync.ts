@@ -40,7 +40,7 @@ const policyOf = (ctx: Ctx, app: SyncApp) =>
 
 /** Version and sync format of the calling device. Optional only so that
  * versions from before the check get CLIENT_OUTDATED instead of a validation error. */
-const clientArg = v.optional(v.object({
+export const clientArg = v.optional(v.object({
   version: v.string(),
   reads: v.number(),
   writes: v.number(),
@@ -53,7 +53,7 @@ async function blockOf(ctx: Ctx, userId: string, app: SyncApp, client: ClientInf
 }
 
 /** Throws CLIENT_OUTDATED (with the reason) unless this device may sync. */
-async function requireCompatible(ctx: Ctx, userId: string, app: SyncApp, client: ClientInfo | undefined): Promise<ClientInfo> {
+export async function requireCompatible(ctx: Ctx, userId: string, app: SyncApp, client: ClientInfo | undefined): Promise<ClientInfo> {
   const block = await blockOf(ctx, userId, app, client);
   if (block || !client) throw new ConvexError({ code: "CLIENT_OUTDATED", block: block ?? { reason: "version", minVersion: null } });
   return client;
@@ -214,7 +214,7 @@ const PURGE_BATCH = 200;
 
 /**
  * Removes a user's cloud data in batches: every app's records and files, the
- * revision counters and, unless `keepKey`, the key itself. Used for a key
+ * revision counters, the reported totals and, unless `keepKey`, the key itself. Used for a key
  * reset (keepKey: the new key stays, `resetting` is cleared at the end) and
  * when the account is deleted.
  */
@@ -236,6 +236,8 @@ export const purge = internalMutation({
     }
     const heads = await ctx.db.query("sync_heads").withIndex("by_user_app", (q) => q.eq("userId", userId)).collect();
     for (const head of heads) await ctx.db.delete(head._id);
+    const stats = await ctx.db.query("sync_stats").withIndex("by_user_app", (q) => q.eq("userId", userId)).collect();
+    for (const row of stats) await ctx.db.delete(row._id);
     const key = await keyOf(ctx, userId);
     if (key && keepKey) await ctx.db.patch(key._id, { resetting: false, updatedAt: Date.now() });
     else if (key) await ctx.db.delete(key._id);

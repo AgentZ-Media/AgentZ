@@ -268,6 +268,16 @@ export function createScriptzSyncAdapter(hooks: ScriptzSyncHooks): SyncAdapter {
       return String(row.id);
     },
 
+    // The website's script counter. The unedited welcome script is no script
+    // anyone wrote.
+    async stats() {
+      const db = await getDb();
+      const rows = await db.select<{ n: number }[]>(
+        "SELECT COUNT(*) AS n FROM scripts WHERE id IS NOT $1 OR created_at <> updated_at", [await welcomeId()],
+      );
+      return { scripts: rows[0]?.n ?? 0 };
+    },
+
     settings: {
       keys: SYNCED_SETTINGS,
       changed: (keys) => hooks.settingsChanged(keys),
