@@ -20,6 +20,9 @@ const EFFORTS = new Set(["none", "minimal", "low", "medium", "high", "xhigh"]);
 const MAX_TOOLS = 64;
 const MAX_MESSAGES = 2000;
 const MAX_OUTPUT_TOKENS = 32_000;
+/** Serialized messages per request; above the app's own context budget
+ *  (about 1.2 million characters, lib/agent/openrouter/provider.ts). */
+const MAX_REQUEST_CHARS = 2_000_000;
 
 type Json = Record<string, unknown>;
 
@@ -34,12 +37,27 @@ function model() {
   return { id, label: MODEL_LABELS[id] ?? id };
 }
 
-/** The session of the app (bearer token from the app sign-in), or null. */
-async function signedInUser(ctx: Parameters<Parameters<typeof httpAction>[0]>[0], request: Request) {
+type Ctx = Parameters<Parameters<typeof httpAction>[0]>[0];
+
+/** The user of the app's session (bearer token from the app sign-in), null
+ *  without a valid session. Throws when the check itself fails. */
+async function signedInUser(ctx: Ctx, request: Request) {
   const authorization = request.headers.get("authorization");
   if (!authorization?.startsWith("Bearer ")) return null;
-  const session = await createAuth(ctx).api.getSession({ headers: new Headers({ authorization }) }).catch(() => null);
+  const session = await createAuth(ctx).api.getSession({ headers: new Headers({ authorization }) });
   return session?.user ?? null;
+}
+
+/** 401 only for a missing session: the app signs out on 401, a failed check
+ *  (auth or database hiccup) must not end the session of the whole suite. */
+async function authorize(ctx: Ctx, request: Request) {
+  try {
+    const user = await signedInUser(ctx, request);
+    return user ? { user } : { response: json({ error: "unauthorized" }, 401) };
+  } catch (error) {
+    console.warn("session check failed", error instanceof Error ? error.message : String(error));
+    return { response: json({ error: "unavailable" }, 503) };
+  }
 }
 
 /** Only what the agent needs passes through; everything else (other models,
@@ -47,6 +65,7 @@ async function signedInUser(ctx: Parameters<Parameters<typeof httpAction>[0]>[0]
 export function upstreamBody(raw: Json, userId: string): Json | null {
   const messages = raw.messages;
   if (!Array.isArray(messages) || messages.length === 0 || messages.length > MAX_MESSAGES || !messages.every(isObject)) return null;
+  if (JSON.stringify(messages).length > MAX_REQUEST_CHARS) return null;
   const body: Json = { model: model().id, messages, stream: raw.stream === true, user: userId };
   if (raw.stream === true) body.usage = { include: true };
   if (Array.isArray(raw.tools)) {
@@ -58,7 +77,8 @@ export function upstreamBody(raw: Json, userId: string): Json | null {
   if (isObject(raw.reasoning) && EFFORTS.has(String(raw.reasoning.effort))) {
     body.reasoning = { effort: raw.reasoning.effort, ...(raw.reasoning.exclude === true ? { exclude: true } : {}) };
   }
-  if (typeof raw.max_tokens === "number" && raw.max_tokens > 0) body.max_tokens = Math.min(raw.max_tokens, MAX_OUTPUT_TOKENS);
+  // Always capped, also when the client sends none.
+  body.max_tokens = typeof raw.max_tokens === "number" && raw.max_tokens > 0 ? Math.min(raw.max_tokens, MAX_OUTPUT_TOKENS) : MAX_OUTPUT_TOKENS;
   // Web search for the agent's web_search tool: one engine, few results.
   if (Array.isArray(raw.plugins) && raw.plugins.some((plugin) => isObject(plugin) && plugin.id === "web")) {
     const web = raw.plugins.find((plugin) => isObject(plugin) && plugin.id === "web") as Json;
@@ -70,8 +90,9 @@ export function upstreamBody(raw: Json, userId: string): Json | null {
 
 /** GET /ai/status: is the hosted agent available for this session, and with which model. */
 export const status = httpAction(async (ctx, request) => {
-  const user = await signedInUser(ctx, request);
-  if (!user) return json({ error: "unauthorized" }, 401);
+  const auth = await authorize(ctx, request);
+  if (!auth.user) return auth.response;
+  const { user } = auth;
   if (!process.env.OPENROUTER_API_KEY) return json({ error: "unavailable" }, 503);
   const { id, label } = model();
   return json({ email: user.email, model: { id, label } });
@@ -79,8 +100,9 @@ export const status = httpAction(async (ctx, request) => {
 
 /** POST /ai/chat: one chat completion step, streamed through unchanged. */
 export const chat = httpAction(async (ctx, request) => {
-  const user = await signedInUser(ctx, request);
-  if (!user) return json({ error: "unauthorized" }, 401);
+  const auth = await authorize(ctx, request);
+  if (!auth.user) return auth.response;
+  const { user } = auth;
   const key = process.env.OPENROUTER_API_KEY;
   if (!key) return json({ error: "unavailable" }, 503);
   let raw: unknown;
