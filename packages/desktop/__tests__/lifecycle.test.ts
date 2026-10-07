@@ -136,3 +136,48 @@ it("freezes existing editors and portal shortcuts until the final lock is releas
   second(); expect(root.inert).not.toBe(true);
   root.remove();
 });
+
+describe("leaving the app", () => {
+  it("runs the last step after saving and before leaving, and leaves even when it fails", async () => {
+    const order: string[] = [];
+    const state = setup(vi.fn(async () => { order.push("flush"); return { ok: true, failed: [], contentFailed: [] }; }));
+    state.ports.beforeLeave = vi.fn(async (kind: "close" | "exit") => { order.push(`before:${kind}`); throw new Error("installer failed"); });
+    vi.mocked(state.ports.finishExit).mockImplementation(async () => { order.push("finish"); });
+    vi.mocked(state.ports.destroy).mockImplementation(async () => { order.push("destroy"); });
+    const stop = await startDesktopLifecycle(state.ports);
+    state.exit(7);
+    await vi.waitFor(() => expect(order).toEqual(["flush", "before:exit", "finish"]));
+    expect(state.ports.finishExit).toHaveBeenCalledWith(7, true);
+    stop();
+  });
+
+  it("passes a window close as such and skips the last step when saving failed", async () => {
+    const flush = vi.fn(async () => ({ ok: false, failed: ["editor"], contentFailed: ["editor"] }));
+    const state = setup(flush);
+    state.ports.beforeLeave = vi.fn(async () => {});
+    const stop = await startDesktopLifecycle(state.ports);
+    state.close();
+    await tick();
+    expect(state.ports.beforeLeave).not.toHaveBeenCalled();
+    flush.mockImplementation(async () => ({ ok: true, failed: [], contentFailed: [] }));
+    state.close();
+    await vi.waitFor(() => expect(state.ports.destroy).toHaveBeenCalledOnce());
+    expect(state.ports.beforeLeave).toHaveBeenCalledWith("close");
+    stop();
+  });
+
+  it("never runs the last step when the user quits without saving", async () => {
+    const flush = vi.fn(async () => ({ ok: false, failed: ["editor"], contentFailed: ["editor"] }));
+    const state = setup(flush);
+    state.ports.beforeLeave = vi.fn(async () => {});
+    vi.mocked(state.ports.confirmUnsaved).mockResolvedValue(true);
+    const stop = await startDesktopLifecycle(state.ports);
+    state.exit(1);
+    await vi.waitFor(() => expect(state.ports.finishExit).toHaveBeenCalledWith(1, false));
+    state.exit(2);
+    await vi.waitFor(() => expect(state.ports.finishExit).toHaveBeenCalledWith(2, true));
+    expect(state.ports.beforeLeave).not.toHaveBeenCalled();
+    stop();
+  });
+});
+

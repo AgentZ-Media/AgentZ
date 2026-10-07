@@ -17,7 +17,7 @@ import { api } from "../../lib/api";
 import { scriptSavedBus, scriptsBus, withSavedContent } from "../../lib/scriptsBus";
 import { foldersBus } from "../../lib/foldersBus";
 import { resolveLengthRange, type LengthRange } from "../../lib/lengthGoal";
-import { runtimeSeconds } from "../../lib/runtime";
+import { storedRuntimeSeconds } from "../../lib/runtime";
 import { INBOX_FOLDER_ID } from "../../lib/folders";
 import { ideasStore } from "../../stores/ideas";
 import { settingsStore } from "../../stores/settings";
@@ -281,12 +281,7 @@ export function lengthRangeFor(s: ScriptSummary): LengthRange | null {
 /** Estimated runtime in whole seconds, or null when the script was never
  *  measured or is empty (the list then leaves the cell blank). */
 export function runtimeSecFor(s: ScriptSummary): number | null {
-  if (s.dialog_word_count < 0 || s.direction_block_count < 0) return null;
-  if (s.dialog_word_count === 0 && s.direction_block_count === 0) return null;
-  return runtimeSeconds(
-    { dialogWords: s.dialog_word_count, directionBlocks: s.direction_block_count },
-    settingsStore.dialogWpm(),
-  );
+  return storedRuntimeSeconds(s, settingsStore.dialogWpm());
 }
 
 /** Monday 00:00 (local time) of the ISO week containing `now`. */

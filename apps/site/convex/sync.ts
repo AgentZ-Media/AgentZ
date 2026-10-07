@@ -4,6 +4,7 @@ import type { Doc, Id } from "./_generated/dataModel";
 import {
   internalMutation, mutation, query, type MutationCtx, type QueryCtx,
 } from "./_generated/server";
+import { blockFor, devRaiseDenied, markOf, raisedMark, type ClientInfo, type SyncBlock } from "./compat";
 import {
   BATCH_LIMIT, INLINE_LIMIT, PULL_BYTES, RECORD_LIMIT, SYNC_APPS, appArg, type SyncApp,
 } from "./syncApps";
@@ -12,6 +13,10 @@ import {
 // with the revision they last saw (baseRev) and pull everything after their
 // cursor. The server never decrypts anything; it only orders writes and
 // detects when a device wrote on top of an outdated revision.
+//
+// Every call carries the device's version and sync format (`client`). A
+// device that cannot read the account's data or that the policy excludes
+// gets CLIENT_OUTDATED and pauses until it is updated (compat.ts).
 
 type Ctx = QueryCtx | MutationCtx;
 type RecordDoc = Doc<"scriptz_records">;
@@ -30,6 +35,30 @@ const headOf = (ctx: Ctx, userId: string, app: SyncApp) =>
 
 const recordsOf = (ctx: Ctx, app: SyncApp) => ctx.db.query(SYNC_APPS[app]);
 
+const policyOf = (ctx: Ctx, app: SyncApp) =>
+  ctx.db.query("sync_policy").withIndex("by_app", (q) => q.eq("app", app)).unique();
+
+/** Version and sync format of the calling device. Optional only so that
+ * versions from before the check get CLIENT_OUTDATED instead of a validation error. */
+export const clientArg = v.optional(v.object({
+  version: v.string(),
+  reads: v.number(),
+  writes: v.number(),
+  channel: v.optional(v.string()),
+}));
+
+async function blockOf(ctx: Ctx, userId: string, app: SyncApp, client: ClientInfo | undefined): Promise<SyncBlock | null> {
+  const [head, policy] = await Promise.all([headOf(ctx, userId, app), policyOf(ctx, app)]);
+  return blockFor(client, markOf(head), policy);
+}
+
+/** Throws CLIENT_OUTDATED (with the reason) unless this device may sync. */
+export async function requireCompatible(ctx: Ctx, userId: string, app: SyncApp, client: ClientInfo | undefined): Promise<ClientInfo> {
+  const block = await blockOf(ctx, userId, app, client);
+  if (block || !client) throw new ConvexError({ code: "CLIENT_OUTDATED", block: block ?? { reason: "version", minVersion: null } });
+  return client;
+}
+
 async function blobUrl(ctx: Ctx, blob: Id<"_storage"> | undefined) {
   return blob ? (await ctx.storage.getUrl(blob)) ?? undefined : undefined;
 }
@@ -46,21 +75,26 @@ function wire(record: RecordDoc, url?: string) {
   };
 }
 
-/** Current revision and key of the account; devices subscribe to this. */
+/**
+ * Current revision and key of the account, and whether this device may sync;
+ * devices subscribe to this. Never throws for an outdated device, so the
+ * subscription keeps running and lifts the pause when the policy changes.
+ */
 export const head = query({
-  args: { app: appArg },
-  handler: async (ctx, { app }) => {
+  args: { app: appArg, client: clientArg },
+  handler: async (ctx, { app, client }) => {
     const userId = await requireUser(ctx);
-    const [head, key] = await Promise.all([headOf(ctx, userId, app), keyOf(ctx, userId)]);
-    return { rev: head?.rev ?? 0, keyId: key?.keyId ?? null, resetting: key?.resetting ?? false };
+    const [head, key, block] = await Promise.all([headOf(ctx, userId, app), keyOf(ctx, userId), blockOf(ctx, userId, app, client)]);
+    return { rev: head?.rev ?? 0, keyId: key?.keyId ?? null, resetting: key?.resetting ?? false, block };
   },
 });
 
 /** Records after a revision, oldest first, bounded by count and bytes. */
 export const pull = query({
-  args: { app: appArg, afterRev: v.number(), limit: v.optional(v.number()) },
-  handler: async (ctx, { app, afterRev, limit }) => {
+  args: { app: appArg, client: clientArg, afterRev: v.number(), limit: v.optional(v.number()) },
+  handler: async (ctx, { app, client, afterRev, limit }) => {
     const userId = await requireUser(ctx);
+    await requireCompatible(ctx, userId, app, client);
     const take = Math.max(1, Math.min(BATCH_LIMIT, Math.floor(limit ?? BATCH_LIMIT)));
     const page = await recordsOf(ctx, app)
       .withIndex("by_user_rev", (q) => q.eq("userId", userId).gt("rev", afterRev))
@@ -80,9 +114,11 @@ export const pull = query({
 
 /** Upload URL for a record too large to store inline. */
 export const uploadUrl = mutation({
-  args: {},
-  handler: async (ctx) => {
-    await requireUser(ctx);
+  args: { app: v.optional(appArg), client: clientArg },
+  handler: async (ctx, { app, client }) => {
+    const userId = await requireUser(ctx);
+    if (!app) throw new ConvexError({ code: "CLIENT_OUTDATED", block: { reason: "version", minVersion: null } });
+    await requireCompatible(ctx, userId, app, client);
     return await ctx.storage.generateUploadUrl();
   },
 });
@@ -103,16 +139,23 @@ const change = v.object({
  * deleted record is no conflict.
  */
 export const push = mutation({
-  args: { app: appArg, keyId: v.string(), deviceId: v.string(), changes: v.array(change) },
-  handler: async (ctx, { app, keyId, deviceId, changes }) => {
+  args: { app: appArg, client: clientArg, keyId: v.string(), deviceId: v.string(), changes: v.array(change) },
+  handler: async (ctx, { app, client: reported, keyId, deviceId, changes }) => {
     const userId = await requireUser(ctx);
     if (changes.length > BATCH_LIMIT) throw new ConvexError({ code: "BATCH_TOO_LARGE" });
+    const client = await requireCompatible(ctx, userId, app, reported);
     const key = await keyOf(ctx, userId);
     if (!key || key.resetting) throw new ConvexError({ code: "NO_KEY" });
     if (key.keyId !== keyId) throw new ConvexError({ code: "KEY_CHANGED" });
 
     const head = await headOf(ctx, userId, app);
+    const mark = markOf(head);
+    if (devRaiseDenied(client, mark, process.env.ALLOW_DEV_FORMAT_RAISE === "1")) {
+      throw new ConvexError({ code: "DEV_FORMAT_RAISE", format: mark.format, writes: client.writes });
+    }
     let rev = head?.rev ?? 0;
+    /** Content in this client's format was written (deletions carry none). */
+    let wroteContent = false;
     const now = Date.now();
     const results = [];
     for (const item of changes) {
@@ -141,6 +184,7 @@ export const push = mutation({
         continue;
       }
       rev += 1;
+      if (!item.deleted) wroteContent = true;
       const fields = {
         rev, deleted: item.deleted, data: item.data, blob: item.blob, size: item.deleted ? 0 : item.size,
         keyId, deviceId, updatedAt: now,
@@ -153,10 +197,14 @@ export const push = mutation({
       }
       results.push({ recordId: item.recordId, status: "ok" as const, rev });
     }
+    // Records in this client's format exist from now on: devices that cannot
+    // read it pause (compat.ts). Only written content raises the mark.
+    const raised = wroteContent ? raisedMark(client, mark) : null;
+    const format = raised ? { format: raised.format, formatBy: client.version } : {};
     if (head) {
-      if (rev !== head.rev) await ctx.db.patch(head._id, { rev });
+      if (rev !== head.rev) await ctx.db.patch(head._id, { rev, ...format });
     } else if (rev > 0) {
-      await ctx.db.insert("sync_heads", { userId, app, rev });
+      await ctx.db.insert("sync_heads", { userId, app, rev, ...format });
     }
     return { results, headRev: rev };
   },
@@ -166,7 +214,7 @@ const PURGE_BATCH = 200;
 
 /**
  * Removes a user's cloud data in batches: every app's records and files, the
- * revision counters and, unless `keepKey`, the key itself. Used for a key
+ * revision counters, the reported totals and, unless `keepKey`, the key itself. Used for a key
  * reset (keepKey: the new key stays, `resetting` is cleared at the end) and
  * when the account is deleted.
  */
@@ -188,6 +236,8 @@ export const purge = internalMutation({
     }
     const heads = await ctx.db.query("sync_heads").withIndex("by_user_app", (q) => q.eq("userId", userId)).collect();
     for (const head of heads) await ctx.db.delete(head._id);
+    const stats = await ctx.db.query("sync_stats").withIndex("by_user_app", (q) => q.eq("userId", userId)).collect();
+    for (const row of stats) await ctx.db.delete(row._id);
     const key = await keyOf(ctx, userId);
     if (key && keepKey) await ctx.db.patch(key._id, { resetting: false, updatedAt: Date.now() });
     else if (key) await ctx.db.delete(key._id);

@@ -1,4 +1,4 @@
-import { For, Show } from "solid-js";
+import { Show } from "solid-js";
 import { Icon } from "@agentz/kit/ui";
 import { INBOX_FOLDER_ID } from "../../../lib/folders";
 import type { Folder } from "../../../lib/types";
@@ -6,20 +6,14 @@ import { agentSettings } from "../../../stores/agentSettings";
 import { t } from "../../../i18n";
 import { AgentAvatar } from "../../Agent/AgentAvatar";
 import { agentModeAvailable, findIdeasWithAgent } from "../../AgentMode/actions";
-import { folderColor } from "../../Common/folderColor";
+import { FolderChips, type FolderChipCounts } from "../../Common/FolderChips";
 import type { IdeaSort } from "../ideaGroups";
 import { SortMenu } from "./SortMenu";
 
 export interface IdeasToolbarProps {
-  /** Every folder (decides whether the "no folder" chip shows). */
   folders: Folder[];
-  /** Folders with a chip: non-empty ones plus the active one. */
-  chipFolders: Folder[];
-  /** Ideas in the current scope (the "all" chip). */
-  total: number;
-  byFolder: Map<string, number>;
-  /** Ideas without a folder. */
-  inbox: number;
+  /** Ideas in the current scope per folder. */
+  counts: FolderChipCounts;
   activeFolder: string | null;
   onFolder: (id: string | null) => void;
   filterRef: (el: HTMLInputElement) => void;
@@ -47,38 +41,13 @@ export function IdeasToolbar(props: IdeasToolbarProps) {
   ];
 
   return (
-    <div class="i-chips" role="group" aria-label={t("ideasPage.chips.aria")}>
-      <button
-        type="button"
-        class="fchip"
-        aria-pressed={props.activeFolder === null}
-        onClick={() => props.onFolder(null)}
-      >
-        {t("ideasPage.chips.all")} <em>{props.total}</em>
-      </button>
-      <For each={props.chipFolders}>
-        {(f) => (
-          <button
-            type="button"
-            class="fchip"
-            aria-pressed={props.activeFolder === f.id}
-            onClick={() => props.onFolder(f.id)}
-          >
-            <i style={{ background: folderColor(f.id) }} />
-            {f.name} <em>{props.byFolder.get(f.id) ?? 0}</em>
-          </button>
-        )}
-      </For>
-      <Show when={props.folders.length > 0 && (props.inbox > 0 || props.activeFolder === INBOX_FOLDER_ID)}>
-        <button
-          type="button"
-          class="fchip"
-          aria-pressed={props.activeFolder === INBOX_FOLDER_ID}
-          onClick={() => props.onFolder(INBOX_FOLDER_ID)}
-        >
-          {t("ideasPage.chips.none")} <em>{props.inbox}</em>
-        </button>
-      </Show>
+    <div class="i-chips" role="group" aria-label={t("folder.chips.aria")}>
+      <FolderChips
+        folders={props.folders}
+        counts={props.counts}
+        active={props.activeFolder}
+        onSelect={props.onFolder}
+      />
       <Show when={agentModeAvailable()}>
         <button
           type="button"

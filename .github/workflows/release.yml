@@ -186,3 +186,14 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           RELEASE_TAG: ${{ needs.prepare.outputs.tag }}
         run: node tooling/release/pointer.mjs
+      # Signed-in apps check right away instead of hourly. Never fails the job,
+      # also not for a tag that predates the script.
+      - name: Announce the release to the apps
+        continue-on-error: true
+        env:
+          CHANNEL: stable
+          RELEASE_TAG: ${{ needs.prepare.outputs.tag }}
+          RELEASE_ANNOUNCE_TOKEN: ${{ secrets.RELEASE_ANNOUNCE_TOKEN }}
+        run: |
+          if [ -f tooling/release/announce.mjs ]; then node tooling/release/announce.mjs
+          else echo "::warning::This tag has no announce script; apps find the release with their hourly check."; fi

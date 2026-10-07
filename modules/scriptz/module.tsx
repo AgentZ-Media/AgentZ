@@ -1,9 +1,10 @@
 import { ErrorBoundary, Show, Suspense, createEffect, on, untrack } from "solid-js";
 import type { AppModule, ModuleContext, ModuleRuntime } from "@agentz/kit/shell";
-import { api } from "./lib/api";
 import { startCharacterAutoPrune } from "./lib/characterAutoPrune";
+import { startTrashAutoPurge } from "./lib/trashAutoPurge";
 import { ensureWelcomeContent } from "./lib/welcome";
 import { migrateLegacyBlocksOnce } from "./lib/legacyBlocksMigration";
+import { backfillRuntimeStatsOnBoot } from "./lib/runtimeBackfill";
 import { settingsStore, startSettingsRuntime } from "./stores/settings";
 import { navStore, startNavRuntime } from "./stores/nav";
 import { openStore, startOpenStore } from "./stores/open";
@@ -64,8 +65,8 @@ async function setupScriptz(ctx: ModuleContext): Promise<ModuleRuntime> {
   await Promise.all([
     settingsStore.load(), agentSettings.load(), ensureWelcomeContent({ kv: ctx.kv, signal: ctx.signal }), navStore.load(),
     uiStore.load(active), libraryPrefs.load(active),
-    uiStore.loadSidebarSections(active), libraryPrefs.loadViewModes(active),
-    api.backfillRuntimeStats().catch((error) => console.warn("[scriptz] runtime backfill skipped", error)),
+    uiStore.loadSidebarSections(active), libraryPrefs.loadViewModes(active), libraryPrefs.loadIdeaLayout(active),
+    backfillRuntimeStatsOnBoot(ctx.kv).catch((error) => console.warn("[scriptz] runtime backfill skipped", error)),
   ]);
   ensureActive();
   // After the navigation: an install without a stored list starts with the
@@ -80,6 +81,7 @@ async function setupScriptz(ctx: ModuleContext): Promise<ModuleRuntime> {
     ctx.onDispose(startDailyStatsStore());
     ctx.onDispose(startLibraryData());
     ctx.onDispose(startCharacterAutoPrune(() => settingsStore.pruneUnusedCharacters()));
+    ctx.onDispose(startTrashAutoPurge());
     ctx.onDispose(startAgentRuntime(ctx.services));
     createEffect(() => {
       if (!library.scriptsReady()) return;

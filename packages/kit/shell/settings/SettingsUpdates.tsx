@@ -33,13 +33,14 @@ export function SettingsUpdates(props: {
     if (stage === "available" || stage === "downloading" || stage === "installing") {
       return t("settings.updates.available", { version: u().available()?.version ?? "" });
     }
-    if (stage === "ready") return t("settings.updates.ready");
+    if (stage === "ready") return t("settings.updates.ready", { version: u().available()?.version ?? "" });
     if (leavingNightly()) return t("settings.updates.nightly.running");
     if (u().manualCheck()?.kind === "uptodate") return t("settings.updates.upToDate");
     return t("settings.updates.status");
   };
   const statusHelp = () => {
     if (u().stage() === "installing") return t("shell.update.installing");
+    if (u().stage() === "ready") return t("settings.updates.readyHelp");
     if (u().stage() === "downloading") return t("settings.updates.downloading", { progress: u().progress() });
     if (u().manualCheck()?.kind === "error" || u().stage() === "error") return t("settings.updates.checkError");
     if (u().stage() === "available" && availableNightly()) return t("settings.updates.nightly.availableHelp");
@@ -68,7 +69,7 @@ export function SettingsUpdates(props: {
               {t("settings.updates.action.onGithub")}
             </button>
             </Show>
-            <button class="btn primary sm" classList={{ "set-night-btn": availableNightly() }} onClick={() => void u().downloadAndInstall()}>
+            <button class="btn primary sm" classList={{ "set-night-btn": availableNightly() }} onClick={() => void u().download()}>
               {t("settings.updates.action.download")}
             </button>
           </Show>
@@ -78,7 +79,7 @@ export function SettingsUpdates(props: {
             </button>
           </Show>
           <Show when={u().stage() === "error"}>
-            <button class="btn sm" onClick={() => void u().downloadAndInstall()}>
+            <button class="btn sm" onClick={() => void u().restart()}>
               {t("settings.updates.action.retry")}
             </button>
           </Show>
@@ -106,6 +107,14 @@ export function SettingsUpdates(props: {
           disabled={!baseSettingsStore.updateCheckEnabled()}
           onChange={(v) => void baseSettingsStore.setHourlyUpdateCheck(v)}
           label={t("settings.updates.hourly.aria")}
+        />
+      </Row>
+      <Row label={t("settings.updates.auto.label")} help={t("prefs.updates.autoHelp")}>
+        <Switch
+          checked={baseSettingsStore.autoInstallUpdates()}
+          disabled={!baseSettingsStore.updateCheckEnabled()}
+          onChange={(v) => void baseSettingsStore.setAutoInstallUpdates(v)}
+          label={t("settings.updates.auto.aria")}
         />
       </Row>
       <div class="srow set-night" classList={{ "is-on": nightlyChannel() }}>

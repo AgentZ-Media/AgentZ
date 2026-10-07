@@ -7,11 +7,11 @@ import { readFileSync, readdirSync } from "node:fs";
 import { join } from "node:path";
 import type { DatabaseSync as SQLiteDatabase, SQLInputValue } from "node:sqlite";
 import {
-  createDataKey, createMemorySyncBook, createRecordCipher, createSyncEngine,
-  type CloudTransport, type PushResult, type SyncState, type WireRecord,
+  createDataKey, createRecordCipher, createSqlSyncBook, createSyncEngine,
+  type CloudTransport, type PushResult, type SyncClient, type SyncState, type WireRecord,
 } from "@agentz/kit/account";
 import { createSqlKvStore, setKvStore, setPlatformAdapter, type DbConnection, type PlatformAdapter } from "@agentz/kit/platform";
-import { createScriptzSyncAdapter, type AppliedSummary } from "../adapter";
+import { createScriptzSyncAdapter, SYNC_FORMAT, type AppliedSummary } from "../adapter";
 
 const { DatabaseSync } = createRequire(import.meta.url)("node:sqlite") as typeof import("node:sqlite");
 // jsdom (the Kit account UI needs a DOM to import) has no file URLs; tests run in the package root.
@@ -41,14 +41,15 @@ function createServer() {
   let head = 0;
   const records = new Map<string, WireRecord>();
   let pushes = 0;
+  const reports: Record<string, number>[] = [];
   const transport = (keyId: string): CloudTransport => ({
-    head: async () => ({ rev: head, keyId, resetting: false }),
+    head: async () => ({ rev: head, keyId, resetting: false, block: null }),
     watchHead: () => () => {},
-    async pull(_app, afterRev) {
+    async pull(_app, _client, afterRev) {
       const list = [...records.values()].filter((r) => r.rev > afterRev).sort((a, b) => a.rev - b.rev);
       return { records: list.slice(0, 3), headRev: head, more: list.length > 3 };
     },
-    async push(_app, pushKey, deviceId, changes) {
+    async push(_app, _client, pushKey, deviceId, changes) {
       const results: PushResult[] = [];
       for (const change of changes) {
         pushes += 1;
@@ -66,6 +67,7 @@ function createServer() {
       }
       return { results, headRev: head };
     },
+    report: async (_app, _client, counts) => { reports.push({ ...counts }); },
     upload: async () => { throw new Error("not used"); },
     download: async () => { throw new Error("not used"); },
     getKey: async () => null,
@@ -75,8 +77,24 @@ function createServer() {
     connected: () => true,
     close: () => {},
   });
-  return { transport, pushes: () => pushes };
+  /** A record as a newer app version would have written it. */
+  async function inject(entity: string, id: string, record: unknown, key = sharedKey) {
+    const cipher = await createRecordCipher(key, "scriptz");
+    const recordId = await cipher.recordId(entity, id);
+    const sealed = await cipher.encrypt(recordId, { entity, id, record });
+    head += 1;
+    records.set(recordId, { recordId, rev: head, deleted: false, data: sealed.slice().buffer as ArrayBuffer, keyId: key.keyId, deviceId: "newer" });
+  }
+  /** The cloud's current version of a record, decrypted. */
+  async function read(entity: string, id: string, key = sharedKey) {
+    const cipher = await createRecordCipher(key, "scriptz");
+    const record = records.get(await cipher.recordId(entity, id));
+    return record?.data ? (await cipher.decrypt(record.recordId, new Uint8Array(record.data))).record as Record<string, unknown> : null;
+  }
+  return { transport, pushes: () => pushes, reports, inject, read };
 }
+
+const client: SyncClient = { version: "1.0.0", channel: "stable", ...SYNC_FORMAT };
 
 const dbs: SQLiteDatabase[] = [];
 afterEach(() => { for (const db of dbs.splice(0)) db.close(); });
@@ -91,12 +109,13 @@ async function device(name: string, server: ReturnType<typeof createServer>, key
   const applied: AppliedSummary[] = [];
   const adapter = createScriptzSyncAdapter({ applied: (summary) => applied.push(summary), settingsChanged: () => {}, copySuffix: () => "Konfliktkopie" });
   const state: SyncState = { userId: "u", email: "u@x", keyId: key.keyId, deviceId: name, pushed: 0, pulled: 0, lastSyncedAt: null };
+  const book = createSqlSyncBook(async () => conn);
   const engine = createSyncEngine({
     app: "scriptz", adapter, cipher: await createRecordCipher(key, "scriptz"),
-    transport: server.transport(key.keyId), book: createMemorySyncBook(), kv, state,
+    transport: server.transport(key.keyId), book, kv, state, client,
   });
   return {
-    db, applied,
+    db, applied, book,
     run(sql: string) { db.exec(sql); },
     rows: (sql: string) => db.prepare(sql).all(),
     async sync() { activate(); await engine.sync(); },
@@ -217,4 +236,77 @@ describe("ScriptZ sync adapter", () => {
     await b.sync();
     expect(b.rows("SELECT id FROM scripts")).toEqual([{ id: "welcome" }]);
   });
+
+  it("keeps what a newer version wrote: unknown fields travel along, unknown records wait", async () => {
+    sharedKey = createDataKey();
+    const server = createServer();
+    const a = await device("A", server);
+    a.run(SEED);
+    await a.sync();
+    const script = await server.read("scripts", "script");
+    // A newer version added a column to scripts, a new entity and a new setting.
+    await server.inject("scripts", "script", { ...script, title: "Neu", mood: "ruhig" });
+    await server.inject("storyboards", "board", { id: "board", script_id: "script", frames: 3 });
+    await server.inject("kit.settings", "future_setting", { value: "1" });
+    await a.sync();
+    expect(a.rows("SELECT title FROM scripts")).toEqual([{ title: "Neu" }]);
+    expect(a.rows("SELECT entity, entity_id FROM sync_parked ORDER BY entity")).toEqual([
+      { entity: "kit.settings", entity_id: "future_setting" }, { entity: "storyboards", entity_id: "board" },
+    ]);
+    expect(a.rows("SELECT extra FROM sync_records WHERE entity = 'scripts'")).toEqual([{ extra: '{"mood":"ruhig"}' }]);
+    // Editing here sends the unknown field back unchanged.
+    a.run("UPDATE scripts SET title = 'Hier bearbeitet', updated_at = 20 WHERE id = 'script'");
+    await a.sync();
+    expect(await server.read("scripts", "script")).toMatchObject({ title: "Hier bearbeitet", mood: "ruhig" });
+    const pushes = server.pushes();
+    await a.sync();
+    expect(server.pushes()).toBe(pushes);
+  });
+
+  it("leaves columns a record lacks untouched", async () => {
+    sharedKey = createDataKey();
+    const server = createServer();
+    const a = await device("A", server);
+    a.run(SEED);
+    await a.sync();
+    // An older version that did not know `status` yet writes the script.
+    const { status: _status, status_changed_at: _changed, ...older } = (await server.read("scripts", "script"))!;
+    await server.inject("scripts", "script", { ...older, title: "Älter" });
+    await a.sync();
+    expect(a.rows("SELECT title, status FROM scripts")).toEqual([{ title: "Älter", status: "writing" }]);
+  });
+
+  it("keeps data of newer versions in the database when the cloud copy is replaced", async () => {
+    sharedKey = createDataKey();
+    const server = createServer();
+    const a = await device("A", server);
+    a.run(SEED);
+    await a.sync();
+    const script = await server.read("scripts", "script");
+    await server.inject("scripts", "script", { ...script, mood: "ruhig" });
+    await server.inject("storyboards", "board", { id: "board", frames: 3 });
+    await a.sync();
+    await a.book.resetForNewCloud();
+    // Only records with unknown fields stay booked, without cloud identity.
+    expect(a.rows("SELECT entity, entity_id, remote_id, rev, hash, extra FROM sync_records")).toEqual([
+      { entity: "scripts", entity_id: "script", remote_id: "", rev: 0, hash: "", extra: '{"mood":"ruhig"}' },
+    ]);
+    expect(a.rows("SELECT entity_id, rev, upload FROM sync_parked")).toEqual([{ entity_id: "board", rev: 0, upload: 1 }]);
+    expect((await a.book.parked())[0]).toMatchObject({ entity: "storyboards", record: { id: "board", frames: 3 }, upload: true });
+  });
+
+  it("counts the scripts for the website, without the unedited welcome script", async () => {
+    sharedKey = createDataKey();
+    const server = createServer();
+    const a = await device("A", server);
+    a.run(`INSERT INTO scripts (id, title, content_json, created_at, updated_at) VALUES ('welcome', 'Willkommen', '{"root":{"children":[]}}', 5, 5);
+           INSERT INTO app_state VALUES ('welcome_script_id_v1', 'welcome');`);
+    await a.sync();
+    a.run(SEED);
+    await a.sync();
+    a.run("UPDATE scripts SET updated_at = 6 WHERE id = 'welcome'");
+    await a.sync();
+    expect(server.reports).toEqual([{ scripts: 0 }, { scripts: 1 }, { scripts: 2 }]);
+  });
 });
+

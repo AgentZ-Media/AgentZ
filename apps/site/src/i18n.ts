@@ -12,29 +12,75 @@ const de = {
 
   hero: {
     eyebrow: "Desktop-Apps für Content Creator",
-    titleA: "Werkzeuge für alles",
-    titleMark: "vor dem Upload.",
+    titleA: "Alles vor dem Upload.",
+    titleMark: "Punkt",
     intro: "Kleine, lokale Apps, jede für genau eine Aufgabe. Den Anfang macht ScriptZ, der Skript-Editor für Kurzvideos.",
     cta: "ScriptZ laden",
-    secondary: "Ansehen",
+    follow: "Folg dem Punkt",
+    scroll: "Scrollen",
     facts: "Kostenlos · macOS und Windows · Open Source",
-    demoLabel: "Animierte Vorschau von ScriptZ: Ein Sketch entsteht im Editor.",
   },
 
+  rail: ["Start", "Idee", "Weg", "Apps", "Versprechen", "Landung"],
+
+  spark: {
+    kicker: "Am Anfang",
+    title: "Jedes Video fängt mit einem Punkt an.",
+    text: "Ein Einfall unter der Dusche, ein Satz im Kopf, ein Bild beim Spazierengehen. Die AgentZ Suite hilft dir, daraus ein fertiges Video zu machen.",
+  },
+
+  path: {
+    kicker: "Der Weg",
+    title: "Vom Einfall bis zum Upload.",
+    text: "Jedes Video geht diesen Weg. Für jede Etappe soll es eine kleine App geben, die genau das gut kann.",
+    today: "Heute mit ScriptZ",
+    stages: [
+      { name: "Idee", text: "Festhalten, bevor sie weg ist.", app: true },
+      { name: "Skript", text: "Schreiben mit Blick auf jede Sekunde.", app: true },
+      { name: "Dreh", text: "Wissen, was als Nächstes kommt.", app: true },
+      { name: "Schnitt", text: "Aus Material wird eine Geschichte.", app: false },
+      { name: "Upload", text: "Raus damit. Nächste Idee.", app: false },
+    ],
+  },
+
+  apps: {
+    kicker: "Die Suite",
+    title: "Eine App pro Aufgabe.",
+    text: "Jede App bekommt ihr Zeichen im selben Punktraster. Gleiches Design, gleiche Tastenkürzel, getrennte Daten.",
+    more: "ScriptZ ansehen",
+    available: "Verfügbar",
+    soon: "Bald",
+    next: "Nächste App",
+    nextText: "Ist in Arbeit. Sie erscheint hier, sobald sie fertig ist.",
+  },
+
+  promises: {
+    kicker: "Versprochen",
+    title: "Deine Arbeit gehört dir.",
+    items: [
+      { title: "Läuft auf deinem Rechner.", text: "Deine Daten liegen lokal. Die Apps funktionieren auch ohne Internet." },
+      { title: "Kostenlos und offen.", text: "Kein Abo, keine Werbung. Der Quellcode liegt auf GitHub." },
+      { title: "Sync nur verschlüsselt.", text: "Mit einem kostenlosen Konto bleiben deine Geräte synchron, Ende-zu-Ende verschlüsselt. Ohne Konto geht alles genauso." },
+      { title: "Ein Gefühl für alle Apps.", text: "Gleiches Design, gleiche Tastenkürzel. Wer eine App kennt, kennt alle." },
+    ],
+  },
+
+  landing: { title: "Punktlandung", text: "Fang mit ScriptZ an, der ersten App der Suite." },
+
+  count: { one: "Skript mit ScriptZ geschrieben", other: "Skripte mit ScriptZ geschrieben" },
+
+  meta: {
+    title: "AgentZ Suite - Desktop-Apps für Content Creator",
+    scriptzTitle: "ScriptZ - Der Skript-Editor für Kurzvideos",
+    scriptzDescription: "Kostenloser Skript-Editor für TikTok, Reels, Shorts und Sketche: Laufzeit auf die Sekunde, Hook im Blick, Board bis zum Upload. Für macOS und Windows.",
+    suiteImage: "AgentZ Suite: Alles vor dem Upload. Punkt.",
+    scriptzImage: "ScriptZ, der Skript-Editor für Kurzvideos, mit einer Skriptseite und ihrer Laufzeit.",
+  },
 
   scriptz: {
     kicker: "Die erste App",
     title: "ScriptZ",
     lead: "Der Skript-Editor für TikTok, Reels, Shorts und Sketche.",
-  },
-
-  features: {
-    format: { title: "Schreib einfach los.", text: "Vier Blocktypen, ein Tastendruck. ScriptZ formatiert, während du tippst." },
-    runtime: { title: "Sekundengenau.", text: "Die Laufzeit läuft mit. Der Zielbereich kommt aus dem Ordner." },
-    timeline: { title: "Wer redet wann.", text: "Die Zeitleiste zeigt Rhythmus, Wechsel und deinen Hook." },
-    pipeline: { title: "Von der Idee bis online.", text: "Jedes Skript hat seine Stufe. Als Liste oder Board." },
-    capture: { title: "Ideen in einer Sekunde.", text: "⌘I, tippen, Enter. Egal, wo du gerade bist." },
-    agent: { title: "Ida schreibt mit.", text: "Optional: dein eigener Schreibagent über Codex. Er schlägt vor, du entscheidest." },
   },
 
   demo: {
@@ -87,26 +133,58 @@ const de = {
     insert: "Einfügen",
   },
 
-  gallery: {
-    kicker: "Echte Screenshots",
-    title: "So sieht ScriptZ aus.",
-    tabs: { script: "Skript", board: "Board", export: "Export" },
-    alt: {
-      script: "ScriptZ mit geöffnetem Sketch, Laufzeit, Cast und Zeitleiste",
-      board: "Board-Ansicht mit Ideen und Skripten in ihren Stufen",
-      export: "Export-Dialog mit PDF-Vorschau, Teleprompter-Text und ScriptZ-Datei",
+  live: {
+    intro: "Probier ScriptZ direkt hier aus: Schreib im Skript weiter oder klick dich durch die Bereiche.",
+    label: "Bedienbarer Nachbau von ScriptZ",
+    steps: [
+      { label: "Schreiben", title: "Schreib einfach los.", text: "Klick ins Skript und schreib weiter. Enter wechselt zwischen Charakter und Dialog, ⌘1 bis ⌘4 setzen den Blocktyp." },
+      { label: "Timing", title: "Sekundengenau.", text: "Laufzeit, Redeanteil und Zeitleiste rechnen bei jedem Wort mit. Gelb markiert: dein Hook." },
+      { label: "Ida", title: "Ida schreibt mit.", text: "Dein optionaler Schreibagent über Codex. Er schlägt vor, du entscheidest. Klick auf „Einfügen“." },
+      { label: "Pipeline", title: "Von der Idee bis online.", text: "Jedes Skript hat seine Stufe. Zieh die Karten übers Board. Neue Ideen landen mit ⌘I in einer Sekunde." },
+      { label: "Export", title: "Bereit für den Dreh.", text: "PDF fürs Team, Teleprompter-Text fürs Handy oder die ScriptZ-Datei für den zweiten Rechner." },
+    ],
+    keys: "Enter: nächster Block · ⌘1–4: Blocktyp",
+    yourTurn: "Jetzt du",
+    allScripts: "Alle Skripte",
+    week: "Diese Woche",
+    weekDone: "auf „Online“",
+    weekIdeas: "neue Ideen",
+    filter: "Filtern",
+    list: "Liste",
+    board: "Board",
+    sort: "Geändert",
+    justNow: "Gerade eben",
+    cards: [
+      ["Pendeln mit dem Rad", 3, 0], ["Ein Tag ohne Handy", 3, 0], ["Büro-Bingo", 3, 0], ["Was mein Hund über Meetings denkt", 3, 0],
+      ["Der Kaffee-Test", 2, 1], ["Homeoffice-Montag", 0, 1], ["Der Nachbar mit dem Laubbläser", 3, 1],
+      ["Die letzte U-Bahn", 1, 2], ["Unboxing ohne Worte", 2, 2],
+      ["Fünf Dinge vor 7 Uhr", 0, 3],
+      ["Kopfhörer im Härtetest", 2, 4], ["Morgenroutine in 60 Sekunden", 0, 4],
+    ] as [string, number, number][],
+    idaPlaceholder: "Frag Ida etwas …",
+    idaInserted: "Eingefügt",
+    idaHello: "Ich lese mit. Sag mir, woran wir arbeiten.",
+    export: {
+      title: "Exportieren",
+      pdf: "PDF",
+      pdfSub: "A4 zum Drucken oder Weitergeben, mit Seitenumbrüchen",
+      txt: "Teleprompter-Text",
+      txtSub: "Nur Namen und Dialog, ohne Formatierung",
+      file: "ScriptZ-Datei",
+      fileSub: "Zum Öffnen auf einem anderen Gerät",
+      colors: "Charakter-Farben",
+      colorsSub: "Wie im Editor, je Zeile hinterlegt",
+      cover: "Titelblatt",
+      coverSub: "Titel und Cast auf eigener Seite",
+      preview: "Vorschau",
+      pages: "Seite 1 von {n}",
+      plain: "Reiner Text",
+      castLine: "Charaktere: {names}",
+      runtime: "Laufzeit {time}",
+      cancel: "Abbrechen",
+      submit: "Exportieren",
+      done: "Das war die Demo. Mit ScriptZ landet hier deine Datei.",
     },
-  },
-
-  suite: {
-    kicker: "Die Suite",
-    title: "Eine App pro Aufgabe.",
-    text: "Gleiches Design, gleiche Tastenkürzel, getrennte Daten. Jede App läuft für sich auf deinem Rechner.",
-    available: "Verfügbar",
-    soon: "Bald",
-    next: "Nächste App",
-    nextText: "Ist in Arbeit. Sie erscheint hier, sobald sie fertig ist.",
-    open: "Mehr zu",
   },
 
   download: {
@@ -272,29 +350,75 @@ const en: Catalog = {
 
   hero: {
     eyebrow: "Desktop apps for content creators",
-    titleA: "Tools for everything",
-    titleMark: "before the upload.",
+    titleA: "Everything before the upload.",
+    titleMark: "Period",
     intro: "Small, local apps, each made for exactly one job. First up is ScriptZ, the script editor for short videos.",
     cta: "Download ScriptZ",
-    secondary: "See it",
+    follow: "Follow the dot",
+    scroll: "Scroll",
     facts: "Free · macOS and Windows · Open source",
-    demoLabel: "Animated preview of ScriptZ: a sketch being written in the editor.",
   },
 
+  rail: ["Start", "Idea", "Path", "Apps", "Promises", "Landing"],
+
+  spark: {
+    kicker: "In the beginning",
+    title: "Every video starts with a dot.",
+    text: "A thought in the shower, a line in your head, a picture on a walk. The AgentZ Suite helps you turn it into a finished video.",
+  },
+
+  path: {
+    kicker: "The path",
+    title: "From first thought to upload.",
+    text: "Every video takes this path. For each leg there should be a small app that does exactly that one thing well.",
+    today: "Today with ScriptZ",
+    stages: [
+      { name: "Idea", text: "Capture it before it's gone.", app: true },
+      { name: "Script", text: "Write with an eye on every second.", app: true },
+      { name: "Shoot", text: "Know what comes next.", app: true },
+      { name: "Edit", text: "Footage becomes a story.", app: false },
+      { name: "Upload", text: "Out it goes. Next idea.", app: false },
+    ],
+  },
+
+  apps: {
+    kicker: "The suite",
+    title: "One app per job.",
+    text: "Every app gets its mark in the same dot grid. Same design, same shortcuts, separate data.",
+    more: "See ScriptZ",
+    available: "Available",
+    soon: "Soon",
+    next: "Next app",
+    nextText: "In the works. It will show up here as soon as it is ready.",
+  },
+
+  promises: {
+    kicker: "Promised",
+    title: "Your work belongs to you.",
+    items: [
+      { title: "Runs on your computer.", text: "Your data stays local. The apps work without internet, too." },
+      { title: "Free and open.", text: "No subscription, no ads. The source code is on GitHub." },
+      { title: "Sync, encrypted only.", text: "With a free account your devices stay in sync, end-to-end encrypted. Without one, everything works just the same." },
+      { title: "One feel for every app.", text: "Same design, same shortcuts. Know one app, know them all." },
+    ],
+  },
+
+  landing: { title: "Spot on", text: "Start with ScriptZ, the first app of the suite." },
+
+  count: { one: "script written with ScriptZ", other: "scripts written with ScriptZ" },
+
+  meta: {
+    title: "AgentZ Suite - Desktop apps for content creators",
+    scriptzTitle: "ScriptZ - The script editor for short videos",
+    scriptzDescription: "Free script editor for TikTok, Reels, Shorts and sketches: runtime to the second, your hook in view, a board up to the upload. For macOS and Windows.",
+    suiteImage: "AgentZ Suite: Everything before the upload. Period.",
+    scriptzImage: "ScriptZ, the script editor for short videos, with a script page and its runtime.",
+  },
 
   scriptz: {
     kicker: "The first app",
     title: "ScriptZ",
     lead: "The script editor for TikTok, Reels, Shorts and sketches.",
-  },
-
-  features: {
-    format: { title: "Just start writing.", text: "Four block types, one keystroke. ScriptZ formats while you type." },
-    runtime: { title: "To the second.", text: "Runtime updates as you write. The target range comes from the folder." },
-    timeline: { title: "Who speaks when.", text: "The timeline shows rhythm, switches and your hook." },
-    pipeline: { title: "From idea to online.", text: "Every script has its stage. As a list or a board." },
-    capture: { title: "Ideas in a second.", text: "⌘I, type, Enter. Wherever you are." },
-    agent: { title: "Ida writes along.", text: "Optional: your own writing agent via Codex. It suggests, you decide." },
   },
 
   demo: {
@@ -347,26 +471,58 @@ const en: Catalog = {
     insert: "Insert",
   },
 
-  gallery: {
-    kicker: "Real screenshots",
-    title: "This is ScriptZ.",
-    tabs: { script: "Script", board: "Board", export: "Export" },
-    alt: {
-      script: "ScriptZ with an open sketch, runtime, cast and timeline",
-      board: "Board view with ideas and scripts in their stages",
-      export: "Export dialog with PDF preview, teleprompter text and ScriptZ file",
+  live: {
+    intro: "Try ScriptZ right here: keep writing in the script or click through its areas.",
+    label: "Interactive rebuild of ScriptZ",
+    steps: [
+      { label: "Write", title: "Just start writing.", text: "Click into the script and keep going. Enter switches between character and dialogue, ⌘1 to ⌘4 set the block type." },
+      { label: "Timing", title: "To the second.", text: "Runtime, share of dialogue and the timeline update with every word. Highlighted in yellow: your hook." },
+      { label: "Ida", title: "Ida writes along.", text: "Your optional writing agent via Codex. It suggests, you decide. Click “Insert”." },
+      { label: "Pipeline", title: "From idea to online.", text: "Every script has its stage. Drag the cards across the board. New ideas land in a second with ⌘I." },
+      { label: "Export", title: "Ready to shoot.", text: "A PDF for the team, teleprompter text for your phone or the ScriptZ file for your second computer." },
+    ],
+    keys: "Enter: next block · ⌘1–4: block type",
+    yourTurn: "Your turn",
+    allScripts: "All scripts",
+    week: "This week",
+    weekDone: "reached “Online”",
+    weekIdeas: "new ideas",
+    filter: "Filter",
+    list: "List",
+    board: "Board",
+    sort: "Modified",
+    justNow: "Just now",
+    cards: [
+      ["Commuting by bike", 3, 0], ["A day without a phone", 3, 0], ["Office bingo", 3, 0], ["What my dog thinks about meetings", 3, 0],
+      ["The coffee test", 2, 1], ["Home office Monday", 0, 1], ["The neighbour with the leaf blower", 3, 1],
+      ["The last subway", 1, 2], ["Unboxing without words", 2, 2],
+      ["Five things before 7 am", 0, 3],
+      ["Headphones stress test", 2, 4], ["Morning routine in 60 seconds", 0, 4],
+    ] as [string, number, number][],
+    idaPlaceholder: "Ask Ida anything …",
+    idaInserted: "Inserted",
+    idaHello: "I'm reading along. Tell me what we're working on.",
+    export: {
+      title: "Export",
+      pdf: "PDF",
+      pdfSub: "A4 for printing or sharing, with page breaks",
+      txt: "Teleprompter text",
+      txtSub: "Names and dialog only, no formatting",
+      file: "ScriptZ file",
+      fileSub: "To open on another device",
+      colors: "Character colours",
+      colorsSub: "Like in the editor, a tint behind each line",
+      cover: "Title page",
+      coverSub: "Title and cast on a page of their own",
+      preview: "Preview",
+      pages: "Page 1 of {n}",
+      plain: "Plain text",
+      castLine: "Characters: {names}",
+      runtime: "Runtime {time}",
+      cancel: "Cancel",
+      submit: "Export",
+      done: "That was the demo. In ScriptZ, your file lands right here.",
     },
-  },
-
-  suite: {
-    kicker: "The suite",
-    title: "One app per job.",
-    text: "Same design, same shortcuts, separate data. Every app runs on its own, right on your computer.",
-    available: "Available",
-    soon: "Soon",
-    next: "Next app",
-    nextText: "In the works. It will show up here as soon as it is ready.",
-    open: "More about",
   },
 
   download: {
@@ -528,3 +684,4 @@ export type PagePaths = Record<Language, string>;
 export const homePaths: PagePaths = { de: "/", en: "/en/" };
 export const accountPaths: PagePaths = { de: "/konto/", en: "/en/account/" };
 export const appSignInPaths: PagePaths = { de: "/konto/app/", en: "/en/account/app/" };
+export const scriptzPaths: PagePaths = { de: "/scriptz/", en: "/en/scriptz/" };

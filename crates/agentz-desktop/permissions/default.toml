@@ -1,6 +1,10 @@
 [default]
-description = "Allows the main desktop host to announce readiness, acknowledge a requested exit, check its update channel and prepare a database backup before nightly updates."
-permissions = ["allow-ready", "allow-finish-exit", "allow-set-menu-language", "allow-update-check", "allow-prepare-database-backup"]
+description = "Allows the main desktop host to announce readiness, acknowledge a requested exit, check its update channel, download and stage an update, install it on quit or restart, and prepare a database backup before nightly updates."
+permissions = [
+  "allow-ready", "allow-finish-exit", "allow-set-menu-language", "allow-update-check",
+  "allow-update-download", "allow-update-staged", "allow-update-discard", "allow-update-install-now",
+  "allow-update-install-on-quit", "allow-prepare-database-backup",
+]
 
 [[set]]
 identifier = "codex"

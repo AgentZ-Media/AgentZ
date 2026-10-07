@@ -14,7 +14,9 @@ Suite-Grenzen in [`suite-architecture.md`](suite-architecture.md).
 
 - `module.tsx`: `scriptzModule.setup(ctx)` startet Produkt-Settings,
   Navigation, Layout und Bibliothekspräferenzen, seedet das Welcome-Skript,
-  füllt Runtime-Statistiken nach, migriert Legacy-Blöcke und startet erst
+  füllt Runtime-Statistiken nach (`lib/runtimeBackfill.ts`: nach einer
+  Formeländerung einmal alle Skripte, Flag `migration.runtime_stats_v2`),
+  migriert Legacy-Blöcke und startet erst
   danach Ideen-, Statistik- und Bibliotheks-Resources. Liefert Routen
   (Inbox, Skripte, Ideen, Skript, Papierkorb, Agent-Modus), Sidebar, Overlays
   (QuickCapture, Neues Skript, Export, Stufen-Undo), Befehle, Shortcuts,
@@ -58,8 +60,9 @@ die Befehlspalette, deshalb setzt das Modul `revealsSidebar: true`.
   Mit `close_finished_scripts` (Standard an) verlässt ein Skript die Liste,
   wenn es in die letzte Stufe wechselt; das angezeigte erst beim Wechsel,
   Rückgängig innerhalb von 15 s holt es zurück (`openStore.syncStatuses`).
-- **Seitenpanel**: Klick in Liste oder Board öffnet das Skript rechts neben
-  der Liste (`open_scripts_in_panel`, Standard an; ⌥-Klick umgekehrt). Es
+- **Seitenpanel**: Mit `open_scripts_in_panel` (Standard aus) öffnet ein
+  Klick in Liste oder Board das Skript rechts neben der Liste, sonst in der
+  großen Ansicht; ⌥-Klick macht jeweils das andere. Es
   ist ein vollwertiger `ScriptScreen` mit `peek` (ohne Inspector, Fokus
   und Agent). Nur Großöffnen nimmt es in „Offen" auf. Es gibt nie zwei
   `ScriptScreen` gleichzeitig.
@@ -67,10 +70,15 @@ die Befehlspalette, deshalb setzt das Modul `revealsSidebar: true`.
   (`library.mode` je Seite). Spalten: offene Ideen, dann die Stufen in
   ihrer Reihenfolge (Inbox ohne die letzte). Karte ziehen setzt die Stufe
   (Undo-Toast), eine Idee auf eine Stufe wird zum Skript.
+- **Ordner-Chips** (`Common/FolderChips.tsx`): Ideen, Inbox, Alle Skripte,
+  Stufen und Ordner filtern mit einem Klick nach Ordner oder „Ohne
+  Ordner“. Der Filter liegt in der Route (`folderId` bei `ideas`, `inbox`
+  und `scripts`, dort kombinierbar mit `status`). Gezählt wird, was die
+  Seite vor dem Ordnerfilter zeigt; leere Ordner bekommen keinen Chip.
 
 ## Migrationen
 
-`001_baseline` bis `014_cloud_sync` in
+`001_baseline` bis `015_sync_newer_versions` in
 `apps/scriptz/src-tauri/migrations/` sind veröffentlicht und unveränderlich. `007` ergänzt `scripts.status`,
 `status_changed_at` und den Ordner-Zielbereich. `008_agent` legt
 `agent_memory`, `agent_chats` und `agent_learned` an. `009_local_changes`
@@ -93,7 +101,9 @@ Spalte der Skriptliste gehört in eine neue Migration mit erweitertem
 Covering-Index (`lib/__tests__/queryPlans.test.ts` schlägt sonst fehl).
 `014_cloud_sync` ist rein additiv: `sync_records` (Buchführung der
 Synchronisierung, keine Inhaltstabelle) und `daily_word_log_remote`
-(Schreibstatistik anderer Geräte).
+(Schreibstatistik anderer Geräte). `015_sync_newer_versions` ergänzt
+`sync_records.extra` und `sync_parked`: Felder und Datensätze neuerer
+App-Versionen bleiben erhalten, bis ein Update sie kennt.
 Jede neue Spalte einer Inhaltstabelle braucht dasselbe: Trigger neu anlegen
 und `CONTENT_ENTITIES` ergänzen (Tests in `lib/__tests__/localChanges.test.ts`
 schlagen sonst fehl). Die Umwandlung von Kamera/Caption/SFX in Action ist bewusst keine SQL-Migration
@@ -121,7 +131,11 @@ schlagen sonst fehl). Die Umwandlung von Kamera/Caption/SFX in Action ist bewuss
 - Die letzte Stufe gilt als erledigt (`isFinalStage`). Die Inbox (Route
   `inbox`, ganz oben in der Sidebar und nur sichtbar, solange etwas offen ist)
   zeigt offene Ideen und alle Skripte davor (`library.inProgress`). Eigene
-  Stufen brauchen dort keine Anpassung.
+  Stufen brauchen dort keine Anpassung. Bei Gruppierung nach Stufe trägt nur
+  der Gruppenkopf das Stufen-Symbol. Ideen stehen als kompakte Zeilen
+  darunter: die neuesten 10, zweispaltig (`library.inboxIdeas`, zeilenweise
+  links, rechts) 20, der Rest hinter „weitere anzeigen“; ein Filter zeigt
+  alle Treffer.
 - Zielbereich in Sekunden je Ordner oder global
   (`length_min_default_sec`/`length_max_default_sec`, leer = aus). Auflösung:
   Ordner -> Standard -> keiner (`resolveLengthRange`).
@@ -135,6 +149,14 @@ Farben; neue Namen bekommen die nächste freie Palettenfarbe. Die app-weite
 Farb-Registry `character_colors` wächst mit und lässt sich in den
 Einstellungen aufräumen (manuell oder automatisch nach 4 s Ruhe,
 `characterAutoPrune.ts`); das Löschen prüft die Nutzung erneut.
+
+## Papierkorb
+
+„Löschen“ setzt `scripts.archived_at`. Nach 30 Tagen
+(`TRASH_RETENTION_DAYS`) löscht `lib/trashAutoPurge.ts` den Eintrag
+endgültig (kurz nach dem Start, dann stündlich, `api.purgeExpiredTrash`);
+jede Zeile im Papierkorb zeigt die verbleibenden Tage. Mit Konto folgt die
+Cloud über den Änderungsfeed.
 
 ## Färbung, Hook und Bewegung
 
@@ -254,8 +276,14 @@ Persönlicher Schreib-Agent mit eigenem Namen, Look und Persona.
   nummeriert, solange der Chat offen ist.
 - **Kontext Länge.** Der Skript-Chat bekommt Längenziel und Sprechtempo in
   den Instruktionen, Sitzungen vor jeder Nachricht eine Zeile `[Session: ...]`
-  mit Ordner, Ziel, Wortbudget, Entwürfen und gespeicherten Ideen
-  (`lib/agent/writingContext.ts`, gleiche Formel wie die Zeitleiste).
+  mit Ordner, Ziel, Wortbudget, Entwürfen samt gemessener Laufzeit und
+  gespeicherten Ideen (`lib/agent/writingContext.ts`, gleiche Formel wie die
+  Zeitleiste).
+- **Laufzeiten rechnet nur die App.** `get_current_script`, `read_script`
+  und `list_scripts` liefern `runtime` nach `lib/runtime.ts` mit der WPM aus
+  den Einstellungen. Der Prompt verbietet dem Modell, selbst Wörter zu
+  zählen oder Laufzeiten zu nennen, die es nicht von der App hat; zu einem
+  gerade geschriebenen Entwurf nennt es keine Zeit, die zeigt das Panel.
 
 ## Agent-Modus
 

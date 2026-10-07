@@ -13,7 +13,7 @@
 // becomes a real script through the finish dialog.
 
 import { wordCount } from "../lex";
-import { runtimeSeconds } from "../runtime";
+import { isActionBeat, runtimeSeconds } from "../runtime";
 import type { AgentBlock } from "./scriptText";
 
 export interface DraftAttrs {
@@ -329,14 +329,15 @@ export function draftWords(blocks: readonly AgentBlock[]): number {
   return n;
 }
 
-/** Runtime of a draft with the timeline formula (lib/runtime.ts): every
- *  action block counts, like in a script. */
+/** Runtime of agent blocks (a draft, or a script as the agent tools show
+ *  it) with the formula of lib/runtime.ts, so it matches the editor, the
+ *  library and the script a draft turns into. 0 for nothing to measure. */
 export function draftRuntime(blocks: readonly AgentBlock[], wpm: number): number {
   let dialogWords = 0;
   let directionBlocks = 0;
   for (const block of blocks) {
     if (block.type === "dialog") dialogWords += wordCount(block.text);
-    else if (block.type === "action") directionBlocks += 1;
+    else if (block.type === "action" && isActionBeat(block.text)) directionBlocks += 1;
   }
   if (dialogWords === 0 && directionBlocks === 0) return 0;
   return runtimeSeconds({ dialogWords, directionBlocks }, wpm);

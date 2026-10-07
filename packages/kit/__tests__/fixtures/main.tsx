@@ -17,7 +17,7 @@ const platform = nightly
 if (nightly) {
   const updates: UpdatesStore = {
     stage: () => "available", available: () => ({ version: "0.1.1-nightly.202610051800" }), progress: () => 0,
-    manualCheck: () => null, checkNow: async () => {}, downloadAndInstall: async () => {}, restart: async () => {},
+    manualCheck: () => null, checkNow: async () => {}, download: async () => {}, restart: async () => {},
     clearManualCheck: () => {}, startBackgroundPolling: () => {}, stopBackgroundPolling: () => {},
   };
   setUpdatesStore(updates);

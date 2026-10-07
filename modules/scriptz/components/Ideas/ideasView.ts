@@ -7,10 +7,10 @@
 import { createEffect, createMemo, createSignal, on, type Accessor } from "solid-js";
 import { localeCompare } from "@agentz/kit/i18n";
 import type { Folder, Idea, ScriptSummary } from "../../lib/types";
+import { countByFolder } from "../Common/FolderChips";
 import { library } from "../Shell/libraryData";
 import {
   countNewThisWeek,
-  folderCounts,
   groupIdeas,
   inFolder,
   scopeIdeas,
@@ -43,7 +43,6 @@ export function createIdeasSources() {
 
 export interface IdeasListsDeps {
   ideas: Accessor<Idea[]>;
-  folders: Accessor<Folder[] | undefined>;
   activeFolder: Accessor<string | null>;
   /** The row shown expanded as an editor. */
   openId: Accessor<string | null>;
@@ -53,7 +52,7 @@ export interface IdeasListsDeps {
 }
 
 export function createIdeasLists(deps: IdeasListsDeps) {
-  const { ideas, folders, activeFolder, openId, openQuery, now } = deps;
+  const { ideas, activeFolder, openId, openQuery, now } = deps;
 
   const scoped = createMemo(() => {
     const list = scopeIdeas(ideas(), { query: query(), showUsed: showUsed() });
@@ -65,14 +64,11 @@ export function createIdeasLists(deps: IdeasListsDeps) {
     );
     return pinned.length > 0 ? [...list, ...pinned] : list;
   });
-  const counts = createMemo(() => folderCounts(scoped()));
+  const counts = createMemo(() => countByFolder(scoped()));
   const visible = createMemo(() => sortIdeas(inFolder(scoped(), activeFolder()), sort(), localeCompare));
   const groups = createMemo(() => groupIdeas(visible(), sort(), new Date(now())));
   const openCount = createMemo(() => ideas().filter((i) => !i.used_at).length);
   const freshCount = createMemo(() => countNewThisWeek(ideas(), new Date(now())));
-  const chipFolders = createMemo(() =>
-    (folders() ?? []).filter((f) => (counts().byFolder.get(f.id) ?? 0) > 0 || f.id === activeFolder()),
-  );
 
   const filtering = () => query().trim().length > 0;
   const isOpen = (g: IdeaGroup<Idea>) => {
@@ -133,7 +129,6 @@ export function createIdeasLists(deps: IdeasListsDeps) {
     groups,
     openCount,
     freshCount,
-    chipFolders,
     filtering,
     isOpen,
     paging,

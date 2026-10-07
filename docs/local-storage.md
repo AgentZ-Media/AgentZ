@@ -129,7 +129,8 @@ Inhalts-Hash und lädt sie nicht erneut hoch. Für den Abgleich gilt:
 
 - Cursor und Buchführung gehören zu Konto, Schlüssel und Gerät
   (`app_state.sync.state`, Tabelle `sync_records`, Migration 014). Ein anderes
-  Konto übernimmt die Daten nur nach Rückfrage.
+  Konto übernimmt die Daten nur nach Rückfrage. Daten neuerer App-Versionen
+  (`sync_records.extra`, `sync_parked`, Migration 015) gehören ebenfalls dazu.
 - Ein Cursor rückt erst nach bestätigter Annahme vor; Konflikte erkennt die
   Cloud-Revision, nicht `updated_at` oder die lokale Sequenz.
 - Abhängige Datensätze werden in Reihenfolge `folders`, `scripts`,

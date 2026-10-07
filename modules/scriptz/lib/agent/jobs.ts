@@ -18,7 +18,7 @@ export function isAgentJob(value: unknown): value is AgentJobId {
 export interface JobContext {
   /** Target range as text ("0:45-1:05"), empty when none is set. */
   range: string;
-  /** Current estimated runtime as "m:ss". */
+  /** Current runtime as the app shows it ("m:ss"). */
   runtime: string;
   wpm: number;
 }
@@ -41,7 +41,7 @@ export function jobInstruction(id: AgentJobId, ctx: JobContext): string {
     case "cut":
       return [
         "Job: shorten the script (\"Kürzen\").",
-        `It runs about ${ctx.runtime} at ${ctx.wpm} words per minute${ctx.range ? `; the target range is ${ctx.range}` : ""}.`,
+        `The app measures ${ctx.runtime} at ${ctx.wpm} words per minute${ctx.range ? `; the target range is ${ctx.range}` : ""}.`,
         "Read the whole script with get_current_script. Look at all of it, not only the longest lines: beats that repeat what we already know, two lines that can become one, wording that can be tighter, a detour that can go.",
         `Propose 2-3 genuinely different ways with propose_options (for example: cut a passage, merge lines, tighten throughout). Give each a short title naming the approach. Keep the punchline and the characters' voices. ${SPAN_RULE}`,
         "One short sentence before the cards.",

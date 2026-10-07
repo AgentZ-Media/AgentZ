@@ -63,7 +63,7 @@ Details zur Pipeline: [`.claude/rules/release.md`](../.claude/rules/release.md).
 Die generierte App hat Konto-Button, URL-Schema `agentz-mein-tool`, Schlüsselbund-Rechte und eine CSP für Convex bereits. Damit sie sich anmelden und Daten synchronisieren kann:
 
 1. In `apps/site/convex/schema.ts` die Tabelle `mein_tool_records` (`recordTable()`) und in `syncApps.ts` den Eintrag in `SYNC_APPS` sowie in `appArg` ergänzen.
-2. Im Modul einen `SyncAdapter` schreiben und als `sync` aus `setup()` liefern (Vorbild `modules/scriptz/lib/sync/adapter.ts`).
+2. Im Modul einen `SyncAdapter` schreiben und als `sync` aus `setup()` liefern (Vorbild `modules/scriptz/lib/sync/adapter.ts`), dazu `lib/sync/format.json` mit Format 1 und einem Test wie `modules/scriptz/lib/sync/__tests__/format.test.ts`.
 3. Den Dev-Port der App prüfen: `APP_ORIGINS` in `convex/auth.ts` erlaubt 1420 bis 1490.
 
 Details: [`cloud-sync.md`](cloud-sync.md).

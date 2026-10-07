@@ -13,6 +13,16 @@ CREATE TABLE IF NOT EXISTS sync_records (
   remote_id TEXT NOT NULL,
   rev INTEGER NOT NULL,
   hash TEXT NOT NULL,
+  extra TEXT,
   PRIMARY KEY (entity, entity_id)
 ) WITHOUT ROWID;
 CREATE INDEX IF NOT EXISTS idx_sync_records_remote ON sync_records (remote_id);
+CREATE TABLE IF NOT EXISTS sync_parked (
+  remote_id TEXT PRIMARY KEY,
+  entity TEXT NOT NULL,
+  entity_id TEXT NOT NULL,
+  rev INTEGER NOT NULL,
+  hash TEXT NOT NULL,
+  record TEXT NOT NULL,
+  upload INTEGER NOT NULL DEFAULT 0
+) WITHOUT ROWID;

@@ -117,6 +117,9 @@ export interface ScriptzStorage {
   restoreScript(id: string): Promise<void>;
   purgeScript(id: string): Promise<void>;
   emptyTrash(): Promise<void>;
+  /** Deletes scripts that went to the trash at or before `cutoff` (ms);
+   *  returns how many were removed. */
+  purgeExpiredTrash(cutoff: number): Promise<number>;
   duplicateScript(id: string): Promise<ScriptSummary>;
   renameScript(id: string, title: string): Promise<ScriptSummary>;
   /** Moves a script to another production stage. Sets
@@ -129,7 +132,10 @@ export interface ScriptzStorage {
    *  `from` leaves the pipeline. Keeps `status_changed_at` and
    *  `updated_at`; returns the number of moved scripts. */
   reassignScriptStatus(from: ScriptStatus, to: ScriptStatus): Promise<number>;
-  backfillRuntimeStats(): Promise<void>;
+  /** Recomputes the stored runtime inputs: only never-measured scripts,
+   *  or every script with `all`. */
+  /** False when a row could not be updated (it is retried later). */
+  backfillRuntimeStats(opts?: { all?: boolean }): Promise<boolean>;
 
   // ===== Folders =====
   listFolders(): Promise<Folder[]>;

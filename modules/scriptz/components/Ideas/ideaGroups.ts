@@ -47,17 +47,6 @@ export function inFolder<T extends IdeaLike>(items: T[], folderId: string | null
   return items.filter((i) => i.folder_id === folderId);
 }
 
-/** Idea counts per folder id plus the ungrouped ("inbox") count. */
-export function folderCounts<T extends IdeaLike>(items: T[]): { byFolder: Map<string, number>; inbox: number } {
-  const byFolder = new Map<string, number>();
-  let inbox = 0;
-  for (const i of items) {
-    if (i.folder_id) byFolder.set(i.folder_id, (byFolder.get(i.folder_id) ?? 0) + 1);
-    else inbox++;
-  }
-  return { byFolder, inbox };
-}
-
 export function sortIdeas<T extends IdeaLike>(
   items: T[],
   sort: IdeaSort,
