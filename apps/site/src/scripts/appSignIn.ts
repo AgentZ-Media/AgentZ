@@ -3,7 +3,7 @@
 // that it started this sign-in (convex/appLink.ts), so the code alone is
 // worthless to anyone else.
 import type { Catalog } from "../i18n";
-import { createAuth, initials, setNotice, setupAuthForms, type Text } from "./authForms";
+import { initials, lazyAuth, setNotice, setupAuthForms, storedSession, type Text } from "./authForms";
 
 type View = "loading" | "unavailable" | "invalid" | "auth" | "connect" | "done";
 type PageText = Catalog["appSignIn"];
@@ -43,7 +43,7 @@ function start(root: HTMLElement) {
   });
   root.querySelectorAll<HTMLImageElement>("[data-app-icon]").forEach((img) => { img.src = app.icon; });
 
-  const auth = createAuth(baseURL);
+  const auth = lazyAuth(baseURL);
   // Email links (reset, verification) finish on the account page; signing in
   // here does not wait for them.
   const accountPath = root.dataset.lang === "en" ? "/en/account/" : "/konto/";
@@ -52,9 +52,11 @@ function start(root: HTMLElement) {
 
   const connectError = root.querySelector<HTMLElement>("[data-connect-error]")!;
   async function load() {
+    // No session token on this device: signed out, nothing to ask the server.
+    if (!storedSession().token) { show("auth"); return; }
     show("loading");
     try {
-      const { data, error } = await auth.getSession();
+      const { data, error } = await (await auth()).getSession();
       if (error && error.status !== 401) { show("unavailable"); return; }
       if (!data?.user) { show("auth"); return; }
       const name = data.user.name.trim() || data.user.email;
@@ -76,9 +78,10 @@ function start(root: HTMLElement) {
     openButton.disabled = true;
     setNotice(connectError, null);
     try {
+      const cookie = (await auth()).getCookie();
       const response = await fetch(`${baseURL}/app-link/approve`, {
         method: "POST",
-        headers: { "Content-Type": "application/json", "Better-Auth-Cookie": auth.getCookie() },
+        headers: { "Content-Type": "application/json", "Better-Auth-Cookie": cookie },
         body: JSON.stringify({ app: app.id, challenge }),
       });
       if (response.status === 401) { show("auth"); return; }
@@ -115,7 +118,7 @@ function start(root: HTMLElement) {
   });
 
   root.querySelector("[data-action=other]")!.addEventListener("click", async () => {
-    try { await auth.signOut(); } catch { /* The local session is cleared either way. */ }
+    try { await (await auth()).signOut(); } catch { /* The local session is cleared either way. */ }
     show("auth");
   });
   root.querySelector("[data-action=retry]")!.addEventListener("click", () => void load());
