@@ -1,7 +1,8 @@
 # Konto und Cloud-Synchronisierung
 
 Apps der Suite funktionieren vollständig ohne Konto. Mit einem Konto gleichen
-sie ihre Daten Ende-zu-Ende verschlüsselt zwischen den Geräten ab. Die lokale
+sie ihre Daten zwischen den Geräten ab: anmelden, fertig, ohne weitere
+Schritte für den Nutzer. Die lokale
 SQLite-Datenbank bleibt die Arbeitskopie; sobald jemand angemeldet ist, ist die
 Cloud die Wahrheit.
 
@@ -9,10 +10,10 @@ Cloud die Wahrheit.
 
 | Teil | Ort | Aufgabe |
 |---|---|---|
-| Konto, Krypto, Engine, UI | `packages/kit/account/` (`@agentz/kit/account`) | Anmeldung, Sitzung, Datenschlüssel, Sync-Engine, Avatar, Konto-Button, Dialoge, Einstellungsseite „Konto“ |
+| Konto, Engine, UI | `packages/kit/account/` (`@agentz/kit/account`) | Anmeldung, Sitzung, Datensatzformat, Sync-Engine, Avatar, Konto-Button, Dialoge, Einstellungsseite „Konto“ |
 | Adapter je App | z. B. `modules/scriptz/lib/sync/adapter.ts` | Welche Tabellen, in welcher Reihenfolge, wie eingehende Datensätze geschrieben werden, Konfliktkopien |
 | Desktop-Host | `packages/desktop/lib/platform.ts`, `crates/agentz-desktop/src/secrets.rs` | Schlüsselbund (`PlatformAdapter.secrets`), URL-Schema `agentz-<id>://` (`onOpenUrl`) |
-| Backend | `apps/site/convex/` | `sync.ts`, `keys.ts`, `appLink.ts`, `schema.ts`, `syncApps.ts`, `compat.ts`, `syncPolicy.ts`, `releases.ts`, KI-Proxy `ai.ts` |
+| Backend | `apps/site/convex/` | `sync.ts`, `appLink.ts`, `schema.ts`, `syncApps.ts`, `compat.ts`, `syncPolicy.ts`, `stats.ts`, `releases.ts`, KI-Proxy `ai.ts` |
 | Anmeldeseite | `apps/site/src/components/AppSignIn.astro` (`/konto/app/`, `/en/account/app/`) | Vollbild-Anmeldung für Apps |
 
 Die Shell startet das Konto (`startAccountRuntime`), wenn der Host eine
@@ -62,27 +63,40 @@ ist er für niemanden offen. Ändern ohne Deploy, z. B.
 `npx convex env set AI_ACCESS "a@example.com,b@example.com"` (mit `--prod`
 für Produktion) oder im Convex-Dashboard.
 
-## Verschlüsselung
+## Datensätze und Schutz
 
-- Pro Konto ein zufälliger 256-Bit-Datenschlüssel. Er verlässt die Geräte nur
-  verschlüsselt: `sync_keys.wrapped` ist AES-256-GCM mit einem per HKDF aus dem
-  Wiederherstellungsschlüssel abgeleiteten Schlüssel.
-- Der Wiederherstellungsschlüssel (32 Zufallsbytes, 52 Zeichen Crockford-Base32)
-  wird beim Einrichten einmal gezeigt und nie gespeichert. Ein neues Gerät
-  braucht ihn einmal; danach liegt der Datenschlüssel im Schlüsselbund
-  (`sync.key`). „Neuer Schlüssel“ verpackt denselben Datenschlüssel neu.
-  „Schlüssel verloren“ erzeugt einen neuen Datenschlüssel und löscht die
-  Cloud-Daten (`keys.reset`, `sync.purge`), andere Geräte laden danach erneut hoch.
-- Je App leitet HKDF einen Inhaltsschlüssel (AES-256-GCM) und einen ID-Schlüssel
-  (HMAC-SHA-256) ab. Die Record-ID ist der HMAC von Entität und lokaler ID; die
-  Datensätze sind an App und Record-ID gebunden (Additional Authenticated Data).
-  Inhalte über 512 Byte werden vor dem Verschlüsseln mit gzip komprimiert.
-- Der Server sieht pro Datensatz nur Record-ID, Revision, Größe, Löschmarke,
-  Schlüssel-ID, zufällige Geräte-ID und Zeitpunkt.
-- Dazu meldet die App pro Konto unverschlüsselte Summen für die Zähler der
-  Website (`SyncAdapter.stats`, in ScriptZ die Anzahl der Skripte ohne das
-  unveränderte Willkommens-Skript). Nur Zahlen, nie etwas aus Inhalten; erlaubte
-  Schlüssel stehen in `STAT_KEYS` (`syncApps.ts`).
+- Ein Datensatz ist das JSON `{ entity, id, record }` einer lokalen Zeile,
+  ab 512 Byte mit gzip komprimiert, wenn das kleiner ist
+  (`packages/kit/account/records.ts`). Die Record-ID ist `<entity>/<lokale ID>`.
+- Übertragung per TLS, Convex speichert verschlüsselt (at rest) in der EU.
+  Es gibt bewusst keine Ende-zu-Ende-Verschlüsselung: Ein Schlüssel, den
+  Nutzer aufbewahren oder auf neuen Geräten eingeben müssen, passt nicht zur
+  Zielgruppe, und Funktionen wie Web-Version oder Support brauchen lesbare
+  Daten auf dem Server.
+- `SyncState.keyId` (`app_state.sync.state`) hält das Datensatzschema
+  (`RECORD_SCHEME`), nur für die lokale Buchführung. Weicht es ab, weil eine
+  ältere Version Ende-zu-Ende verschlüsselt synchronisiert hat (dort stand die
+  Schlüssel-ID), migriert das Gerät (`book.startMigration`): Die Buchführung
+  verliert ihre Record-IDs, behält aber alte Revision und Hash jedes
+  Datensatzes. Alles geht erneut hoch, auch Extras, geparkte Datensätze und
+  Einträge außerhalb des Änderungsfeeds (etwa Tageswerte anderer Geräte), je
+  mit Rang `legacyRank` = 2 × alte Revision, +1 bei lokaler Änderung seitdem.
+  Der Server lässt einen höheren Rang einen niedrigeren ersetzen; so gewinnt
+  die zuletzt synchronisierte Fassung, egal welches Gerät zuerst migriert.
+  Eine unveränderte ältere Fassung weicht ohne Konfliktkopie, eine lokale
+  Änderung auf älterem Stand wird wie sonst zur Konfliktkopie. Jeder normale
+  Schreibvorgang löscht den Rang, danach gilt die neue Fassung. Ein alter
+  Datenschlüssel im Schlüsselbund (`sync.key`) wird gelöscht. Ob eine
+  Version die Daten lesen kann, entscheidet allein das Datenformat (siehe
+  „Versionen und Kompatibilität“).
+- Ende-zu-Ende verschlüsselte Datensätze älterer Versionen (ScriptZ-Format 1)
+  tragen in Convex ein `keyId`; Geräte überspringen sie. Der erste Upload einer
+  aktuellen App löscht den alten Schlüssel (`sync_keys`) und plant
+  `sync.dropEncrypted`, das diese Datensätze seitenweise entfernt.
+- Dazu meldet die App pro Konto Summen für die Zähler der Website
+  (`SyncAdapter.stats`, in ScriptZ die Anzahl der Skripte ohne das
+  unveränderte Willkommens-Skript). Nur Zahlen; erlaubte Schlüssel stehen in
+  `STAT_KEYS` (`syncApps.ts`). Der Server wertet Datensatzinhalte nie aus.
 
 ## Datenmodell in Convex
 
@@ -91,19 +105,21 @@ für Produktion) oder im Convex-Dashboard.
   Pro lokaler Zeile gibt es genau ein Dokument mit der letzten Fassung; Seiten
   sind auf 100 Datensätze und 4 MB begrenzt, damit auch zehntausende Skripte
   nur in Änderungen übertragen werden.
-- Verschlüsselte Inhalte bis 96 KiB liegen im Dokument, größere im File
-  Storage.
+- Datensätze bis 96 KiB liegen im Dokument, größere im File Storage. Ein
+  Upload darf nur eine Datei referenzieren, die existiert, die angegebene
+  Größe hat und noch zu keinem Datensatz gehört (Index `by_blob`).
 - `sync_stats`: zuletzt gemeldete Summen pro Nutzer und App; ein stündlicher
   Cron (`stats.ts`) addiert sie zu `site_stats`, `GET /stats` liefert das
   Ergebnis an die Website.
 - `sync_heads`: Revisionszähler pro Nutzer und App, dazu das höchste je
-  geschriebene Datenformat (`format`, `formatBy`). `sync_keys`: verpackter
-  Datenschlüssel pro Konto (für alle Apps). `app_links`: kurzlebige Codes der
-  App-Anmeldung (stündlicher Cron räumt auf). `sync_policy`: Notbremse pro App
-  (siehe unten).
+  geschriebene Datenformat (`format`, `formatBy`). `app_links`: kurzlebige
+  Codes der App-Anmeldung (stündlicher Cron räumt auf). `sync_policy`:
+  Notbremse pro App (siehe unten). `sync_keys` hält alte
+  Datenschlüssel Ende-zu-Ende verschlüsselter Versionen, bis ihr Konto
+  wieder synchronisiert.
 - Kontolöschung (`deleteUser.afterDelete`) löscht alle Sync-Daten in Batches.
 - Neue App mit Sync: Tabelle in `schema.ts`, Eintrag in `syncApps.ts`
-  (`SYNC_APPS`, `appArg`, `STAT_KEYS`), ein `SyncAdapter` im Modul und
+  (`SYNC_APPS`, `appArg`, `STAT_KEYS`, `MIN_FORMAT` 1), ein `SyncAdapter` im Modul und
   `lib/sync/format.json` (Format 1, siehe „Versionen und Kompatibilität“).
   Ohne Eintrag in `SYNC_APPS` kann sich die App auch nicht anmelden.
 
@@ -113,7 +129,7 @@ Lokal führt die Tabelle `sync_records` (Migration der App, `baseline.sql` für
 neue Apps) pro Datensatz Record-ID, Cloud-Revision, Inhalts-Hash und die
 Felder, die diese Version nicht kennt (`extra`); `sync_parked` hält ganze
 Datensätze unbekannter Art (siehe unten). `app_state.sync.state` hält Konto,
-Schlüssel-ID, Geräte-ID und beide Cursor.
+Datensatzschema, Geräte-ID und beide Cursor.
 
 Ein Durchlauf schreibt zuerst ungespeichertes Tippen (`flushAll` mit `content`),
 lädt dann lokale Änderungen hoch und holt danach die Cloud-Änderungen:
@@ -139,7 +155,7 @@ lädt dann lokale Änderungen hoch und holt danach die Cloud-Änderungen:
 
 Auf den Geräten eines Kontos laufen oft verschiedene Versionen einer App:
 Stable und Nightly, ein Gerät ist schon aktualisiert, das andere nicht. Der
-Server kann die Inhalte nicht lesen, deshalb sichern drei Stufen ab, dass eine
+Server wertet die Inhalte nicht aus, deshalb sichern drei Stufen ab, dass eine
 ältere Version neuere Daten weder verliert noch falsch liest.
 
 **1. Vorwärtskompatibel (Normalfall, keine Update-Pflicht).** Jede Version
@@ -153,10 +169,10 @@ kennt ihre Felder pro Entität (`SyncAdapter.fields`). Die Engine
   geparkt (`sync_parked`), weder angewendet noch gebucht. Eine neuere Fassung
   ersetzt sie, eine Löschung in der Cloud entfernt sie.
 - Eine Konfliktkopie behält die unbekannten Felder ihres Originals.
-- Ersetzt ein neuer Schlüssel oder ein anderes Konto die Cloud-Kopie
-  (`resetForNewCloud`), bleiben Extras und geparkte Datensätze erhalten und
-  gehen mit allem anderen erneut hoch, auch wenn kein neueres Gerät mehr
-  existiert.
+- Ersetzt ein anderes Konto die Cloud-Kopie oder wechselt eine Installation
+  vom Ende-zu-Ende verschlüsselten Format (`resetForNewCloud`), bleiben Extras
+  und geparkte Datensätze erhalten und gehen mit allem anderen erneut hoch,
+  auch wenn kein neueres Gerät mehr existiert.
 - Nach einem Update übernimmt der erste Durchlauf, noch vor dem ersten Upload,
   alles, was die neue Version kennt: geparkte Datensätze werden angewendet
   (wartet einer auf seine Eltern, erst am Ende des nächsten vollständigen
@@ -194,7 +210,22 @@ die Stable-Geräte desselben Kontos. Das Format steht pro App in
 `modules/<app>/lib/sync/format.json` zusammen mit allen synchronisierten
 Entitäten, Feldern und Einstellungen; ein Test im Modul schlägt bei jeder
 Änderung fehl, bis sie dort eingetragen und als additiv oder Bruch
-eingeordnet ist.
+eingeordnet ist. Ein Stable-Release ganz ohne Sync schützt nichts und zählt
+für die Prüfung nicht.
+
+Zusätzlich nimmt der Server pro App nur Formate ab `MIN_FORMAT`
+(`syncApps.ts`) an; eine Version, die ein älteres schreibt, bekommt
+`CLIENT_OUTDATED` wie unter einer `minVersion`. Formate von ScriptZ:
+
+| Format | Inhalt | Versionen |
+|---|---|---|
+| 1 | Ende-zu-Ende verschlüsselt, Record-ID als HMAC, Schlüssel in `sync_keys` | nur Nightlies; der Server nimmt es nicht an |
+| 2 | JSON (`records.ts`), Record-ID `<entity>/<lokale ID>` | ab dem ersten Stable-Release mit Sync |
+
+Der erste Upload in Format 2 hebt die Marke des Kontos an und plant das
+Löschen der Format-1-Datensätze; aktualisierte Format-1-Installationen laden
+dabei alles neu hoch (siehe „Datensätze und Schutz“). Lokal geht nichts
+verloren, die verschlüsselte Cloud-Kopie entfällt.
 
 **3. Notbremse.** `sync_policy` sperrt pro App Versionen unter `minVersion`
 und einzelne `blockedVersions`, etwa eine Version, die fehlerhafte Daten
@@ -216,7 +247,7 @@ Fokusmodus) und der Status „Update nötig“ am Konto-Button. Beide bieten den
 nächsten Schritt: Update suchen, laden, neu starten oder, wenn die neuere
 Version bisher nur als Nightly existiert, den Weg in die Update-Einstellungen.
 Das Live-Abo auf `sync:head` hebt die Pause auf, sobald der Server sie nicht
-mehr verlangt (Policy geändert, Cloud-Daten zurückgesetzt).
+mehr verlangt (Policy geändert).
 
 **Entwicklung.** `pnpm dev:<app>` spricht standardmäßig mit Production und
 dem echten Konto. Ein Dev-Build darf ein Konto mit Daten nie auf ein neueres
@@ -243,7 +274,11 @@ stündliche Prüfung findet das Update trotzdem.
 **Convex-API.** Production deployt beim Merge auf `main`, also vor jedem
 Release. Funktionen und Schema deshalb nur erweitern (neue Funktionen,
 optionale Argumente und Felder). Entfernen oder verschärfen erst, wenn
-`minVersion` über allen Versionen liegt, die das Alte noch nutzen.
+`minVersion` oder `MIN_FORMAT` alle Versionen ausschließt, die das Alte noch
+nutzen (so entfiel `keys.ts` mit Format 1; `push` nimmt `keyId` nur
+optional an, damit Format-1-Versionen `CLIENT_OUTDATED` statt eines
+Validierungsfehlers bekommen, und `purge` versteht `keepKey` alter
+Schlüssel-Resets als Löschen der verschlüsselten Datensätze).
 
 ## ScriptZ
 
@@ -275,10 +310,10 @@ Geräten gleichzeitig benutzt, gewinnt die letzte Fassung.
 
 ## Prüfung
 
-- `packages/kit/account/__tests__/`: Krypto (Schlüssel, Verpackung, Bindung,
-  Kompression) und Engine mit einer Cloud-Attrappe (Echo, Konfliktkopie,
-  Bearbeiten gegen Löschen, Eltern-Reihenfolge, File Storage, fremde
-  Schlüssel, Daten neuerer Versionen, Formatsperre).
+- `packages/kit/account/__tests__/`: Datensatzformat (JSON, Kompression,
+  Record-IDs) und Engine mit einer Cloud-Attrappe (Echo, Konfliktkopie,
+  Bearbeiten gegen Löschen, Eltern-Reihenfolge, File Storage, verschlüsselte
+  Altdatensätze, Daten neuerer Versionen, Formatsperre, Zähler).
 - `modules/scriptz/lib/sync/__tests__/adapter.test.ts`: zwei echte
   SQLite-Datenbanken mit allen Migrationen; `format.test.ts` hält
   `format.json` aktuell.

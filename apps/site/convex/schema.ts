@@ -2,36 +2,46 @@ import { defineSchema, defineTable } from "convex/server";
 import { v } from "convex/values";
 
 // Account tables (user, session, ...) live in the Better Auth component.
-// The app schema holds only the end-to-end encrypted cloud copy of the
-// desktop apps and its bookkeeping.
+// The app schema holds the cloud copy of the desktop apps and its
+// bookkeeping.
 
 /**
  * One record table per app keeps products apart: every app has its own
  * table, indexes and limits, and no query ever scans another app's data.
- * A record is the latest encrypted version of one local row. The server
- * sees an opaque record ID, a revision, a size and ciphertext, never the
- * entity type, the local ID or any content.
+ * A record is the latest version of one local row: JSON, gzip-compressed
+ * when that saves space (packages/kit/account/records.ts).
  */
 const recordTable = () =>
   defineTable({
     userId: v.string(),
-    /** HMAC of entity and local ID, computed on the device. */
+    /** `<entity>/<local ID>`. */
     recordId: v.string(),
     /** Per user and app, strictly increasing (see sync_heads). */
     rev: v.number(),
     deleted: v.boolean(),
-    /** Ciphertext up to INLINE_LIMIT; larger records live in file storage. */
+    /** Record data up to INLINE_LIMIT; larger records live in file storage. */
     data: v.optional(v.bytes()),
     blob: v.optional(v.id("_storage")),
     size: v.number(),
-    /** Encryption key the ciphertext belongs to (sync_keys.keyId). */
-    keyId: v.string(),
+    /**
+     * Set only on end-to-end encrypted records of older app versions
+     * (sync_keys). Devices skip them; `sync.dropEncrypted` deletes them.
+     */
+    keyId: v.optional(v.string()),
+    /**
+     * Rank of a migration upload from end-to-end encrypted versions (twice the
+     * old revision, plus one for a local change): a higher rank replaces this
+     * record while the rank is even (no local change). Cleared by every
+     * normal write.
+     */
+    legacyRank: v.optional(v.number()),
     /** Random ID of the writing device, lets a device skip its own echo. */
     deviceId: v.string(),
     updatedAt: v.number(),
   })
     .index("by_user_rev", ["userId", "rev"])
-    .index("by_user_record", ["userId", "recordId"]);
+    .index("by_user_record", ["userId", "recordId"])
+    .index("by_blob", ["blob"]);
 
 export default defineSchema({
   scriptz_records: recordTable(),
@@ -62,9 +72,8 @@ export default defineSchema({
   }).index("by_app", ["app"]),
 
   /**
-   * The account's data key, wrapped (encrypted) with a key derived from the
-   * user's recovery key. Shared by all apps of the account. `resetting` is set
-   * while old records are being removed after a key reset.
+   * Wrapped data key of end-to-end encrypted sync in older app versions. The
+   * first push of a current app deletes it with its records (sync.push).
    */
   sync_keys: defineTable({
     userId: v.string(),

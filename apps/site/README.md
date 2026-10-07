@@ -85,8 +85,8 @@ alternates, `public/robots.txt` points to it.
 ## Script counter
 
 The home page and the ScriptZ page show how many scripts were written with
-ScriptZ (`src/components/ScriptCount.astro`). Records are end-to-end
-encrypted, so signed-in apps report their account's plain totals
+ScriptZ (`src/components/ScriptCount.astro`). The server never interprets
+record contents, so signed-in apps report their account's totals
 (`SyncAdapter.stats` in the Kit, `stats:report` in `convex/stats.ts`, allowed
 keys in `STAT_KEYS`). An hourly cron sums them into `site_stats`, and
 `GET /stats` on the deployment serves the sum. The build renders the latest

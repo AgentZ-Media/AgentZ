@@ -136,7 +136,7 @@ function deWelcome(): WelcomeContent {
       textBlock("scriptz-action", `${kSettings} - Einstellungen`),
       textBlock(
         "scriptz-action",
-        "Alles bleibt lokal auf deinem Gerät, ohne Telemetrie. Mit einem kostenlosen Konto synchronisierst du Ende-zu-Ende verschlüsselt zwischen deinen Geräten. Wenn du das Tutorial nicht mehr brauchst, leg es einfach in den Papierkorb.",
+        "Alles bleibt lokal auf deinem Gerät, ohne Telemetrie. Mit einem kostenlosen Konto hast du deine Skripte auf all deinen Geräten. Wenn du das Tutorial nicht mehr brauchst, leg es einfach in den Papierkorb.",
       ),
       textBlock("scriptz-character", "LENA", { characterName: "LENA" }),
       textBlock("scriptz-dialog", "Viel Spaß beim Schreiben."),
@@ -218,7 +218,7 @@ function enWelcome(): WelcomeContent {
       textBlock("scriptz-action", `${kSettings} - settings`),
       textBlock(
         "scriptz-action",
-        "Everything stays local on your device, with no telemetry. With a free account you sync between your devices, end-to-end encrypted. When you no longer need this tutorial, just move it to the trash.",
+        "Everything stays local on your device, with no telemetry. With a free account you have your scripts on all your devices. When you no longer need this tutorial, just move it to the trash.",
       ),
       textBlock("scriptz-character", "LENA", { characterName: "LENA" }),
       textBlock("scriptz-dialog", "Happy writing."),

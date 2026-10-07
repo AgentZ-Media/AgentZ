@@ -1,9 +1,8 @@
 // @vitest-environment node
 import { describe, expect, it, vi } from "vitest";
 import type { KvStore } from "../../platform";
-import { createMemorySyncBook, type SyncState } from "../book";
+import { createMemorySyncBook, RECORD_SCHEME, type SyncState } from "../book";
 import { ClientOutdatedError } from "../http";
-import { createDataKey, createRecordCipher, type DataKey } from "../crypto";
 import { createSyncEngine, INLINE_LIMIT } from "../engine";
 import type { CloudTransport, PushResult, WireChange, WireRecord } from "../transport";
 import type { RemoteChange, SyncAdapter, SyncBlock, SyncChange, SyncClient, SyncFormat } from "../types";
@@ -15,6 +14,8 @@ function createServer() {
   let format = 0;
   let formatBy: string | null = null;
   const records = new Map<string, WireRecord>();
+  /** legacyRank of records written by a migration upload (sync.ts). */
+  const ranks = new Map<string, number>();
   const blobs = new Map<string, Uint8Array>();
   const pushes: WireChange[] = [];
   /** Fault injection: the pull call with this number (1-based) fails once. */
@@ -33,11 +34,16 @@ function createServer() {
     format: () => format,
     failPullNumber(n: number) { failPull = n; pulls = 0; },
     failReports(fail: boolean) { reportFails = fail; },
-    transport(keyId: string): CloudTransport {
+    /** A record as older app versions wrote it, end-to-end encrypted. */
+    addEncrypted() {
+      head += 1;
+      records.set(`legacy${head}`, { recordId: `legacy${head}`, rev: head, deleted: false, data: new Uint8Array([1, 0, 7]).buffer, keyId: "old-key", deviceId: "X" });
+    },
+    transport(): CloudTransport {
       return {
         head: async (_app, client) => {
           const error = outdated(client);
-          return { rev: head, keyId, resetting: false, block: error ? error.data.block as SyncBlock : null };
+          return { rev: head, block: error ? error.data.block as SyncBlock : null };
         },
         watchHead: () => () => {},
         async pull(_app, client, afterRev) {
@@ -49,7 +55,7 @@ function createServer() {
           const page = list.slice(0, 2);
           return { records: page.map((r) => ({ ...r })), headRev: head, more: list.length > page.length };
         },
-        async push(_app, client, pushKey, deviceId, changes) {
+        async push(_app, client, deviceId, changes) {
           const error = outdated(client);
           if (error) throw error;
           const results: PushResult[] = [];
@@ -58,16 +64,20 @@ function createServer() {
             pushes.push(change);
             const existing = records.get(change.recordId);
             const current = existing?.rev ?? 0;
-            if (change.baseRev !== current) {
+            const stored = ranks.get(change.recordId);
+            const outranks = change.legacyRank !== undefined && stored !== undefined && stored % 2 === 0 && change.legacyRank > stored;
+            if (change.baseRev !== current && !outranks) {
               if (existing?.deleted && change.deleted) results.push({ recordId: change.recordId, status: "ok", rev: existing.rev });
-              else results.push({ recordId: change.recordId, status: "conflict", rev: current, current: existing ? { ...existing } : null });
+              else results.push({ recordId: change.recordId, status: "conflict", rev: current, current: existing ? { ...existing, legacyRank: stored } : null });
               continue;
             }
             head += 1;
             if (!change.deleted) wroteContent = true;
+            if (change.legacyRank === undefined) ranks.delete(change.recordId);
+            else ranks.set(change.recordId, change.legacyRank);
             records.set(change.recordId, {
               recordId: change.recordId, rev: head, deleted: change.deleted, data: change.data,
-              blobUrl: change.blob ? `blob:${change.blob}` : undefined, keyId: pushKey, deviceId,
+              blobUrl: change.blob ? `blob:${change.blob}` : undefined, deviceId,
             });
             results.push({ recordId: change.recordId, status: "ok", rev: head });
           }
@@ -86,10 +96,6 @@ function createServer() {
           if (reportFails) throw new Error("offline");
           reports.push({ ...counts });
         },
-        getKey: async () => null,
-        createKey: async () => {},
-        rewrapKey: async () => {},
-        resetKey: async () => {},
         connected: () => true,
         close: () => {},
       };
@@ -193,7 +199,7 @@ function createDevice(name: string, initial: DeviceSchema = V1) {
       get children() { return table("children"); },
       get notes() { return table("notes"); },
     },
-    write, remove, adapter, kv, settings, copies, book: createMemorySyncBook(),
+    write, remove, adapter, kv, settings, copies, feed, book: createMemorySyncBook(),
     /** Installs a newer version: new columns exist from now on, with their defaults. */
     upgrade(next: DeviceSchema) {
       schema = next;
@@ -206,15 +212,14 @@ function createDevice(name: string, initial: DeviceSchema = V1) {
 
 type Device = ReturnType<typeof createDevice>;
 
-async function connect(device: Device, server: ReturnType<typeof createServer>, dataKey: DataKey, deviceId: string, version = "1.0.0") {
-  const cipher = await createRecordCipher(dataKey, "test");
+async function connect(device: Device, server: ReturnType<typeof createServer>, deviceId: string, version = "1.0.0") {
   const saved = await device.kv.getAppState("test.state");
   const state: SyncState = saved
     ? JSON.parse(saved) as SyncState
-    : { userId: "u", email: "u@x", keyId: dataKey.keyId, deviceId, pushed: 0, pulled: 0, lastSyncedAt: null };
+    : { userId: "u", email: "u@x", keyId: RECORD_SCHEME, deviceId, pushed: 0, pulled: 0, lastSyncedAt: null };
   const adapter = device.adapter();
   const client: SyncClient = { version, channel: "stable", ...adapter.format };
-  const engine = createSyncEngine({ app: "test", adapter, cipher, transport: server.transport(dataKey.keyId), book: device.book, kv: device.kv, state, client });
+  const engine = createSyncEngine({ app: "test", adapter, transport: server.transport(), book: device.book, kv: device.kv, state, client });
   const sync = engine.sync;
   // Persist cursors like the app does (sync.state), so an update keeps them.
   engine.sync = async () => { try { await sync(); } finally { await device.kv.setAppState("test.state", JSON.stringify(engine.state)); } };
@@ -224,14 +229,13 @@ async function connect(device: Device, server: ReturnType<typeof createServer>, 
 describe("sync engine", () => {
   it("brings records to another device and never echoes them back", async () => {
     const server = createServer();
-    const key = createDataKey();
     const a = createDevice("a");
     const b = createDevice("b");
     a.write("parents", { id: "p1", title: "Folder" });
     a.write("children", { id: "c1", title: "Script", parentId: "p1" });
     a.settings.set("stages", "[1,2]");
-    const syncA = await connect(a, server, key, "A");
-    const syncB = await connect(b, server, key, "B");
+    const syncA = await connect(a, server, "A");
+    const syncB = await connect(b, server, "B");
     await syncA.sync();
     expect(server.records.size).toBe(3);
     await syncB.sync();
@@ -241,23 +245,15 @@ describe("sync engine", () => {
     await syncB.sync();
     await syncA.sync();
     expect(server.pushes.length).toBe(before);
-    // The server never sees content, entity names or local IDs. Checked
-    // against whole plain-text fragments: random ciphertext or HMAC IDs
-    // contain short strings like "c1" now and then.
-    for (const record of server.records.values()) {
-      expect(new TextDecoder().decode(new Uint8Array(record.data!))).not.toContain('"title":"Script"');
-      expect(record.recordId).not.toMatch(/children|parents|settings|\u0000|:/);
-    }
   });
 
   it("keeps the cloud version and the local one as a copy when both changed", async () => {
     const server = createServer();
-    const key = createDataKey();
     const a = createDevice("a");
     const b = createDevice("b");
     a.write("children", { id: "c1", title: "v1" });
-    const syncA = await connect(a, server, key, "A");
-    const syncB = await connect(b, server, key, "B");
+    const syncA = await connect(a, server, "A");
+    const syncB = await connect(b, server, "B");
     await syncA.sync();
     await syncB.sync();
     // Both edit while the other is offline; A uploads first.
@@ -274,12 +270,11 @@ describe("sync engine", () => {
 
   it("detects a conflict even when the other change arrives during the pull", async () => {
     const server = createServer();
-    const key = createDataKey();
     const a = createDevice("a");
     const b = createDevice("b");
     a.write("children", { id: "c1", title: "v1" });
-    const syncA = await connect(a, server, key, "A");
-    const syncB = await connect(b, server, key, "B");
+    const syncA = await connect(a, server, "A");
+    const syncB = await connect(b, server, "B");
     await syncA.sync();
     await syncB.sync();
     a.write("children", { id: "c1", title: "from A" });
@@ -293,12 +288,11 @@ describe("sync engine", () => {
 
   it("lets an edit win against a deletion on another device", async () => {
     const server = createServer();
-    const key = createDataKey();
     const a = createDevice("a");
     const b = createDevice("b");
     a.write("children", { id: "c1", title: "v1" });
-    const syncA = await connect(a, server, key, "A");
-    const syncB = await connect(b, server, key, "B");
+    const syncA = await connect(a, server, "A");
+    const syncB = await connect(b, server, "B");
     await syncA.sync();
     await syncB.sync();
     a.remove("children", "c1");
@@ -312,14 +306,13 @@ describe("sync engine", () => {
 
   it("deletes everywhere and skips records that never reached the cloud", async () => {
     const server = createServer();
-    const key = createDataKey();
     const a = createDevice("a");
     const b = createDevice("b");
     a.write("children", { id: "c1", title: "v1" });
     a.write("children", { id: "tmp", title: "temp" });
     a.remove("children", "tmp");
-    const syncA = await connect(a, server, key, "A");
-    const syncB = await connect(b, server, key, "B");
+    const syncA = await connect(a, server, "A");
+    const syncB = await connect(b, server, "B");
     await syncA.sync();
     expect(server.records.size).toBe(1);
     await syncB.sync();
@@ -331,10 +324,9 @@ describe("sync engine", () => {
 
   it("waits with a child until its parent arrived, even on a later page", async () => {
     const server = createServer();
-    const key = createDataKey();
     const a = createDevice("a");
     const b = createDevice("b");
-    const syncA = await connect(a, server, key, "A");
+    const syncA = await connect(a, server, "A");
     a.write("parents", { id: "p1", title: "Folder" });
     a.write("children", { id: "x1", title: "filler" });
     a.write("children", { id: "x2", title: "filler" });
@@ -345,7 +337,7 @@ describe("sync engine", () => {
     a.write("parents", { id: "p1", title: "Renamed" });
     await syncA.sync();
     const fresh = createDevice("b2");
-    const syncB = await connect(fresh, server, key, "B");
+    const syncB = await connect(fresh, server, "B");
     await syncB.sync();
     expect(fresh.tables.children.get("c1")?.parentId).toBe("p1");
     expect(fresh.tables.parents.get("p1")?.title).toBe("Renamed");
@@ -354,9 +346,8 @@ describe("sync engine", () => {
 
   it("keeps paging while a child waits for a parent several pages later", async () => {
     const server = createServer();
-    const key = createDataKey();
     const a = createDevice("a");
-    const syncA = await connect(a, server, key, "A");
+    const syncA = await connect(a, server, "A");
     a.write("parents", { id: "p1", title: "Folder" });
     await syncA.sync();
     a.write("children", { id: "c1", title: "Script", parentId: "p1" });
@@ -366,7 +357,7 @@ describe("sync engine", () => {
     a.write("parents", { id: "p1", title: "Renamed" });
     await syncA.sync();
     const b = createDevice("b");
-    const syncB = await connect(b, server, key, "B");
+    const syncB = await connect(b, server, "B");
     await syncB.sync();
     expect(b.tables.children.get("c1")?.parentId).toBe("p1");
     expect(b.tables.children.size).toBe(7);
@@ -375,36 +366,37 @@ describe("sync engine", () => {
 
   it("moves large records through file storage", async () => {
     const server = createServer();
-    const key = createDataKey();
     const a = createDevice("a");
     const b = createDevice("b");
     // Random text does not compress below the inline limit.
     const big = Array.from({ length: INLINE_LIMIT / 2 }, () => Math.random().toString(36).slice(2, 8)).join("");
     a.write("children", { id: "c1", title: big });
-    await (await connect(a, server, key, "A")).sync();
+    await (await connect(a, server, "A")).sync();
     const stored = [...server.records.values()][0];
     expect(stored.data).toBeUndefined();
     expect(stored.blobUrl).toBeTruthy();
-    await (await connect(b, server, key, "B")).sync();
+    await (await connect(b, server, "B")).sync();
     expect(b.tables.children.get("c1")?.title).toBe(big);
   });
 
-  it("ignores records encrypted with another key", async () => {
+  it("skips end-to-end encrypted records of older app versions", async () => {
     const server = createServer();
     const a = createDevice("a");
     const b = createDevice("b");
-    a.write("children", { id: "c1", title: "secret" });
-    await (await connect(a, server, createDataKey(), "A")).sync();
-    await (await connect(b, server, createDataKey(), "B")).sync();
-    expect(b.tables.children.size).toBe(0);
+    server.addEncrypted();
+    a.write("children", { id: "c1", title: "Script" });
+    await (await connect(a, server, "A")).sync();
+    const syncB = await connect(b, server, "B");
+    await syncB.sync();
+    expect([...b.tables.children.keys()]).toEqual(["c1"]);
+    expect(syncB.state.pulled).toBe(2);
   });
 
   it("reports the adapter's totals only when they changed and never fails a cycle over them", async () => {
     const server = createServer();
-    const key = createDataKey();
     const a = createDevice("a");
     a.write("children", { id: "c1", title: "Script" });
-    const syncA = await connect(a, server, key, "A");
+    const syncA = await connect(a, server, "A");
     await syncA.sync();
     await syncA.sync();
     expect(server.reports).toEqual([{ children: 1 }]);
@@ -423,11 +415,10 @@ describe("sync engine", () => {
 describe("data from newer versions", () => {
   it("keeps fields an older version does not know, even when it edits the record", async () => {
     const server = createServer();
-    const key = createDataKey();
     const newer = createDevice("new", V2);
     const older = createDevice("old", V1);
-    const syncNew = await connect(newer, server, key, "N", "1.1.0");
-    const syncOld = await connect(older, server, key, "O");
+    const syncNew = await connect(newer, server, "N", "1.1.0");
+    const syncOld = await connect(older, server, "O");
     newer.write("children", { id: "c1", title: "Script", mood: "calm" });
     await syncNew.sync();
     await syncOld.sync();
@@ -446,25 +437,24 @@ describe("data from newer versions", () => {
 
   it("parks unknown entities and settings, drops them when deleted and applies them after the update", async () => {
     const server = createServer();
-    const key = createDataKey();
     const newer = createDevice("new", V2);
     const older = createDevice("old", V1);
-    const syncNew = await connect(newer, server, key, "N", "1.1.0");
+    const syncNew = await connect(newer, server, "N", "1.1.0");
     newer.write("notes", { id: "n1", title: "Note" });
     newer.write("notes", { id: "n2", title: "Deleted later" });
     newer.settings.set("theme_accent", "blue");
     await syncNew.sync();
-    await (await connect(older, server, key, "O")).sync();
+    await (await connect(older, server, "O")).sync();
     expect(older.tables.notes.size).toBe(0);
     expect(older.settings.has("theme_accent")).toBe(false);
     expect(older.book.parkedRecords.size).toBe(3);
     newer.remove("notes", "n2");
     await syncNew.sync();
-    await (await connect(older, server, key, "O")).sync();
+    await (await connect(older, server, "O")).sync();
     expect(older.book.parkedRecords.size).toBe(2);
 
     older.upgrade(V2);
-    const updated = await connect(older, server, key, "O", "1.1.0");
+    const updated = await connect(older, server, "O", "1.1.0");
     await updated.sync();
     expect(older.tables.notes.get("n1")).toEqual({ id: "n1", title: "Note", parentId: null });
     expect(older.tables.notes.has("n2")).toBe(false);
@@ -482,20 +472,19 @@ describe("data from newer versions", () => {
 
   it("fills a field the update learned before anything is uploaded", async () => {
     const server = createServer();
-    const key = createDataKey();
     const newer = createDevice("new", V2);
     const older = createDevice("old", V1);
-    const syncNew = await connect(newer, server, key, "N", "1.1.0");
+    const syncNew = await connect(newer, server, "N", "1.1.0");
     newer.write("children", { id: "c1", title: "Script", mood: "calm" });
     newer.write("children", { id: "c2", title: "Other", mood: "tense" });
     await syncNew.sync();
-    await (await connect(older, server, key, "O")).sync();
+    await (await connect(older, server, "O")).sync();
 
     // Installed the update, typed into c1 and quit before the first sync ran.
     older.upgrade(V2);
     older.write("children", { id: "c1", title: "Typed after the update" });
     expect(older.tables.children.get("c1")?.mood).toBeNull();
-    const updated = await connect(older, server, key, "O", "1.1.0");
+    const updated = await connect(older, server, "O", "1.1.0");
     const pushes = server.pushes.length;
     await updated.push();
     expect(older.tables.children.get("c1")).toMatchObject({ title: "Typed after the update", mood: "calm" });
@@ -510,11 +499,10 @@ describe("data from newer versions", () => {
 
   it("resolves a conflict on a record with fields the old version does not know", async () => {
     const server = createServer();
-    const key = createDataKey();
     const newer = createDevice("new", V2);
     const older = createDevice("old", V1);
-    const syncNew = await connect(newer, server, key, "N", "1.1.0");
-    const syncOld = await connect(older, server, key, "O");
+    const syncNew = await connect(newer, server, "N", "1.1.0");
+    const syncOld = await connect(older, server, "O");
     newer.write("children", { id: "c1", title: "Script", mood: "calm" });
     await syncNew.sync();
     await syncOld.sync();
@@ -531,35 +519,33 @@ describe("data from newer versions", () => {
 
   it("stops with the reason when the account holds a format this version cannot read", async () => {
     const server = createServer();
-    const key = createDataKey();
     const next = createDevice("next", { ...V2, format: { reads: 2, writes: 2 } });
     const bridge = createDevice("bridge", { ...V2, format: { reads: 2, writes: 1 } });
     const older = createDevice("old", V1);
     next.write("children", { id: "c1", title: "Script" });
-    await (await connect(next, server, key, "X", "2.0.0-nightly.202611011200")).sync();
+    await (await connect(next, server, "X", "2.0.0-nightly.202611011200")).sync();
     expect(server.format()).toBe(2);
-    const error = await (await connect(older, server, key, "O")).sync().catch((caught: unknown) => caught);
+    const error = await (await connect(older, server, "O")).sync().catch((caught: unknown) => caught);
     expect(error).toBeInstanceOf(ClientOutdatedError);
     expect((error as ClientOutdatedError).block).toEqual({ reason: "format", format: 2, by: "2.0.0-nightly.202611011200" });
     expect(older.tables.children.size).toBe(0);
     // A version that reads the new format but still writes the old one syncs.
-    await (await connect(bridge, server, key, "B", "1.5.0")).sync();
+    await (await connect(bridge, server, "B", "1.5.0")).sync();
     expect(bridge.tables.children.get("c1")?.title).toBe("Script");
     expect(server.format()).toBe(2);
   });
 
   it("keeps a learned field the user set after the update, before the first sync", async () => {
     const server = createServer();
-    const key = createDataKey();
     const newer = createDevice("new", V2);
     const older = createDevice("old", V1);
-    const syncNew = await connect(newer, server, key, "N", "1.1.0");
+    const syncNew = await connect(newer, server, "N", "1.1.0");
     newer.write("children", { id: "c1", title: "Script", mood: "calm" });
     await syncNew.sync();
-    await (await connect(older, server, key, "O")).sync();
+    await (await connect(older, server, "O")).sync();
     older.upgrade(V2);
     older.write("children", { id: "c1", title: "Script", mood: "angry" });
-    await (await connect(older, server, key, "O", "1.1.0")).sync();
+    await (await connect(older, server, "O", "1.1.0")).sync();
     expect(older.tables.children.get("c1")?.mood).toBe("angry");
     await syncNew.sync();
     expect(newer.tables.children.get("c1")?.mood).toBe("angry");
@@ -567,10 +553,9 @@ describe("data from newer versions", () => {
 
   it("lets a parked record wait for its parent when the pull that parked it broke off", async () => {
     const server = createServer();
-    const key = createDataKey();
     const newer = createDevice("new", V2);
     const older = createDevice("old", V1);
-    const syncNew = await connect(newer, server, key, "N", "1.1.0");
+    const syncNew = await connect(newer, server, "N", "1.1.0");
     newer.write("parents", { id: "p0", title: "Filler" });
     newer.write("notes", { id: "n1", title: "Note", parentId: "p1" });
     await syncNew.sync();
@@ -579,12 +564,12 @@ describe("data from newer versions", () => {
     newer.write("parents", { id: "p2", title: "Filler" });
     await syncNew.sync();
     server.failPullNumber(2);
-    await expect((await connect(older, server, key, "O")).sync()).rejects.toThrow("network lost");
+    await expect((await connect(older, server, "O")).sync()).rejects.toThrow("network lost");
     expect(older.book.parkedRecords.size).toBe(1);
     expect(older.tables.parents.has("p1")).toBe(false);
 
     older.upgrade(V2);
-    const updated = await connect(older, server, key, "O", "1.1.0");
+    const updated = await connect(older, server, "O", "1.1.0");
     await updated.push();
     // Not applied before its parent is here.
     expect(older.tables.notes.has("n1")).toBe(false);
@@ -596,38 +581,160 @@ describe("data from newer versions", () => {
   });
 
   it("uploads fields and records of newer versions again when the cloud copy is replaced", async () => {
-    const key = createDataKey();
     const oldCloud = createServer();
     const newer = createDevice("new", V2);
     const older = createDevice("old", V1);
     newer.write("children", { id: "c1", title: "Script", mood: "calm" });
     newer.write("notes", { id: "n1", title: "Note" });
-    await (await connect(newer, oldCloud, key, "N", "1.1.0")).sync();
-    await (await connect(older, oldCloud, key, "O")).sync();
-    // "Recovery key lost": a new key, an empty cloud, and the newer device is gone.
-    const newKey = createDataKey();
+    await (await connect(newer, oldCloud, "N", "1.1.0")).sync();
+    await (await connect(older, oldCloud, "O")).sync();
+    // The local data moves to another account: an empty cloud, and the newer
+    // device is gone. Record IDs stay the same in the new cloud.
     const newCloud = createServer();
     await older.book.resetForNewCloud();
-    await older.kv.setAppState("test.state", JSON.stringify({ userId: "u", email: "u@x", keyId: newKey.keyId, deviceId: "O", pushed: 0, pulled: 0, lastSyncedAt: null }));
-    await (await connect(older, newCloud, newKey, "O")).sync();
+    await older.kv.setAppState("test.state", JSON.stringify({ userId: "u2", email: "u2@x", keyId: RECORD_SCHEME, deviceId: "O", pushed: 0, pulled: 0, lastSyncedAt: null }));
+    const moved = await connect(older, newCloud, "O");
+    // Right after the upload (before any pull) the record is still parked,
+    // under the same record ID as before.
+    await moved.push();
+    expect([...older.book.parkedRecords.values()]).toMatchObject([{ remoteId: "notes/n1", upload: false }]);
+    await moved.sync();
     expect(older.book.parkedRecords.size).toBe(1);
     const fresh = createDevice("fresh", V2);
-    await (await connect(fresh, newCloud, newKey, "F", "1.1.0")).sync();
+    await (await connect(fresh, newCloud, "F", "1.1.0")).sync();
     expect(fresh.tables.children.get("c1")).toMatchObject({ title: "Script", mood: "calm" });
     expect(fresh.tables.notes.get("n1")).toMatchObject({ title: "Note" });
     // And nothing goes up twice.
     const pushes = newCloud.pushes.length;
-    await (await connect(older, newCloud, newKey, "O")).sync();
+    await (await connect(older, newCloud, "O")).sync();
     expect(newCloud.pushes.length).toBe(pushes);
+  });
+
+  it.each(["older", "newer"] as const)("lets the newest synced version win when several devices migrate, the %s state first", async (first) => {
+    // Stand-in for the end-to-end encrypted cloud: both devices synced there,
+    // B saw more of it than A before the switch.
+    const oldCloud = createServer();
+    const a = createDevice("a");
+    const b = createDevice("b");
+    a.write("parents", { id: "p1", title: "Folder" });
+    a.write("children", { id: "c1", title: "v1" });
+    a.write("children", { id: "c2", title: "Deleted later" });
+    a.write("children", { id: "c3", title: "v1" });
+    const oldA = await connect(a, oldCloud, "A");
+    const oldB = await connect(b, oldCloud, "B");
+    await oldA.sync();
+    await oldB.sync();
+    b.write("parents", { id: "p1", title: "Renamed on B" });
+    b.write("children", { id: "c1", title: "v2 from B" });
+    b.remove("children", "c2");
+    b.write("children", { id: "c3", title: "v2 from B" });
+    await oldB.sync();
+    // A never pulled B's changes and edits c3 on its older state.
+    a.write("children", { id: "c3", title: "A's edit on v1" });
+
+    const migrate = async (device: Device, id: string) => {
+      await device.book.startMigration();
+      await device.kv.setAppState("test.state", JSON.stringify({ userId: "u", email: "u@x", keyId: RECORD_SCHEME, deviceId: id, pushed: 0, pulled: 0, lastSyncedAt: null }));
+    };
+    const newCloud = createServer();
+    await migrate(a, "A");
+    await migrate(b, "B");
+    const newA = await connect(a, newCloud, "A");
+    const newB = await connect(b, newCloud, "B");
+    const [one, two] = first === "older" ? [newA, newB] : [newB, newA];
+    await one.sync();
+    await two.sync();
+    await one.sync();
+    for (const device of [a, b]) {
+      expect(device.tables.parents.get("p1")?.title).toBe("Renamed on B");
+      expect(device.tables.children.get("c1")?.title).toBe("v2 from B");
+      expect(device.tables.children.has("c2")).toBe(false);
+      // A's change on v1 and B's v2 both count: the first upload stays,
+      // the other becomes a copy, like any conflict.
+      const [main, copy, copyId] = first === "older"
+        ? ["A's edit on v1", "v2 from B (copy)", "c3-copy-b"]
+        : ["v2 from B", "A's edit on v1 (copy)", "c3-copy-a"];
+      expect(device.tables.children.get("c3")?.title).toBe(main);
+      expect(device.tables.children.get(copyId)?.title).toBe(copy);
+    }
+    // Older unchanged versions just yield, without copies.
+    expect([...a.copies, ...b.copies]).toEqual([first === "older" ? "c3-copy-b" : "c3-copy-a"]);
+    // Done: nothing waits for a migration upload and nothing goes up again.
+    expect(await a.book.legacy()).toEqual([]);
+    expect(await b.book.legacy()).toEqual([]);
+    const pushes = newCloud.pushes.length;
+    await newA.sync();
+    await newB.sync();
+    expect(newCloud.pushes.length).toBe(pushes);
+  });
+
+  it.each(["older", "newer"] as const)("keeps the newest parked record when several devices migrate, the %s state first", async (first) => {
+    const oldCloud = createServer();
+    const newer = createDevice("new", V2);
+    const a = createDevice("a");
+    const b = createDevice("b");
+    const syncNew = await connect(newer, oldCloud, "N", "1.1.0");
+    newer.write("notes", { id: "n1", title: "v1" });
+    await syncNew.sync();
+    await (await connect(a, oldCloud, "A")).sync();
+    newer.write("notes", { id: "n1", title: "v2" });
+    await syncNew.sync();
+    await (await connect(b, oldCloud, "B")).sync();
+    const newCloud = createServer();
+    for (const [device, id] of [[a, "A"], [b, "B"]] as const) {
+      await device.book.startMigration();
+      await device.kv.setAppState("test.state", JSON.stringify({ userId: "u", email: "u@x", keyId: RECORD_SCHEME, deviceId: id, pushed: 0, pulled: 0, lastSyncedAt: null }));
+    }
+    const order = first === "older" ? [a, b] : [b, a];
+    for (const device of order) await (await connect(device, newCloud, device === a ? "A" : "B")).sync();
+    const fresh = createDevice("fresh", V2);
+    await (await connect(fresh, newCloud, "F", "1.1.0")).sync();
+    expect(fresh.tables.notes.get("n1")?.title).toBe("v2");
+  });
+
+  it("uploads migration entries the change feed does not bring", async () => {
+    const oldCloud = createServer();
+    const a = createDevice("a");
+    const b = createDevice("b");
+    a.write("children", { id: "c1", title: "From A" });
+    await (await connect(a, oldCloud, "A")).sync();
+    await (await connect(b, oldCloud, "B")).sync();
+    // B's feed only knows what it wrote itself, like remote daily word counts.
+    b.feed.clear();
+    await b.book.startMigration();
+    await b.kv.setAppState("test.state", JSON.stringify({ userId: "u", email: "u@x", keyId: RECORD_SCHEME, deviceId: "B", pushed: 0, pulled: 0, lastSyncedAt: null }));
+    const newCloud = createServer();
+    await (await connect(b, newCloud, "B")).sync();
+    const fresh = createDevice("fresh");
+    await (await connect(fresh, newCloud, "F")).sync();
+    expect(fresh.tables.children.get("c1")?.title).toBe("From A");
+  });
+
+  it("moves bookkeeping of end-to-end encrypted versions over without losing newer data", async () => {
+    const server = createServer();
+    const older = createDevice("old", V1);
+    // What an end-to-end encrypted version left behind: booked records with
+    // opaque IDs, an unknown field and a parked record, and its key ID as scheme.
+    older.write("children", { id: "c1", title: "Script" });
+    older.book.entries.set("children\u0000c1", { entity: "children", id: "c1", remoteId: "hmac-c1", rev: 4, hash: "old", extra: { mood: "calm" } });
+    await older.book.park([{ remoteId: "hmac-n1", entity: "notes", id: "n1", rev: 5, hash: "old", record: { id: "n1", title: "Note" } }]);
+    server.addEncrypted();
+    await older.book.startMigration();
+    await older.kv.setAppState("test.state", JSON.stringify({ userId: "u", email: "u@x", keyId: RECORD_SCHEME, deviceId: "O", pushed: 0, pulled: 0, lastSyncedAt: null }));
+    await (await connect(older, server, "O")).sync();
+    const fresh = createDevice("fresh", V2);
+    await (await connect(fresh, server, "F", "1.1.0")).sync();
+    expect(fresh.tables.children.get("c1")).toMatchObject({ title: "Script", mood: "calm" });
+    expect(fresh.tables.notes.get("n1")).toMatchObject({ title: "Note" });
+    expect([...older.book.parkedRecords.keys()]).toEqual(["notes/n1"]);
   });
 
   it("keeps unknown fields with a conflict copy", async () => {
     const server = createServer();
-    const key = createDataKey();
     const newer = createDevice("new", V2);
     const older = createDevice("old", V1);
-    const syncNew = await connect(newer, server, key, "N", "1.1.0");
-    const syncOld = await connect(older, server, key, "O");
+    const syncNew = await connect(newer, server, "N", "1.1.0");
+    const syncOld = await connect(older, server, "O");
     newer.write("children", { id: "c1", title: "Script", mood: "calm" });
     await syncNew.sync();
     await syncOld.sync();

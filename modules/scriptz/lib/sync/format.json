@@ -1,6 +1,6 @@
 {
-  "reads": 1,
-  "writes": 1,
+  "reads": 2,
+  "writes": 2,
   "entities": {
     "folders": ["id", "name", "created_at", "updated_at", "length_min_sec", "length_max_sec"],
     "scripts": ["id", "title", "highlighting_enabled", "content_json", "characters_meta", "created_at", "updated_at", "archived_at", "page_count", "folder_id", "last_word_count", "dialog_word_count", "direction_block_count", "status", "status_changed_at"],

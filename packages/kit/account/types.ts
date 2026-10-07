@@ -1,5 +1,5 @@
-// Account and cloud sync contracts. The Kit owns sign-in, encryption and the
-// sync engine; a module only describes its local data (SyncAdapter).
+// Account and cloud sync contracts. The Kit owns sign-in and the sync engine;
+// a module only describes its local data (SyncAdapter).
 
 /** Public endpoints of the suite backend. Not secrets: every build ships them. */
 export interface CloudConfig {
@@ -34,7 +34,7 @@ export interface LocalChangeBatch {
   more: boolean;
 }
 
-/** A record from the cloud, decrypted. `record` is null for a deletion. */
+/** A record from the cloud. `record` is null for a deletion. */
 export interface RemoteChange {
   entity: string;
   id: string;

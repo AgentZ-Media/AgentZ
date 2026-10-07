@@ -549,7 +549,7 @@ function StepSync(props: { choice: SyncChoice; onChoice(choice: SyncChoice): voi
 
 function PreviewSync() {
   const caps = () => [
-    { icon: "shield" as const, l: t("onb.s4.capEncrypted") },
+    { icon: "shield" as const, l: t("onb.s4.capSecure") },
     { icon: "stack" as const, l: t("onb.s4.capDevices") },
     { icon: "refresh" as const, l: t("onb.s4.capOffline") },
     { icon: "user" as const, l: t("onb.s4.capLocal") },

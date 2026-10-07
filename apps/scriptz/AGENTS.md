@@ -72,7 +72,7 @@ Kein `cp` der laufenden DB (WAL). Wiederherstellen bei beendeter App:
 - Netzwerkanfragen: der Updater
   (`releases/download/scriptz-latest/latest.json`, mit Nightly-Kanal zusätzlich
   `scriptz-nightly/latest.json`), nur mit Anmeldung das Convex-Backend
-  (Sitzung, Ende-zu-Ende verschlüsselter Sync) und nur wenn der Agent
+  (Sitzung, Sync) und nur wenn der Agent
   eingeschaltet und nicht ausgeblendet ist je nach Anbindung der lokale Codex-Prozess, der KI-Proxy
   im Convex-Backend (`/ai/*`) oder `openrouter.ai` mit dem eigenen Key;
   angemeldet fragt die Anbindungswahl zusätzlich `/ai/status` nach der

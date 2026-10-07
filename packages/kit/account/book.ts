@@ -16,8 +16,13 @@ import type { DbConnection, KvStore } from "../platform";
 export interface BookEntry {
   entity: string;
   id: string;
-  /** Opaque server record ID; empty while the record is not in the cloud under the current key. */
+  /** Server record ID (`<entity>/<id>`); empty while the cloud copy was replaced (resetForNewCloud, startMigration). */
   remoteId: string;
+  /**
+   * Cloud revision. With an empty remoteId and a rev above 0 it is the
+   * revision of the end-to-end encrypted cloud this entry came from
+   * (startMigration): the migration upload ranks by it.
+   */
   rev: number;
   /** Hash of the synced content; DELETED for a synced deletion. */
   hash: string;
@@ -33,7 +38,7 @@ export interface ParkedRecord {
   rev: number;
   hash: string;
   record: unknown;
-  /** The cloud copy was replaced (new key, other account): upload it again. */
+  /** The cloud copy was replaced (other account, end-to-end encrypted records dropped): upload it again. */
   upload?: boolean;
 }
 
@@ -44,7 +49,11 @@ export interface SyncState {
   userId: string;
   /** Shown when another account signs in on this device. */
   email: string;
-  /** Data key the bookkeeping belongs to; a new key starts over. */
+  /**
+   * Record scheme the bookkeeping belongs to (RECORD_SCHEME). End-to-end
+   * encrypted versions stored their data key ID here; their bookkeeping is
+   * migrated (book.startMigration). Named `keyId` in the stored JSON.
+   */
   keyId: string;
   deviceId: string;
   /** Local change cursor up to which everything was uploaded. */
@@ -55,6 +64,13 @@ export interface SyncState {
 }
 
 const STATE_KEY = "sync.state";
+
+/**
+ * How record IDs and contents are encoded (records.ts). Only the local
+ * bookkeeping depends on it; which data a version can read is the sync
+ * format (SyncFormat), checked by the backend.
+ */
+export const RECORD_SCHEME = "plain-1";
 
 export async function readSyncState(kv: KvStore): Promise<SyncState | null> {
   const raw = await kv.getAppState(STATE_KEY);
@@ -82,12 +98,24 @@ export interface SyncBook {
   /** Forgets everything, parked records included. */
   clear(): Promise<void>;
   /**
-   * The cloud copy is replaced (new data key, local data moved to another
-   * account): revisions and record IDs no longer apply. Keeps what only
+   * The cloud copy is replaced (local data moved to another account, records
+   * of end-to-end encrypted versions dropped): revisions and record IDs no
+   * longer apply. Keeps what only
    * this device may still hold, fields and records of newer versions, so
    * they are uploaded again with everything else.
    */
   resetForNewCloud(): Promise<void>;
+  /**
+   * The cloud copy of an end-to-end encrypted version is replaced by plain
+   * records: record IDs no longer apply, but every entry keeps its old
+   * revision and hash. All devices of the account share that revision order,
+   * so the migration upload can let the newest synced version win
+   * (engine.ts, legacyRank) instead of whichever device migrates first.
+   * Parked records go up again, ranked by their old revision too.
+   */
+  startMigration(): Promise<void>;
+  /** Entries still waiting for their migration upload (empty remoteId, old rev above 0). */
+  legacy(): Promise<BookEntry[]>;
 }
 
 export const bookKey = (entity: string, id: string) => `${entity}\u0000${id}`;
@@ -222,6 +250,17 @@ export function createSqlSyncBook(getDb: () => Promise<DbConnection>): SyncBook 
       // rev 0 lets any copy the new cloud already has win over the re-upload.
       await db.execute("UPDATE sync_parked SET rev = 0, upload = 1");
     },
+    async startMigration() {
+      const db = await getDb();
+      await db.execute("UPDATE sync_records SET remote_id = ''");
+      // Parked records keep their old revision as well: it ranks their upload.
+      await db.execute("UPDATE sync_parked SET upload = 1");
+    },
+    async legacy() {
+      const db = await getDb();
+      const rows = await db.select<Row[]>(`SELECT ${COLUMNS} FROM sync_records r WHERE r.remote_id = '' AND r.rev > 0`);
+      return rows.map(toEntry);
+    },
   };
 }
 
@@ -279,6 +318,13 @@ export function createMemorySyncBook(): SyncBook & { entries: Map<string, BookEn
         else entries.set(key, { ...entry, remoteId: "", rev: 0, hash: "" });
       }
       for (const [key, record] of parkedRecords) parkedRecords.set(key, { ...record, rev: 0, upload: true });
+    },
+    async startMigration() {
+      for (const [key, entry] of entries) entries.set(key, { ...entry, remoteId: "" });
+      for (const [key, record] of parkedRecords) parkedRecords.set(key, { ...record, upload: true });
+    },
+    async legacy() {
+      return [...entries.values()].filter((entry) => !entry.remoteId && entry.rev > 0).map(copyEntry);
     },
   };
 }

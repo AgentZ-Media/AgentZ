@@ -2,7 +2,7 @@
 
 Die App arbeitet immer mit ihrer lokalen SQLite-Datenbank. Die hier
 beschriebene Änderungsverfolgung ist die lokale Grundlage der
-Cloud-Synchronisierung; Konto, Verschlüsselung und Abgleich beschreibt
+Cloud-Synchronisierung; Konto und Abgleich beschreibt
 [`cloud-sync.md`](cloud-sync.md). Ohne Anmeldung gibt es keine Uploads.
 
 ## Schnittstellen
@@ -127,7 +127,7 @@ hochgeladenen Cursor und schreibt eingehende Datensätze mit eigenen Upserts
 auch diese Schreibvorgänge; die Engine erkennt sie am unveränderten
 Inhalts-Hash und lädt sie nicht erneut hoch. Für den Abgleich gilt:
 
-- Cursor und Buchführung gehören zu Konto, Schlüssel und Gerät
+- Cursor und Buchführung gehören zu Konto, Datensatzschema und Gerät
   (`app_state.sync.state`, Tabelle `sync_records`, Migration 014). Ein anderes
   Konto übernimmt die Daten nur nach Rückfrage. Daten neuerer App-Versionen
   (`sync_records.extra`, `sync_parked`, Migration 015) gehören ebenfalls dazu.

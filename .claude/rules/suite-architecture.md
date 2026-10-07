@@ -131,10 +131,10 @@ Apps müssen mit zehntausenden Dokumenten flüssig bleiben. Dafür gilt:
 - Konto und Sync liegen im Kit (`@agentz/kit/account`, Details in
   [`docs/cloud-sync.md`](../../docs/cloud-sync.md)): die Shell startet sie,
   wenn der Host eine `CloudConfig` übergibt; ein Modul beschreibt seine Daten
-  nur über `ModuleRuntime.sync` (`SyncAdapter`). Inhalte verlassen das Gerät
-  nur Ende-zu-Ende verschlüsselt, der Server sieht nie Klartext, Entitätsnamen
-  oder lokale IDs. Secrets gibt es in den Apps nicht; Sitzung und
-  Datenschlüssel liegen im Schlüsselbund (`PlatformAdapter.secrets`).
+  nur über `ModuleRuntime.sync` (`SyncAdapter`). Inhalte gehen nur über die
+  Kit-Engine in die Cloud (TLS, beim Anbieter verschlüsselt gespeichert).
+  Secrets gibt es in den Apps nicht; die Sitzung liegt im Schlüsselbund
+  (`PlatformAdapter.secrets`).
 - Web-Versionen kommen später für alle Apps gleichzeitig. Deshalb: Kit bleibt
   plattformneutral, UI und Fachlogik nutzen das Storage-Interface ihres Moduls, neue Fach-IDs sind UUIDs, und
   app-übergreifende Funktionen laufen nie über direkte Modul-Importe.

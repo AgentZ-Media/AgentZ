@@ -4,44 +4,36 @@ import { registerFlusher } from "../lib";
 import { getBuildInfo, getUpdatesStore, type KvStore, type PlatformAdapter } from "../platform";
 import { baseSettingsStore } from "../stores/baseSettings";
 import { shellUi } from "../stores/ui";
-import { createSqlSyncBook, readSyncState, writeSyncState, type SyncBook, type SyncState } from "./book";
-import {
-  createDataKey, createRecordCipher, formatRecoveryKey, fromBase64Url, parseRecoveryKey, randomBytes,
-  sha256Base64Url, toArrayBuffer, toBase64Url, unwrapDataKey, wrapDataKey, type DataKey,
-} from "./crypto";
+import { createSqlSyncBook, readSyncState, RECORD_SCHEME, writeSyncState, type SyncBook, type SyncState } from "./book";
 import { createSyncEngine, type SyncEngine } from "./engine";
 import { claimSession, ClientOutdatedError, errorCode, fetchUser, revokeSession, SessionExpiredError } from "./http";
+import { randomBytes, sha256Base64Url, toBase64Url } from "./records";
 import type { CloudTransport } from "./transport";
 import type { AccountUser, CloudConfig, SecretStore, SyncAdapter, SyncBlock, SyncClient } from "./types";
 
-// Account runtime of one app window: browser sign-in, session, the data key
-// and the sync engine. All state is exposed as signals on `account`; the
+// Account runtime of one app window: browser sign-in, session and the sync
+// engine. All state is exposed as signals on `account`; the
 // runtime starts in SuiteShell when the host passes a CloudConfig.
 
 export type AccountPhase = "off" | "signedOut" | "waiting" | "connecting" | "signedIn";
-export type KeyPhase = "none" | "checking" | "create" | "enter" | "resetting" | "ready";
 export type SyncPhase = "idle" | "syncing" | "offline" | "error";
-export type AccountDialogKind = "signIn" | "createKey" | "enterKey" | "merge" | "updateRequired";
+export type AccountDialogKind = "signIn" | "merge" | "updateRequired";
 
 const SESSION_SECRET = "account.session";
-const KEY_SECRET = "sync.key";
+/** Data key of end-to-end encrypted sync in older app versions; removed when found. */
+const LEGACY_KEY_SECRET = "sync.key";
 const PROFILE_STATE = "account.profile";
 const POLL_MS = 3000;
 const SETTINGS_POLL_MS = 30_000;
 const QUIET_PUSH_MS = 15_000;
 
-interface StoredKey { userId: string; keyId: string; key: string }
-
 const [phase, setPhase] = createSignal<AccountPhase>("off");
 const [user, setUser] = createSignal<AccountUser | null>(null);
-const [keyPhase, setKeyPhase] = createSignal<KeyPhase>("none");
+/** The sync engine runs for the signed-in account. */
+const [syncReady, setSyncReady] = createSignal(false);
 const [syncPhase, setSyncPhase] = createSignal<SyncPhase>("idle");
 const [lastSyncedAt, setLastSyncedAt] = createSignal<number | null>(null);
 const [dialog, setDialog] = createSignal<AccountDialogKind | null>(null);
-/** Recovery key shown once while creating or replacing it. */
-const [recoveryText, setRecoveryText] = createSignal<string | null>(null);
-/** Why the key dialog is open: first device, new device, or a reset elsewhere. */
-const [keyReason, setKeyReason] = createSignal<"new" | "rotate" | "reset" | "device" | "changed">("device");
 const [error, setError] = createSignal<string | null>(null);
 const [notice, setNotice] = createSignal<"expired" | null>(null);
 const [mergeFrom, setMergeFrom] = createSignal<string | null>(null);
@@ -51,7 +43,7 @@ const [syncAvailable, setSyncAvailable] = createSignal(false);
 const [syncBlock, setSyncBlock] = createSignal<SyncBlock | null>(null);
 
 /** Error codes shown by the dialogs (texts in the Kit catalog, account.error.*). */
-export type AccountError = "network" | "claim" | "wrongKey" | "invalidKey" | "generic";
+export type AccountError = "network" | "claim" | "generic";
 
 interface Runtime {
   cloud: CloudConfig;
@@ -66,7 +58,6 @@ interface Runtime {
   transport: CloudTransport | null;
   engine: SyncEngine | null;
   pendingVerifier: string | null;
-  pendingKey: { dataKey: DataKey; recovery: Uint8Array } | null;
   stopEngine: (() => void) | null;
   /** The update dialog appears once per app start, the banner stays. */
   blockAnnounced: boolean;
@@ -194,7 +185,7 @@ async function connect(token: string, known: AccountUser | null) {
     setDialog("merge");
     return;
   }
-  await prepareKey(current);
+  await startEngine(current);
 }
 
 async function confirmMerge(accept: boolean) {
@@ -204,13 +195,13 @@ async function confirmMerge(accept: boolean) {
   // The local data now belongs to this account: start a fresh bookkeeping,
   // keeping what newer app versions wrote so it moves along.
   await rt.book.resetForNewCloud();
-  const previous = await readSyncState(rt.kv);
-  await writeSyncState(rt.kv, freshState(current, previous?.keyId ?? ""));
-  await prepareKey(current);
+  await rt.secrets.delete(LEGACY_KEY_SECRET).catch(() => {});
+  await writeSyncState(rt.kv, freshState(current));
+  await startEngine(current);
 }
 
-function freshState(current: AccountUser, keyId: string): SyncState {
-  return { userId: current.id, email: current.email, keyId, deviceId: crypto.randomUUID(), pushed: 0, pulled: 0, lastSyncedAt: null };
+function freshState(current: AccountUser): SyncState {
+  return { userId: current.id, email: current.email, keyId: RECORD_SCHEME, deviceId: crypto.randomUUID(), pushed: 0, pulled: 0, lastSyncedAt: null };
 }
 
 async function expire() {
@@ -224,7 +215,6 @@ async function expire() {
     rt.token = null;
   }
   setPhase("signedOut");
-  setKeyPhase("none");
   setNotice("expired");
 }
 
@@ -259,166 +249,16 @@ async function signOut() {
   r.transport?.close();
   r.transport = null;
   r.token = null;
-  r.pendingKey = null;
   await r.kv.setAppState(PROFILE_STATE, "").catch(() => {});
   setUser(null);
   setPhase("signedOut");
-  setKeyPhase("none");
   setDialog(null);
-  setRecoveryText(null);
-}
-
-// ---- Data key ----
-
-async function storedKey(r: Runtime, userId: string): Promise<DataKey | null> {
-  const raw = await r.secrets.get(KEY_SECRET).catch(() => null);
-  if (!raw) return null;
-  try {
-    const value = JSON.parse(raw) as StoredKey;
-    return value.userId === userId ? { keyId: value.keyId, key: fromBase64Url(value.key) } : null;
-  } catch {
-    return null;
-  }
-}
-
-async function storeKey(r: Runtime, userId: string, dataKey: DataKey) {
-  const value: StoredKey = { userId, keyId: dataKey.keyId, key: toBase64Url(dataKey.key) };
-  await r.secrets.set(KEY_SECRET, JSON.stringify(value));
-}
-
-async function prepareKey(current: AccountUser) {
-  const r = rt;
-  if (!r || !r.transport) return;
-  setKeyPhase("checking");
-  const local = await storedKey(r, current.id);
-  let remote;
-  try {
-    remote = await r.transport.getKey();
-  } catch {
-    // Offline: work with the local key; the head subscription notices changes.
-    if (local) { await startEngine(current, local); return; }
-    setKeyPhase("none");
-    setSyncPhase("offline");
-    retryLater(() => prepareKey(current));
-    return;
-  }
-  if (r.signal.aborted) return;
-  if (!remote) {
-    const dataKey = createDataKey();
-    const recovery = randomBytes(32);
-    r.pendingKey = { dataKey, recovery };
-    setRecoveryText(formatRecoveryKey(recovery));
-    setKeyReason("new");
-    setKeyPhase("create");
-    setDialog("createKey");
-    return;
-  }
-  if (remote.resetting) {
-    setKeyPhase("resetting");
-    retryLater(() => prepareKey(current));
-    return;
-  }
-  if (local && local.keyId === remote.keyId) { await startEngine(current, local); return; }
-  setKeyReason(local ? "changed" : "device");
-  setKeyPhase("enter");
-  setDialog("enterKey");
 }
 
 let retryTimer: ReturnType<typeof setTimeout> | undefined;
 function retryLater(run: () => Promise<void>) {
   clearTimeout(retryTimer);
   retryTimer = setTimeout(() => { if (rt && !rt.signal.aborted) void run(); }, 10_000);
-}
-
-/** The user saved the recovery key shown in the dialog. */
-async function confirmRecoverySaved() {
-  const r = rt;
-  const current = user();
-  if (!r?.pendingKey || !r.transport || !current) return;
-  const { dataKey, recovery } = r.pendingKey;
-  setError(null);
-  try {
-    const wrapped = toArrayBuffer(await wrapDataKey(dataKey, recovery));
-    const reason = keyReason();
-    if (reason === "rotate") await r.transport.rewrapKey(dataKey.keyId, wrapped);
-    else if (reason === "reset") await r.transport.resetKey(dataKey.keyId, wrapped);
-    else {
-      try {
-        await r.transport.createKey(dataKey.keyId, wrapped);
-      } catch (caught) {
-        // Another device was faster: use its key instead.
-        if (errorCode(caught) === "KEY_EXISTS") {
-          r.pendingKey = null;
-          setRecoveryText(null);
-          setDialog(null);
-          await prepareKey(current);
-          return;
-        }
-        throw caught;
-      }
-    }
-    await storeKey(r, current.id, dataKey);
-    r.pendingKey = null;
-    setRecoveryText(null);
-    setDialog(null);
-    if (reason !== "rotate") {
-      stopEngine();
-      await startEngine(current, dataKey);
-    }
-  } catch (caught) {
-    fail(caught instanceof TypeError ? "network" : "generic");
-  }
-}
-
-/** Unlocks the cloud data on this device with the recovery key. */
-async function unlock(text: string): Promise<boolean> {
-  const r = rt;
-  const current = user();
-  if (!r?.transport || !current) return false;
-  const recovery = parseRecoveryKey(text);
-  if (!recovery) { fail("invalidKey"); return false; }
-  setError(null);
-  try {
-    const remote = await r.transport.getKey();
-    if (!remote) { await prepareKey(current); return true; }
-    const dataKey = await unwrapDataKey(remote.keyId, new Uint8Array(remote.wrapped), recovery).catch(() => null);
-    if (!dataKey) { fail("wrongKey"); return false; }
-    await storeKey(r, current.id, dataKey);
-    setDialog(null);
-    await startEngine(current, dataKey);
-    return true;
-  } catch {
-    fail("network");
-    return false;
-  }
-}
-
-/** New recovery key for the same data; the old one stops working. */
-function rotateRecoveryKey() {
-  const r = rt;
-  const current = user();
-  if (!r || !current || keyPhase() !== "ready" || !r.engine) return;
-  void (async () => {
-    const dataKey = await storedKey(r, current.id);
-    if (!dataKey) return;
-    const recovery = randomBytes(32);
-    r.pendingKey = { dataKey, recovery };
-    setRecoveryText(formatRecoveryKey(recovery));
-    setKeyReason("rotate");
-    setDialog("createKey");
-  })();
-}
-
-/** Lost recovery key: a new key, the cloud copy is replaced by this device's data. */
-function resetCloud() {
-  const r = rt;
-  if (!r || !user()) return;
-  const dataKey = createDataKey();
-  const recovery = randomBytes(32);
-  r.pendingKey = { dataKey, recovery };
-  setRecoveryText(formatRecoveryKey(recovery));
-  setKeyReason("reset");
-  setDialog("createKey");
 }
 
 // ---- Sync engine ----
@@ -450,31 +290,34 @@ function pauseForUpdate(r: Runtime, block: SyncBlock) {
   setDialog("updateRequired");
 }
 
-async function startEngine(current: AccountUser, dataKey: DataKey) {
+async function startEngine(current: AccountUser) {
   const r = rt;
   if (!r || !r.transport || !r.adapter || r.signal.aborted) return;
   stopEngine();
   let state = await readSyncState(r.kv);
   if (!state || state.userId !== current.id) {
     await r.book.clear();
-    state = freshState(current, dataKey.keyId);
-  } else if (state.keyId !== dataKey.keyId) {
-    // A new key replaced the cloud copy: everything is uploaded again,
-    // including what only this device still holds from newer versions.
-    await r.book.resetForNewCloud();
-    state = { ...state, keyId: dataKey.keyId, pushed: 0, pulled: 0 };
+    state = freshState(current);
+  } else if (state.keyId !== RECORD_SCHEME) {
+    // Synced by an end-to-end encrypted version: its cloud records are
+    // unreadable now and go away. Everything is uploaded again, including
+    // what only this device still holds from newer versions; the old
+    // revisions decide which device's version wins (book.startMigration).
+    await r.book.startMigration();
+    await r.secrets.delete(LEGACY_KEY_SECRET).catch(() => {});
+    state = { ...state, keyId: RECORD_SCHEME, pushed: 0, pulled: 0 };
   }
   state.email = current.email;
   await writeSyncState(r.kv, state);
-  const [cipher, client] = await Promise.all([createRecordCipher(dataKey, r.app), clientOf(r, r.adapter)]);
+  const client = await clientOf(r, r.adapter);
   if (r.signal.aborted || !r.transport) return;
   const transport = r.transport;
   const engine = createSyncEngine({
-    app: r.app, adapter: r.adapter, cipher, transport, book: r.book, kv: r.kv, state, client,
+    app: r.app, adapter: r.adapter, transport, book: r.book, kv: r.kv, state, client,
     onConflictCopy: () => setConflictCopies((n) => n + 1),
   });
   r.engine = engine;
-  setKeyPhase("ready");
+  setSyncReady(true);
   setLastSyncedAt(state.lastSyncedAt);
 
   let timer: ReturnType<typeof setTimeout> | undefined;
@@ -512,9 +355,7 @@ async function startEngine(current: AccountUser, dataKey: DataKey) {
         pauseForUpdate(r, caught.block);
         return;
       }
-      const code = errorCode(caught);
-      if (code === "KEY_CHANGED" || code === "NO_KEY") { running = false; await keyChanged(); return; }
-      if (code === "DEV_FORMAT_RAISE") {
+      if (errorCode(caught) === "DEV_FORMAT_RAISE") {
         console.warn("[account] this development build writes a newer sync format than the account holds; "
           + "test format changes against the dev backend (docs/cloud-sync.md)");
       }
@@ -545,14 +386,13 @@ async function startEngine(current: AccountUser, dataKey: DataKey) {
   const unwatch = transport.watchHead(r.app, client, (head) => {
     if (stopped) return;
     if (head.block) { pauseForUpdate(r, head.block); return; }
-    // The policy changed or the account's data went away (key reset).
+    // The policy changed or the account's data went away.
     if (syncBlock()) {
       resumed += 1;
       setSyncBlock(null);
       if (dialog() === "updateRequired") setDialog(null);
       schedule(0);
     }
-    if (head.keyId && head.keyId !== cipher.keyId && !head.resetting) { void keyChanged(); return; }
     if (head.rev > engine.state.pulled) schedule(200);
   }, () => { /* Reconnects on its own; failures surface through sync runs. */ });
   const online = () => schedule(0);
@@ -583,17 +423,9 @@ function stopEngine() {
   rt.stopEngine = null;
   rt.engine = null;
   syncNowHandler = null;
+  setSyncReady(false);
   setSyncPhase("idle");
   setSyncBlock(null);
-}
-
-async function keyChanged() {
-  const r = rt;
-  const current = user();
-  stopEngine();
-  if (!r || !current) return;
-  await r.secrets.delete(KEY_SECRET).catch(() => {});
-  await prepareKey(current);
 }
 
 function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
@@ -627,7 +459,7 @@ export function startAccountRuntime(options: AccountRuntimeOptions): () => void 
     adapter: options.adapter,
     book: options.book ?? createSqlSyncBook(() => options.platform.getDb()),
     signal: controller.signal,
-    token: null, transport: null, engine: null, pendingVerifier: null, pendingKey: null, stopEngine: null,
+    token: null, transport: null, engine: null, pendingVerifier: null, stopEngine: null,
     blockAnnounced: false, stopReleases: null,
   };
   rt = r;
@@ -663,9 +495,7 @@ export function startAccountRuntime(options: AccountRuntimeOptions): () => void 
     if (rt === r) rt = null;
     setPhase("off");
     setUser(null);
-    setKeyPhase("none");
     setDialog(null);
-    setRecoveryText(null);
     setError(null);
     setSyncAvailable(false);
   };
@@ -675,12 +505,10 @@ export function startAccountRuntime(options: AccountRuntimeOptions): () => void 
 export const account = {
   phase,
   user,
-  keyPhase,
+  syncReady,
   syncPhase,
   lastSyncedAt,
   dialog,
-  recoveryText,
-  keyReason,
   error,
   notice,
   mergeFrom,
@@ -699,12 +527,7 @@ export const account = {
   cancelSignIn,
   signOut,
   confirmMerge,
-  confirmRecoverySaved,
-  unlock,
-  rotateRecoveryKey,
-  resetCloud,
   syncNow: () => syncNowHandler?.(),
-  openKeyDialog: () => { if (keyPhase() === "enter") setDialog("enterKey"); else if (keyPhase() === "create") setDialog("createKey"); },
   openUpdateDialog: () => { if (syncBlock() && dialog() === null) setDialog("updateRequired"); },
   closeDialog: () => {
     if (dialog() === "signIn") { cancelSignIn(); return; }
