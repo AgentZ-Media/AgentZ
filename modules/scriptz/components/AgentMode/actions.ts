@@ -9,7 +9,7 @@ import { agentUi } from "../../stores/agentUi";
 import { navStore } from "../../stores/nav";
 import { library } from "../Shell/libraryData";
 
-/** The agent can be offered at all (desktop with Codex host). */
+/** The agent is offered (desktop with Codex host, not hidden by the user). */
 export function agentModeAvailable(): boolean {
   return agentStore.available();
 }

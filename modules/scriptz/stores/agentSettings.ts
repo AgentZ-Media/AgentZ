@@ -22,6 +22,7 @@ export const AGENT_INSTRUCTIONS_MAX = 1200;
 
 const KEYS = {
   enabled: "agent.enabled",
+  hidden: "agent.hidden",
   onboarded: "agent.onboarded",
   provider: "agent.provider",
   name: "agent.name",
@@ -40,6 +41,8 @@ const KEYS = {
 } as const;
 
 const [enabled, setEnabled] = createSignal(false);
+/** The user chose not to see any AI feature (onboarding or settings). */
+const [hidden, setHidden] = createSignal(false);
 const [onboarded, setOnboarded] = createSignal(false);
 const [provider, setProvider] = createSignal("codex");
 const [name, setName] = createSignal("");
@@ -95,8 +98,12 @@ const effortOf = (raw: string | null): AgentEffort => (isAgentEffort(raw) ? raw 
 
 export const agentSettings = {
   loaded,
-  enabled,
+  /** On and not hidden: hiding pauses the agent without forgetting the
+   *  switch, showing it again restores the previous state. */
+  enabled: () => enabled() && !hidden(),
   setEnabled: async (v: boolean) => { setEnabled(v); await persist(KEYS.enabled, v ? "1" : "0"); },
+  hidden,
+  setHidden: async (v: boolean) => { setHidden(v); await persist(KEYS.hidden, v ? "1" : "0"); },
   onboarded,
   setOnboarded: async (v: boolean) => { setOnboarded(v); await persist(KEYS.onboarded, v ? "1" : "0"); },
   provider,
@@ -154,6 +161,7 @@ export const agentSettings = {
     if (gen !== generation) return;
     const get = (key: keyof typeof KEYS) => values[Object.keys(KEYS).indexOf(key)] ?? null;
     setEnabled(flag(get("enabled"), false));
+    setHidden(flag(get("hidden"), false));
     setOnboarded(flag(get("onboarded"), false));
     setProvider(get("provider") || "codex");
     setName(cleanAgentName(get("name") ?? ""));

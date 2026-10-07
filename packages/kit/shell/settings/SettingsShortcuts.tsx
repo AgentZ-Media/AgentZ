@@ -8,6 +8,7 @@ export function SettingsShortcuts(props: { onClose(): void; shortcuts: readonly 
   const groups = createMemo(() => {
     const entries = new Map<string, { title: string; items: ShortcutDef[] }>();
     for (const shortcut of props.shortcuts) {
+      if (shortcut.hidden?.()) continue;
       let group = entries.get(shortcut.group.id);
       if (!group) { group = { title: shortcut.group.label(), items: [] }; entries.set(shortcut.group.id, group); }
       group.items.push(shortcut);
