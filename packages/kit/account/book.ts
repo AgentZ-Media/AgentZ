@@ -111,7 +111,7 @@ export interface SyncBook {
    * revision and hash. All devices of the account share that revision order,
    * so the migration upload can let the newest synced version win
    * (engine.ts, legacyRank) instead of whichever device migrates first.
-   * Parked records go up again like after resetForNewCloud.
+   * Parked records go up again, ranked by their old revision too.
    */
   startMigration(): Promise<void>;
   /** Entries still waiting for their migration upload (empty remoteId, old rev above 0). */
@@ -253,7 +253,8 @@ export function createSqlSyncBook(getDb: () => Promise<DbConnection>): SyncBook 
     async startMigration() {
       const db = await getDb();
       await db.execute("UPDATE sync_records SET remote_id = ''");
-      await db.execute("UPDATE sync_parked SET rev = 0, upload = 1");
+      // Parked records keep their old revision as well: it ranks their upload.
+      await db.execute("UPDATE sync_parked SET upload = 1");
     },
     async legacy() {
       const db = await getDb();
@@ -320,7 +321,7 @@ export function createMemorySyncBook(): SyncBook & { entries: Map<string, BookEn
     },
     async startMigration() {
       for (const [key, entry] of entries) entries.set(key, { ...entry, remoteId: "" });
-      for (const [key, record] of parkedRecords) parkedRecords.set(key, { ...record, rev: 0, upload: true });
+      for (const [key, record] of parkedRecords) parkedRecords.set(key, { ...record, upload: true });
     },
     async legacy() {
       return [...entries.values()].filter((entry) => !entry.remoteId && entry.rev > 0).map(copyEntry);

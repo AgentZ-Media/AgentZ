@@ -262,6 +262,9 @@ export function createSyncEngine(options: EngineOptions) {
       candidates.push({
         entity: record.entity, id: record.id, envelope, hash: await hashOf(envelope), extra: null, parked: record,
         remoteId: recordIdOf(record.entity, record.id), baseRev: 0,
+        // Migrated from an end-to-end encrypted version: its old revision
+        // ranks it like any other record (book.startMigration). Never a local change.
+        legacyRank: record.rev > 0 ? record.rev * 2 : undefined,
       });
     }
     await upload(candidates);

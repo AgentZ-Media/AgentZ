@@ -668,6 +668,30 @@ describe("data from newer versions", () => {
     expect(newCloud.pushes.length).toBe(pushes);
   });
 
+  it.each(["older", "newer"] as const)("keeps the newest parked record when several devices migrate, the %s state first", async (first) => {
+    const oldCloud = createServer();
+    const newer = createDevice("new", V2);
+    const a = createDevice("a");
+    const b = createDevice("b");
+    const syncNew = await connect(newer, oldCloud, "N", "1.1.0");
+    newer.write("notes", { id: "n1", title: "v1" });
+    await syncNew.sync();
+    await (await connect(a, oldCloud, "A")).sync();
+    newer.write("notes", { id: "n1", title: "v2" });
+    await syncNew.sync();
+    await (await connect(b, oldCloud, "B")).sync();
+    const newCloud = createServer();
+    for (const [device, id] of [[a, "A"], [b, "B"]] as const) {
+      await device.book.startMigration();
+      await device.kv.setAppState("test.state", JSON.stringify({ userId: "u", email: "u@x", keyId: RECORD_SCHEME, deviceId: id, pushed: 0, pulled: 0, lastSyncedAt: null }));
+    }
+    const order = first === "older" ? [a, b] : [b, a];
+    for (const device of order) await (await connect(device, newCloud, device === a ? "A" : "B")).sync();
+    const fresh = createDevice("fresh", V2);
+    await (await connect(fresh, newCloud, "F", "1.1.0")).sync();
+    expect(fresh.tables.notes.get("n1")?.title).toBe("v2");
+  });
+
   it("uploads migration entries the change feed does not bring", async () => {
     const oldCloud = createServer();
     const a = createDevice("a");
