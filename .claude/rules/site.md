@@ -7,7 +7,7 @@ paths:
 
 - Statische Astro-Seite ohne Tracking, Cookies, lokalen Speicher oder externe
   Requests. JavaScript nur als Verbesserung: `src/scripts/site.ts` auf jeder
-  Seite (Punktraster, Einblenden, Kopieren, Plattform-Erkennung), dazu
+  Seite (Punktraster, Einblenden, Plattform-Erkennung), dazu
   `home.ts` (Intro und wandernder Punkt) und `scriptz-page.ts` (bedienbarer
   Nachbau). Ohne JavaScript ist alles im Endzustand lesbar,
   `prefers-reduced-motion` lässt Intro, wandernden Punkt und Tipp-Demo weg. Nur

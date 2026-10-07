@@ -22,20 +22,6 @@ const reveal = new IntersectionObserver((entries) => {
 }, { rootMargin: "0px 0px -8% 0px", threshold: 0.12 });
 document.querySelectorAll("[data-reveal]").forEach((el) => reveal.observe(el));
 
-// ---- Copy the install command ----
-document.querySelectorAll<HTMLButtonElement>("[data-copy]").forEach((button) => {
-  const label = button.textContent;
-  button.addEventListener("click", async () => {
-    try {
-      await navigator.clipboard.writeText(button.dataset.copy ?? "");
-      button.textContent = button.dataset.copied ?? label;
-      window.setTimeout(() => { button.textContent = label; }, 1800);
-    } catch {
-      // Clipboard denied: the command stays selectable in the page.
-    }
-  });
-});
-
 // ---- Put the visitor's platform first ----
 const buttons = document.querySelector<HTMLElement>("[data-os-buttons]");
 if (buttons && /Windows/i.test(navigator.userAgent)) {
