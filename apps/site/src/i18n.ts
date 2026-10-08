@@ -196,10 +196,8 @@ const de = {
     macosNote: "Apple Silicon",
     windowsNote: "64 Bit",
     firstRun: "Erster Start",
-    macHint: "Die App ist nicht notarisiert. Einmal im Terminal ausführen:",
+    macHint: "Beim ersten Öffnen hält macOS die App einmal an. Dann in den Systemeinstellungen unter „Datenschutz & Sicherheit“ auf „Dennoch öffnen“ klicken.",
     winHint: "Bei SmartScreen „Weitere Informationen“ und dann „Trotzdem ausführen“ wählen.",
-    copy: "Kopieren",
-    copied: "Kopiert",
     releases: "Alle Versionen auf GitHub",
   },
 
@@ -534,10 +532,8 @@ const en: Catalog = {
     macosNote: "Apple Silicon",
     windowsNote: "64-bit",
     firstRun: "First launch",
-    macHint: "The app is not notarized. Run this once in Terminal:",
+    macHint: "On first launch, macOS stops the app once. Open System Settings, go to “Privacy & Security” and click “Open Anyway”.",
     winHint: "When SmartScreen appears, choose “More info”, then “Run anyway”.",
-    copy: "Copy",
-    copied: "Copied",
     releases: "All versions on GitHub",
   },
 
