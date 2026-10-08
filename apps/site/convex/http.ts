@@ -1,6 +1,6 @@
 import { httpRouter } from "convex/server";
 import { corsRouter } from "convex-helpers/server/cors";
-import { chat, status } from "./ai";
+import { chat, decide, status } from "./ai";
 import { approve, claim } from "./appLink";
 import { APP_ORIGINS, authComponent, createAuth } from "./auth";
 import { announce } from "./releases";
@@ -31,6 +31,7 @@ const ai = corsRouter(http, {
 });
 ai.route({ path: "/ai/status", method: "GET", handler: status });
 ai.route({ path: "/ai/chat", method: "POST", handler: chat });
+ai.route({ path: "/ai/decide", method: "POST", handler: decide });
 
 // Release and nightly workflows announce new versions (releases.ts). No CORS:
 // only the workflows call it, with a bearer secret.

@@ -1,5 +1,6 @@
 import { httpAction } from "./_generated/server";
 import { createAuth } from "./auth";
+import { DECISIONS_URL, MAX_DECISION_BODY_CHARS, decisionBody, decisionResult } from "./decisions";
 
 // Hosted agent of the apps: a thin, authenticated proxy in front of
 // OpenRouter. Signed-in apps send OpenAI-style chat completion requests; the
@@ -7,6 +8,11 @@ import { createAuth } from "./auth";
 // and the server decides the model (OPENROUTER_MODEL), so the key cannot be
 // used for anything else. The app runs the agent loop itself (tools execute
 // locally), each request here is one model step.
+//
+// Besides the chat, the same key answers decision requests (POST /ai/decide,
+// see decisions.ts): typed questions about a text, answered by a decision
+// model (DECISION_MODEL, Jev) with probabilities. Product-neutral, so every
+// app of the suite can ask its own questions.
 //
 // Open only to the accounts in AI_ACCESS for now (see hasAccess); the apps
 // show "coming soon" to everyone else. Free and without limits for those
@@ -118,6 +124,13 @@ export const status = httpAction(async (ctx, request) => {
   return json({ email: user.email, model: { id, label } });
 });
 
+const upstreamHeaders = (key: string) => ({
+  Authorization: `Bearer ${key}`,
+  "Content-Type": "application/json",
+  "HTTP-Referer": process.env.SITE_URL ?? "https://www.agentz-suite.com",
+  "X-Title": "AgentZ Suite",
+});
+
 /** POST /ai/chat: one chat completion step, streamed through unchanged. */
 export const chat = httpAction(async (ctx, request) => {
   const auth = await authorize(ctx, request);
@@ -139,16 +152,7 @@ export const chat = httpAction(async (ctx, request) => {
   if (!body) return json({ error: "invalid_request" }, 400);
   const payload = JSON.stringify(body);
   if (payload.length > MAX_BODY_CHARS) return json({ error: "too_large" }, 413);
-  const upstream = await fetch(OPENROUTER_URL, {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${key}`,
-      "Content-Type": "application/json",
-      "HTTP-Referer": process.env.SITE_URL ?? "https://www.agentz-suite.com",
-      "X-Title": "AgentZ Suite",
-    },
-    body: payload,
-  });
+  const upstream = await fetch(OPENROUTER_URL, { method: "POST", headers: upstreamHeaders(key), body: payload });
   if (!upstream.ok || !upstream.body) {
     // Upstream details stay here; the app shows its own message.
     const detail = await upstream.text().catch(() => "");
@@ -163,4 +167,34 @@ export const chat = httpAction(async (ctx, request) => {
       "Cache-Control": "no-cache",
     },
   });
+});
+
+/** POST /ai/decide: one decision request (decisions.ts), answered as JSON. */
+export const decide = httpAction(async (ctx, request) => {
+  const auth = await authorize(ctx, request);
+  if (!auth.user) return auth.response;
+  const key = process.env.OPENROUTER_API_KEY;
+  if (!key) return json({ error: "unavailable" }, 503);
+  if (Number(request.headers.get("content-length") ?? 0) > MAX_DECISION_BODY_CHARS * 4) return json({ error: "too_large" }, 413);
+  let raw: unknown;
+  try {
+    const text = await request.text();
+    if (text.length > MAX_DECISION_BODY_CHARS) return json({ error: "too_large" }, 413);
+    raw = JSON.parse(text);
+  } catch {
+    return json({ error: "invalid_request" }, 400);
+  }
+  const body = decisionBody(raw);
+  if (!body) return json({ error: "invalid_request" }, 400);
+  const payload = JSON.stringify(body);
+  if (payload.length > MAX_DECISION_BODY_CHARS) return json({ error: "too_large" }, 413);
+  const upstream = await fetch(DECISIONS_URL, { method: "POST", headers: upstreamHeaders(key), body: payload });
+  const result = upstream.ok ? decisionResult(await upstream.json().catch(() => null)) : null;
+  if (!result) {
+    const detail = upstream.ok ? "malformed answer" : await upstream.text().catch(() => "");
+    console.warn("decision request failed", upstream.status, detail.slice(0, 500));
+    const status = upstream.status === 429 ? 429 : upstream.status === 400 ? 400 : 502;
+    return json({ error: status === 429 ? "rate_limited" : status === 400 ? "invalid_request" : "upstream_error" }, status);
+  }
+  return json(result);
 });

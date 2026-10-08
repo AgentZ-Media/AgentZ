@@ -13,6 +13,7 @@ import type * as appLink from "../appLink.js";
 import type * as auth from "../auth.js";
 import type * as compat from "../compat.js";
 import type * as crons from "../crons.js";
+import type * as decisions from "../decisions.js";
 import type * as emails from "../emails.js";
 import type * as http from "../http.js";
 import type * as releases from "../releases.js";
@@ -33,6 +34,7 @@ declare const fullApi: ApiFromModules<{
   auth: typeof auth;
   compat: typeof compat;
   crons: typeof crons;
+  decisions: typeof decisions;
   emails: typeof emails;
   http: typeof http;
   releases: typeof releases;

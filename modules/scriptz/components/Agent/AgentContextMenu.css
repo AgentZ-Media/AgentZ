@@ -21,6 +21,15 @@
   top: -5px;
   width: 200px;
 }
+/* Near the bottom edge: the submenu grows upwards from its row. */
+.ag-ctx-sub.is-up {
+  top: auto;
+  bottom: -5px;
+}
+/* First frame, before the menu is measured and placed. */
+.ag-ctx.is-placing {
+  visibility: hidden;
+}
 @keyframes ag-pop { from { opacity: 0; transform: translateY(-3px); } to { opacity: 1; transform: none; } }
 .ag-ctx-it {
   position: relative;

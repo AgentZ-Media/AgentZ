@@ -328,6 +328,26 @@ Persönlicher Schreib-Agent mit eigenem Namen, Look und Persona.
 - **Faktencheck im Text** (`Agent/ClaimMarks.tsx`): die Behauptungen des
   letzten Checks werden per CSS Custom Highlight API unterstrichen und
   nummeriert, solange der Chat offen ist.
+- **Prüfbare Stellen** (`Agent/ClaimSpots.tsx`, `stores/agent/claims.ts`,
+  `lib/agent/claimScan.ts`): Ein Entscheidungsmodell (Jev, über
+  `decide()` aus dem Kit und `/ai/decide` des KI-Proxys) markiert
+  Dialogzeilen mit prüfbarer Tatsachenbehauptung: gepunktet unterstrichen,
+  Ring im rechten Rand. Beim Öffnen geht das ganze Skript in einer Anfrage
+  mit einer Ja/Nein-Frage pro Dialogzeile ab 4 Wörtern, danach jede neue oder
+  geänderte Zeile nach 2 s Ruhe mit je zwei Dialogzeilen davor und danach
+  (`claimWindow`); markiert wird ab 0,8. Kein eigener Schalter: Es läuft nur
+  angemeldet, mit KI-Freischaltung (`AI_ACCESS`, `agentStore.hostedAccess`),
+  eingeblendetem, eingeschaltetem und eingerichtetem Agenten, nur in der
+  großen Ansicht und nicht im Fokus, egal welche Anbindung. Ergebnisse
+  liegen nur im Speicher, nach Zeilentext (`claimKey`). Ein Klick prüft die
+  Zeile in einem eigenen Hintergrund-Thread des Agenten (gleiche
+  Instruktionen wie der Chat, nur `get_current_script` und
+  `report_fact_check`, ganzes Skript als Kontext, Websuche); die Karte
+  erscheint unter der Zeile oder, wenn unten kein Platz ist, darüber.
+  Erledigt, „Bewusst so lassen“, eine übernommene Korrektur oder „Im Chat“
+  merken sich die Zeile pro Skript auf dem Gerät
+  (`script.<id>.claims_resolved` in `app_state`), damit sie nicht wieder
+  markiert wird.
 - **Kontext Länge.** Der Skript-Chat bekommt Längenziel und Sprechtempo in
   den Instruktionen, Sitzungen vor jeder Nachricht eine Zeile `[Session: ...]`
   mit Ordner, Ziel, Wortbudget, Entwürfen samt gemessener Laufzeit und
