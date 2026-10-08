@@ -5,6 +5,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { createSignal } from "solid-js";
 import { setKvStore, type KvStore } from "@agentz/kit/platform";
+import { claimKey } from "../../../lib/agent/claimScan";
 import type { AgentBlock } from "../../../lib/agent/scriptText";
 import type { AgentEvent, AgentTool, OpenThreadOptions } from "../../../lib/agent/types";
 
@@ -147,6 +148,72 @@ describe("createClaimScanner", () => {
     expect(request.state.script).toContain("[1] DIALOG (AXEL): Resturlaub verfällt");
     scanner.dispose();
   });
+
+  it("waits with the line being written until the caret leaves it", async () => {
+    decide.mockResolvedValueOnce({ b1: { type: "noul", noul: 0.95 } });
+    const scanner = claims.createClaimScanner("s1");
+    scanner.update(script, { editing: 5 });
+    await flush();
+    expect(decide).toHaveBeenCalledTimes(1);
+    expect(Object.keys(decide.mock.calls[0][0].questions)).toEqual(["b1"]);
+
+    // Still in it: nothing. Left: that line alone, with its neighbours.
+    scanner.update(script, { editing: 5 });
+    await flush();
+    expect(decide).toHaveBeenCalledTimes(1);
+    decide.mockResolvedValueOnce({ b5: { type: "noul", noul: 0.3 } });
+    scanner.update(script, { editing: null });
+    await flush();
+    expect(decide).toHaveBeenCalledTimes(2);
+    expect(Object.keys(decide.mock.calls[1][0].questions)).toEqual(["b5"]);
+    scanner.dispose();
+  });
+
+  it("keeps the answer after a small edit and asks again after a rewrite", async () => {
+    const ids = script.map((_, i) => `k${i}`);
+    decide.mockResolvedValueOnce({ b1: { type: "noul", noul: 0.95 }, b5: { type: "noul", noul: 0.4 } });
+    const scanner = claims.createClaimScanner("s1");
+    scanner.update(script, { ids });
+    await flush();
+    expect(decide).toHaveBeenCalledTimes(1);
+
+    const withLine1 = (text: string) => script.map((block, i) => (i === 1 ? { ...block, text } : block));
+    const typo = withLine1("Resturlaub verfällt am 31. Dezember. Imer.");
+    scanner.update(typo, { ids });
+    await flush();
+    expect(decide).toHaveBeenCalledTimes(1);
+    expect(claims.lineState("s1", typo[1].text).probability).toBe(0.95);
+
+    // Small edits do not add up: the comparison stays with the asked text.
+    const drifted = withLine1("Resturlaub verfällt nie, im Dezember. Imer.");
+    scanner.update(drifted, { ids });
+    await flush();
+    expect(decide).toHaveBeenCalledTimes(2);
+    expect(Object.keys(decide.mock.calls[1][0].questions)).toEqual(["b1"]);
+    scanner.dispose();
+  });
+
+  it("remembers answers on the device, so opening again asks nothing", async () => {
+    decide.mockResolvedValueOnce({ b1: { type: "noul", noul: 0.95 } });
+    const first = claims.createClaimScanner("s3");
+    first.update(script);
+    await flush();
+    first.dispose();
+    await new Promise((resolve) => setTimeout(resolve, 10));
+    expect(JSON.parse(kv.appState.get("script.s3.claims_scan") ?? "{}")).toEqual({
+      [claimKey(script[1].text)]: 0.95,
+      // No answer counts as no claim.
+      [claimKey(script[5].text)]: 0,
+    });
+
+    claims.resetClaimsForTests();
+    const again = claims.createClaimScanner("s3");
+    again.update(script);
+    await flush();
+    expect(decide).toHaveBeenCalledTimes(1);
+    expect(claims.lineState("s3", script[1].text).probability).toBe(0.95);
+    again.dispose();
+  });
 });
 
 describe("checkClaim", () => {
@@ -196,7 +263,7 @@ describe("resolveClaim", () => {
     await new Promise((resolve) => setTimeout(resolve, 10));
     claims.resetClaimsForTests();
     expect(claims.lineState("s2", script[5].text).resolved).toBe(false);
-    await claims.loadResolved("s2");
+    await claims.loadClaims("s2");
     expect(claims.lineState("s2", script[5].text).resolved).toBe(true);
   });
 });

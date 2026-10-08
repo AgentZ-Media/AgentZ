@@ -1,5 +1,5 @@
 import { For, Index, Match, Show, Switch, createEffect, createMemo, createSignal, on, onCleanup, onMount, type Accessor } from "solid-js";
-import type { LexicalEditor } from "lexical";
+import { $getRoot, $getSelection, $isRangeSelection, type LexicalEditor } from "lexical";
 import { account } from "@agentz/kit/account";
 import { sameData } from "@agentz/kit/lib";
 import { getPlatformAdapter } from "@agentz/kit/platform";
@@ -8,12 +8,12 @@ import { Icon } from "@agentz/kit/ui";
 import { t, tPlural } from "../../i18n";
 import { CLAIM_THRESHOLD, claimWindow } from "../../lib/agent/claimScan";
 import { sourceHost, type Claim, type ClaimVerdict } from "../../lib/agent/proposals";
-import type { AgentBlock, AgentBlockType } from "../../lib/agent/scriptText";
+import { blockTypeOf, type AgentBlock, type AgentBlockType } from "../../lib/agent/scriptText";
 import type { TimingBlock } from "../../lib/timing";
 import { agentStore } from "../../stores/agent";
 import {
-  checkClaim, claimScanAllowed, clearCheck, createClaimScanner, ensureClaimAccess, lineState, loadResolved, resolveClaim, unresolveClaim,
-  type ClaimCheck, type ClaimStep,
+  checkClaim, claimScanAllowed, clearCheck, createClaimScanner, ensureClaimAccess, lineState, loadClaims, resolveClaim, unresolveClaim,
+  type ClaimCheck, type ClaimStep, type ScanInput,
 } from "../../stores/agent/claims";
 import { localId } from "../../stores/agent/chatItems";
 import { agentSettings } from "../../stores/agentSettings";
@@ -33,11 +33,15 @@ export interface ClaimSpotsProps {
   blocks: Accessor<TimingBlock[]>;
   /** Bumps on every content change (lines may have moved). */
   tick: Accessor<number>;
+  /** Block holding the caret and whether the editor has focus. */
+  caret: Accessor<{ key: string } | null>;
+  focused: Accessor<boolean>;
   colorOf(name: string): string;
 }
 
-/** Quiet time after typing before new or edited lines are asked about. */
-const SCAN_DEBOUNCE_MS = 2000;
+/** After leaving a line or a change elsewhere, before the paper is read
+ *  (at most one read per this time while writing). */
+const SCAN_DELAY_MS = 400;
 const POP_W = 372;
 /** Between the line and its result card. */
 const GAP = 10;
@@ -98,6 +102,27 @@ function wholeBlock(el: HTMLElement): Range {
   return range;
 }
 
+/** The paper as it is right now (the debounced block list may still hold a
+ *  line just left half-written), with the editor keys and the line being
+ *  written. */
+function readPaper(ed: LexicalEditor, focused: boolean): { blocks: AgentBlock[] } & Required<ScanInput> {
+  const blocks: AgentBlock[] = [];
+  const ids: string[] = [];
+  let editing: number | null = null;
+  ed.getEditorState().read(() => {
+    for (const child of $getRoot().getChildren()) {
+      blocks.push({ type: blockTypeOf(child.getType()), text: child.getTextContent() });
+      ids.push(child.getKey());
+    }
+    const selection = focused ? $getSelection() : null;
+    if (!$isRangeSelection(selection)) return;
+    const node = selection.anchor.getNode();
+    const top = node.getParent() === null ? node : node.getTopLevelElement();
+    if (top) editing = ids.indexOf(top.getKey());
+  });
+  return { blocks, ids, editing };
+}
+
 function openSource(url: string) {
   void getPlatformAdapter().openUrl(url).catch((error) => console.warn("[agent] open source failed", error));
 }
@@ -123,24 +148,34 @@ export function ClaimSpots(props: ClaimSpotsProps) {
   let reveal = false;
   let raf = 0;
   let timer: ReturnType<typeof setTimeout> | null = null;
-  let scanned = false;
+  let opened = false;
 
   const agentBlocks = (): AgentBlock[] => props.blocks().map((block) => ({ type: TYPE[block.kind], text: block.text }));
 
   onMount(() => {
     ensureClaimAccess();
-    void loadResolved(props.scriptId);
+    void loadClaims(props.scriptId);
   });
   createEffect(on(() => account.signedIn(), (signedIn) => { if (signedIn) ensureClaimAccess(); }, { defer: true }));
 
-  // Opening: everything at once. Typing: new and edited lines after a pause.
-  createEffect(on([props.blocks, claimScanAllowed] as const, ([blocks, allowed]) => {
-    if (timer) clearTimeout(timer);
-    timer = null;
-    if (!allowed || blocks.length === 0) return;
-    const delay = scanned ? SCAN_DEBOUNCE_MS : 0;
-    scanned = true;
-    timer = setTimeout(() => { timer = null; scanner.update(agentBlocks()); }, delay);
+  // Opening: what the device does not know yet. Writing: a line once the
+  // caret leaves it (or the editor loses focus), other lines when they change.
+  const editing = createMemo(() => (props.focused() ? props.caret()?.key ?? null : null));
+  createEffect(on([props.blocks, editing, claimScanAllowed] as const, ([blocks, , allowed]) => {
+    if (!allowed || blocks.length === 0) {
+      if (timer) clearTimeout(timer);
+      timer = null;
+      return;
+    }
+    if (timer) return;
+    timer = setTimeout(() => {
+      timer = null;
+      const ed = props.editor();
+      if (!ed) return;
+      const { blocks: paper, ...input } = readPaper(ed, props.focused());
+      scanner.update(paper, input);
+    }, opened ? SCAN_DELAY_MS : 0);
+    opened = true;
   }));
 
   const spots = createMemo<Spot[]>(() => {

@@ -334,16 +334,23 @@ Persönlicher Schreib-Agent mit eigenem Namen, Look und Persona.
   `decide()` aus dem Kit und `/ai/decide` des KI-Proxys) markiert
   Dialogzeilen mit prüfbarer Tatsachenbehauptung: gepunktet unterstrichen,
   Ring im rechten Rand. Beim Öffnen geht das ganze Skript in einer Anfrage
-  mit einer Ja/Nein-Frage pro Dialogzeile ab 4 Wörtern, danach jede neue oder
-  geänderte Zeile nach 2 s Ruhe mit je zwei Dialogzeilen davor und danach
-  (`claimWindow`); markiert wird ab 0,8. Kein eigener Schalter: Es läuft nur
+  mit einer Ja/Nein-Frage pro Dialogzeile ab 4 Wörtern, die das Gerät noch
+  nicht kennt. Danach wird eine neue oder geänderte Zeile erst gefragt, wenn
+  der Cursor sie verlässt oder der Editor den Fokus verliert, mit je zwei
+  Dialogzeilen davor und danach (`claimWindow`); die Zeile mit dem Cursor
+  wartet. Eine kleine Änderung (`isSmallEdit`: weniger als ein Viertel der
+  Wörter, mindestens zwei) behält die Antwort, verglichen wird immer mit dem
+  zuletzt gefragten Text. Markiert wird ab 0,8. Kein eigener Schalter: Es läuft nur
   angemeldet, mit KI-Freischaltung (`AI_ACCESS`, `agentStore.hostedAccess`),
   eingeblendetem, eingeschaltetem und eingerichtetem Agenten, nur in der
-  großen Ansicht und nicht im Fokus, egal welche Anbindung. Ergebnisse
-  liegen nur im Speicher, nach Zeilentext (`claimKey`). Ein Klick prüft die
+  großen Ansicht und nicht im Fokus, egal welche Anbindung. Antworten liegen
+  nach Zeilentext (`claimKey`) pro Skript auf dem Gerät
+  (`script.<id>.claims_scan` in `app_state`, nur für Zeilen, die das Skript
+  noch hat), damit erneutes Öffnen nichts neu fragt. Ein Klick prüft die
   Zeile in einem eigenen Hintergrund-Thread des Agenten (gleiche
   Instruktionen wie der Chat, nur `get_current_script` und
-  `report_fact_check`, ganzes Skript als Kontext, Websuche); die Karte
+  `report_fact_check`, ganzes Skript als Kontext, Websuche, Antwort in der
+  Sprache des Nutzers, obwohl der Auftrag englisch ist); die Karte
   erscheint unter der Zeile oder, wenn unten kein Platz ist, darüber.
   Erledigt, „Bewusst so lassen“, eine übernommene Korrektur oder „Im Chat“
   merken sich die Zeile pro Skript auf dem Gerät

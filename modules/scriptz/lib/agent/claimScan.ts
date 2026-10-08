@@ -4,6 +4,7 @@
 // yes/no question per line; an edited line goes alone with up to two dialog
 // lines before and after it, because a short line often only completes a
 // claim made just before ("Von 1963." after "Das Gesetz ist doch uralt.").
+// A small edit (isSmallEdit) keeps the answer the line had.
 // Pure functions; the runtime lives in stores/agent/claims.ts.
 
 import type { DecisionAnswer, DecisionRequest, NoulQuestion } from "@agentz/kit/account";
@@ -49,6 +50,28 @@ export function claimKey(text: string): string {
     h2 = (h2 * 31 + c) | 0;
   }
   return `${(h1 >>> 0).toString(36)}${(h2 >>> 0).toString(36)}${normalized.length.toString(36)}`;
+}
+
+const tokens = (text: string) => text.toLowerCase().split(/[^\p{L}\p{N}]+/u).filter(Boolean);
+/** Longer lines count as rewritten: no word comparison for them. */
+const EDIT_COMPARE_MAX_WORDS = 120;
+
+/** Whether an edited line is still the line that was asked about: a typo,
+ *  a changed or added word. Rewriting more than a quarter of its words (and
+ *  at least two) asks about it again. */
+export function isSmallEdit(before: string, after: string): boolean {
+  const a = tokens(before);
+  const b = tokens(after);
+  const longer = Math.max(a.length, b.length);
+  if (longer === 0 || longer > EDIT_COMPARE_MAX_WORDS) return false;
+  // Longest common subsequence of the words.
+  let row = new Array<number>(b.length + 1).fill(0);
+  for (const word of a) {
+    const next = new Array<number>(b.length + 1).fill(0);
+    for (let j = 0; j < b.length; j++) next[j + 1] = word === b[j] ? row[j] + 1 : Math.max(row[j + 1], next[j]);
+    row = next;
+  }
+  return longer - row[b.length] < Math.max(2, Math.ceil(longer / 4));
 }
 
 const question = (index: number): NoulQuestion => ({

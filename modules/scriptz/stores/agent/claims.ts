@@ -3,7 +3,7 @@ import { DecisionError, account, decide } from "@agentz/kit/account";
 import { getKvStore } from "@agentz/kit/platform";
 import { createStatePersistence } from "@agentz/kit/stores";
 import { liveBlocks } from "../../components/Agent/editorBridge";
-import { CLAIM_CONTEXT, claimCandidates, claimKey, claimProbabilities, lineRequest, scriptRequests } from "../../lib/agent/claimScan";
+import { CLAIM_CONTEXT, claimCandidates, claimKey, claimProbabilities, isSmallEdit, lineRequest, scriptRequests } from "../../lib/agent/claimScan";
 import type { Claim } from "../../lib/agent/proposals";
 import type { AgentBlock } from "../../lib/agent/scriptText";
 import { createChatTools } from "../../lib/agent/tools";
@@ -21,8 +21,10 @@ import { ensureModels, getProvider, hasAgentHost, hostedAccess, refreshHostedAcc
 //    It runs through the suite backend with the AgentZ account, so only for
 //    signed-in accounts the backend has opened AI to (AI_ACCESS, the same
 //    list as the hosted agent), and only while the agent is on. No switch of
-//    its own: it belongs to the account's AI features. Results stay in
-//    memory, keyed by the line's text.
+//    its own: it belongs to the account's AI features. A line is asked about
+//    once the caret has left it, never while it is being written; a small
+//    edit later keeps its answer. Answers are kept per script on this device,
+//    keyed by the line's text, so opening a script again asks nothing new.
 // 2. Checking one: a click lets the agent fact-check that line in a
 //    background thread of its own, with the same instructions and tools as
 //    the chat (any provider), the whole script as context and web search.
@@ -40,6 +42,8 @@ const LINE_REQUESTS_MAX = 3;
 const CHECKS_MAX = 2;
 /** Resolved lines remembered per script. */
 const RESOLVED_MAX = 300;
+/** Answers kept per script (only for lines the script still has). */
+const ANSWERS_MAX = 1000;
 
 export type ClaimStep = "reading" | "searching" | "comparing";
 
@@ -55,7 +59,10 @@ interface ScriptClaims {
   checks: Map<string, ClaimCheck>;
   /** Line keys the user is done with (loaded from the device). */
   resolved: Set<string>;
-  resolvedLoaded: boolean;
+  /** Line keys that took the answer of the line before a small edit. */
+  inherited: Set<string>;
+  /** Answers and resolved lines read from the device (once per entry). */
+  loaded: Promise<void> | null;
 }
 
 const scripts = new Map<string, ScriptClaims>();
@@ -70,7 +77,7 @@ function claimsOf(scriptId: string): ScriptClaims {
     scripts.set(scriptId, entry);
     return entry;
   }
-  entry = { probabilities: new Map(), checks: new Map(), resolved: new Set(), resolvedLoaded: false };
+  entry = { probabilities: new Map(), checks: new Map(), resolved: new Set(), inherited: new Set(), loaded: null };
   scripts.set(scriptId, entry);
   for (const [id, other] of scripts) {
     if (scripts.size <= SCRIPTS_KEPT) break;
@@ -115,36 +122,53 @@ export function lineState(scriptId: string, text: string): LineState {
 
 // ------------------------------------------------------------------ scanning
 
+export interface ScanInput {
+  /** Editor keys of the blocks, same order: an edited line is recognized as
+   *  the same line, so a small edit keeps its answer. */
+  ids?: readonly string[];
+  /** The line being written (caret in it): asked about once it is left. */
+  editing?: number | null;
+}
+
 export interface ClaimScanner {
-  /** The script changed (debounced by the caller) or was opened. */
-  update(blocks: readonly AgentBlock[]): void;
+  /** The script was opened, a line was left or changed elsewhere. */
+  update(blocks: readonly AgentBlock[], input?: ScanInput): void;
   dispose(): void;
 }
 
-/** Finds checkable lines of one open script: first everything at once, then
- *  every new or edited line with its neighbours. */
+/** Finds checkable lines of one open script: first what the device does not
+ *  know yet, as one request with the whole script, then every new or
+ *  rewritten line with its neighbours once the caret has left it. */
 export function createClaimScanner(scriptId: string): ClaimScanner {
   const entry = () => claimsOf(scriptId);
   const pending = new Set<string>();
   const abort = new AbortController();
+  /** Editor block -> the text that was last asked about (or known) for it. */
+  const asked = new Map<string, string>();
+  /** Keys of the script's checkable lines as last seen. */
+  let lines: string[] = [];
   let pausedUntil = 0;
   let running = 0;
   let disposed = false;
-  /** The first look at a script goes as one request with the whole script. */
+  /** The first look at an opened script goes as one request. */
   let opened = false;
 
-  const ask = async (blocks: readonly AgentBlock[], request: Parameters<typeof decide>[0], targets: readonly number[]) => {
+  const ask = async (blocks: readonly AgentBlock[], request: Parameters<typeof decide>[0], targets: readonly number[], ids: readonly string[] | undefined) => {
     const keys = targets.map((index) => claimKey(blocks[index].text));
     keys.forEach((key) => pending.add(key));
     running += 1;
     try {
       const answers = claimProbabilities(await decide(request, { signal: abort.signal }));
-      const probabilities = entry().probabilities;
+      const claims = entry();
       targets.forEach((index, i) => {
-        const p = answers.get(index);
-        if (p !== undefined) probabilities.set(keys[i], p);
+        // No answer counts as no claim: the line is not asked about again.
+        claims.probabilities.set(keys[i], answers.get(index) ?? 0);
+        claims.inherited.delete(keys[i]);
+        const id = ids?.[index];
+        if (id) asked.set(id, blocks[index].text);
       });
       bump();
+      persistAnswers(scriptId, claims, lines);
     } catch (error) {
       if (abort.signal.aborted) return;
       pausedUntil = Date.now() + PAUSE_AFTER_ERROR_MS;
@@ -157,25 +181,68 @@ export function createClaimScanner(scriptId: string): ClaimScanner {
     }
   };
 
-  return {
-    update(blocks) {
-      if (disposed || !claimScanAllowed() || Date.now() < pausedUntil) return;
-      const { probabilities, resolved } = entry();
-      const missing = claimCandidates(blocks).filter((index) => {
-        const key = claimKey(blocks[index].text);
-        return !probabilities.has(key) && !pending.has(key) && !resolved.has(key);
-      });
-      if (missing.length === 0) return;
-      const whole = !opened || missing.length > LINE_REQUESTS_MAX || running + missing.length > LINE_REQUESTS_MAX;
-      opened = true;
-      if (whole) {
-        for (const request of scriptRequests(blocks, missing)) {
-          const targets = Object.keys(request.questions).map((key) => Number(key.slice(1)));
-          void ask(blocks, request, targets);
-        }
+  const scan = (blocks: readonly AgentBlock[], input: ScanInput) => {
+    const claims = entry();
+    const { probabilities, resolved, inherited } = claims;
+    const candidates = claimCandidates(blocks);
+    lines = candidates.map((index) => claimKey(blocks[index].text));
+    const missing: number[] = [];
+    let carried = false;
+    let carriedResolved = false;
+    candidates.forEach((index, n) => {
+      if (index === input.editing) return;
+      const key = lines[n];
+      const id = input.ids?.[index];
+      if (probabilities.has(key) || resolved.has(key)) {
+        if (id && !inherited.has(key)) asked.set(id, blocks[index].text);
         return;
       }
-      for (const index of missing) void ask(blocks, lineRequest(blocks, index), [index]);
+      if (pending.has(key)) return;
+      // A small edit of a line that was asked about keeps its answer; the
+      // comparison stays with the asked text, so edits cannot add up.
+      const before = id ? asked.get(id) : undefined;
+      if (before !== undefined && isSmallEdit(before, blocks[index].text)) {
+        const from = claimKey(before);
+        const probability = probabilities.get(from);
+        if (probability !== undefined) probabilities.set(key, probability);
+        if (resolved.has(from)) {
+          addResolved(claims, key);
+          carriedResolved = true;
+        }
+        if (probability !== undefined || resolved.has(from)) {
+          inherited.add(key);
+          carried = true;
+          return;
+        }
+      }
+      missing.push(index);
+    });
+    if (carried) {
+      bump();
+      persistAnswers(scriptId, claims, lines);
+      if (carriedResolved) persistResolved(scriptId, resolved);
+    }
+    const first = !opened;
+    opened = true;
+    if (missing.length === 0) return;
+    if (first || missing.length > LINE_REQUESTS_MAX || running + missing.length > LINE_REQUESTS_MAX) {
+      for (const request of scriptRequests(blocks, missing)) {
+        const targets = Object.keys(request.questions).map((key) => Number(key.slice(1)));
+        void ask(blocks, request, targets, input.ids);
+      }
+      return;
+    }
+    for (const index of missing) void ask(blocks, lineRequest(blocks, index), [index], input.ids);
+  };
+
+  return {
+    update(blocks, input = {}) {
+      if (disposed || !claimScanAllowed() || Date.now() < pausedUntil) return;
+      // What the device knows comes first: an opened script asks only about
+      // lines it has not seen.
+      void loadClaims(scriptId).then(() => {
+        if (!disposed && claimScanAllowed()) scan(blocks, input);
+      });
     },
     dispose() {
       disposed = true;
@@ -214,6 +281,7 @@ function checkInput(index: number, text: string): string {
     `"""${text}"""`,
     `Read the whole script with get_current_script first: the claim may only make sense with the ${CLAIM_CONTEXT} lines before it (a reference like "that law", the answer to a question). Check this one claim, search the web, then call report_fact_check with exactly one claim whose quote is taken from line [${index}]. Offer a fix only if the line is wrong or imprecise, and keep the joke and the character's voice.`,
     "If the line holds no checkable real-world claim after all, do not call report_fact_check; say so in one short sentence.",
+    "Write the explanation and any reply in the language your instructions name for answers, not in the language of this request; a fix stays in the language of the script.",
   ].join("\n\n");
 }
 
@@ -278,42 +346,83 @@ export function clearCheck(scriptId: string, text: string): void {
 // ------------------------------------------------------------------ resolved
 
 const RESOLVED_KEY = (scriptId: string) => `script.${scriptId}.claims_resolved`;
-let resolvedWrite: { scriptId: string; write: ReturnType<typeof createStatePersistence> } | null = null;
+const ANSWERS_KEY = (scriptId: string) => `script.${scriptId}.claims_scan`;
 
-/** Loads the lines the user is done with in this script (once per session). */
-export async function loadResolved(scriptId: string): Promise<void> {
+/** Reads the answers and resolved lines of a script from the device (once
+ *  per session and script). Anything newer in memory stays. */
+export function loadClaims(scriptId: string): Promise<void> {
   const entry = claimsOf(scriptId);
-  if (entry.resolvedLoaded) return;
-  entry.resolvedLoaded = true;
-  try {
-    const raw = await getKvStore().getAppState(RESOLVED_KEY(scriptId));
-    const list: unknown = raw ? JSON.parse(raw) : [];
-    if (Array.isArray(list)) for (const key of list) if (typeof key === "string") entry.resolved.add(key);
+  entry.loaded ??= (async () => {
+    // Nothing readable: lines are asked about or shown again, nothing is lost.
+    const read = async (key: string): Promise<unknown> => {
+      try {
+        const raw = await getKvStore().getAppState(key);
+        return raw ? JSON.parse(raw) : null;
+      } catch {
+        return null;
+      }
+    };
+    const [resolved, answers] = await Promise.all([read(RESOLVED_KEY(scriptId)), read(ANSWERS_KEY(scriptId))]);
+    if (Array.isArray(resolved)) for (const key of resolved) if (typeof key === "string") entry.resolved.add(key);
+    if (answers && typeof answers === "object" && !Array.isArray(answers)) {
+      for (const [key, value] of Object.entries(answers)) {
+        if (typeof value === "number" && value >= 0 && value <= 1 && !entry.probabilities.has(key)) entry.probabilities.set(key, value);
+      }
+    }
     bump();
-  } catch {
-    // Nothing remembered: lines show again, nothing is lost.
-  }
+  })();
+  return entry.loaded;
+}
+
+function addResolved(entry: ScriptClaims, key: string): void {
+  entry.resolved.delete(key);
+  entry.resolved.add(key);
+  while (entry.resolved.size > RESOLVED_MAX) entry.resolved.delete(entry.resolved.values().next().value as string);
 }
 
 /** The user is done with a line: its mark and result leave the paper. */
 export function resolveClaim(scriptId: string, text: string): void {
   const entry = claimsOf(scriptId);
   const key = claimKey(text);
-  entry.resolved.delete(key);
-  entry.resolved.add(key);
-  while (entry.resolved.size > RESOLVED_MAX) entry.resolved.delete(entry.resolved.values().next().value as string);
+  addResolved(entry, key);
   entry.checks.delete(key);
   bump();
   persistResolved(scriptId, entry.resolved);
 }
 
-/** One write channel at a time: switching scripts flushes the previous one. */
-function persistResolved(scriptId: string, resolved: ReadonlySet<string>): void {
-  if (resolvedWrite?.scriptId !== scriptId) {
-    resolvedWrite?.write.dispose();
-    resolvedWrite = { scriptId, write: createStatePersistence(getKvStore(), RESOLVED_KEY(scriptId)) };
+/** Open write channels; older scripts' channels flush and close. */
+const WRITERS_MAX = 4;
+const writers = new Map<string, ReturnType<typeof createStatePersistence>>();
+
+function persist(key: string, value: string): void {
+  let writer = writers.get(key);
+  if (!writer) {
+    if (writers.size >= WRITERS_MAX) {
+      const [oldest, old] = writers.entries().next().value as [string, ReturnType<typeof createStatePersistence>];
+      old.dispose();
+      writers.delete(oldest);
+    }
+    writer = createStatePersistence(getKvStore(), key);
+    writers.set(key, writer);
   }
-  resolvedWrite.write.schedule(JSON.stringify([...resolved]));
+  writer.schedule(value);
+}
+
+function persistResolved(scriptId: string, resolved: ReadonlySet<string>): void {
+  persist(RESOLVED_KEY(scriptId), JSON.stringify([...resolved]));
+}
+
+/** Keeps the answers for the lines the script has now (bounded with it). */
+function persistAnswers(scriptId: string, entry: ScriptClaims, lines: readonly string[]): void {
+  const out: Record<string, number> = {};
+  let count = 0;
+  for (const key of lines) {
+    const probability = entry.probabilities.get(key);
+    if (probability === undefined || key in out) continue;
+    out[key] = Math.round(probability * 1000) / 1000;
+    if (++count >= ANSWERS_MAX) break;
+  }
+  persist(ANSWERS_KEY(scriptId), JSON.stringify(out));
 }
 
 /** Undo of `resolveClaim` (toast): the line and its result come back. */
@@ -331,6 +440,6 @@ export function resetClaimsForTests(): void {
   scripts.clear();
   checksRunning = 0;
   checkQueue.length = 0;
-  resolvedWrite = null;
+  writers.clear();
   bump();
 }

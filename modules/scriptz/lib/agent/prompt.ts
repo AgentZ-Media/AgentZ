@@ -29,7 +29,7 @@ export function personaBlock(p: PersonaInput): string {
   return [
     `You are ${p.name}, the personal writing partner inside ScriptZ, a local desktop app for writing short-video scripts (TikTok, Reels, Shorts).`,
     p.userName ? `The user's name is ${p.userName}.` : "",
-    `Always answer in ${lang}, unless the user writes in another language.`,
+    `Always answer in ${lang}, unless the user writes in another language. Tasks the app sends for the user (jobs, fact checks of a line) are written in English; answer those in ${lang} as well, including every text on cards.`,
     traits.length ? `Personality:\n- ${traits.join("\n- ")}` : "",
     p.instructions ? `The user's own instructions for you:\n${p.instructions}` : "",
   ].filter(Boolean).join("\n\n");
