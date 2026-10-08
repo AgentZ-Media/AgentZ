@@ -4,20 +4,14 @@
 
 1. Download the `.dmg` below and open it.
 2. Drag **{{PRODUCT_NAME}}.app** into your **Applications** folder.
-3. The app is **not signed** (no Apple Developer account), so macOS
-   refuses to launch it. Run this command in Terminal once to remove
-   the quarantine flag:
-
-   ```bash
-   xattr -cr "/Applications/{{PRODUCT_NAME}}.app"
-   ```
-
-4. Open {{PRODUCT_NAME}} from the Applications folder - it now launches
-   normally.
-
-Without step 3, you'll see the message "{{PRODUCT_NAME}} is damaged and can't
-be opened" or "can't be opened because the developer cannot be
-verified". That's macOS Gatekeeper, not the app.
+3. Open {{PRODUCT_NAME}} from the Applications folder. The app is not yet
+   notarized by Apple, so the first launch stops with "Apple could not
+   verify {{PRODUCT_NAME}} is free of malware". Click **Done**.
+4. Open **System Settings → Privacy & Security**, scroll down to
+   "{{PRODUCT_NAME}} was blocked" and click **Open Anyway**. Confirm once
+   more with **Open Anyway** and your password.
+5. From there on, {{PRODUCT_NAME}} launches normally. Auto-updates need no
+   further steps.
 
 ### Windows (x64)
 
