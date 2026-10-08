@@ -1,7 +1,12 @@
 import { expect, it, vi } from "vitest";
 const load = vi.hoisted(() => vi.fn());
 vi.mock("@tauri-apps/plugin-sql", () => ({ default: { load } }));
-vi.mock("@tauri-apps/plugin-os", () => ({ platform: () => "macos" }));
+vi.mock("@tauri-apps/plugin-os", () => ({
+  platform: () => "macos",
+  version: () => "15.4.1",
+  arch: () => { throw new Error("not available"); },
+  locale: async () => "de-DE",
+}));
 import { createDesktopPlatform } from "../lib/platform";
 
 it("opens the app-specific DB lazily, shares its connection and retries a failed open", async () => {
@@ -15,6 +20,11 @@ it("opens the app-specific DB lazily, shares its connection and retries a failed
   expect(load).toHaveBeenCalledTimes(2);
   expect(load).toHaveBeenLastCalledWith("sqlite:kit-lab.db");
   expect(() => createDesktopPlatform("../scriptz")).toThrow("Invalid desktop app ID");
+});
+
+it("reports OS details and leaves out what the host cannot read", async () => {
+  const platform = createDesktopPlatform("kit-lab");
+  expect(await platform.systemInfo?.()).toEqual({ os: "macos", osVersion: "15.4.1", arch: undefined, locale: "de-DE" });
 });
 
 it("rejects unreleasable IDs before opening a database", () => {

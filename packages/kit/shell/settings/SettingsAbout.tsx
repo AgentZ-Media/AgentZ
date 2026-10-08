@@ -9,6 +9,7 @@ export function SettingsAbout(props: {
   module: Pick<AppModule, "name" | "logo" | "about">;
   onClose(): void;
   onShowOnboarding?: () => void;
+  onReport?: () => void;
 }) {
   const [version, setVersion] = createSignal<string | null>(null);
   let active = true;
@@ -52,6 +53,11 @@ export function SettingsAbout(props: {
     <Show when={props.onShowOnboarding}>
       <Row label={t("prefs.about.onboarding.label")} help={props.module.about.onboardingHelp?.() ?? t("settings.about.onboarding.help")}>
         <button type="button" class="btn" onClick={() => props.onShowOnboarding?.()}>{t("settings.about.onboarding.button")}</button>
+      </Row>
+    </Show>
+    <Show when={props.onReport}>
+      <Row label={t("prefs.report.label")} help={t("prefs.report.help")}>
+        <button type="button" class="btn" onClick={() => props.onReport?.()}>{t("prefs.report.action")}</button>
       </Row>
     </Show>
   </>;

@@ -9,6 +9,7 @@ import { uiStore } from "../../stores/ui";
 import { ideasStore } from "../../stores/ideas";
 import { t } from "../../i18n";
 import { Icon, type IconName } from "@agentz/kit/ui";
+import { account } from "@agentz/kit/account";
 import { StageGlyph } from "../Common/StageGlyph";
 import { library } from "../Shell/libraryData";
 import { importScriptzFile, openNewScript } from "../Library/actions";
@@ -251,6 +252,16 @@ function commands(shell: ShellControls): PaletteItem[] {
       run: () => shell.openOnboarding(),
     },
   );
+  // Reports go to the suite backend: only with one (accounts enabled).
+  if (account.enabled()) {
+    list.push({
+      id: "cmd:report",
+      group: "commands",
+      label: t("report.title"),
+      icon: icon("report"),
+      run: () => shell.openReport(),
+    });
+  }
   return list;
 }
 

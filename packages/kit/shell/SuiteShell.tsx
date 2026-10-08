@@ -13,6 +13,9 @@ import { AppMark, BootErrorScreen, Icon, ToastHost, dismissConfirmDialogs } from
 import { AccountDialog } from "../account/AccountDialog";
 import { SyncPausedBanner } from "../account/SyncPausedBanner";
 import { startAccountRuntime } from "../account/account";
+import { ReportDialog } from "../feedback/ReportDialog";
+import { ReportPill } from "../feedback/ReportPill";
+import { startErrorLog, type ReportContext } from "../feedback/report";
 import { CommandPalette } from "./CommandPalette";
 import { NavIndicator } from "./NavIndicator";
 import { NightSky } from "./NightSky";
@@ -86,6 +89,8 @@ export function SuiteShell(props: SuiteShellProps) {
       if (props.platform) setPlatformAdapter(platform);
       if (props.kv) setKvStore(kv);
       applyPlatformToDocument();
+      // Recent errors for "Report a problem"; kept in memory only.
+      if (props.cloud) onDispose(startErrorLog());
       onDispose(startBaseSettingsRuntime(kv));
       // Shared clock behind relativeTime(); every module gets fresh labels.
       onDispose(startRelativeTimeClock());
@@ -110,7 +115,7 @@ export function SuiteShell(props: SuiteShellProps) {
       }
       setRuntime(activeRuntime);
       const registry = createShortcutRegistry(shortcuts, () => runtime()?.shortcutContext?.() ?? "shell", () =>
-        shellUi.settingsOpen() || shellUi.paletteOpen() || shellUi.onboardingOpen() ||
+        shellUi.settingsOpen() || shellUi.paletteOpen() || shellUi.onboardingOpen() || shellUi.reportOpen() ||
         document.querySelector('[aria-modal="true"]') !== null,
       );
       onDispose(registry.start());
@@ -130,6 +135,13 @@ export function SuiteShell(props: SuiteShellProps) {
       setBootError(error instanceof Error ? error : new Error(String(error)));
     }
   });
+
+  const reportContext = (): ReportContext | undefined => props.cloud && {
+    app: props.module.id, cloud: props.cloud,
+    platform: props.platform ?? getPlatformAdapter(), kv: props.kv ?? getKvStore(),
+    route: () => selectedRoute()?.id,
+  };
+  const reportPillShown = () => !!props.cloud && baseSettingsStore.reportButton() && !shellUi.focused() && !shellUi.reportOpen();
 
   async function completeOnboarding() {
     const definition = runtime()?.onboarding;
@@ -198,8 +210,12 @@ export function SuiteShell(props: SuiteShellProps) {
             </div>
             <For each={active().overlays}>{(Overlay) => <Overlay />}</For>
             <SettingsDialog module={props.module} settings={active().settings} shell={shellUi}
-              shortcuts={shortcuts()} hasOnboarding={!!active().onboarding} account={!!props.cloud} />
+              shortcuts={shortcuts()} hasOnboarding={!!active().onboarding} account={!!props.cloud} report={!!props.cloud} />
             <Show when={props.cloud}><AccountDialog appName={props.module.name} /></Show>
+            <Show when={reportPillShown()}><ReportPill appName={props.module.name} onOpen={() => shellUi.openReport()} /></Show>
+            <Show when={reportContext()}>{(context) =>
+              <ReportDialog open={shellUi.reportOpen()} onClose={() => shellUi.closeReport()} context={context()} />
+            }</Show>
             <Show when={active().onboarding}>{(definition) =>
               <Dynamic component={definition().component} open={shellUi.onboardingOpen()} complete={completeOnboarding} />
             }</Show>

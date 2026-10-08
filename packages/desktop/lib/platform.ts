@@ -5,7 +5,7 @@ import { openUrl, revealItemInDir } from "@tauri-apps/plugin-opener";
 import { getVersion } from "@tauri-apps/api/app";
 import { invoke } from "@tauri-apps/api/core";
 import { getCurrent as getCurrentDeepLinks, onOpenUrl } from "@tauri-apps/plugin-deep-link";
-import { platform as osPlatform } from "@tauri-apps/plugin-os";
+import { arch, locale, platform as osPlatform, version as osVersion } from "@tauri-apps/plugin-os";
 import {
   STABLE_BUILD,
   type BuildInfo,
@@ -15,6 +15,7 @@ import {
   type PlatformAdapter,
   type SaveAsOptions,
   type SaveAsResult,
+  type SystemInfo,
 } from "@agentz/kit/platform";
 
 // Map Tauri's OS string to our three-bucket Platform. iOS / Android
@@ -105,6 +106,17 @@ async function desktopWriteFileTo(path: string, bytes: Uint8Array): Promise<void
   await writeFile(path, bytes);
 }
 
+/** OS details for problem reports; each one is optional (plugin-os). */
+async function desktopSystemInfo(): Promise<SystemInfo> {
+  const read = (get: () => string) => { try { return get() || undefined; } catch { return undefined; } };
+  return {
+    os: read(osPlatform),
+    osVersion: read(osVersion),
+    arch: read(arch),
+    locale: (await locale().catch(() => null)) ?? undefined,
+  };
+}
+
 /** Set by the nightly workflow at build time (see `.github/workflows/nightly.yml`).
  *  Local builds and stable releases leave them empty. */
 export function readBuildInfo(env: Record<string, unknown> = import.meta.env): BuildInfo {
@@ -136,6 +148,7 @@ export function createDesktopPlatform(id: string): PlatformAdapter {
     supportsDirectoryWrite: true,
     getDb: loadDesktopDb,
     getVersion: () => getVersion(),
+    systemInfo: desktopSystemInfo,
     build: readBuildInfo(),
     openUrl: (url) => openUrl(url),
     revealInFolder: (path) => revealItemInDir(path),

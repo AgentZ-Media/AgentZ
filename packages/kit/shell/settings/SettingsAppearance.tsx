@@ -1,9 +1,9 @@
-import { For, type JSX } from "solid-js";
+import { For, Show, type JSX } from "solid-js";
 import { baseSettingsStore, type Theme } from "../../stores";
 import { t, type LanguagePref } from "../../i18n";
-import { Row, SectionHead } from "../../ui";
+import { Row, SectionHead, Switch } from "../../ui";
 
-export function SettingsAppearance(props: { onClose(): void; appName: string; extension?: JSX.Element }) {
+export function SettingsAppearance(props: { onClose(): void; appName: string; extension?: JSX.Element; report?: boolean }) {
   const themes = (): Array<{ id: Theme; label: string }> => [
     { id: "light", label: t("theme.light") },
     { id: "dark", label: t("theme.dark") },
@@ -50,6 +50,12 @@ export function SettingsAppearance(props: { onClose(): void; appName: string; ex
           </For>
         </div>
       </Row>
+      <Show when={props.report}>
+        <Row label={t("prefs.report.button.label")} help={t("prefs.report.button.help")}>
+          <Switch checked={baseSettingsStore.reportButton()} label={t("prefs.report.button.label")}
+            onChange={(value) => void baseSettingsStore.setReportButton(value)} />
+        </Row>
+      </Show>
     </>
   );
 }

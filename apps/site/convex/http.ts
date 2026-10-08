@@ -3,6 +3,7 @@ import { corsRouter } from "convex-helpers/server/cors";
 import { chat, decide, status } from "./ai";
 import { approve, claim } from "./appLink";
 import { APP_ORIGINS, authComponent, createAuth } from "./auth";
+import { report } from "./bugs";
 import { announce } from "./releases";
 import { serve as serveStats } from "./stats";
 
@@ -32,6 +33,14 @@ const ai = corsRouter(http, {
 ai.route({ path: "/ai/status", method: "GET", handler: status });
 ai.route({ path: "/ai/chat", method: "POST", handler: chat });
 ai.route({ path: "/ai/decide", method: "POST", handler: decide });
+
+// Problem reports of the apps (bugs.ts), with or without a bearer session.
+const bugs = corsRouter(http, {
+  allowedOrigins: APP_ORIGINS,
+  allowedHeaders: ["Content-Type", "Authorization"],
+  allowCredentials: false,
+});
+bugs.route({ path: "/bugs/report", method: "POST", handler: report });
 
 // Release and nightly workflows announce new versions (releases.ts). No CORS:
 // only the workflows call it, with a bearer secret.

@@ -113,6 +113,37 @@ export default defineSchema({
   }).index("by_app", ["app"]),
 
   /**
+   * Problem reports from the apps (bugs.ts), signed in or not. `number` counts
+   * through all apps of the suite. `details` holds what the app collected
+   * about itself (system, window, language, ...), `errors` its last error
+   * messages; the app shows both before sending.
+   */
+  bug_reports: defineTable({
+    number: v.number(),
+    app: v.string(),
+    message: v.string(),
+    /** Contact address the user entered, if any. */
+    email: v.optional(v.string()),
+    /** Account of a signed-in reporter; removed with the account. */
+    userId: v.optional(v.string()),
+    /** Random ID of the app installation: limits and several reports of one device. */
+    installId: v.string(),
+    version: v.string(),
+    channel: v.string(),
+    os: v.string(),
+    details: v.record(v.string(), v.string()),
+    errors: v.array(v.string()),
+    /** "new" when stored; for sorting them out later. */
+    status: v.string(),
+    createdAt: v.number(),
+  })
+    .index("by_number", ["number"])
+    .index("by_app_number", ["app", "number"])
+    .index("by_install", ["installId", "createdAt"])
+    .index("by_created", ["createdAt"])
+    .index("by_user", ["userId"]),
+
+  /**
    * Browser sign-in for desktop apps (PKCE): the website stores a short-lived
    * code for the app's challenge, only the app holding the verifier can
    * exchange it for a session.

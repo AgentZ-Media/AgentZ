@@ -312,5 +312,6 @@ export const purge = internalMutation({
     if (legacyKey) await ctx.db.delete(legacyKey._id);
     const links = await ctx.db.query("app_links").filter((q) => q.eq(q.field("userId"), userId)).collect();
     for (const link of links) await ctx.db.delete(link._id);
+    await ctx.scheduler.runAfter(0, internal.bugs.forgetUser, { userId });
   },
 });

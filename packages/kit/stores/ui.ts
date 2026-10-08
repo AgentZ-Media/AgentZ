@@ -1,5 +1,13 @@
 import { createSignal } from "solid-js";
 
+/** Where the floating "Report a problem" pill goes on the current screen:
+ *  distances from the window's bottom right in px, or hidden. */
+export interface ReportPillPlacement {
+  right?: number;
+  bottom?: number;
+  hidden?: boolean;
+}
+
 /** Session controls; creation and reset never perform persistence or I/O. */
 export function createShellUi() {
   const [sidebarOpen, setSidebar] = createSignal(true);
@@ -8,6 +16,10 @@ export function createShellUi() {
   const [settingsSection, setSettingsSection] = createSignal("appearance");
   const [paletteOpen, setPaletteOpen] = createSignal(false);
   const [onboardingOpen, setOnboardingOpen] = createSignal(false);
+  const [reportOpen, setReportOpen] = createSignal(false);
+  const [reportPillPlacement, setReportPillPlacement] = createSignal<ReportPillPlacement | null>(null, {
+    equals: (a, b) => a?.right === b?.right && a?.bottom === b?.bottom && a?.hidden === b?.hidden,
+  });
   let persistSidebar: ((open: boolean) => void) | undefined;
   const setSidebarOpen = (open: boolean) => { setSidebar(open); persistSidebar?.(open); };
   return {
@@ -28,11 +40,17 @@ export function createShellUi() {
     onboardingOpen,
     openOnboarding: () => { setOnboardingOpen(true); },
     closeOnboarding: () => { setOnboardingOpen(false); },
-    anyDialogOpen: () => settingsOpen() || paletteOpen() || onboardingOpen(),
+    reportOpen,
+    openReport: () => { setReportOpen(true); },
+    closeReport: () => { setReportOpen(false); },
+    reportPillPlacement,
+    setReportPillPlacement: (placement: ReportPillPlacement | null) => { setReportPillPlacement(placement); },
+    anyDialogOpen: () => settingsOpen() || paletteOpen() || onboardingOpen() || reportOpen(),
     reset() {
       persistSidebar = undefined;
       setSidebar(true); setFocused(false); setSettingsOpen(false);
       setSettingsSection("appearance"); setPaletteOpen(false); setOnboardingOpen(false);
+      setReportOpen(false); setReportPillPlacement(null);
     },
   };
 }
