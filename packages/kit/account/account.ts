@@ -340,7 +340,7 @@ async function startEngine(current: AccountUser) {
     if (running) { again = true; return; }
     running = true;
     const startedAt = resumed;
-    const shown = setTimeout(() => setSyncPhase("syncing"), SYNCING_SHOWN_MS);
+    const shown = setTimeout(() => { if (!stopped) setSyncPhase("syncing"); }, SYNCING_SHOWN_MS);
     try {
       await engine.sync();
       failures = 0;
