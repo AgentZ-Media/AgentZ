@@ -3,7 +3,7 @@ import { markdownToPlain, parseInline, parseMarkdown } from "../markdown";
 import { anchorTarget, parseClaims, parseProposal, parseTarget, resolveTarget } from "../proposals";
 import { charactersIn, hashBlocks, numberedScript } from "../scriptText";
 import { relationSubject, selectRelevantMemory, type MemoryEntry } from "../memory";
-import { memoryBlock } from "../prompt";
+import { memoryBlock, personaBlock } from "../prompt";
 import { planLabel } from "../codex/provider";
 
 describe("agent markdown", () => {
@@ -124,5 +124,13 @@ describe("plan labels", () => {
     expect(planLabel("plus")).toBe("Plus");
     expect(planLabel("unknown")).toBe("");
     expect(planLabel("studio")).toBe("Studio");
+  });
+});
+
+describe("persona language", () => {
+  it("answers tasks the app writes in English in the user's language", () => {
+    const text = personaBlock({ name: "Ida", userName: "", language: "de", traits: [], instructions: "" });
+    expect(text).toContain("Always answer in German");
+    expect(text).toContain("answer those in German as well");
   });
 });

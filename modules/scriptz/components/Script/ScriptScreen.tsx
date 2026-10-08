@@ -720,6 +720,8 @@ export function ScriptScreen(props: ScriptScreenProps) {
                         sheet={sheetEl}
                         blocks={live.blocks}
                         tick={live.tick}
+                        caret={live.caret}
+                        focused={live.focused}
                         colorOf={colorOf}
                       />
                     )}

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
-  CLAIM_BATCH, claimCandidates, claimKey, claimProbabilities, claimWindow, lineRequest, scriptRequests,
+  CLAIM_BATCH, claimCandidates, claimKey, claimProbabilities, claimWindow, isSmallEdit, lineRequest, scriptRequests,
 } from "../claimScan";
 import type { AgentBlock } from "../scriptText";
 
@@ -82,5 +82,22 @@ describe("claimProbabilities", () => {
       b2: { type: "choice", choice: "x", confidence: null, probabilities: {} },
     });
     expect([...map]).toEqual([[5, 0.95], [11, 0.84]]);
+  });
+});
+
+describe("isSmallEdit", () => {
+  const line = "Resturlaub verfällt am 31. Dezember. Immer.";
+
+  it("keeps typos, punctuation and one changed word", () => {
+    expect(isSmallEdit(line, "Resturlaub verfällt am 31. Dezember. Imer.")).toBe(true);
+    expect(isSmallEdit(line, "Resturlaub verfällt am 31. Dezember - immer!")).toBe(true);
+    expect(isSmallEdit(line, "Resturlaub verfällt am 30. Dezember. Immer.")).toBe(true);
+  });
+
+  it("asks again after a rewrite or an added claim", () => {
+    expect(isSmallEdit(line, "Resturlaub verfällt nie, im Dezember. Imer.")).toBe(false);
+    expect(isSmallEdit(line, "Resturlaub verfällt am 31. Dezember, steht seit 1963 im Gesetz.")).toBe(false);
+    expect(isSmallEdit(line, "Deutschland hat die meisten Feiertage in Europa.")).toBe(false);
+    expect(isSmallEdit("", line)).toBe(false);
   });
 });
