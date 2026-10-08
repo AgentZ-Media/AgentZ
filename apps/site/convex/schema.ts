@@ -113,20 +113,20 @@ export default defineSchema({
   }).index("by_app", ["app"]),
 
   /**
-   * Problem reports from the apps (bugs.ts), signed in or not. `number` counts
-   * through all apps of the suite. `details` holds what the app collected
-   * about itself (system, window, language, ...), `errors` its last error
-   * messages; the app shows both before sending.
+   * Problem reports from the apps of the suite (bugs.ts), sent by signed-in
+   * users. `number` counts through all apps. `details` holds what the app
+   * collected about itself (system, window, language, ...), `errors` its last
+   * error messages; the app shows both before sending.
    */
   bug_reports: defineTable({
     number: v.number(),
+    /** App ID ("scriptz") and its display name ("ScriptZ"). */
     app: v.string(),
+    appName: v.optional(v.string()),
     message: v.string(),
-    /** Contact address the user entered, if any. */
-    email: v.optional(v.string()),
-    /** Account of a signed-in reporter; removed with the account. */
+    /** Account of the reporter; removed with the account (bugs.forgetUser). */
     userId: v.optional(v.string()),
-    /** Random ID of the app installation: limits and several reports of one device. */
+    /** Random ID of the app installation: tells several devices of one account apart. */
     installId: v.string(),
     version: v.string(),
     channel: v.string(),
@@ -139,9 +139,8 @@ export default defineSchema({
   })
     .index("by_number", ["number"])
     .index("by_app_number", ["app", "number"])
-    .index("by_install", ["installId", "createdAt"])
-    .index("by_created", ["createdAt"])
-    .index("by_user", ["userId"]),
+    .index("by_user", ["userId", "createdAt"])
+    .index("by_created", ["createdAt"]),
 
   /**
    * Browser sign-in for desktop apps (PKCE): the website stores a short-lived

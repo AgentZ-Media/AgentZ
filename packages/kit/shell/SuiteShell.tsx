@@ -12,7 +12,7 @@ import { shellUi } from "../stores/ui";
 import { AppMark, BootErrorScreen, Icon, ToastHost, dismissConfirmDialogs } from "../ui";
 import { AccountDialog } from "../account/AccountDialog";
 import { SyncPausedBanner } from "../account/SyncPausedBanner";
-import { startAccountRuntime } from "../account/account";
+import { account, startAccountRuntime } from "../account/account";
 import { ReportDialog } from "../feedback/ReportDialog";
 import { ReportPill } from "../feedback/ReportPill";
 import { startErrorLog, type ReportContext } from "../feedback/report";
@@ -136,12 +136,17 @@ export function SuiteShell(props: SuiteShellProps) {
     }
   });
 
-  const reportContext = (): ReportContext | undefined => props.cloud && {
-    app: props.module.id, cloud: props.cloud,
-    platform: props.platform ?? getPlatformAdapter(), kv: props.kv ?? getKvStore(),
+  // "Report a problem" belongs to signed-in users of every suite app.
+  const reportAvailable = () => !!props.cloud && account.signedIn();
+  const reportContext: ReportContext = {
+    app: props.module.id, appName: props.module.name,
+    get platform() { return props.platform ?? getPlatformAdapter(); },
+    get kv() { return props.kv ?? getKvStore(); },
     route: () => selectedRoute()?.id,
   };
-  const reportPillShown = () => !!props.cloud && baseSettingsStore.reportButton() && !shellUi.focused() && !shellUi.reportOpen();
+  const reportPillShown = () => reportAvailable() && baseSettingsStore.reportButton() && !shellUi.focused() && !shellUi.reportOpen();
+  // Signing out closes the dialog; the draft stays for the next sign-in.
+  createEffect(() => { if (!reportAvailable() && shellUi.reportOpen()) shellUi.closeReport(); });
 
   async function completeOnboarding() {
     const definition = runtime()?.onboarding;
@@ -210,12 +215,12 @@ export function SuiteShell(props: SuiteShellProps) {
             </div>
             <For each={active().overlays}>{(Overlay) => <Overlay />}</For>
             <SettingsDialog module={props.module} settings={active().settings} shell={shellUi}
-              shortcuts={shortcuts()} hasOnboarding={!!active().onboarding} account={!!props.cloud} report={!!props.cloud} />
+              shortcuts={shortcuts()} hasOnboarding={!!active().onboarding} account={!!props.cloud} report={reportAvailable()} />
             <Show when={props.cloud}><AccountDialog appName={props.module.name} /></Show>
             <Show when={reportPillShown()}><ReportPill appName={props.module.name} onOpen={() => shellUi.openReport()} /></Show>
-            <Show when={reportContext()}>{(context) =>
-              <ReportDialog open={shellUi.reportOpen()} onClose={() => shellUi.closeReport()} context={context()} />
-            }</Show>
+            <Show when={props.cloud}>
+              <ReportDialog open={shellUi.reportOpen() && reportAvailable()} onClose={() => shellUi.closeReport()} context={reportContext} />
+            </Show>
             <Show when={active().onboarding}>{(definition) =>
               <Dynamic component={definition().component} open={shellUi.onboardingOpen()} complete={completeOnboarding} />
             }</Show>

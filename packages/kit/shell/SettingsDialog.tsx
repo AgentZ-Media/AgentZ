@@ -19,7 +19,7 @@ export interface SettingsDialogProps {
   hasOnboarding?: boolean;
   /** Shows the account section (the host has a cloud backend). */
   account?: boolean;
-  /** Offers "Report a problem" (the host has a cloud backend). */
+  /** Offers "Report a problem" (signed in to the suite backend). */
   report?: boolean;
 }
 const KIT_IDS = new Set(["account", "appearance", "shortcuts", "updates", "about"]);

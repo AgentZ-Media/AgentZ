@@ -4,12 +4,13 @@ import { getBuildInfo, getUpdatesStore, type KvStore, type PlatformAdapter, type
 import { baseSettingsStore } from "../stores/baseSettings";
 import { shellUi } from "../stores/ui";
 import { account } from "../account/account";
-import type { CloudConfig } from "../account/types";
+import { SessionExpiredError } from "../account/http";
 
-// "Report a problem": the user describes what went wrong, the app adds what
-// it knows about itself and sends both to the suite backend
-// (apps/site/convex/bugs.ts), signed in or not. Nothing from the user's
-// content is collected; the dialog shows everything before sending.
+// "Report a problem" for every app of the suite: a signed-in user describes
+// what went wrong, the app adds what it knows about itself (which app,
+// version, system, ...) and sends both to the suite backend
+// (apps/site/convex/bugs.ts) with the account's session. Nothing from the
+// user's content is collected; the dialog shows everything before sending.
 
 /** Same limits as apps/site/convex/bugReports.ts. */
 export const MAX_MESSAGE_CHARS = 5000;
@@ -18,8 +19,9 @@ const MAX_ERROR_CHARS = 1000;
 const INSTALL_STATE = "feedback.install";
 
 export interface ReportContext {
+  /** App ID and display name of the reporting app, e.g. "scriptz" / "ScriptZ". */
   app: string;
-  cloud: CloudConfig;
+  appName: string;
   platform: PlatformAdapter;
   kv: KvStore;
   /** ID of the route on screen, e.g. "library". */
@@ -28,6 +30,8 @@ export interface ReportContext {
 
 /** What the app collected about itself, shown in the dialog and sent along. */
 export interface CollectedInfo {
+  app: string;
+  appName: string;
   version: string;
   channel: string;
   os: string;
@@ -35,7 +39,7 @@ export interface CollectedInfo {
   errors: string[];
 }
 
-export type ReportErrorCode = "network" | "limit" | "generic";
+export type ReportErrorCode = "network" | "limit" | "expired" | "generic";
 
 export class ReportError extends Error {
   constructor(readonly code: ReportErrorCode) { super(`report failed: ${code}`); this.name = "ReportError"; }
@@ -127,6 +131,8 @@ export async function collectInfo(context: ReportContext): Promise<CollectedInfo
     webView: typeof navigator !== "undefined" ? navigator.userAgent : undefined,
   };
   return {
+    app: context.app,
+    appName: context.appName,
     version,
     channel: build.development ? "dev" : build.channel,
     os: platform.platform,
@@ -139,7 +145,7 @@ export async function collectInfo(context: ReportContext): Promise<CollectedInfo
   };
 }
 
-/** Random ID of this installation; lets the backend limit reports per device. */
+/** Random ID of this installation: tells several devices of one account apart. */
 async function installId(kv: KvStore): Promise<string> {
   const stored = await kv.getAppState(INSTALL_STATE).catch(() => null);
   if (stored && /^[A-Za-z0-9-]{8,64}$/.test(stored)) return stored;
@@ -150,29 +156,24 @@ async function installId(kv: KvStore): Promise<string> {
 
 // ---- Sending ----
 
-/** Sends a report; resolves with its number or throws ReportError. */
-export async function sendReport(context: ReportContext, input: { message: string; email?: string; info: CollectedInfo }): Promise<number> {
+/** Sends a report with the account's session; resolves with its number or throws ReportError. */
+export async function sendReport(context: ReportContext, input: { message: string; info: CollectedInfo }): Promise<number> {
   const body = JSON.stringify({
-    app: context.app,
+    app: input.info.app,
+    appName: input.info.appName,
     installId: await installId(context.kv),
     message: input.message.trim().slice(0, MAX_MESSAGE_CHARS),
-    ...(input.email?.trim() ? { email: input.email.trim() } : {}),
     version: input.info.version,
     channel: input.info.channel,
     os: input.info.os,
     details: input.info.details,
     errors: input.info.errors,
   });
-  const init: RequestInit = { method: "POST", headers: { "Content-Type": "application/json" }, body };
   let response: Response;
   try {
-    // Signed in, the report is linked to the account; an expired session
-    // never blocks it (the backend then stores it without account).
-    response = account.signedIn()
-      ? await account.backendFetch("/bugs/report", init).catch(() => fetch(`${context.cloud.siteUrl}/bugs/report`, init))
-      : await fetch(`${context.cloud.siteUrl}/bugs/report`, init);
-  } catch {
-    throw new ReportError("network");
+    response = await account.backendFetch("/bugs/report", { method: "POST", headers: { "Content-Type": "application/json" }, body });
+  } catch (caught) {
+    throw new ReportError(caught instanceof SessionExpiredError ? "expired" : "network");
   }
   if (response.status === 429) throw new ReportError("limit");
   const result = await response.json().catch(() => null) as { number?: unknown } | null;
@@ -184,12 +185,4 @@ export async function sendReport(context: ReportContext, input: { message: strin
 
 /** The text survives closing the dialog until it is sent. */
 const [draft, setDraft] = createSignal("");
-const [draftEmail, setDraftEmail] = createSignal("");
-export const reportDraft = {
-  message: draft, setMessage: setDraft,
-  email: draftEmail, setEmail: setDraftEmail,
-  clear() { setDraft(""); setDraftEmail(""); },
-};
-
-/** Address check of the optional contact field; the backend uses the same. */
-export const validEmail = (value: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value.trim());
+export const reportDraft = { message: draft, setMessage: setDraft, clear() { setDraft(""); } };

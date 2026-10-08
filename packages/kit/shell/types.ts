@@ -90,7 +90,7 @@ export interface ShellControls {
   onboardingOpen: Accessor<boolean>;
   openOnboarding(): void;
   closeOnboarding(): void;
-  /** "Report a problem" dialog; only shown when the host has a cloud backend. */
+  /** "Report a problem" dialog; only for signed-in users of a host with a cloud backend. */
   reportOpen: Accessor<boolean>;
   openReport(): void;
   closeReport(): void;

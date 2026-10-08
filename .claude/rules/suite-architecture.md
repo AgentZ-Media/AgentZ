@@ -59,7 +59,8 @@ Nightly-Builds den Nachthimmel.
 
 Das Kit liefert ⌘K (Palette), ⌘, (Einstellungen) und ⌘\ (Sidebar) sowie die
 Sektionen Darstellung, Tastatur, Updates und Über. Mit `CloudConfig` kommt
-„Problem melden“ dazu: eine schwebende Pille unten rechts (in Darstellung
+für angemeldete Nutzer „Problem melden“ dazu (jede App automatisch, mit
+App-ID und Name): eine schwebende Pille unten rechts (in Darstellung
 abschaltbar), ein Dialog und eine Zeile unter Über. Bildschirme mit eigenen
 Bedienelementen unten rechts schieben die Pille mit
 `shell.setReportPillPlacement()` zur Seite

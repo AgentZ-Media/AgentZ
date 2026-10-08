@@ -3,21 +3,20 @@ import { t } from "../i18n";
 import { DialogFrame, Icon } from "../ui";
 import { account } from "../account/account";
 import {
-  MAX_MESSAGE_CHARS, ReportError, collectInfo, reportDraft, sendReport, validEmail,
+  MAX_MESSAGE_CHARS, ReportError, collectInfo, reportDraft, sendReport,
   type CollectedInfo, type ReportContext, type ReportErrorCode,
 } from "./report";
 
 /**
- * "Report a problem": the user's description, an optional contact address
- * for signed-out users and, behind a disclosure, everything the app sends
- * along. Rendered once by the SuiteShell.
+ * "Report a problem": the user's description and, behind a disclosure,
+ * everything the app sends along. Only for signed-in users; the account says
+ * who reported. Rendered once by the SuiteShell.
  */
 export function ReportDialog(props: { open: boolean; onClose(): void; context: ReportContext }) {
   const [info, setInfo] = createSignal<CollectedInfo | null>(null);
   const [sending, setSending] = createSignal(false);
   const [error, setError] = createSignal<ReportErrorCode | null>(null);
   const [number, setNumber] = createSignal<number | null>(null);
-  const [emailTouched, setEmailTouched] = createSignal(false);
 
   // Collected fresh on every opening: view, window and errors are of this moment.
   createEffect(on(() => props.open, (open) => {
@@ -25,24 +24,19 @@ export function ReportDialog(props: { open: boolean; onClose(): void; context: R
     setInfo(null);
     setError(null);
     setNumber(null);
-    setEmailTouched(false);
     void collectInfo(props.context).then((collected) => { if (props.open) setInfo(collected); });
   }));
 
-  const signedIn = () => account.signedIn() && !!account.user();
-  const email = () => (signedIn() ? "" : reportDraft.email().trim());
-  const emailInvalid = () => email() !== "" && !validEmail(email());
-  const canSend = () => !!reportDraft.message().trim() && !!info() && !sending() && !emailInvalid();
+  const canSend = () => !!reportDraft.message().trim() && !!info() && !sending() && account.signedIn();
 
   async function send(event: Event) {
     event.preventDefault();
-    setEmailTouched(true);
     const collected = info();
     if (!canSend() || !collected) return;
     setSending(true);
     setError(null);
     try {
-      setNumber(await sendReport(props.context, { message: reportDraft.message(), email: email() || undefined, info: collected }));
+      setNumber(await sendReport(props.context, { message: reportDraft.message(), info: collected }));
       reportDraft.clear();
     } catch (caught) {
       setError(caught instanceof ReportError ? caught.code : "generic");
@@ -78,18 +72,7 @@ export function ReportDialog(props: { open: boolean; onClose(): void; context: R
               aria-label={t("report.message.label")} placeholder={t("report.message.placeholder")}
               value={reportDraft.message()} onInput={(event) => reportDraft.setMessage(event.currentTarget.value)}
               onKeyDown={(event) => { if (event.key === "Enter" && (event.metaKey || event.ctrlKey)) void send(event); }} />
-            <Show when={signedIn()} fallback={
-              <label class="rpt-email">
-                <span>{t("report.email.label")} <small>{t("report.email.optional")}</small></span>
-                <input class="field" type="email" autocomplete="email" spellcheck={false}
-                  placeholder={t("report.email.placeholder")} value={reportDraft.email()}
-                  onInput={(event) => reportDraft.setEmail(event.currentTarget.value)}
-                  onBlur={() => setEmailTouched(true)} aria-invalid={emailTouched() && emailInvalid()} />
-                <Show when={emailTouched() && emailInvalid()}><small class="rpt-invalid">{t("report.email.invalid")}</small></Show>
-              </label>
-            }>
-              <p class="rpt-hint">{t("report.account", { email: account.user()!.email })}</p>
-            </Show>
+            <Show when={account.user()}>{(user) => <p class="rpt-hint">{t("report.account", { email: user().email })}</p>}</Show>
             <details class="rpt-details">
               <summary>{t("report.details.summary")}</summary>
               <p>{t("report.details.text")}</p>
@@ -114,6 +97,7 @@ export function ReportDialog(props: { open: boolean; onClose(): void; context: R
 /** The collected part exactly as it is sent. */
 function InfoList(props: { info: CollectedInfo }) {
   const rows = () => [
+    ["app", `${props.info.appName} (${props.info.app})`],
     ["version", props.info.version],
     ["channel", props.info.channel],
     ["os", props.info.os],

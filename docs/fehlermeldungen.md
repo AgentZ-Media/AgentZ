@@ -1,8 +1,10 @@
 # Problem melden
 
-Jede App der Suite hat „Problem melden“: Nutzer beschreiben in einem Satz, was
-schiefging, die App hängt an, was sie über sich weiß, und schickt beides an
-das Konto-Backend. Das geht angemeldet und ohne Konto.
+Jede App der Suite hat „Problem melden“: Angemeldete Nutzer beschreiben in
+einem Satz, was schiefging, die App hängt an, was sie über sich weiß (welche
+App, Version, System, ...), und schickt beides mit der Sitzung des Kontos an
+das Konto-Backend. Ohne Anmeldung ist davon nichts zu sehen, auch nicht in den
+Einstellungen.
 
 ## Bausteine
 
@@ -13,18 +15,21 @@ das Konto-Backend. Das geht angemeldet und ohne Konto.
 | Systemangaben | `PlatformAdapter.systemInfo()`, Desktop über `@tauri-apps/plugin-os` | Betriebssystem-Version, Architektur, Systemsprache |
 | Backend | `apps/site/convex/bugs.ts`, `bugReports.ts`, Tabelle `bug_reports` | `POST /bugs/report`, Prüfung, Grenzen, fortlaufende Nummer |
 
-Die Shell zeigt Pille und Dialog nur, wenn der Host eine `CloudConfig`
-übergibt. `shell.openReport()` öffnet den Dialog von überall (ScriptZ: Befehl
-in der Suche). Bildschirme mit eigenen Bedienelementen unten rechts schieben
+Die Funktion liegt komplett im Kit: Jede App, deren Host eine `CloudConfig`
+übergibt, bekommt sie automatisch, sobald jemand angemeldet ist. App-ID und
+Name kommen aus dem `AppModule`; das Backend prüft die ID nur auf ihre Form,
+eine neue App braucht dort also keine Änderung. `shell.openReport()` öffnet
+den Dialog von überall (ScriptZ: Befehl in der Suche). Bildschirme mit eigenen Bedienelementen unten rechts schieben
 die Pille mit `shell.setReportPillPlacement({ right, bottom, hidden })` zur
 Seite und setzen beim Verlassen `null` (ScriptZ: Skript-Ansicht mit Zeitleiste
 und Chat).
 
 ## Was mitgeht
 
-- Der Text des Nutzers und auf Wunsch eine E-Mail-Adresse (nur ohne Anmeldung
-  gefragt; angemeldet verknüpft das Backend die Meldung mit dem Konto).
-- App, Version, Kanal (`stable`, `nightly`, `dev`), Betriebssystem.
+- Der Text des Nutzers. Das Backend verknüpft die Meldung mit dem Konto
+  (`userId`); über das Konto ist der Nutzer erreichbar.
+- App-ID und App-Name (`app`, `appName`), Version, Kanal (`stable`, `nightly`,
+  `dev`), Betriebssystem.
 - `details`: Commit und Build-Zeit (Nightly), OS-Version, Architektur,
   System- und App-Sprache, Theme, aktuelle Ansicht (Routen-ID), Seitenleiste,
   Fokusmodus, Fenster- und Bildschirmgröße, Pixeldichte, Zeitzone, online,
@@ -33,8 +38,8 @@ und Chat).
 - `errors`: die letzten 20 Fehler und Warnungen des Fensters (`console.error`,
   `console.warn`, unbehandelte Fehler), je höchstens 1000 Zeichen. Sie liegen nur
   im Speicher, bis jemand eine Meldung schickt.
-- Eine zufällige Installations-ID (`app_state` `feedback.install`) für die
-  Grenzen und um mehrere Meldungen eines Geräts zusammenzusehen.
+- Eine zufällige Installations-ID (`app_state` `feedback.install`), um mehrere
+  Geräte eines Kontos auseinanderzuhalten.
 
 Nie Inhalte (Skripte, Titel, Chats). Der Dialog zeigt unter „Was wird
 mitgeschickt?“ genau das, was gesendet wird. Neue Angaben sind additiv: Das
@@ -42,11 +47,18 @@ Backend nimmt beliebige `details`-Schlüssel (Buchstaben und Ziffern), schneidet
 zu lange Werte ab und verwirft Kaputtes, statt die Meldung abzulehnen. Neue
 Angaben in der Datenschutzerklärung nachziehen.
 
-## Grenzen
+## Spamschutz
 
-Pro Installation 10 Meldungen pro Stunde, insgesamt 500 pro Stunde
-(`bugReports.ts`). Darüber antwortet das Backend mit 429, der Dialog bittet um
-Geduld. Text höchstens 5000 Zeichen.
+- Ohne gültige Sitzung antwortet `POST /bugs/report` mit 401, bevor der Inhalt
+  gelesen wird; Anfragen über 64 000 Zeichen mit 413.
+- Pro Konto höchstens 10 Meldungen pro Stunde und 30 pro Tag, mindestens 15
+  Sekunden Abstand; über alle Konten höchstens 500 pro Stunde
+  (`checkLimits` in `bugReports.ts`). Darüber antwortet das Backend mit 429,
+  der Dialog bittet um Geduld.
+- Derselbe Text desselben Kontos innerhalb einer Stunde wird nicht noch einmal
+  gespeichert; das Backend antwortet mit der Nummer der ersten Meldung
+  (Doppelklick, erneutes Senden).
+- Text höchstens 5000 Zeichen, gesammelte Angaben werden gekürzt.
 
 ## Lesen
 

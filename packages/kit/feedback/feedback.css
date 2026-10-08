@@ -145,24 +145,6 @@
   resize: vertical;
   line-height: var(--lh-normal);
 }
-.rpt-email {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-.rpt-email > span {
-  font-size: var(--fs-12);
-  font-weight: 600;
-  color: var(--muted);
-}
-.rpt-email > span small {
-  font-weight: 500;
-  color: var(--faint);
-}
-.rpt-invalid {
-  color: var(--warn);
-  font-size: var(--fs-12);
-}
 .rpt-details {
   padding-top: 12px;
   border-top: 1px solid var(--line-soft);

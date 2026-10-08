@@ -2,12 +2,12 @@ import { v } from "convex/values";
 import { internal } from "./_generated/api";
 import { httpAction, internalMutation, internalQuery } from "./_generated/server";
 import { createAuth } from "./auth";
-import { MAX_BODY_CHARS, WINDOW_MS, parseReport, withinLimits } from "./bugReports";
-import { isSyncApp } from "./syncApps";
+import { DAY_MS, HOUR_MS, MAX_BODY_CHARS, USER_DAY_LIMIT, checkLimits, parseReport } from "./bugReports";
 
-// Problem reports from the apps ("Report a problem"), signed in or not. Every
-// report gets the next number of the suite (#1, #2, ...), which the app shows
-// as confirmation. Reading them happens in the Convex dashboard (table
+// Problem reports from the apps of the suite ("Report a problem"), for
+// signed-in users only. Every report gets the next number of the suite (#1,
+// #2, ...), which the app shows as confirmation; `app` and `appName` say
+// which program sent it. Reading them happens in the Convex dashboard (table
 // bug_reports) or with `npx convex run bugs:recent` (docs/fehlermeldungen.md).
 
 function json(body: unknown, status = 200) {
@@ -16,22 +16,24 @@ function json(body: unknown, status = 200) {
 
 type Ctx = Parameters<Parameters<typeof httpAction>[0]>[0];
 
-/** The account behind an optional bearer session. A missing, expired or
- *  failing session never costs the report: it is stored without account. */
-async function reporter(ctx: Ctx, request: Request): Promise<string | undefined> {
+/** 401 only for a missing session (the app then signs out, like ai.ts); a
+ *  failing check is 503, so a hiccup never ends the session. */
+async function reporter(ctx: Ctx, request: Request): Promise<{ userId: string } | { response: Response }> {
   const authorization = request.headers.get("authorization");
-  if (!authorization?.startsWith("Bearer ")) return undefined;
+  if (!authorization?.startsWith("Bearer ")) return { response: json({ error: "unauthorized" }, 401) };
   try {
     const session = await createAuth(ctx).api.getSession({ headers: new Headers({ authorization }) });
-    return session?.user.id ?? undefined;
+    return session?.user ? { userId: session.user.id } : { response: json({ error: "unauthorized" }, 401) };
   } catch (error) {
     console.warn("session check for a report failed", error instanceof Error ? error.message : String(error));
-    return undefined;
+    return { response: json({ error: "unavailable" }, 503) };
   }
 }
 
 /** POST /bugs/report: stores one report and answers with its number. */
 export const report = httpAction(async (ctx, request) => {
+  const auth = await reporter(ctx, request);
+  if ("response" in auth) return auth.response;
   if (Number(request.headers.get("content-length") ?? 0) > MAX_BODY_CHARS * 4) return json({ error: "too_large" }, 413);
   let raw: unknown;
   try {
@@ -42,21 +44,21 @@ export const report = httpAction(async (ctx, request) => {
     return json({ error: "invalid_request" }, 400);
   }
   const parsed = parseReport(raw);
-  if (!parsed || !isSyncApp(parsed.app)) return json({ error: "invalid_request" }, 400);
-  const userId = await reporter(ctx, request);
-  const number = await ctx.runMutation(internal.bugs.store, { ...parsed, ...(userId ? { userId } : {}) });
+  if (!parsed) return json({ error: "invalid_request" }, 400);
+  const number = await ctx.runMutation(internal.bugs.store, { ...parsed, userId: auth.userId });
   if (number === null) return json({ error: "rate_limited" }, 429);
   return json({ number });
 });
 
-/** Assigns the next number and stores the report; null above the limits. */
+/** Assigns the next number and stores the report; null above the limits
+ *  (bugReports.checkLimits). The same text again answers with its number. */
 export const store = internalMutation({
   args: {
     app: v.string(),
+    appName: v.optional(v.string()),
     installId: v.string(),
     message: v.string(),
-    email: v.optional(v.string()),
-    userId: v.optional(v.string()),
+    userId: v.string(),
     version: v.string(),
     channel: v.string(),
     os: v.string(),
@@ -65,14 +67,16 @@ export const store = internalMutation({
   },
   handler: async (ctx, report) => {
     const now = Date.now();
-    const since = now - WINDOW_MS;
-    const fromInstall = await ctx.db.query("bug_reports")
-      .withIndex("by_install", (q) => q.eq("installId", report.installId).gt("createdAt", since))
-      .take(50);
-    const fromAll = await ctx.db.query("bug_reports")
-      .withIndex("by_created", (q) => q.gt("createdAt", since))
+    const own = await ctx.db.query("bug_reports")
+      .withIndex("by_user", (q) => q.eq("userId", report.userId).gt("createdAt", now - DAY_MS))
+      .order("desc")
+      .take(USER_DAY_LIMIT + 1);
+    const allLastHour = await ctx.db.query("bug_reports")
+      .withIndex("by_created", (q) => q.gt("createdAt", now - HOUR_MS))
       .take(1000);
-    if (!withinLimits(fromInstall.length, fromAll.length)) return null;
+    const limit = checkLimits({ own, allLastHour: allLastHour.length, message: report.message, now });
+    if (limit.kind === "limited") return null;
+    if (limit.kind === "duplicate") return limit.number;
     // Mutations are serializable: two reports at once never get the same number.
     const last = await ctx.db.query("bug_reports").withIndex("by_number").order("desc").first();
     const number = (last?.number ?? 0) + 1;

@@ -34,7 +34,7 @@ ai.route({ path: "/ai/status", method: "GET", handler: status });
 ai.route({ path: "/ai/chat", method: "POST", handler: chat });
 ai.route({ path: "/ai/decide", method: "POST", handler: decide });
 
-// Problem reports of the apps (bugs.ts), with or without a bearer session.
+// Problem reports of the apps (bugs.ts): bearer session from the app sign-in.
 const bugs = corsRouter(http, {
   allowedOrigins: APP_ORIGINS,
   allowedHeaders: ["Content-Type", "Authorization"],

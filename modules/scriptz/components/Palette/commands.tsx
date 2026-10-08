@@ -252,8 +252,8 @@ function commands(shell: ShellControls): PaletteItem[] {
       run: () => shell.openOnboarding(),
     },
   );
-  // Reports go to the suite backend: only with one (accounts enabled).
-  if (account.enabled()) {
+  // Reports go to the suite backend with the account: signed-in users only.
+  if (account.signedIn()) {
     list.push({
       id: "cmd:report",
       group: "commands",

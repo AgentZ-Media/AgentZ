@@ -33,7 +33,8 @@ paths:
   (`schema.ts`, `sync.ts`, `appLink.ts`) sind Nutzerinhalte; jede App hat eine
   eigene Record-Tabelle
   ([`docs/cloud-sync.md`](../../docs/cloud-sync.md)). Fehlermeldungen der Apps
-  (`bugs.ts`, Tabelle `bug_reports`) nehmen auch Meldungen ohne Konto an
+  (`bugs.ts`, Tabelle `bug_reports`) nur von angemeldeten Konten, für jede
+  App-ID der Suite, mit Spamschutz in `bugReports.ts`
   ([`docs/fehlermeldungen.md`](../../docs/fehlermeldungen.md)). Neue
   Datenverarbeitung im Konto und neue mitgeschickte Angaben immer in der
   Datenschutzerklärung nachziehen.
