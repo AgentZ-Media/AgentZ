@@ -145,8 +145,12 @@ export function createClaimScanner(scriptId: string): ClaimScanner {
   const abort = new AbortController();
   /** Editor block -> the text that was last asked about (or known) for it. */
   const asked = new Map<string, string>();
+  /** Editor block -> its text as last seen. */
+  const seen = new Map<string, string>();
   /** Keys of the script's checkable lines as last seen. */
   let lines: string[] = [];
+  /** Only the newest update scans (several may wait for the device). */
+  let generation = 0;
   let pausedUntil = 0;
   let running = 0;
   let disposed = false;
@@ -164,8 +168,9 @@ export function createClaimScanner(scriptId: string): ClaimScanner {
         // No answer counts as no claim: the line is not asked about again.
         claims.probabilities.set(keys[i], answers.get(index) ?? 0);
         claims.inherited.delete(keys[i]);
+        // A late answer for text the block no longer holds stays with its key.
         const id = ids?.[index];
-        if (id) asked.set(id, blocks[index].text);
+        if (id && seen.get(id) === blocks[index].text) asked.set(id, blocks[index].text);
       });
       bump();
       persistAnswers(scriptId, claims, lines);
@@ -182,6 +187,8 @@ export function createClaimScanner(scriptId: string): ClaimScanner {
   };
 
   const scan = (blocks: readonly AgentBlock[], input: ScanInput) => {
+    seen.clear();
+    input.ids?.forEach((id, index) => seen.set(id, blocks[index].text));
     const claims = entry();
     const { probabilities, resolved, inherited } = claims;
     const candidates = claimCandidates(blocks);
@@ -240,8 +247,9 @@ export function createClaimScanner(scriptId: string): ClaimScanner {
       if (disposed || !claimScanAllowed() || Date.now() < pausedUntil) return;
       // What the device knows comes first: an opened script asks only about
       // lines it has not seen.
+      const current = ++generation;
       void loadClaims(scriptId).then(() => {
-        if (!disposed && claimScanAllowed()) scan(blocks, input);
+        if (!disposed && current === generation && claimScanAllowed()) scan(blocks, input);
       });
     },
     dispose() {

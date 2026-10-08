@@ -193,6 +193,16 @@ describe("createClaimScanner", () => {
     scanner.dispose();
   });
 
+  it("scans only the newest state when several updates wait for the device", async () => {
+    const scanner = claims.createClaimScanner("s4");
+    scanner.update(script, { editing: null });
+    scanner.update(script, { editing: 5 });
+    await flush();
+    expect(decide).toHaveBeenCalledTimes(1);
+    expect(Object.keys(decide.mock.calls[0][0].questions)).toEqual(["b1"]);
+    scanner.dispose();
+  });
+
   it("remembers answers on the device, so opening again asks nothing", async () => {
     decide.mockResolvedValueOnce({ b1: { type: "noul", noul: 0.95 } });
     const first = claims.createClaimScanner("s3");
