@@ -176,7 +176,8 @@ Cloud über den Änderungsfeed.
   und gestufte Zonen in der Zeitleiste.
 - **Bewegung** über `components/Common/motion.tsx`/`motion.css`
   (Zahl-Tween, rollende Zähler `BumpNumber`, Flug in die Seitenleiste,
-  Aufleuchten, View Transition beim Öffnen). Kurven und Dauern kommen aus
+  Aufleuchten). Beim Öffnen eines Skripts blendet das Papier nur kurz ein
+  (`ScriptScreen.css`), ohne Morph oder View Transition. Kurven und Dauern kommen aus
   den Bewegungs-Tokens des Designs (`--spring`, `--ease-out`, `--t-glide`
   usw.). Reduzierte Bewegung schaltet alles ab. Der Fertig-Moment
   (Symbol springt, Lichtring, Punkt-Feuerwerk, Textmarker über dem Titel)

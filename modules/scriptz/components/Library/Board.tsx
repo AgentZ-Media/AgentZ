@@ -11,7 +11,7 @@ import type { Idea, ScriptStatus, ScriptSummary } from "../../lib/types";
 import { ideasStore } from "../../stores/ideas";
 import { t } from "../../i18n";
 import { StageGlyph } from "../Common/StageGlyph";
-import { BumpNumber, rememberOpenSource } from "../Common/motion";
+import { BumpNumber } from "../Common/motion";
 import { setStageWithUndo } from "../Script/stageActions";
 import { folderColor } from "../Common/folderColor";
 import { lengthRangeFor, library, runtimeSecFor } from "../Shell/libraryData";
@@ -260,15 +260,11 @@ function ScriptCard(props: {
         setDragging(false);
         props.onDragState(false);
       }}
-      onClick={(e) => {
-        rememberOpenSource(e.currentTarget);
-        props.onOpen(e.altKey);
-      }}
+      onClick={(e) => props.onOpen(e.altKey)}
       onKeyDown={(e) => {
         if (e.target !== e.currentTarget) return;
         if (e.key === "Enter" || e.key === " ") {
           e.preventDefault();
-          rememberOpenSource(e.currentTarget);
           props.onOpen(e.altKey);
         }
       }}

@@ -3,11 +3,10 @@
 import { navStore } from "../../stores/nav";
 import { openScriptFromList } from "../../stores/peek";
 import { settingsStore } from "../../stores/settings";
-import { openScriptAnimated } from "../Common/motion";
 
-/** Full script view, growing out of the clicked row (motion.tsx). */
+/** Full script view; its paper fades in on its own (ScriptScreen.css). */
 export function openFull(id: string, title?: string): void {
-  openScriptAnimated(() => navStore.openScript(id, title));
+  void navStore.openScript(id, title);
 }
 
 /** Click in a list: side panel or full view, as the setting says. */
