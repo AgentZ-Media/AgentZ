@@ -98,6 +98,9 @@ export function ContextMenu(props: ContextMenuProps) {
     const w = width();
     let left = props.align === "end" ? props.x - w : props.x;
     let top = props.placement === "above" ? props.y - h : props.y;
+    // Near the bottom edge a menu opens above the pointer instead of being
+    // pushed up over it.
+    if (props.placement !== "above" && top + h + MARGIN > window.innerHeight && props.y - h >= MARGIN) top = props.y - h;
     left = Math.max(MARGIN, Math.min(left, window.innerWidth - w - MARGIN));
     top = Math.max(MARGIN, Math.min(top, window.innerHeight - h - MARGIN));
     setPos({ left, top });

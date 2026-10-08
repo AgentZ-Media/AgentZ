@@ -180,7 +180,7 @@ export const kitEn: Record<keyof typeof kitDe, string> = {
   "account.menu.settings": "Account & sync …",
   "account.menu.syncNow": "Sync now",
   "account.menu.signOut": "Sign out",
-  "account.status.synced": "Synced · {time}",
+  "account.status.synced": "Synced",
   "account.status.never": "Not synced yet",
   "account.status.syncing": "Syncing …",
   "account.status.offline": "Offline · changes will upload later",

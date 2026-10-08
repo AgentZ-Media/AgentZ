@@ -33,6 +33,7 @@ import { Timeline, type RangeSource } from "./Timeline";
 import { GutterLabel } from "./GutterLabel";
 import { HookMarks } from "./HookMarks";
 import { ClaimMarks } from "../Agent/ClaimMarks";
+import { ClaimSpots } from "../Agent/ClaimSpots";
 import { agentSettings } from "../../stores/agentSettings";
 import type { AgentJobId } from "../../lib/agent/jobs";
 import { JOB_LABEL } from "../Agent/jobLabels";
@@ -710,6 +711,18 @@ export function ScriptScreen(props: ScriptScreenProps) {
                       tick={live.tick}
                       active={agentVisible}
                     />
+                  </Show>
+                  <Show when={agentReady() && !focus() && s().id} keyed>
+                    {(scriptId) => (
+                      <ClaimSpots
+                        scriptId={scriptId}
+                        editor={editor}
+                        sheet={sheetEl}
+                        blocks={live.blocks}
+                        tick={live.tick}
+                        colorOf={colorOf}
+                      />
+                    )}
                   </Show>
                 </Show>
               </div>

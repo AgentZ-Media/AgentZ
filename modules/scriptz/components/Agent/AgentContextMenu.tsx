@@ -13,6 +13,8 @@ import { voiceInstruction } from "../../lib/agent/jobs";
 
 const MENU_W = 248;
 const SUB_W = 200;
+/** Distance to the window edges. */
+const EDGE = 8;
 
 interface MenuState {
   x: number;
@@ -63,6 +65,10 @@ const REWRITES: Array<{ id: string; label: TranslationKey; prompt?: TranslationK
 export function AgentContextMenu(props: { scriptId: string; canvas: () => HTMLElement | undefined }) {
   const [menu, setMenu] = createSignal<MenuState | null>(null);
   const [subOpen, setSubOpen] = createSignal(false);
+  /** Measured position: below the pointer, or above it near the bottom edge. */
+  const [pos, setPos] = createSignal<{ x: number; y: number } | null>(null);
+  /** The submenu opens upwards when it would leave the window. */
+  const [subUp, setSubUp] = createSignal(false);
   let menuRef: HTMLDivElement | undefined;
 
   const close = () => { setMenu(null); setSubOpen(false); };
@@ -76,10 +82,20 @@ export function AgentContextMenu(props: { scriptId: string; canvas: () => HTMLEl
       const selection = readSelection(props.scriptId);
       if (!selection) return;
       event.preventDefault();
-      const x = Math.min(event.clientX, window.innerWidth - MENU_W - 8);
-      const y = Math.min(event.clientY, window.innerHeight - 260);
+      const x = Math.min(event.clientX, window.innerWidth - MENU_W - EDGE);
       setSubOpen(false);
-      setMenu({ x, y, selection, voices: voicesFor(props.scriptId, selection) });
+      setPos(null);
+      setMenu({ x, y: event.clientY, selection, voices: voicesFor(props.scriptId, selection) });
+      // Measured once rendered: flips above the pointer when the menu would
+      // run past the bottom edge.
+      requestAnimationFrame(() => {
+        const state = menu();
+        if (!state || !menuRef) return;
+        const h = menuRef.offsetHeight;
+        const fits = state.y + h + EDGE <= window.innerHeight;
+        const y = fits ? state.y : state.y - h >= EDGE ? state.y - h : Math.max(EDGE, window.innerHeight - h - EDGE);
+        setPos({ x: state.x, y });
+      });
     };
     const onDown = (event: MouseEvent) => {
       if (menu() && menuRef && !menuRef.contains(event.target as Node)) close();
@@ -128,7 +144,16 @@ export function AgentContextMenu(props: { scriptId: string; canvas: () => HTMLEl
   const subLeft = () => {
     const state = menu();
     if (!state) return 0;
-    return state.x + MENU_W + SUB_W + 8 > window.innerWidth ? -SUB_W - 4 : MENU_W + 4;
+    return state.x + MENU_W + SUB_W + EDGE > window.innerWidth ? -SUB_W - 4 : MENU_W + 4;
+  };
+
+  /** Opens the submenu upwards when it would run past the bottom edge. */
+  const placeSub = (el: HTMLDivElement) => {
+    setSubUp(false);
+    requestAnimationFrame(() => {
+      const row = el.parentElement?.getBoundingClientRect();
+      if (row) setSubUp(row.top - 5 + el.offsetHeight + EDGE > window.innerHeight);
+    });
   };
 
   return (
@@ -139,7 +164,8 @@ export function AgentContextMenu(props: { scriptId: string; canvas: () => HTMLEl
             ref={menuRef}
             class="ag-ctx"
             role="menu"
-            style={{ left: `${state().x}px`, top: `${state().y}px` }}
+            classList={{ "is-placing": !pos() }}
+            style={{ left: `${pos()?.x ?? state().x}px`, top: `${pos()?.y ?? state().y}px` }}
             onContextMenu={(e) => e.preventDefault()}
           >
             <button type="button" class="ag-ctx-it" role="menuitem" onClick={copy}>
@@ -173,7 +199,7 @@ export function AgentContextMenu(props: { scriptId: string; canvas: () => HTMLEl
                     </Show>
                   </button>
                   <Show when={action.sub && subOpen()}>
-                    <div class="ag-ctx ag-ctx-sub" role="menu" style={{ left: `${subLeft()}px` }}>
+                    <div ref={placeSub} class="ag-ctx ag-ctx-sub" classList={{ "is-up": subUp() }} role="menu" style={{ left: `${subLeft()}px` }}>
                       <For each={REWRITES}>
                         {(item) => (
                           <button type="button" class="ag-ctx-it" role="menuitem" onClick={() => ask(item.prompt)}>
