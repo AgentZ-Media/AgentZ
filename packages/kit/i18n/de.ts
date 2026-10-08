@@ -178,7 +178,7 @@ export const kitDe = {
   "account.menu.settings": "Konto & Sync …",
   "account.menu.syncNow": "Jetzt synchronisieren",
   "account.menu.signOut": "Abmelden",
-  "account.status.synced": "Synchronisiert · {time}",
+  "account.status.synced": "Synchronisiert",
   "account.status.never": "Noch nicht synchronisiert",
   "account.status.syncing": "Synchronisiere …",
   "account.status.offline": "Offline · Änderungen werden später hochgeladen",

@@ -1,5 +1,4 @@
 import { t } from "../i18n";
-import { relativeTime } from "../lib";
 import { account } from "./account";
 
 export type SyncTone = "ok" | "busy" | "warn" | "off";
@@ -15,8 +14,8 @@ export function syncStatus(): { text: string; tone: SyncTone } {
     case "offline": return { text: t("account.status.offline"), tone: "warn" };
     case "error": return { text: t("account.status.error"), tone: "warn" };
     case "idle": {
-      const at = account.lastSyncedAt();
-      return at ? { text: t("account.status.synced", { time: relativeTime(at) }), tone: "ok" } : { text: t("account.status.never"), tone: "busy" };
+      // A full run happens at least every 30 seconds, so a time adds nothing.
+      return account.lastSyncedAt() ? { text: t("account.status.synced"), tone: "ok" } : { text: t("account.status.never"), tone: "busy" };
     }
   }
 }
