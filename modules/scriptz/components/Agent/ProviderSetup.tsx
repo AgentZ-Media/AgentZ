@@ -2,7 +2,6 @@ import { For, Match, Show, Switch, createEffect, createSignal, on } from "solid-
 import { account } from "@agentz/kit/account";
 import { getPlatformAdapter } from "@agentz/kit/platform";
 import { t, type TranslationKey } from "../../i18n";
-import { OPENROUTER_MODEL_LABEL } from "../../lib/agent/openrouter/config";
 import {
   AGENT_KEY_INVALID,
   AGENT_NETWORK,
@@ -64,7 +63,7 @@ const notEnabled = () => {
 
 function providerSub(id: AgentProviderId): string {
   if (id === "codex") return t("agent.provider.codex.sub");
-  return t(id === "agentz" ? "agent.provider.agentz.sub" : "agent.provider.openrouter.sub", { model: OPENROUTER_MODEL_LABEL });
+  return t(id === "agentz" ? "agent.provider.agentz.sub" : "agent.provider.openrouter.sub");
 }
 
 /** One line about the current provider's state. */
@@ -164,7 +163,7 @@ function AgentzSignIn() {
   return (
     <div class="ag-codex-setup">
       <Show when={account.enabled()} fallback={<p>{t("agent.provider.agentz.noCloud")}</p>}>
-        <p>{t("agent.provider.agentz.signInBody", { name: agentSettings.displayName(), model: OPENROUTER_MODEL_LABEL })}</p>
+        <p>{t("agent.provider.agentz.signInBody", { name: agentSettings.displayName() })}</p>
         <button type="button" class="btn primary ag-setup-btn" onClick={() => void account.signIn()}>
           {t("agent.provider.agentz.signIn")}
         </button>
@@ -204,7 +203,7 @@ function OpenRouterKey() {
   };
   return (
     <div class="ag-codex-setup">
-      <p>{t("agent.provider.openrouter.body", { model: OPENROUTER_MODEL_LABEL })}</p>
+      <p>{t("agent.provider.openrouter.body")}</p>
       <Show
         when={hint() && !editing()}
         fallback={

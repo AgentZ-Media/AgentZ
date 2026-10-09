@@ -213,8 +213,9 @@ Persönlicher Schreib-Agent mit eigenem Namen, Look und Persona.
     `account.backendFetch` aus dem Kit). Der Server hält den OpenRouter-Key
     und legt das Modell fest (`OPENROUTER_MODEL`, heute
     `google/gemini-3.8-flash`; App-Seite `openrouter/config.ts`, beide gleich
-    halten). Offen nur für freigeschaltete Konten (Convex-Variable
-    `AI_ACCESS`, siehe [`cloud-sync.md`](../../docs/cloud-sync.md)), für sie
+    halten). Die Oberfläche nennt dieses Modell nirgends und bietet keine
+    Modellwahl (`agentStore.showsModel()`). Offen nur für freigeschaltete
+    Konten (Convex-Variable `AI_ACCESS`, siehe [`cloud-sync.md`](../../docs/cloud-sync.md)), für sie
     kostenlos; Limits gehören später in `ai.ts`. Allen anderen zeigt die
     Auswahl „Bald verfügbar“ (`agentStore.hostedAccess`, Fehlercode
     `AGENT_NOT_ENABLED`). Die Freischaltung fragt die Anbindungswahl
@@ -222,7 +223,11 @@ Persönlicher Schreib-Agent mit eigenem Namen, Look und Persona.
     Agenten, nie bei ausgeblendetem.
   - `openrouter`: derselbe Harness direkt gegen `openrouter.ai` mit dem
     eigenen Key des Nutzers (Schlüsselbund `agent.openrouter-key`, nie in
-    Settings oder Sync), auch ohne Konto.
+    Settings oder Sync), auch ohne Konto. Die Modellwahl lädt den Katalog
+    live von `/models` (nur Textmodelle mit Tool-Aufrufen, ohne `:batch`, `parseModels`),
+    das Standardmodell steht als „Empfohlen“ oben. Ausgewählt wird in
+    `components/Agent/ModelSelect.tsx` (eigenes Popover mit Suche, auch für
+    Codex in den Einstellungen).
 - **Parität (Pflicht).** Jede Anbindung kann genau dasselbe. Instruktionen
   (`lib/agent/prompt.ts`, `stores/agent/instructions.ts`), Tools
   (`tools.ts`, `sessionTools.ts`), Aufträge, Gedächtnis und Lernen entstehen

@@ -94,6 +94,9 @@ export const agentStore = {
     resetLearnChecks();
   },
   resolveModel: () => resolveModel(models(), agentSettings.model()),
+  /** The model is named and chosen only where the user runs the agent with
+   *  their own access (Codex, own key); the AgentZ account keeps it inside. */
+  showsModel: () => agentSettings.provider() !== "agentz",
   /** The live chat of a script, if one is loaded. */
   liveSession(scriptId: string): ChatSession | null {
     return byScript.get(scriptId) ?? null;

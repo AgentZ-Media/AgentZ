@@ -1,7 +1,6 @@
 import { For, Match, Show, Switch, createEffect, createMemo, createSignal, onCleanup, type JSX } from "solid-js";
 import { AppMark, DialogFrame, Icon } from "@agentz/kit/ui";
 import { ProviderPicker, ProviderSetup, agentErrorText, providerErrorTitle } from "./ProviderSetup";
-import { OPENROUTER_MODEL_LABEL } from "../../lib/agent/openrouter/config";
 import { t, tPlural, type TranslationKey } from "../../i18n";
 import type { AgentEffort } from "../../lib/agent/types";
 import { agentStore } from "../../stores/agent";
@@ -18,6 +17,7 @@ import { agentUi } from "../../stores/agentUi";
 import { navStore } from "../../stores/nav";
 import { AgentAvatar, type AvatarState } from "./AgentAvatar";
 import { EffortControl } from "./AgentSettings";
+import { ModelSelect } from "./ModelSelect";
 import { scopeLabel, folderLookup } from "./labels";
 import { library } from "../Shell/libraryData";
 import "./Agent.css";
@@ -162,19 +162,26 @@ export function AgentOnboarding() {
             <ProviderSetup />
             <Show when={agentStore.status().state === "ready" && agentStore.models().length > 0}>
               <div class="ag-onb-models">
-                <Show when={agentStore.models().length > 1}>
+                <Show when={agentStore.showsModel() && agentStore.models().length > 1}>
                   <div class="ag-f-lbl">{t("agent.onb.codex.model")}</div>
-                  <div class="ag-onb-model-list" role="radiogroup" aria-label={t("agent.onb.codex.model")}>
-                    <For each={agentStore.models()}>
-                      {(m) => (
-                        <button type="button" role="radio" class="ag-onb-model" aria-checked={model() === m.id || (!model() && m.isDefault)} onClick={() => setModel(m.id)}>
-                          <span class="ag-prov-rd" />
-                          <b>{m.label}</b>
-                          <Show when={m.isDefault}><small>{t("agent.onb.codex.recommended")}</small></Show>
-                        </button>
-                      )}
-                    </For>
-                  </div>
+                  <Show
+                    when={agentSettings.provider() === "openrouter"}
+                    fallback={
+                      <div class="ag-onb-model-list" role="radiogroup" aria-label={t("agent.onb.codex.model")}>
+                        <For each={agentStore.models()}>
+                          {(m) => (
+                            <button type="button" role="radio" class="ag-onb-model" aria-checked={model() === m.id || (!model() && m.isDefault)} onClick={() => setModel(m.id)}>
+                              <span class="ag-prov-rd" />
+                              <b>{m.label}</b>
+                              <Show when={m.isDefault}><small>{t("agent.onb.codex.recommended")}</small></Show>
+                            </button>
+                          )}
+                        </For>
+                      </div>
+                    }
+                  >
+                    <ModelSelect value={model()} onChange={setModel} label={t("agent.onb.codex.model")} refresh={false} />
+                  </Show>
                 </Show>
                 <div class="ag-onb-effort">
                   <div class="ag-f-lbl">{t("agent.prefs.effort")}</div>
@@ -188,7 +195,9 @@ export function AgentOnboarding() {
                 <div class="ag-onb-hint">
                   {agentSettings.provider() === "codex"
                     ? t("agent.onb.codex.modelHint", { count: agentStore.models().length })
-                    : t("agent.onb.model.fixed", { model: agentStore.models()[0]?.label ?? OPENROUTER_MODEL_LABEL })}
+                    : agentSettings.provider() === "openrouter" && agentStore.models().length > 1
+                      ? t("agent.onb.openrouter.modelHint", { count: agentStore.models().length })
+                      : t("agent.onb.model.fixed")}
                 </div>
               </div>
             </Show>
@@ -325,7 +334,7 @@ function StageCodex() {
     const [a, b] = text.split("{command}");
     return <>{a}{command()}{b ?? ""}</>;
   };
-  const head = () => (provider() === "codex" ? "codex app-server" : `${provider() === "agentz" ? "AgentZ" : "OpenRouter"} · ${OPENROUTER_MODEL_LABEL}`);
+  const head = () => (provider() === "codex" ? "codex app-server" : provider() === "agentz" ? "AgentZ" : "OpenRouter");
   const found = () => t(provider() === "codex" ? "agent.onb.codex.found" : provider() === "agentz" ? "agent.onb.agentz.found" : "agent.onb.openrouter.found");
   const errorBody = () => {
     const message = (status() as { message?: string }).message;
