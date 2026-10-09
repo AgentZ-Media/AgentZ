@@ -98,4 +98,22 @@ describe("provider parity", () => {
       }
     }
   });
+
+  it("both name a lighter model for fact checks, apart from the chat default", async () => {
+    const codex = new CodexProvider(fakeCodex().host);
+    await codex.check();
+    const openrouter = new OpenRouterProvider("agentz", fakeTransport([]).transport, memoryThreads().store);
+    await openrouter.check();
+    const codexModels = await codex.listModels();
+    const openrouterModels = await openrouter.listModels();
+    expect(codex.checkModel(codexModels)?.id).toBe("gpt-6-luna");
+    expect(openrouter.checkModel()?.id).toBe("openai/gpt-6-luna");
+    for (const [provider, list] of [[codex, codexModels], [openrouter, openrouterModels]] as const) {
+      const check = provider.checkModel(list);
+      expect(check?.efforts).toContain("medium");
+      expect(check?.id).not.toBe(list.find((m) => m.isDefault)?.id);
+    }
+    // Without one the checks fall back to the chat model.
+    expect(codex.checkModel([])).toBeNull();
+  });
 });

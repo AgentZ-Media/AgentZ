@@ -10,7 +10,7 @@ import { createChatTools } from "../../lib/agent/tools";
 import { effortOrDefault, type AgentEvent } from "../../lib/agent/types";
 import { agentSettings } from "../agentSettings";
 import { chatInstructions, currentPace } from "./instructions";
-import { ensureModels, getProvider, hasAgentHost, hostedAccess, refreshHostedAccess, resolveModel } from "./provider";
+import { ensureModels, getProvider, hasAgentHost, hostedAccess, refreshHostedAccess, resolveCheckModel } from "./provider";
 
 // ---------------------------------------------------------------------------
 // Checkable claims on the paper ("prüfbare Stellen")
@@ -324,7 +324,7 @@ export async function checkClaim(scriptId: string, index: number, text: string):
     const [instructions, models] = await Promise.all([chatInstructions(scriptId, "script", null), ensureModels()]);
     const thread = await provider.openThread({ instructions, tools, ephemeral: true });
     try {
-      const model = resolveModel(models, agentSettings.model());
+      const model = resolveCheckModel(models, agentSettings.model());
       const onEvent = (event: AgentEvent) => {
         if (event.type === "message" && !event.commentary) note = event.text.trim();
         const step = event.type === "tool-start" ? STEP_OF_TOOL[event.tool] : event.type === "web-search" ? "searching" : undefined;

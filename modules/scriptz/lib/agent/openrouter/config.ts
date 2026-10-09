@@ -1,11 +1,16 @@
 import type { AgentEffort } from "../types";
 
-// The model the OpenRouter harness runs by default. The hosted proxy decides
-// on its own (OPENROUTER_MODEL in Convex, fallback in apps/site/convex/ai.ts);
-// keep both on the same id. With an own key it is the recommended choice in
-// the list of all OpenRouter models.
-export const OPENROUTER_MODEL = "google/gemini-3.8-flash";
-export const OPENROUTER_MODEL_LABEL = "Gemini 3.8 Flash";
+// The models the OpenRouter harness runs, hosted (AgentZ account) and with
+// an own key alike: the chat model for everything, a lighter one for a fact
+// check (one turn, then the chat model again). The hosted proxy decides on
+// its own (OPENROUTER_MODEL and OPENROUTER_CHECK_MODEL in Convex, fallbacks
+// in apps/site/convex/ai.ts); keep both sides on the same ids. Chosen with
+// the agent benchmark (apps/bench). With an own key the chat model is the
+// recommended choice in the list of all OpenRouter models.
+export const OPENROUTER_MODEL = "openai/gpt-6.1-sol";
+export const OPENROUTER_MODEL_LABEL = "GPT-6.1 Sol";
+export const OPENROUTER_CHECK_MODEL = "openai/gpt-6-luna";
+export const OPENROUTER_CHECK_MODEL_LABEL = "GPT-6 Luna";
 export const OPENROUTER_EFFORTS: AgentEffort[] = ["minimal", "low", "medium", "high"];
 
 export const OPENROUTER_API = "https://openrouter.ai/api/v1";

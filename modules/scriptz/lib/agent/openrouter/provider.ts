@@ -39,7 +39,7 @@ import { TransportError, type OpenRouterTransport, type TransportModel } from ".
 
 export type WireMessage =
   | { role: "user"; content: string }
-  | { role: "assistant"; content: string; tool_calls?: WireToolCall[]; reasoning_details?: Obj[] }
+  | { role: "assistant"; content: string; tool_calls?: WireToolCall[]; reasoning_details?: Obj[]; model?: string }
   | { role: "tool"; tool_call_id: string; content: string };
 
 export interface ThreadStoreLike {
@@ -156,13 +156,19 @@ export function parseMessages(json: string): WireMessage[] {
 }
 
 /** The request form of the transcript: instructions first, cache
- *  breakpoints on the instructions and the newest message. */
-export function requestMessages(instructions: string, messages: readonly WireMessage[]): Obj[] {
+ *  breakpoints on the instructions and the newest message. Reasoning details
+ *  go back only to the model that wrote them (a chat switches models for a
+ *  fact check, transcripts outlive a model change); the stored model never
+ *  goes upstream. */
+export function requestMessages(instructions: string, messages: readonly WireMessage[], model = ""): Obj[] {
   const out: Obj[] = [{ role: "system", content: [{ type: "text", text: instructions, cache_control: CACHE }] }];
   messages.forEach((message, i) => {
     const last = i === messages.length - 1;
     if (last && message.role !== "assistant" && message.content) {
       out.push({ ...message, content: [{ type: "text", text: message.content, cache_control: CACHE }] });
+    } else if (message.role === "assistant") {
+      const { model: from, reasoning_details: details, ...rest } = message;
+      out.push(details?.length && from === model ? { ...rest, reasoning_details: details } : rest);
     } else {
       out.push({ ...message });
     }
@@ -265,6 +271,9 @@ class OpenRouterThread implements AgentThread {
   ): Promise<boolean> {
     const messageId = `${key}-msg`;
     const reasoningId = `${key}-rsn`;
+    // Chosen per turn: a fact check runs on the check model, the next turn
+    // on the chat model again.
+    const model = options.model || this.provider.model.id;
     let result: StepResult;
     // Long tool rounds grow the transcript within a turn as well.
     compact(this.messages);
@@ -272,9 +281,9 @@ class OpenRouterThread implements AgentThread {
       let shown = false;
       try {
         const response = await this.provider.transport.complete({
-          model: options.model || this.provider.model.id,
+          model,
           stream: true,
-          messages: requestMessages(this.instructions, this.messages),
+          messages: requestMessages(this.instructions, this.messages, model),
           tools: this.toolDefs,
           tool_choice: "auto",
           reasoning: { effort: effortFor(options.effort) },
@@ -305,7 +314,7 @@ class OpenRouterThread implements AgentThread {
       role: "assistant",
       content: result.content,
       ...(result.toolCalls.length ? { tool_calls: result.toolCalls } : {}),
-      ...(result.reasoningDetails.length ? { reasoning_details: result.reasoningDetails } : {}),
+      ...(result.reasoningDetails.length ? { reasoning_details: result.reasoningDetails, model } : {}),
     });
     if (result.toolCalls.length === 0) {
       if (result.content.trim()) onEvent({ type: "message", itemId: messageId, text: result.content });
@@ -318,14 +327,14 @@ class OpenRouterThread implements AgentThread {
     }
     for (const call of result.toolCalls) {
       if (signal.aborted) throw new DOMException("aborted", "AbortError");
-      const output = await this.execute(`${key}-${call.id}`, call, onEvent, signal);
+      const output = await this.execute(`${key}-${call.id}`, call, model, onEvent, signal);
       this.messages.push({ role: "tool", tool_call_id: call.id, content: output });
     }
     if (signal.aborted) throw new DOMException("aborted", "AbortError");
     return false;
   }
 
-  private async execute(itemId: string, call: WireToolCall, onEvent: (event: AgentEvent) => void, signal: AbortSignal): Promise<string> {
+  private async execute(itemId: string, call: WireToolCall, model: string, onEvent: (event: AgentEvent) => void, signal: AbortSignal): Promise<string> {
     const name = call.function.name;
     let args: unknown = {};
     let invalid = false;
@@ -334,7 +343,7 @@ class OpenRouterThread implements AgentThread {
     } catch {
       invalid = true;
     }
-    if (name === WEB_SEARCH_TOOL && !this.tools.has(name)) return this.webSearch(itemId, str(obj(args).query).trim(), onEvent, signal);
+    if (name === WEB_SEARCH_TOOL && !this.tools.has(name)) return this.webSearch(itemId, str(obj(args).query).trim(), model, onEvent, signal);
     const tool = this.tools.get(name);
     onEvent({ type: "tool-start", itemId, tool: name, args });
     let result: ToolResult;
@@ -351,12 +360,13 @@ class OpenRouterThread implements AgentThread {
     return result.output;
   }
 
-  private async webSearch(itemId: string, query: string, onEvent: (event: AgentEvent) => void, signal: AbortSignal): Promise<string> {
+  /** The search runs on the model of the turn (a fact check stays light). */
+  private async webSearch(itemId: string, query: string, model: string, onEvent: (event: AgentEvent) => void, signal: AbortSignal): Promise<string> {
     if (!query) return JSON.stringify({ error: "query is empty" });
     onEvent({ type: "web-search", itemId, query, status: "running" });
     try {
       const response = await this.provider.transport.complete({
-        model: this.provider.model.id,
+        model,
         stream: false,
         messages: [{ role: "system", content: SEARCH_INSTRUCTIONS }, { role: "user", content: query }],
         plugins: [WEB_SEARCH_PLUGIN],
@@ -407,6 +417,8 @@ class OpenRouterThread implements AgentThread {
 export class OpenRouterProvider implements AgentProvider {
   /** Set by the last check (hosted: the server's model). */
   model: TransportModel = { id: OPENROUTER_MODEL, label: OPENROUTER_MODEL_LABEL };
+  /** Model for fact checks, set by the last check; null = the chat model. */
+  checkModelInfo: TransportModel | null = null;
   private readonly threads = new Set<OpenRouterThread>();
   private saves = 0;
   /** Set by dispose(): nothing that was under way may send afterwards. */
@@ -423,6 +435,7 @@ export class OpenRouterProvider implements AgentProvider {
     try {
       const result = await this.transport.check();
       if (result.model) this.model = result.model;
+      if (result.state.state === "ready") this.checkModelInfo = result.checkModel;
       return result.state;
     } catch (error) {
       return { state: "error", message: error instanceof Error ? error.message : String(error) };
@@ -453,6 +466,11 @@ export class OpenRouterProvider implements AgentProvider {
       defaultEffort: DEFAULT_EFFORT,
       isDefault: m.id === recommended.id,
     }));
+  }
+
+  checkModel(): AgentModel | null {
+    const info = this.checkModelInfo;
+    return info ? { id: info.id, label: info.label, description: "", efforts: [...OPENROUTER_EFFORTS], defaultEffort: DEFAULT_EFFORT, isDefault: false } : null;
   }
 
   async openThread(options: OpenThreadOptions): Promise<AgentThread> {

@@ -2,6 +2,7 @@
 // model reaching OpenRouter. The hosted agent offers only the server's model.
 
 import { describe, expect, it } from "vitest";
+import { OPENROUTER_CHECK_MODEL, OPENROUTER_MODEL } from "../openrouter/config";
 import { OpenRouterProvider } from "../openrouter/provider";
 import { hostedTransport, keyTransport, parseModels } from "../openrouter/transport";
 import { memoryThreads } from "./openrouterFakes";
@@ -11,7 +12,7 @@ type Obj = Record<string, unknown>;
 const CATALOG = {
   data: [
     { id: "z-ai/zeta", name: "Z.ai: Zeta", supported_parameters: ["tools", "reasoning"], architecture: { output_modalities: ["text"] } },
-    { id: "google/gemini-3.8-flash", name: "Google: Gemini 3.8 Flash", supported_parameters: ["tools"], architecture: { output_modalities: ["text"] } },
+    { id: OPENROUTER_MODEL, name: "Recommended Model", supported_parameters: ["tools"], architecture: { output_modalities: ["text"] } },
     { id: "acme/no-tools", name: "Acme: No Tools", supported_parameters: ["temperature"], architecture: { output_modalities: ["text"] } },
     { id: "acme/painter", name: "Acme: Painter", supported_parameters: ["tools"], architecture: { output_modalities: ["image"] } },
     { id: "anthropic/claude", name: "Anthropic: Claude", supported_parameters: ["tools"] },
@@ -36,7 +37,7 @@ function openRouter(catalog: unknown = CATALOG, modelsStatus = 200) {
 
 describe("own key model catalog", () => {
   it("keeps only live text models with tool calls", () => {
-    expect(parseModels(CATALOG).map((m) => m.id)).toEqual(["z-ai/zeta", "google/gemini-3.8-flash", "anthropic/claude"]);
+    expect(parseModels(CATALOG).map((m) => m.id)).toEqual(["z-ai/zeta", OPENROUTER_MODEL, "anthropic/claude"]);
     expect(parseModels({ data: "nope" })).toEqual([]);
   });
 
@@ -46,7 +47,7 @@ describe("own key model catalog", () => {
     await provider.check();
     const models = await provider.listModels();
     expect(models.map((m) => [m.id, m.isDefault])).toEqual([
-      ["google/gemini-3.8-flash", true],
+      [OPENROUTER_MODEL, true],
       ["anthropic/claude", false],
       ["z-ai/zeta", false],
     ]);
@@ -59,16 +60,17 @@ describe("own key model catalog", () => {
     const { transport } = openRouter({ error: "down" }, 500);
     const provider = new OpenRouterProvider("openrouter", transport, memoryThreads().store);
     const models = await provider.listModels();
-    expect(models.map((m) => m.id)).toEqual(["google/gemini-3.8-flash"]);
+    expect(models.map((m) => m.id)).toEqual([OPENROUTER_MODEL]);
   });
 
-  it("sends the chosen model, else the recommended one", async () => {
+  it("sends the chosen model or the check model, else the recommended one", async () => {
     const { transport, requests } = openRouter();
     const signal = new AbortController().signal;
     await transport.complete({ model: "anthropic/claude", stream: true, messages: [] }, signal);
     await transport.complete({ model: "", stream: true, messages: [] }, signal);
+    await transport.complete({ model: OPENROUTER_CHECK_MODEL, stream: true, messages: [] }, signal);
     const sent = requests.filter((r) => r.url.endsWith("/chat/completions")).map((r) => (JSON.parse(r.init.body as string) as Obj).model);
-    expect(sent).toEqual(["anthropic/claude", "google/gemini-3.8-flash"]);
+    expect(sent).toEqual(["anthropic/claude", OPENROUTER_MODEL, OPENROUTER_CHECK_MODEL]);
   });
 
   it("offers no choice on the hosted agent", async () => {

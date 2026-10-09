@@ -27,6 +27,7 @@ export function fakeCodex() {
         case "model/list": emit({ id, result: { data: [
           { model: "gpt-6.1-sol", displayName: "GPT-6.1-Sol", isDefault: true, hidden: false, defaultReasoningEffort: "low", supportedReasoningEfforts: [{ reasoningEffort: "low" }, { reasoningEffort: "medium" }] },
           { model: "gpt-6-astra", displayName: "GPT-6-Astra", isDefault: false, hidden: false, defaultReasoningEffort: "medium", supportedReasoningEfforts: [{ reasoningEffort: "medium" }, { reasoningEffort: "high" }, { reasoningEffort: "ultra" }] },
+          { model: "gpt-6-luna", displayName: "GPT-6-Luna", isDefault: false, hidden: false, defaultReasoningEffort: "medium", supportedReasoningEfforts: [{ reasoningEffort: "low" }, { reasoningEffort: "medium" }] },
           { model: "secret", hidden: true },
         ], nextCursor: null } }); break;
         case "thread/start": emit({ id, result: { thread: { id: "th1" } } }); break;

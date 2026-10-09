@@ -19,7 +19,7 @@ describe("codex provider", () => {
     expect(fake.config()).not.toContain("features.code_mode_host=false");
 
     const models = await provider.listModels();
-    expect(models.map((m) => m.id)).toEqual(["gpt-6.1-sol", "gpt-6-astra"]);
+    expect(models.map((m) => m.id)).toEqual(["gpt-6.1-sol", "gpt-6-astra", "gpt-6-luna"]);
     // The model the user runs Codex with becomes the default.
     expect(models.find((m) => m.isDefault)?.id).toBe("gpt-6-astra");
     expect(models[1].efforts).toEqual(["medium", "high"]);

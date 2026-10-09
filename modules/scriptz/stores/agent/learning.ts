@@ -319,6 +319,14 @@ async function learnBatch(targets: LearnTarget[], kind: "finished" | "existing",
   return changes;
 }
 
+/** One learning turn over one script now, without the quiet period (the
+ *  agent benchmark runs learning this way). Null when the script has nothing
+ *  to learn; it is not marked as learned. */
+export async function learnScript(id: string, onChange?: (change: MemoryChange) => void): Promise<MemoryChange[] | null> {
+  const target = await learnTargetFor(id);
+  return target ? learnBatch([target], "finished", onChange) : null;
+}
+
 /** Scripts that could be learned retroactively (not yet learned in this state). */
 export async function existingScriptCount(): Promise<number> {
   const list = await api.listScripts({ sort: "updated", limit: 2000 }).catch(() => []);

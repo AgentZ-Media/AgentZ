@@ -44,14 +44,15 @@ function voicesFor(scriptId: string, selection: BlockSelection): MenuState["voic
   return out;
 }
 
-type Action = { id: string; icon: IconName; label: TranslationKey; prompt?: TranslationKey; sub?: boolean };
+/** `check`: a fact check, runs on the provider's check model. */
+type Action = { id: string; icon: IconName; label: TranslationKey; prompt?: TranslationKey; sub?: boolean; check?: boolean };
 
 const ACTIONS: Action[] = [
   { id: "talk", icon: "pen", label: "agent.ctx.talk", prompt: "agent.prompt.talk" },
   { id: "rewrite", icon: "refresh", label: "agent.ctx.rewrite", sub: true },
   { id: "variants", icon: "stack", label: "agent.ctx.variants", prompt: "agent.prompt.variants" },
   { id: "wording", icon: "check", label: "agent.ctx.wording", prompt: "agent.prompt.wording" },
-  { id: "factcheck", icon: "search", label: "agent.ctx.factcheck", prompt: "agent.prompt.factcheck" },
+  { id: "factcheck", icon: "search", label: "agent.ctx.factcheck", prompt: "agent.prompt.factcheck", check: true },
 ];
 
 const REWRITES: Array<{ id: string; label: TranslationKey; prompt?: TranslationKey }> = [
@@ -115,12 +116,12 @@ export function AgentContextMenu(props: { scriptId: string; canvas: () => HTMLEl
     });
   });
 
-  const ask = (prompt: TranslationKey | undefined) => {
+  const ask = (prompt: TranslationKey | undefined, check = false) => {
     const state = menu();
     close();
     if (!state) return;
     const quote = { text: state.selection.text, from: state.selection.from, to: state.selection.to };
-    if (prompt) agentUi.ask({ scriptId: props.scriptId, text: t(prompt), quote, send: true });
+    if (prompt) agentUi.ask({ scriptId: props.scriptId, text: t(prompt), quote, send: true, ...(check ? { check } : {}) });
     else agentUi.ask({ scriptId: props.scriptId, text: "", quote, send: false });
   };
 
@@ -190,7 +191,7 @@ export function AgentContextMenu(props: { scriptId: string; canvas: () => HTMLEl
                     role="menuitem"
                     aria-haspopup={action.sub ? "menu" : undefined}
                     aria-expanded={action.sub ? subOpen() : undefined}
-                    onClick={() => (action.sub ? setSubOpen(!subOpen()) : ask(action.prompt))}
+                    onClick={() => (action.sub ? setSubOpen(!subOpen()) : ask(action.prompt, action.check))}
                   >
                     <Icon name={action.icon} size={14} />
                     {t(action.label)}

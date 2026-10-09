@@ -49,8 +49,9 @@ Weitere Dienste des Backends erreicht ein Modul über
 `account.backendFetch(path, init)` mit derselben Sitzung; eine abgelaufene
 Sitzung meldet die App ab. So spricht der KI-Agent mit dem KI-Proxy
 (`convex/ai.ts`, `GET /ai/status`, `POST /ai/chat`): Der Proxy prüft die
-Sitzung, setzt das Modell (`OPENROUTER_MODEL`) und den Key
-(`OPENROUTER_API_KEY`, beide nur als Convex-Umgebungsvariablen) und reicht
+Sitzung, setzt das Modell (`OPENROUTER_MODEL`, für Faktenchecks
+`OPENROUTER_CHECK_MODEL`) und den Key (`OPENROUTER_API_KEY`, alle nur als
+Convex-Umgebungsvariablen) und reicht
 den Stream von OpenRouter unverändert durch. Diese Anfragen sind kein Sync:
 Der Agent braucht Klartext, der Proxy speichert nichts davon.
 

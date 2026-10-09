@@ -69,6 +69,8 @@ export interface SendOptions {
   job?: string;
   /** Context for the model only, never shown. */
   hint?: string;
+  /** A fact check: this turn runs on the provider's check model. */
+  check?: boolean;
 }
 
 export interface ChatQuote {

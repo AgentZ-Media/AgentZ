@@ -10,7 +10,7 @@ import type { AgentThread, AgentTool } from "../../lib/agent/types";
 import { createSessionTools, existingFolder, ideaNotes, type IdeaBoardRef, type SessionToolHost } from "../../lib/agent/sessionTools";
 import { agentSettings } from "../agentSettings";
 import { applyBlocks, liveBlocks, readSelection, revealBlock, targetIndex } from "../../components/Agent/editorBridge";
-import { ensureModels, getProvider, resolveModel } from "./provider";
+import { ensureModels, getProvider, resolveCheckModel, resolveModel } from "./provider";
 import { chatInstructions, currentPace, sessionPreamble } from "./instructions";
 import { applyEvents, createEventBuffer, finishStreaming, localId, memoryItem, undoMemoryChange } from "./chatItems";
 import { byChat, byScript, chatsChanged } from "./registry";
@@ -282,7 +282,9 @@ export function createChat(source: ChatSource): ChatSession {
         const list = await ensureModels();
         // Deleted or reset while preparing: no hidden turn afterwards.
         if (!live() || discarded) return;
-        const model = resolveModel(list, agentSettings.model());
+        // A fact check runs this one turn on the check model; the next
+        // message goes back to the chat model (same thread, same history).
+        const model = options?.check ? resolveCheckModel(list, agentSettings.model()) : resolveModel(list, agentSettings.model());
         const active = await ensureThread();
         if (!live() || discarded) return;
         let input = options?.instruction?.trim() || clean;

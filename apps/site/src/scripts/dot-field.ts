@@ -59,7 +59,6 @@ export function startDotField(canvas: HTMLCanvasElement, scenes: Scene[], reduce
   // Intro: the page opens on one giant dot and zooms out until it is one
   // small dot of a cluster, and the cluster one dot of the suite Z.
   const intro = { on: false, ready: false, p: 0, last: 0, dur: 1, fast: false, focus: null as Actor | null, accentUntil: 0, done: () => {} };
-  const HOLD = 0.2;
 
   function resize() {
     dpr = Math.min(window.devicePixelRatio || 1, 2);
@@ -174,7 +173,7 @@ export function startDotField(canvas: HTMLCanvasElement, scenes: Scene[], reduce
         }
         intro.focus = best;
         const far = Math.max(...b.actors.map((a) => Math.hypot(a.x - best!.x, a.y - best!.y)), 1);
-        for (const actor of b.actors) actor.delay = 0.04 + (Math.hypot(actor.x - best!.x, actor.y - best!.y) / far) * 0.7;
+        for (const actor of b.actors) actor.delay = 0.04 + (Math.hypot(actor.x - best!.x, actor.y - best!.y) / far) * 0.5;
         intro.ready = true;
         intro.last = time;
       }
@@ -223,11 +222,14 @@ export function startDotField(canvas: HTMLCanvasElement, scenes: Scene[], reduce
     intro.last = time;
     intro.p = Math.min(1, intro.p + (dt / intro.dur) * (intro.fast ? 7 : 1));
     if (intro.p >= 1) { finishIntro(time); return null; }
+    // The page fades in while the camera settles on the standing Z.
+    if (intro.p >= 0.6) intro.done();
     const f = intro.focus;
     const z0 = (Math.min(width, height) * 0.36) / Math.max(1, f.r);
     const pop = clamp01(intro.p / 0.08);
-    const zt = clamp01((intro.p - HOLD) / (1 - HOLD));
-    const ze = zt < 0.5 ? 4 * zt ** 3 : 1 - (-2 * zt + 2) ** 3 / 2;
+    // Moves from the first frame and only eases out at the end.
+    const zt = intro.p;
+    const ze = zt + zt ** 2 - zt ** 3;
     const z = Math.exp(Math.log(z0) * (1 - ze));
     const cx = width / 2 + (f.x - width / 2) * ze;
     const cy = height / 2 + (f.y - height / 2) * ze;
@@ -313,7 +315,7 @@ export function startDotField(canvas: HTMLCanvasElement, scenes: Scene[], reduce
 
   const skip = () => { intro.fast = true; };
   return {
-    /** Plays the zoom-out intro once; resolves when the Z stands. */
+    /** Plays the zoom-out intro once; resolves as soon as the Z stands. */
     intro(ms: number) {
       if (reducedMotion) return Promise.resolve();
       intro.on = true; intro.dur = ms;

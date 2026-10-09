@@ -28,10 +28,13 @@ function packageOwners(root) {
   return names;
 }
 
+// Web apps without a desktop host: only the design system.
+const WEB_APPS = new Set(["apps/site", "apps/bench"]);
+
 function allowed(source, target) {
   if (source === target) return true;
   if (source === "packages/design") return false;
-  if (source === "packages/kit" || source === "apps/site") return target === "packages/design";
+  if (source === "packages/kit" || WEB_APPS.has(source)) return target === "packages/design";
   if (source === "packages/desktop" || source.startsWith("modules/")) {
     return ["packages/kit", "packages/design"].includes(target);
   }
@@ -89,7 +92,7 @@ export function createArchitectureRule(root) {
         const result = ts.resolveModuleName(clean, filename, compilerOptions(filename), ts.sys).resolvedModule;
         if (result) resolved = result.resolvedFileName;
         const tauri = clean.startsWith("@tauri-apps/") || /(?:^|\/)@tauri-apps\//.test(slash(resolved ?? ""));
-        if (tauri && (source === "apps/site" || (!source.startsWith("apps/") && source !== "packages/desktop"))) {
+        if (tauri && (WEB_APPS.has(source) || (!source.startsWith("apps/") && source !== "packages/desktop"))) {
           context.report({ node, messageId: "tauri", data: { source } });
           return;
         }
@@ -105,7 +108,7 @@ export function createArchitectureRule(root) {
           if (clean.startsWith("@agentz/")) context.report({ node, messageId: "unknown", data: { target: clean } });
           return;
         }
-        const configException = /^\w+\/[^/]+\/vitest\.config\.[cm]?[jt]s$/.test(slash(path.relative(root, filename)))
+        const configException = /^\w+\/[^/]+\/vitest(?:\.\w+)?\.config\.[cm]?[jt]s$/.test(slash(path.relative(root, filename)))
           && clean === "@agentz/vitest-preset";
         if (!configException && !allowed(source, target)) {
           context.report({ node, messageId: "boundary", data: { source, target } });

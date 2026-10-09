@@ -211,11 +211,14 @@ Persönlicher Schreib-Agent mit eigenem Namen, Look und Persona.
   - `agentz`: der Harness in `lib/agent/openrouter/` über den KI-Proxy der
     Suite (`apps/site/convex/ai.ts`, `/ai/status` und `/ai/chat`, Sitzung per
     `account.backendFetch` aus dem Kit). Der Server hält den OpenRouter-Key
-    und legt das Modell fest (`OPENROUTER_MODEL`, heute
-    `google/gemini-3.8-flash`; App-Seite `openrouter/config.ts`, beide gleich
-    halten). Die Oberfläche nennt dieses Modell nirgends und bietet keine
-    Modellwahl (`agentStore.showsModel()`). Offen nur für freigeschaltete
-    Konten (Convex-Variable `AI_ACCESS`, siehe [`cloud-sync.md`](../../docs/cloud-sync.md)), für sie
+    und legt die Modelle fest (`OPENROUTER_MODEL`, heute
+    `openai/gpt-6.1-sol`, und für Faktenchecks `OPENROUTER_CHECK_MODEL`,
+    heute `openai/gpt-6-luna`; Logik in `convex/aiModels.ts`, App-Seite
+    `openrouter/config.ts`, beide gleich halten). Eine App darf nur das
+    Prüfmodell anfordern, alles andere läuft auf dem Chat-Modell. Die
+    Oberfläche nennt diese Modelle nirgends und bietet keine Modellwahl
+    (`agentStore.showsModel()`). Offen nur für freigeschaltete Konten
+    (Convex-Variable `AI_ACCESS`, siehe [`cloud-sync.md`](../../docs/cloud-sync.md)), für sie
     kostenlos; Limits gehören später in `ai.ts`. Allen anderen zeigt die
     Auswahl „Bald verfügbar“ (`agentStore.hostedAccess`, Fehlercode
     `AGENT_NOT_ENABLED`). Die Freischaltung fragt die Anbindungswahl
@@ -228,6 +231,16 @@ Persönlicher Schreib-Agent mit eigenem Namen, Look und Persona.
     das Standardmodell steht als „Empfohlen“ oben. Ausgewählt wird in
     `components/Agent/ModelSelect.tsx` (eigenes Popover mit Suche, auch für
     Codex in den Einstellungen).
+- **Prüfmodell für Faktenchecks.** Jede Anbindung meldet über
+  `AgentProvider.checkModel()` ein leichteres Modell (Codex `gpt-6-luna`,
+  Harness `OPENROUTER_CHECK_MODEL`, gehostet aus `/ai/status`; fehlt es,
+  gilt das Chat-Modell). Es läuft nur für den einzelnen Faktencheck: Klick
+  auf eine prüfbare Stelle (`checkClaim`), Rechtsklick „Faktencheck“ und
+  Auftrag „Fakten prüfen“ im Chat (`SendOptions.check`). Die nächste
+  Nachricht im selben Chat läuft wieder auf dem Chat-Modell. Der Harness
+  merkt sich pro Antwort das Modell und gibt `reasoning_details` nur an
+  dasselbe Modell zurück. Kein eigener Schalter in den Einstellungen; gewählt
+  mit dem Benchmark (`apps/bench`).
 - **Parität (Pflicht).** Jede Anbindung kann genau dasselbe. Instruktionen
   (`lib/agent/prompt.ts`, `stores/agent/instructions.ts`), Tools
   (`tools.ts`, `sessionTools.ts`), Aufträge, Gedächtnis und Lernen entstehen
@@ -361,6 +374,15 @@ Persönlicher Schreib-Agent mit eigenem Namen, Look und Persona.
   merken sich die Zeile pro Skript auf dem Gerät
   (`script.<id>.claims_resolved` in `app_state`), damit sie nicht wieder
   markiert wird.
+- **Benchmark** (`modules/scriptz/bench/`, `pnpm bench:agent`): eine Demo
+  der App, die von selbst läuft. Demo-Profile (`bench/profiles/`, eigens
+  geschriebene Skripte, nie echte Nutzerdaten) werden pro Profil, Modell und
+  Wiederholung in eine frische Datenbank mit den echten Migrationen gesät;
+  die Aufgaben (`bench/tasks.ts`) laufen über Chat-Store, Faktencheck einer
+  Zeile (`checkClaim`) und Lernen (`learnScript`). Nur der Provider ist
+  ersetzt (OpenRouter-Harness mit dem getesteten Modell). Ergebnisse hängen
+  an `apps/bench/data/scriptz-agent.json`. Eine neue Fähigkeit des Agenten
+  bekommt dort eine Aufgabe.
 - **Kontext Länge.** Der Skript-Chat bekommt Längenziel und Sprechtempo in
   den Instruktionen, Sitzungen vor jeder Nachricht eine Zeile `[Session: ...]`
   mit Ordner, Ziel, Wortbudget, Entwürfen samt gemessener Laufzeit und

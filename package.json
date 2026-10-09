@@ -18,6 +18,9 @@
     "dev:site": "pnpm --filter @agentz/site dev",
     "dev:site:backend": "pnpm --filter @agentz/site dev:backend",
     "build:site": "pnpm --filter @agentz/site build",
+    "dev:bench": "pnpm --filter @agentz/bench dev",
+    "build:bench": "pnpm --filter @agentz/bench build",
+    "bench:agent": "pnpm --filter @agentz/scriptz bench:agent",
     "check:astro": "node tooling/checks/astro.mjs",
     "new-app": "node tooling/new-app/index.mjs create",
     "remove-app": "node tooling/new-app/index.mjs remove"
