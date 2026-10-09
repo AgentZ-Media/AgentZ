@@ -1,6 +1,7 @@
 import { For, Show, createEffect, createMemo } from "solid-js";
-import { Icon, Row, SectionHead, Switch, confirmDialog } from "@agentz/kit/ui";
+import { Row, SectionHead, Switch, confirmDialog } from "@agentz/kit/ui";
 import { pushToast } from "@agentz/kit/stores";
+import { ModelSelect } from "./ModelSelect";
 import { ProviderPicker, ProviderSetup } from "./ProviderSetup";
 import { t } from "../../i18n";
 import { resolveLearnStage } from "../../lib/agent/learnStage";
@@ -40,40 +41,6 @@ export function EffortControl(props: { model: AgentModel | undefined; value: Age
         )}
       </For>
     </div>
-  );
-}
-
-export function ModelSelect(props: { value: string; onChange(v: string): void; label: string; sameLabel?: string }) {
-  const models = () => agentStore.models();
-  const fallback = () => models().find((m) => m.isDefault) ?? models()[0];
-  return (
-    <span class="ag-model-ctl">
-      <select
-        class="field ag-select"
-        aria-label={props.label}
-        value={props.value}
-        disabled={models().length === 0}
-        onChange={(e) => props.onChange(e.currentTarget.value)}
-      >
-        <option value="">
-          {props.sameLabel ?? (fallback()
-            ? t("agent.prefs.model.default", { label: fallback()!.label })
-            : t(agentStore.modelsLoading() ? "agent.prefs.model.loading" : "agent.prefs.model.auto"))}
-        </option>
-        <For each={models()}>{(model) => <option value={model.id}>{model.label}</option>}</For>
-      </select>
-      <button
-        type="button"
-        class="btn icon"
-        title={t("agent.prefs.model.refresh")}
-        aria-label={t("agent.prefs.model.refresh")}
-        // Off means off: reloading would start the provider.
-        disabled={agentStore.modelsLoading() || !agentSettings.enabled()}
-        onClick={() => void agentStore.refreshModels().catch(() => {})}
-      >
-        <Icon name="refresh" size={14} />
-      </button>
-    </span>
   );
 }
 
@@ -167,9 +134,11 @@ export function AgentSettings(props: { onClose(): void }) {
             </div>
           </Show>
         </div>
-        <Row label={t("agent.prefs.model")} help={t("agent.prefs.model.help")}>
-          <ModelSelect value={agentSettings.model()} onChange={(v) => void agentSettings.setModel(v)} label={t("agent.prefs.model")} />
-        </Row>
+        <Show when={agentStore.showsModel()}>
+          <Row label={t("agent.prefs.model")} help={t("agent.prefs.model.help")}>
+            <ModelSelect value={agentSettings.model()} onChange={(v) => void agentSettings.setModel(v)} label={t("agent.prefs.model")} />
+          </Row>
+        </Show>
         <Row label={t("agent.prefs.effort")} help={t("agent.prefs.effort.help")}>
           <EffortControl model={chatModel()} value={agentSettings.effort()} onChange={(v) => void agentSettings.setEffort(v)} label={t("agent.prefs.effort")} />
         </Row>
@@ -182,14 +151,16 @@ export function AgentSettings(props: { onClose(): void }) {
         <Row label={t("agent.prefs.learnChat")} help={t("agent.prefs.learnChat.help")}>
           <Switch checked={agentSettings.learnFromChat()} onChange={(v) => void agentSettings.setLearnFromChat(v)} label={t("agent.prefs.learnChat")} />
         </Row>
-        <Row label={t("agent.prefs.learnModel")} help={t("agent.prefs.learnModel.help")}>
-          <ModelSelect
-            value={agentSettings.learnModel()}
-            onChange={(v) => void agentSettings.setLearnModel(v)}
-            label={t("agent.prefs.learnModel")}
-            sameLabel={t("agent.prefs.learnModel.same")}
-          />
-        </Row>
+        <Show when={agentStore.showsModel()}>
+          <Row label={t("agent.prefs.learnModel")} help={t("agent.prefs.learnModel.help")}>
+            <ModelSelect
+              value={agentSettings.learnModel()}
+              onChange={(v) => void agentSettings.setLearnModel(v)}
+              label={t("agent.prefs.learnModel")}
+              sameLabel={t("agent.prefs.learnModel.same")}
+            />
+          </Row>
+        </Show>
         <Row label={t("agent.prefs.learnEffort")}>
           <EffortControl model={learnModel()} value={agentSettings.learnEffort()} onChange={(v) => void agentSettings.setLearnEffort(v)} label={t("agent.prefs.learnEffort")} />
         </Row>

@@ -101,7 +101,7 @@ export function AgentComposer(props: AgentComposerProps) {
           </button>
         </Show>
         <span class="am-sp" />
-        <Show when={!props.compact && agentStore.resolveModel()}>
+        <Show when={!props.compact && agentStore.showsModel() && agentStore.resolveModel()}>
           {(model) => <span class="am-model" title={t("agentMode.composer.modelTitle")}>{model().label}</span>}
         </Show>
         <Show

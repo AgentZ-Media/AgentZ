@@ -16,6 +16,7 @@
 // Requests go through a transport (transport.ts): the hosted suite backend
 // or OpenRouter with the user's own key. The harness does not care which.
 
+import { localeCompare } from "@agentz/kit/i18n";
 import { obj, type Obj } from "../toolArgs";
 import {
   DEFAULT_EFFORT,
@@ -441,15 +442,30 @@ export class OpenRouterProvider implements AgentProvider {
     }
   }
 
+  /** The checked model as the recommended default; with an own key also
+   *  every other model of the catalog, the default first, then by name. A
+   *  catalog that does not load leaves the default alone. */
   async listModels(): Promise<AgentModel[]> {
-    return [{
-      id: this.model.id,
-      label: this.model.label,
+    const fallback = this.model;
+    let catalog: TransportModel[] = [];
+    if (this.transport.models) {
+      catalog = await this.transport.models().catch((error: unknown) => {
+        console.warn("[agent] loading the OpenRouter models failed", error);
+        return [];
+      });
+    }
+    const recommended = catalog.find((m) => m.id === fallback.id) ?? fallback;
+    const others = catalog
+      .filter((m) => m.id !== recommended.id)
+      .sort((a, b) => localeCompare(a.label, b.label));
+    return [recommended, ...others].map((m) => ({
+      id: m.id,
+      label: m.label,
       description: "",
       efforts: [...OPENROUTER_EFFORTS],
       defaultEffort: DEFAULT_EFFORT,
-      isDefault: true,
-    }];
+      isDefault: m.id === recommended.id,
+    }));
   }
 
   checkModel(): AgentModel | null {

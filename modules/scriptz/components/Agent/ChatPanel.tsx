@@ -85,7 +85,7 @@ function PanelHead(props: { running: boolean; onClose(): void; session?: ChatSes
     const state = agentStore.status().state;
     if (state === "checking") return t("agent.status.checking");
     if (state !== "ready") return t("agent.status.offline");
-    return agentStore.resolveModel()?.label ?? t("agent.status.ready");
+    return (agentStore.showsModel() && agentStore.resolveModel()?.label) || t("agent.status.ready");
   };
   const ready = () => agentSettings.enabled() && agentStore.status().state === "ready";
   // While the answer streams in, the face talks; while tools run, it thinks.

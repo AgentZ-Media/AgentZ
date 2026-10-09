@@ -215,8 +215,10 @@ Persönlicher Schreib-Agent mit eigenem Namen, Look und Persona.
     `openai/gpt-6.1-sol`, und für Faktenchecks `OPENROUTER_CHECK_MODEL`,
     heute `openai/gpt-6-luna`; Logik in `convex/aiModels.ts`, App-Seite
     `openrouter/config.ts`, beide gleich halten). Eine App darf nur das
-    Prüfmodell anfordern, alles andere läuft auf dem Chat-Modell. Offen nur für freigeschaltete Konten (Convex-Variable
-    `AI_ACCESS`, siehe [`cloud-sync.md`](../../docs/cloud-sync.md)), für sie
+    Prüfmodell anfordern, alles andere läuft auf dem Chat-Modell. Die
+    Oberfläche nennt diese Modelle nirgends und bietet keine Modellwahl
+    (`agentStore.showsModel()`). Offen nur für freigeschaltete Konten
+    (Convex-Variable `AI_ACCESS`, siehe [`cloud-sync.md`](../../docs/cloud-sync.md)), für sie
     kostenlos; Limits gehören später in `ai.ts`. Allen anderen zeigt die
     Auswahl „Bald verfügbar“ (`agentStore.hostedAccess`, Fehlercode
     `AGENT_NOT_ENABLED`). Die Freischaltung fragt die Anbindungswahl
@@ -224,7 +226,11 @@ Persönlicher Schreib-Agent mit eigenem Namen, Look und Persona.
     Agenten, nie bei ausgeblendetem.
   - `openrouter`: derselbe Harness direkt gegen `openrouter.ai` mit dem
     eigenen Key des Nutzers (Schlüsselbund `agent.openrouter-key`, nie in
-    Settings oder Sync), auch ohne Konto.
+    Settings oder Sync), auch ohne Konto. Die Modellwahl lädt den Katalog
+    live von `/models` (nur Textmodelle mit Tool-Aufrufen, ohne `:batch`, `parseModels`),
+    das Standardmodell steht als „Empfohlen“ oben. Ausgewählt wird in
+    `components/Agent/ModelSelect.tsx` (eigenes Popover mit Suche, auch für
+    Codex in den Einstellungen).
 - **Prüfmodell für Faktenchecks.** Jede Anbindung meldet über
   `AgentProvider.checkModel()` ein leichteres Modell (Codex `gpt-6-luna`,
   Harness `OPENROUTER_CHECK_MODEL`, gehostet aus `/ai/status`; fehlt es,

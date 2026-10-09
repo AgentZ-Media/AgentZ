@@ -24,6 +24,9 @@ export interface TransportCheck {
 
 export interface OpenRouterTransport {
   check(): Promise<TransportCheck>;
+  /** Models the user may choose from. Absent where the server decides the
+   *  model (hosted); the harness then offers only the checked one. */
+  models?(): Promise<TransportModel[]>;
   /** One chat completion request. Resolves with the response body (SSE when
    *  `body.stream`); throws `TransportError` for a non-2xx answer. */
   complete(body: Record<string, unknown>, signal: AbortSignal): Promise<Response>;
@@ -132,6 +135,24 @@ export function keyHint(key: string): string {
   return `…${key.trim().slice(-4)}`;
 }
 
+/** The chat models of OpenRouter's catalog the harness can run: text out
+ *  and tool calls (every agent turn needs tools), answered live (no
+ *  `:batch` variants, those wait for a batch run). */
+export function parseModels(body: unknown): TransportModel[] {
+  const list = obj(body).data;
+  const models: TransportModel[] = [];
+  for (const raw of Array.isArray(list) ? list : []) {
+    const entry = obj(raw);
+    if (typeof entry.id !== "string" || !entry.id || entry.id.endsWith(":batch")) continue;
+    const params = entry.supported_parameters;
+    if (Array.isArray(params) && !params.includes("tools")) continue;
+    const output = obj(entry.architecture).output_modalities;
+    if (Array.isArray(output) && !output.includes("text")) continue;
+    models.push({ id: entry.id, label: typeof entry.name === "string" && entry.name ? entry.name : entry.id });
+  }
+  return models;
+}
+
 export function keyTransport(deps: KeyDeps): OpenRouterTransport {
   const fetcher = deps.fetch ?? ((input: string, init: RequestInit) => fetch(input, init));
   const headers = (key: string) => ({
@@ -153,14 +174,21 @@ export function keyTransport(deps: KeyDeps): OpenRouterTransport {
         return { state: { state: "error", message: error instanceof Error ? error.message : String(error) }, model: null, checkModel: null };
       }
     },
+    async models() {
+      const key = (await deps.key())?.trim();
+      if (!key) return [];
+      const response = await send(`${OPENROUTER_API}/models`, { headers: headers(key) }, fetcher);
+      if (!response.ok) throw errorFor(response.status, await detailOf(response));
+      return parseModels(await response.json());
+    },
     async complete(body, signal) {
       const key = (await deps.key())?.trim();
       if (!key) throw new TransportError(AGENT_KEY_INVALID, 401);
       const response = await send(`${OPENROUTER_API}/chat/completions`, {
         method: "POST",
         headers: headers(key),
-        // Only the two models of the harness; anything else runs on the chat model.
-        body: JSON.stringify({ ...body, model: body.model === CHECK_MODEL.id ? CHECK_MODEL.id : DEFAULT_MODEL.id, ...(body.stream ? { usage: { include: true } } : {}) }),
+        // The user's choice (or the check model of a fact check); empty = the chat model.
+        body: JSON.stringify({ ...body, model: typeof body.model === "string" && body.model ? body.model : DEFAULT_MODEL.id, ...(body.stream ? { usage: { include: true } } : {}) }),
         signal,
       }, fetcher);
       if (response.status === 401) throw new TransportError(AGENT_KEY_INVALID, 401);
