@@ -30,19 +30,27 @@ of the app that runs on its own:
   `/api/v1/generation`), fixed checks and a blind rating by a judge model.
 
 Runs are appended to `data/scriptz-agent.json`, so every new model adds to
-the comparison. By default the page only counts runs of each task's newest
-prompt state (instructions, tool schemas and message).
+the comparison; a run of one profile keeps the other profiles' descriptions.
+By default the page only counts runs of each task's current prompt state
+(the app's prompt and tool sources, the profile and the conversation's
+requests). The ranking compares only the tasks every shown model has
+finished and marks models with gaps.
+
+Tasks that write memory run one after another in their world, so each sees
+only its own changes. The judge gets the earlier turns of a conversation
+(the idea board for a draft, the draft for a revision).
 
 ## Options
 
 | Variable | Default | |
 |---|---|---|
 | `BENCH_MODELS` | the app's model | OpenRouter ids, comma separated |
-| `BENCH_RUNS` | `2` | repetitions per model |
+| `BENCH_RUNS` | `3` | repetitions per model |
 | `BENCH_PROFILES` | all | profile ids (`agentz`, `pflege`) |
-| `BENCH_TASKS` | all | task ids, e.g. `agentz-hook,agentz-fact` |
+| `BENCH_TASKS` | all | task ids, e.g. `agentz-hook,agentz-fact`; a follow-up turn brings the turns it builds on |
 | `BENCH_JUDGE` | `anthropic/claude-opus-5.5` | judge model, `off` to skip |
 | `BENCH_REJUDGE` | | `1`: only rate stored runs without a rating |
+| `BENCH_REHASH` | | `1`: stored runs take the current prompt state (after changes that do not touch the prompts) |
 
 The OpenRouter key comes from `OPENROUTER_API_KEY`, `.env.local` in the
 repository root or `~/.agentz-secrets/openrouter-api-key`.

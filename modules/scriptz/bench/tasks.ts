@@ -8,7 +8,6 @@ import { formatRange } from "../lib/lengthGoal";
 import type { ChatItem } from "../lib/agent/chats";
 import { draftRuntime, parseDraftBody, splitDraftSegments, textWithoutDrafts } from "../lib/agent/drafts";
 import { jobInstruction, voiceInstruction, type AgentJobId } from "../lib/agent/jobs";
-import type { MemoryEntry } from "../lib/agent/memory";
 import type { Claim, Proposal } from "../lib/agent/proposals";
 import type { AgentBlock } from "../lib/agent/scriptText";
 import type { MemoryChange } from "../lib/agent/tools";
@@ -32,9 +31,6 @@ export interface TaskResult {
   memoryChanges?: MemoryChange[];
   /** Tool calls in order, from the model's responses (web search too). */
   toolCalls: ToolCall[];
-  /** Memory before and after the task (database of the world). */
-  memoryBefore: MemoryEntry[];
-  memoryAfter: MemoryEntry[];
   /** Items of the turn before in the same conversation (revisions). */
   previousItems: ChatItem[];
 }
@@ -339,8 +335,9 @@ export const TASKS: Task[] = [
     request: () => ({ kind: "chat", text: "Merk dir bitte: Axel sagt in Chefsketchen nie „Digga“ oder sonstige Jugendsprache, das passt nicht zu ihm." }),
     rubric: "Der Nutzer korrigiert eine dauerhafte Eigenschaft von Axel. Richtig ist ein Gedächtniseintrag für die Figur AXEL im Ordner AgentZ (oder ein passender bestehender Eintrag wird ergänzt), danach eine sehr kurze Bestätigung. Keine Vorschläge, keine langen Erklärungen.",
     checks: (r, w) => {
-      const before = new Map(r.memoryBefore.map((e) => [e.id, e.content]));
-      const changed = r.memoryAfter.filter((e) => before.get(e.id) !== e.content);
+      // Only this turn's changes (the memory notes in its chat items), not
+      // whatever else changed in the world's memory.
+      const changed = r.items.flatMap((i) => (i.kind === "memory" ? [i.entry] : []));
       const hit = changed.find((e) => /digga|jugendsprache/i.test(e.content));
       const text = answerText(r.items);
       return [

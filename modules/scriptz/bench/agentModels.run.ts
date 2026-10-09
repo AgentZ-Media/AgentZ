@@ -10,9 +10,10 @@
 //   BENCH_MODELS=google/gemini-3.8-flash,openai/gpt-6.1-sol pnpm bench:agent
 //
 // Environment: BENCH_MODELS (OpenRouter ids, default: the app's model),
-// BENCH_RUNS (repetitions, default 2), BENCH_PROFILES and BENCH_TASKS (ids,
-// default all), BENCH_JUDGE (judge model, default anthropic/claude-opus-5.5,
-// "off" to skip), BENCH_REJUDGE=1 (only rate stored runs without a rating),
+// BENCH_RUNS (repetitions, default 3), BENCH_PROFILES and BENCH_TASKS (ids,
+// default all; a chosen task brings the earlier turns of its conversation),
+// BENCH_JUDGE (judge model, default anthropic/claude-opus-5.5, "off" to
+// skip), BENCH_REJUDGE=1 (only rate stored runs without a rating),
 // BENCH_REHASH=1 (stored runs take the current prompt state, after changes
 // that do not touch the prompts).
 // Key: OPENROUTER_API_KEY, else .env.local in the repository root, else
@@ -32,9 +33,8 @@ import { describe, it, vi } from "vitest";
 import { applyResolvedLanguage } from "@agentz/kit/i18n";
 import { OPENROUTER_EFFORTS, OPENROUTER_MODEL } from "../lib/agent/openrouter/config";
 import { OpenRouterProvider } from "../lib/agent/openrouter/provider";
-import type { OpenRouterTransport } from "../lib/agent/openrouter/transport";
+import { TransportError, type OpenRouterTransport } from "../lib/agent/openrouter/transport";
 import type { ChatItem } from "../lib/agent/chats";
-import { listMemory, type MemoryEntry } from "../lib/agent/memory";
 import type { MemoryChange } from "../lib/agent/tools";
 import { DEFAULT_EFFORT } from "../lib/agent/types";
 import { memoryThreads } from "../lib/agent/__tests__/openrouterFakes";
@@ -197,14 +197,59 @@ interface TaskClock { task: string; startedAt: number }
 const clocks = new WeakMap<World, Map<string, TaskClock>>();
 const logs = new WeakMap<World, LiveStep[]>();
 
+const abortError = () => new DOMException("aborted", "AbortError");
+
+/** Settles like `promise`, or rejects as soon as the signal aborts. The test
+ *  DOM replaces AbortSignal with one Node's fetch rejects, so the signal
+ *  cannot go to fetch itself; this keeps the harness' turn timeout and
+ *  interrupt working all the same. */
+function untilAborted<T>(promise: Promise<T>, signal: AbortSignal): Promise<T> {
+  if (signal.aborted) return Promise.reject(abortError());
+  return new Promise<T>((resolve, reject) => {
+    const stop = () => reject(abortError());
+    signal.addEventListener("abort", stop, { once: true });
+    promise.then(resolve, reject).finally(() => signal.removeEventListener("abort", stop));
+  });
+}
+
+/** A body that errors when the signal aborts, as a fetch body would. */
+function abortable(source: ReadableStream<Uint8Array>, signal: AbortSignal): ReadableStream<Uint8Array> {
+  const reader = source.getReader();
+  let open = true;
+  return new ReadableStream<Uint8Array>({
+    start(controller) {
+      const stop = () => {
+        if (!open) return;
+        open = false;
+        controller.error(abortError());
+        void reader.cancel().catch(() => {});
+      };
+      if (signal.aborted) stop();
+      else signal.addEventListener("abort", stop, { once: true });
+    },
+    async pull(controller) {
+      const { value, done } = await reader.read();
+      if (!open) return;
+      if (done) {
+        open = false;
+        controller.close();
+      } else controller.enqueue(value);
+    },
+    cancel(reason) {
+      open = false;
+      return reader.cancel(reason);
+    },
+  });
+}
+
 /** Same request shaping as the hosted proxy (apps/site/convex/ai.ts,
- *  upstreamBody) with the world's model; logs every response. */
+ *  upstreamBody) with the world's model; logs every request. Errors behave
+ *  like the app's transports: TransportError with the HTTP status (429 and
+ *  5xx are retried by the harness, status 0 for the network). */
 function benchTransport(): OpenRouterTransport {
   return {
     check: async () => ({ state: { state: "ready", account: "bench" }, model: null, checkModel: null }),
-    // The signal is not passed on: the test DOM replaces AbortSignal with one
-    // that Node's fetch rejects. The harness only aborts on its turn timeout.
-    async complete(body) {
+    async complete(body, signal) {
       const ctx = context.getStore();
       if (!ctx?.task) throw new Error("request outside a task");
       const world = ctx.world;
@@ -214,15 +259,33 @@ function benchTransport(): OpenRouterTransport {
       if (body.stream) upstream.usage = { include: true };
       if (Array.isArray(body.plugins)) upstream.plugins = [{ id: "web", engine: "exa", max_results: 5 }];
       const sent = performance.now();
-      const response = await fetch(`${API}/chat/completions`, { method: "POST", headers, body: JSON.stringify(upstream) });
-      if (!response.ok || !response.body) throw new Error(`HTTP ${response.status}: ${(await response.text()).slice(0, 400)}`);
       const entry: LiveStep = {
         task: ctx.task, kind: body.stream ? "step" : "search", generationId: null, provider: null,
         atMs: Math.round(sent - startedAt), ms: 0, firstMs: null, draftAtMs: null, toolCalls: [], usage: null, billedUsd: null, error: null,
       };
       logs.get(world)?.push(entry);
+      const fail = (message: string) => {
+        entry.ms = Math.round(performance.now() - sent);
+        entry.error = message;
+      };
+      let response: Response;
+      try {
+        response = await untilAborted(fetch(`${API}/chat/completions`, { method: "POST", headers, body: JSON.stringify(upstream) }), signal);
+      } catch (error) {
+        if (signal.aborted) {
+          fail("aborted");
+          throw error;
+        }
+        fail(`network: ${error instanceof Error ? error.message : String(error)}`);
+        throw new TransportError("network", 0);
+      }
+      if (!response.ok || !response.body) {
+        const detail = (await response.text().catch(() => "")).slice(0, 300);
+        fail(`HTTP ${response.status}: ${detail}`);
+        throw new TransportError(detail || `request failed (${response.status})`, response.status);
+      }
       if (!body.stream) {
-        const json = obj(await response.json());
+        const json = obj(await untilAborted(response.json(), signal));
         entry.ms = Math.round(performance.now() - sent);
         entry.usage = obj(json.usage);
         entry.generationId = typeof json.id === "string" ? json.id : null;
@@ -230,8 +293,10 @@ function benchTransport(): OpenRouterTransport {
         entry.toolCalls.push({ name: "web_search", args: JSON.stringify({ query: obj(Array.isArray(body.messages) ? body.messages.at(-1) : null).content }) });
         return new Response(JSON.stringify(json), { status: 200 });
       }
-      const [forHarness, forLog] = response.body.tee();
-      entry.done = readStream(forLog, entry, sent, startedAt);
+      const [forHarness, forLog] = abortable(response.body, signal).tee();
+      entry.done = readStream(forLog, entry, sent, startedAt).catch(() => {
+        if (!entry.error) fail(signal.aborted ? "aborted" : "stream broke off");
+      });
       return new Response(forHarness, { status: 200, headers: { "Content-Type": "text/event-stream" } });
     },
   };
@@ -290,7 +355,6 @@ async function readStream(stream: ReadableStream<Uint8Array>, entry: StepLog, se
 
 interface Pending { task: Task; result: TaskResult; ms: number; status: "completed" | "failed"; error?: string }
 
-const memoryNow = (world: World) => context.run({ world, task: null }, () => listMemory()) as Promise<MemoryEntry[]>;
 
 /** Waits until a chat has loaded (its items come from the database). */
 async function ready(chat: ChatSession): Promise<void> {
@@ -305,8 +369,7 @@ async function runConversation(world: World, tasks: Task[]): Promise<Pending[]> 
   for (const task of tasks) {
     const clock: TaskClock = { task: task.id, startedAt: performance.now() };
     clocks.get(world)?.set(task.id, clock);
-    const memoryBefore = await memoryNow(world);
-    const result: TaskResult = { items: [], toolCalls: [], memoryBefore, memoryAfter: [], previousItems };
+    const result: TaskResult = { items: [], toolCalls: [], previousItems };
     let status: Pending["status"] = "completed";
     let error: string | undefined;
     try {
@@ -320,10 +383,12 @@ async function runConversation(world: World, tasks: Task[]): Promise<Pending[]> 
               : createChat({ kind: "script", scriptId: scriptId(world, first.script ?? ""), record: null });
             await ready(chat);
           }
-          const start = chat.items.length;
+          // New items by id: sending drops the reply chips of the turn before,
+          // so the list does not just grow at the end.
+          const before = new Set(chat.items.map((item) => item.id));
           await chat.send(request.text, request.quote, request.options);
           await chat.flush().catch(() => {});
-          result.items = clone(unwrap(chat.items).slice(start));
+          result.items = clone(unwrap(chat.items).filter((item) => !before.has(item.id)));
           const failure = result.items.find((i) => i.kind === "error");
           if (failure?.kind === "error") throw new Error(failure.message);
         } else if (request.kind === "claim") {
@@ -343,7 +408,6 @@ async function runConversation(world: World, tasks: Task[]): Promise<Pending[]> 
       error = e instanceof Error ? e.message : String(e);
     }
     const ms = Math.round(performance.now() - clock.startedAt);
-    result.memoryAfter = await memoryNow(world);
     out.push({ task, result, ms, status, error });
     previousItems = result.items;
     if (status === "failed") break;
@@ -357,13 +421,24 @@ async function runWorld(world: World): Promise<Pending[]> {
     return [...new Set(tasks.map((t) => t.conversation))].map((c) => tasks.filter((t) => t.conversation === c));
   };
   const first = await Promise.all(conversations(1).map((c) => runConversation(world, c)));
-  const second = await Promise.all(conversations(2).map((c) => runConversation(world, c)));
+  // Tasks that write memory one after another: each sees only its own changes.
+  const second: Pending[][] = [];
+  for (const c of conversations(2)) second.push(await runConversation(world, c));
   return [...first, ...second].flat();
 }
 
+/** Tasks before `task` in its conversation (the turns it builds on). */
+function predecessors(task: Task): Task[] {
+  const same = TASKS.filter((t) => t.profile === task.profile && t.conversation === task.conversation);
+  return same.slice(0, same.indexOf(task));
+}
+
+/** BENCH_TASKS, plus the earlier turns every chosen task builds on: a
+ *  revision never runs without its draft. */
 function selected(task: Task): boolean {
   const only = process.env.BENCH_TASKS?.split(",").map((t) => t.trim()).filter(Boolean);
-  return !only?.length || only.includes(task.id);
+  if (!only?.length) return true;
+  return TASKS.some((t) => only.includes(t.id) && (t === task || predecessors(t).includes(task)));
 }
 
 // ------------------------------------------------------- cost and judging
@@ -420,7 +495,20 @@ function describeRun(run: BenchRun, wpm: number): string {
 
 const JUDGE_SYSTEM = `Du bewertest die Arbeit eines KI-Schreibpartners in ScriptZ, einer App für kurze Comedy-Skripte (TikTok, Reels, YouTube). Du siehst den Nutzer, seinen Ordner mit Beispielskripten, das Gedächtnis des Agenten, den Auftrag und das, was der Nutzer in der App sieht. Achte besonders darauf, ob Stil, Figurenstimmen und Regeln aus den Daten des Nutzers getroffen werden. Bewerte streng und konsistent von 1 bis 10 (10 = besser geht es kaum, 5 = brauchbar mit klaren Schwächen, 1 = unbrauchbar). Antworte nur mit JSON: {"score": <Zahl>, "reason_de": "<1-2 Sätze auf Deutsch>", "reason_en": "<dieselbe Begründung auf Englisch>"}.`;
 
-function judgePrompt(task: Task, run: BenchRun, request: string): string {
+/** The turns before `run` in its conversation and world, as the user saw
+ *  them: "Schreib Nummer 2" needs the idea board, a revision its draft. */
+function historyFor(run: BenchRun, all: readonly BenchRun[], tasks: Library["tasks"]): string {
+  const task = TASKS.find((t) => t.id === run.task);
+  if (!task) return "";
+  const prefix = run.id.slice(0, run.id.length - run.task.length);
+  const wpm = Number(PROFILES.find((p) => p.id === task.profile)?.settings.dialog_wpm ?? 160);
+  return predecessors(task).map((before) => {
+    const earlier = all.find((r) => r.id === `${prefix}${before.id}`);
+    return earlier ? `Nutzer: ${requestText(tasks, before.id)}\n${describeRun(earlier, wpm)}` : "";
+  }).filter(Boolean).join("\n\n");
+}
+
+function judgePrompt(task: Task, run: BenchRun, request: string, history: string): string {
   const profile = PROFILES.find((p) => p.id === task.profile)!;
   const folderKey = task.folder ?? profile.scripts.find((s) => s.key === task.script)?.folder;
   const folder = profile.folders.find((f) => f.key === folderKey);
@@ -433,22 +521,28 @@ function judgePrompt(task: Task, run: BenchRun, request: string): string {
     `Ordner "${folder?.name}" (Längenziel ${folder?.minSec ?? "-"}-${folder?.maxSec ?? "-"} s). Beispielskripte:\n${examples.map((s) => `"${s.title}":\n${s.body}`).join("\n\n")}`,
     `Gedächtnis des Agenten:\n${memory.join("\n")}`,
     open ? `Betroffenes Skript "${open.title}":\n${open.body}` : "",
+    history ? `Bisheriger Verlauf dieses Gesprächs (zum Verständnis, nicht bewerten):\n${history}` : "",
     `Auftrag (so sieht ihn der Nutzer): ${request}`,
     `Worauf es ankommt: ${task.rubric}`,
     `Ergebnis:\n${describeRun(run, Number(profile.settings.dialog_wpm ?? 160))}`,
   ].filter(Boolean).join("\n\n");
 }
 
-async function judge(judgeModel: string, run: BenchRun, request: string): Promise<void> {
+async function judge(judgeModel: string, run: BenchRun, request: string, history: string): Promise<void> {
   const task = TASKS.find((t) => t.id === run.task);
   if (!task || run.status !== "completed") return;
   for (let attempt = 1; attempt <= 3; attempt++) {
     try {
       const response = await fetch(`${API}/chat/completions`, {
         method: "POST", headers,
-        body: JSON.stringify({ model: judgeModel, messages: [{ role: "system", content: JUDGE_SYSTEM }, { role: "user", content: judgePrompt(task, run, request) }], max_tokens: 2000, usage: { include: true } }),
+        body: JSON.stringify({ model: judgeModel, messages: [{ role: "system", content: JUDGE_SYSTEM }, { role: "user", content: judgePrompt(task, run, request, history) }], max_tokens: 2000, usage: { include: true } }),
       });
-      if (!response.ok) throw new Error(`HTTP ${response.status}: ${(await response.text()).slice(0, 200)}`);
+      if (!response.ok) {
+        const detail = (await response.text()).slice(0, 200);
+        // Rate limits and server errors: wait, then try again.
+        if (response.status === 429 || response.status >= 500) await new Promise((resolve) => setTimeout(resolve, 3000 * attempt));
+        throw new Error(`HTTP ${response.status}: ${detail}`);
+      }
       const body = obj(await response.json());
       const text = String(obj(obj(Array.isArray(body.choices) ? body.choices[0] : null).message).content ?? "");
       const parsed = obj(JSON.parse(/\{[\s\S]*\}/.exec(text)?.[0] ?? "null"));
@@ -462,11 +556,25 @@ async function judge(judgeModel: string, run: BenchRun, request: string): Promis
   }
 }
 
+/** Runs `fn` over `items` with at most `size` at a time. */
+async function pool<T>(items: readonly T[], size: number, fn: (item: T) => Promise<void>): Promise<void> {
+  let next = 0;
+  await Promise.all(Array.from({ length: Math.min(size, items.length) }, async () => {
+    while (next < items.length) await fn(items[next++]);
+  }));
+}
+
+/** Rates every completed run without a rating, with its conversation. */
+async function judgeAll(judgeModel: string, runs: BenchRun[], all: readonly BenchRun[], tasks: Library["tasks"]): Promise<void> {
+  await pool(runs.filter((run) => !run.judge && run.status === "completed"), 12, (run) => judge(judgeModel, run, requestText(tasks, run.task), historyFor(run, all, tasks)));
+}
+
 // ---------------------------------------------------------------- library
 
-/** Profiles and tasks as the bench app shows them (current definitions). */
-async function library(worlds: Map<string, World>): Promise<Library> {
-  const profiles = PROFILES.map((p) => ({
+/** Profiles and tasks of the profiles in `worlds`, as the bench app shows
+ *  them (current definitions). */
+function library(worlds: Map<string, World>): Library {
+  const profiles = PROFILES.filter((p) => worlds.has(p.id)).map((p) => ({
     id: p.id, name: p.name, about: p.about,
     persona: { name: p.settings["agent.name"], userName: p.settings["agent.user_name"], traits: JSON.parse(p.settings["agent.traits"] ?? "[]") as string[], instructions: p.settings["agent.instructions"] ?? "" },
     wpm: Number(p.settings.dialog_wpm ?? 160),
@@ -475,18 +583,24 @@ async function library(worlds: Map<string, World>): Promise<Library> {
     memory: p.memory,
     ideas: p.ideas,
   }));
-  const tasks = TASKS.map((t) => {
-    const world = worlds.get(t.profile);
-    const request = world ? t.request(world) : null;
+  const tasks = TASKS.filter((t) => worlds.has(t.profile)).map((t) => {
+    const request = t.request(worlds.get(t.profile)!);
     return {
       id: t.id, profile: t.profile, label: t.label, mode: t.mode, script: t.script ?? null, folder: t.folder ?? null, rubric: t.rubric,
-      message: request?.kind === "chat" ? request.text : request?.kind === "claim" ? request.text : null,
-      quote: request?.kind === "chat" ? request.quote?.text ?? null : null,
-      instruction: request?.kind === "chat" ? request.options?.instruction ?? null : null,
-      lineIndex: request?.kind === "claim" ? request.index : null,
+      message: request.kind === "chat" || request.kind === "claim" ? request.text : null,
+      quote: request.kind === "chat" ? request.quote?.text ?? null : null,
+      instruction: request.kind === "chat" ? request.options?.instruction ?? null : null,
+      lineIndex: request.kind === "claim" ? request.index : null,
     };
   });
   return { profiles, tasks };
+}
+
+/** Entries of `next` replace those with the same id; the rest stays (a run
+ *  of one profile keeps the others' descriptions). */
+function merge(stored: unknown[], next: unknown[]): unknown[] {
+  const ids = new Set(next.map((entry) => obj(entry).id));
+  return [...stored.filter((entry) => !ids.has(obj(entry).id)), ...next];
 }
 
 function requestText(tasks: Library["tasks"], id: string): string {
@@ -511,7 +625,9 @@ function notePromptStates(world: World): void {
   const sources = PROMPT_SOURCES.map((file) => readFileSync(join(HERE, "..", file), "utf8")).join("\n");
   const profile = JSON.stringify(world.profile);
   for (const task of TASKS.filter((t) => t.profile === world.profile.id)) {
-    promptStates.set(task.id, hash(sources + profile + JSON.stringify(task.request(world)).replace(UUID, "<id>")));
+    // The earlier turns of the conversation belong to the request.
+    const requests = [...predecessors(task), task].map((t) => t.request(world));
+    promptStates.set(task.id, hash(sources + profile + JSON.stringify(requests).replace(UUID, "<id>")));
   }
 }
 
@@ -598,7 +714,7 @@ describe("agent model benchmark", () => {
       // Only rate stored runs that have no rating yet; nothing new is run.
       const results = readResults();
       const missing = results.runs.filter((run) => !run.judge && run.status === "completed");
-      await Promise.all(missing.map((run) => judge(judgeModel, run, requestText(results.tasks, run.task))));
+      await judgeAll(judgeModel, missing, results.runs, results.tasks);
       writeFileSync(RESULTS, `${JSON.stringify(results, null, 1)}\n`);
       console.log(`${missing.filter((run) => run.judge).length} of ${missing.length} runs rated`);
       return;
@@ -616,7 +732,7 @@ describe("agent model benchmark", () => {
     }
 
     const models = (process.env.BENCH_MODELS ?? OPENROUTER_MODEL).split(",").map((m) => m.trim()).filter(Boolean);
-    const reps = Math.max(1, Number(process.env.BENCH_RUNS ?? 2));
+    const reps = Math.max(1, Number(process.env.BENCH_RUNS ?? 3));
     const onlyProfiles = process.env.BENCH_PROFILES?.split(",").map((p) => p.trim()).filter(Boolean);
     const profiles = PROFILES.filter((p) => !onlyProfiles?.length || onlyProfiles.includes(p.id));
     const info = await modelInfo();
@@ -640,19 +756,18 @@ describe("agent model benchmark", () => {
       for (const { world, pending } of done) {
         const log = logs.get(world) ?? [];
         await Promise.all(log.map((entry) => entry.done));
-        await Promise.all(log.map(async (entry) => {
-          if (entry.generationId) entry.billedUsd = await billedCost(entry.generationId);
-        }));
+        await pool(log.filter((entry) => entry.generationId), 16, async (entry) => {
+          entry.billedUsd = await billedCost(entry.generationId!);
+        });
         runs.push(...pending.map((p) => toRun(world, p, info, batch, head)));
       }
     }
 
-    const lib = await library(sample);
-    if (judgeModel !== "off") await Promise.all(runs.map((run) => judge(judgeModel, run, requestText(lib.tasks, run.task))));
-
     const results = readResults();
-    results.profiles = lib.profiles;
-    results.tasks = lib.tasks;
+    const lib = library(sample);
+    results.profiles = merge(results.profiles, lib.profiles);
+    results.tasks = merge(results.tasks, lib.tasks);
+    if (judgeModel !== "off") await judgeAll(judgeModel, runs, runs, results.tasks);
     results.runs.push(...runs);
     writeFileSync(RESULTS, `${JSON.stringify(results, null, 1)}\n`);
     for (const run of runs) {

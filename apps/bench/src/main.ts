@@ -60,7 +60,11 @@ const tip = document.getElementById("tip")!;
 
 // ------------------------------------------------------------------ model
 
-interface Ranked extends Series { o: ReturnType<typeof overview> }
+interface Ranked extends Series {
+  o: ReturnType<typeof overview>;
+  /** Tasks this model has finished at least once. */
+  coverage: number;
+}
 
 interface Model {
   suite: Suite;
@@ -69,6 +73,9 @@ interface Model {
   ranked: Ranked[];
   shown: Ranked[];
   tasks: { id: string; label: string; short: string; profile: string; profileName: string }[];
+  /** Tasks every shown model has finished: the ranking compares only these,
+   *  so a model with few (or easy) tasks does not jump ahead. */
+  common: { id: string }[];
 }
 
 function build(suite: Suite): Model {
@@ -80,13 +87,19 @@ function build(suite: Suite): Model {
     id: task.id, profile: task.profile, profileName: profileName(task.profile), short: tx(task.label),
     label: state.profile ? tx(task.label) : `${profileName(task.profile)} · ${tx(task.label)}`,
   }));
+  const covered = (model: string, task: string) => scoped.some((r) => r.model === model && r.task === task && r.status === "completed");
+  const visible = all.filter((m) => !state.hidden.has(m.id) && scoped.some((r) => r.model === m.id));
+  const common = tasks.filter((task) => visible.every((m) => covered(m.id, task.id)));
   const ranked = all
-    .map((m, i) => ({ id: m.id, name: m.name, color: seriesColor(i, dark.matches), rank: 0, o: overview(scoped, m.id, tasks) }))
-    .filter((m) => m.o.runs > 0)
+    .map((m, i) => ({
+      id: m.id, name: m.name, color: seriesColor(i, dark.matches), rank: 0,
+      o: overview(scoped, m.id, common), coverage: tasks.filter((task) => covered(m.id, task.id)).length,
+    }))
+    .filter((m) => m.o.runs > 0 || scoped.some((r) => r.model === m.id))
     .sort((a, b) => (b.o.score ?? -1) - (a.o.score ?? -1) || (a.o.cost ?? 1e9) - (b.o.cost ?? 1e9));
   ranked.forEach((m, i) => { m.rank = i + 1; });
   const shown = ranked.filter((m) => !state.hidden.has(m.id));
-  return { suite, runs: scoped.filter((r) => shown.some((m) => m.id === r.model)), ranked, shown, tasks };
+  return { suite, runs: scoped.filter((r) => shown.some((m) => m.id === r.model)), ranked, shown, tasks, common };
 }
 
 const cellStats = (m: Model, model: string, task: string) => stats(m.runs.filter((r) => r.model === model && r.task === task));
@@ -177,7 +190,7 @@ function ranking(m: Model): string {
   };
   return `
     <section class="card">
-      <header class="card-h"><div><h2>${esc(t("ranking"))}</h2><p class="hint">${esc(t("rankingHint"))}</p></div></header>
+      <header class="card-h"><div><h2>${esc(t("ranking"))}</h2><p class="hint">${esc(t("rankingHint"))}</p>${m.common.length < m.tasks.length ? `<p class="notice">${esc(t("rankingCommon", { n: m.common.length, total: m.tasks.length }))}</p>` : ""}</div></header>
       <div class="scroll">
         <table class="table rank-table">
           <thead><tr><th class="cb"></th>${th("rank", "colRank", "num")}<th>${esc(t("colModel"))}</th>${th("score", "colRating")}${th("cost", "colCost", "num")}<th class="num">${esc(t("perThousand"))}</th>${th("time", "colTime", "num")}${th("visible", "colVisible", "num")}${th("checks", "colChecks", "num")}${th("retries", "colRetries", "num")}</tr></thead>
@@ -185,7 +198,7 @@ function ranking(m: Model): string {
             <tr class="${state.hidden.has(r.id) ? "off" : ""}">
               <td class="cb"><input type="checkbox" data-show="${esc(r.id)}" ${state.hidden.has(r.id) ? "" : "checked"} aria-label="${esc(t("showModel", { name: r.name }))}"></td>
               <td class="num">${rankBadge(r)}</td>
-              <td><span class="model">${esc(r.name)}</span><span class="sub">${esc(r.id)}</span></td>
+              <td><span class="model">${esc(r.name)}</span>${r.coverage < m.tasks.length ? ` <span class="cov" title="${esc(t("coverageHint"))}">${esc(t("coverage", { n: r.coverage, total: m.tasks.length }))}</span>` : ""}<span class="sub">${esc(r.id)}</span></td>
               <td class="${mark(r.o.score, best.score)}"><span class="meter"><span class="bar" style="width:${(r.o.score ?? 0) * 10}%;background:${r.color}"></span></span><span class="num strong">${r.o.score === null ? "-" : esc(score(r.o.score))}</span></td>
               <td class="num${mark(r.o.cost, best.cost)}">${r.o.cost === null ? "-" : esc(cents(r.o.cost))}</td>
               <td class="num muted">${r.o.cost === null ? "-" : esc(dollars(r.o.cost * 10))}</td>
@@ -373,7 +386,7 @@ function taskView(m: Model, id: string, focus: string | null): string {
         <thead><tr><th class="cb">${esc(t("colCompare"))}</th><th>${esc(t("colModel"))}</th><th>${esc(t("colRating"))}</th><th class="num">${esc(t("colCost"))}</th><th class="num">${esc(t("colTime"))}</th><th class="num">${esc(t("colVisible"))}</th><th class="num">${esc(t("colChecks"))}</th><th class="num">${esc(t("colRetries"))}</th></tr></thead>
         <tbody>${rows.map(({ s, c }) => `
           <tr class="${chosen.includes(s.id) ? "chosen" : ""}">
-            <td class="cb"><input type="checkbox" data-compare="${esc(s.id)}" data-task="${esc(id)}" ${chosen.includes(s.id) ? "checked" : ""} ${!c.n || (!chosen.includes(s.id) && chosen.length >= MAX_COMPARE) ? "disabled" : ""} aria-label="${esc(t("compareModel", { name: s.name }))}"></td>
+            <td class="cb"><input type="checkbox" data-compare="${esc(s.id)}" data-task="${esc(id)}" ${chosen.includes(s.id) ? "checked" : ""} ${!(c.n + c.failed) || (!chosen.includes(s.id) && chosen.length >= MAX_COMPARE) ? "disabled" : ""} aria-label="${esc(t("compareModel", { name: s.name }))}"></td>
             <td>${rankBadge(s)} <span class="model">${esc(s.name)}</span></td>
             <td class="${mark(c.score, best.score)}"><span class="meter"><span class="bar" style="width:${(c.score ?? 0) * 10}%;background:${s.color}"></span></span><span class="num strong">${c.score === null ? "-" : esc(score(c.score))}</span></td>
             <td class="num${mark(c.cost, best.cost)}">${c.cost === null ? "-" : esc(cents(c.cost))}</td>
@@ -483,8 +496,12 @@ function render(): void {
   const m = suite && suite.runs.length ? build(suite) : null;
   let body: string;
   if (!suite || !m) body = `<div class="empty">${esc(t("empty"))}</div>`;
-  else if (view.name === "task") body = taskView(m, view.id, view.model);
-  else if (view.name === "library") body = libraryView(suite);
+  else if (view.name === "task") {
+    body = taskView(m, view.id, view.model);
+    // The model from the heatmap is chosen once; afterwards it can be
+    // unticked like any other.
+    if (view.model) history.replaceState(null, "", location.hash.split("?")[0]);
+  } else if (view.name === "library") body = libraryView(suite);
   else if (view.name === "method") body = methodView(m);
   else body = overviewView(m);
   app.innerHTML = `<div class="shell">${sidebar(m, suite, view)}<main class="main" id="main"><div class="view">${body}</div></main></div>`;
