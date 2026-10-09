@@ -47,7 +47,7 @@ if (canvas) {
   // Opening a page in the middle (reload, anchor) skips the intro.
   const fresh = window.scrollY < 40 && !location.hash;
   const ready = () => document.documentElement.classList.add("intro-done");
-  if (field && fresh) void field.intro(4600).then(ready); else ready();
+  if (field && fresh) void field.intro(2200).then(ready); else ready();
   hero?.addEventListener("click", (event) => {
     if ((event.target as HTMLElement).closest("a, button")) return;
     field?.burst(event.clientX, event.clientY);

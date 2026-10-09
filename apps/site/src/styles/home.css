@@ -17,7 +17,7 @@
 .home-actions { display: flex; flex-wrap: wrap; gap: var(--sp-3); margin-top: 36px; }
 .home-facts { margin-top: 18px; font-size: var(--fs-13); color: var(--faint); }
 .js .home-in { opacity: 0; translate: 0 20px; }
-.js.intro-done .home-in { animation: rise 1000ms calc(var(--n) * 90ms + 100ms) var(--ease-out) forwards; }
+.js.intro-done .home-in { animation: rise 700ms calc(var(--n) * 60ms) var(--ease-out) forwards; }
 .js:has(.home-hero):not(.intro-done) .site-header { opacity: 0; translate: -50% -12px; }
 .js:has(.home-hero) .site-header { transition: opacity 800ms var(--ease-out), translate 900ms var(--ease-out); }
 .js:has(.home-hero):not(.intro-done) :is(.home-scroll, .home-rail) { opacity: 0; }
