@@ -117,6 +117,19 @@ importers:
         specifier: 8.71.0
         version: 8.71.0(eslint@9.39.5)(typescript@5.6.3)
 
+  apps/bench:
+    dependencies:
+      '@agentz/design':
+        specifier: workspace:*
+        version: link:../../packages/design
+    devDependencies:
+      typescript:
+        specifier: 'catalog:'
+        version: 5.6.3
+      vite:
+        specifier: 'catalog:'
+        version: 6.4.2(@types/node@22.19.19)(lightningcss@1.33.0)(yaml@2.8.4)
+
   apps/scriptz:
     dependencies:
       '@agentz/desktop':
