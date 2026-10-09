@@ -1,12 +1,14 @@
 import { httpAction } from "./_generated/server";
 import { createAuth } from "./auth";
+import { chatModel, checkModel, modelFor } from "./aiModels";
 import { DECISIONS_URL, MAX_DECISION_BODY_CHARS, decisionBody, decisionResult } from "./decisions";
 
 // Hosted agent of the apps: a thin, authenticated proxy in front of
 // OpenRouter. Signed-in apps send OpenAI-style chat completion requests; the
 // suite's OpenRouter key (OPENROUTER_API_KEY) never leaves this deployment
-// and the server decides the model (OPENROUTER_MODEL), so the key cannot be
-// used for anything else. The app runs the agent loop itself (tools execute
+// and the server decides the models (OPENROUTER_MODEL for chats,
+// OPENROUTER_CHECK_MODEL for fact checks, see aiModels.ts), so the key cannot
+// be used for anything else. The app runs the agent loop itself (tools execute
 // locally), each request here is one model step.
 //
 // Besides the chat, the same key answers decision requests (POST /ai/decide,
@@ -19,10 +21,6 @@ import { DECISIONS_URL, MAX_DECISION_BODY_CHARS, decisionBody, decisionResult } 
 // accounts; usage limits belong here later.
 
 const OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions";
-/** Fallback when OPENROUTER_MODEL is not set. Same id as
- *  `OPENROUTER_MODEL` in modules/scriptz/lib/agent/openrouter/config.ts. */
-const DEFAULT_MODEL = "google/gemini-3.8-flash";
-const MODEL_LABELS: Record<string, string> = { "google/gemini-3.8-flash": "Gemini 3.8 Flash" };
 
 const EFFORTS = new Set(["none", "minimal", "low", "medium", "high", "xhigh"]);
 const MAX_TOOLS = 64;
@@ -40,11 +38,6 @@ const isObject = (value: unknown): value is Json => typeof value === "object" &&
 
 function json(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), { status, headers: { "Content-Type": "application/json" } });
-}
-
-function model() {
-  const id = process.env.OPENROUTER_MODEL?.trim() || DEFAULT_MODEL;
-  return { id, label: MODEL_LABELS[id] ?? id };
 }
 
 type AccountUser = { id: string; email: string; emailVerified: boolean };
@@ -92,7 +85,7 @@ export function upstreamBody(raw: Json, userId: string): Json | null {
   const messages = raw.messages;
   if (!Array.isArray(messages) || messages.length === 0 || messages.length > MAX_MESSAGES || !messages.every(isObject)) return null;
   if (JSON.stringify(messages).length > MAX_REQUEST_CHARS) return null;
-  const body: Json = { model: model().id, messages, stream: raw.stream === true, user: userId };
+  const body: Json = { model: modelFor(raw.model), messages, stream: raw.stream === true, user: userId };
   if (raw.stream === true) body.usage = { include: true };
   if (Array.isArray(raw.tools)) {
     const tools = raw.tools.filter((tool) => isObject(tool) && tool.type === "function" && isObject(tool.function)).slice(0, MAX_TOOLS);
@@ -114,14 +107,14 @@ export function upstreamBody(raw: Json, userId: string): Json | null {
   return body;
 }
 
-/** GET /ai/status: is the hosted agent available for this session, and with which model. */
+/** GET /ai/status: is the hosted agent available for this session, and with
+ *  which models (`checkModel` is additive: older apps ignore it). */
 export const status = httpAction(async (ctx, request) => {
   const auth = await authorize(ctx, request);
   if (!auth.user) return auth.response;
   const { user } = auth;
   if (!process.env.OPENROUTER_API_KEY) return json({ error: "unavailable" }, 503);
-  const { id, label } = model();
-  return json({ email: user.email, model: { id, label } });
+  return json({ email: user.email, model: chatModel(), checkModel: checkModel() });
 });
 
 const upstreamHeaders = (key: string) => ({

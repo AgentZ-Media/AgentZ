@@ -18,6 +18,7 @@ im `paths`-Frontmatter) und die `AGENTS.md` des jeweiligen App-Ordners.
 | `crates/agentz-desktop/` | Rust | Standard-Plugins, macOS-Menü, Single-Instance, Quit-Handshake, Kit-Baseline-SQL (`src/baseline.sql`). |
 | `packages/design/` | `@agentz/design` | Tokens, CSS-Primitive, Schriften, Icons, Logos. Kein Framework. |
 | `apps/site/` | `@agentz/site` | Astro-Website (DE/EN) mit App-Liste und Konto; Backend in `apps/site/convex/` (Convex + Better Auth, Mails über Resend, KI-Proxy `ai.ts` zu OpenRouter). |
+| `apps/bench/` | `@agentz/bench` | Statische Seite mit den Benchmarks der KI-Agenten (Preis, Tempo, Ergebnisse je Modell); Daten in `apps/bench/data/`, geschrieben vom Runner in `modules/scriptz/bench/`. |
 | `tooling/` | | Generator (`new-app`), Release-Skripte, Prüfungen, Test-Preset. |
 
 Abhängigkeitsrichtung (ESLint erzwingt sie):
@@ -26,7 +27,7 @@ Abhängigkeitsrichtung (ESLint erzwingt sie):
 apps/<app> -> modules/<app> -> packages/kit -> packages/design
     |                              ^
     +------> packages/desktop ------+
-apps/site -> packages/design
+apps/site, apps/bench -> packages/design
 ```
 
 Kein Tauri in Kit oder Modulen, kein Produktwissen im Kit, keine Importe
@@ -106,6 +107,8 @@ pnpm build:scriptz                    # native App und Installer bauen
 pnpm dev:site                         # Website lokal
 pnpm dev:site:backend                 # Konto-Backend (Convex-Dev-Deployment)
 pnpm build:site                       # Website bauen
+pnpm bench:agent                      # Agent-Benchmark (BENCH_MODELS=..., echte Kosten)
+pnpm dev:bench                        # Benchmark-Ergebnisse ansehen (Port 1490)
 pnpm lint && pnpm typecheck && pnpm test
 pnpm check:colors && pnpm check:astro && pnpm check:sync-format
 pnpm build:frontends                  # Vite-Builds ohne native Bundles

@@ -7,7 +7,7 @@
 
 import { AGENT_KEY_INVALID, AGENT_NETWORK, AGENT_NO_CREDITS, AGENT_NOT_ENABLED, AGENT_RATE_LIMITED, AGENT_SIGNED_OUT, type ProviderState } from "../types";
 import { obj } from "../toolArgs";
-import { OPENROUTER_API, OPENROUTER_MODEL, OPENROUTER_MODEL_LABEL } from "./config";
+import { OPENROUTER_API, OPENROUTER_CHECK_MODEL, OPENROUTER_CHECK_MODEL_LABEL, OPENROUTER_MODEL, OPENROUTER_MODEL_LABEL } from "./config";
 
 export interface TransportModel {
   id: string;
@@ -17,6 +17,9 @@ export interface TransportModel {
 export interface TransportCheck {
   state: ProviderState;
   model: TransportModel | null;
+  /** Model for fact checks; null when the other side offers none (then the
+   *  checks run on `model`). */
+  checkModel: TransportModel | null;
 }
 
 export interface OpenRouterTransport {
@@ -35,6 +38,12 @@ export class TransportError extends Error {
 }
 
 const DEFAULT_MODEL: TransportModel = { id: OPENROUTER_MODEL, label: OPENROUTER_MODEL_LABEL };
+const CHECK_MODEL: TransportModel = { id: OPENROUTER_CHECK_MODEL, label: OPENROUTER_CHECK_MODEL_LABEL };
+
+function transportModel(raw: unknown): TransportModel | null {
+  const model = obj(raw);
+  return typeof model.id === "string" ? { id: model.id, label: typeof model.label === "string" ? model.label : model.id } : null;
+}
 
 function errorFor(status: number, detail: string): TransportError {
   if (status === 401) return new TransportError(AGENT_SIGNED_OUT, status);
@@ -81,21 +90,22 @@ export function hostedTransport(deps: HostedDeps): OpenRouterTransport {
   const call = (path: string, init: RequestInit) => send(path, init, (p, i) => deps.fetch(p, i));
   return {
     async check() {
-      if (!deps.signedIn()) return { state: { state: "logged-out" }, model: null };
+      if (!deps.signedIn()) return { state: { state: "logged-out" }, model: null, checkModel: null };
       try {
         const response = await call("/ai/status", { method: "GET" });
-        if (response.status === 401) return { state: { state: "logged-out" }, model: null };
-        if (!response.ok) return { state: { state: "error", message: errorFor(response.status, await detailOf(response)).message }, model: null };
+        if (response.status === 401) return { state: { state: "logged-out" }, model: null, checkModel: null };
+        if (!response.ok) return { state: { state: "error", message: errorFor(response.status, await detailOf(response)).message }, model: null, checkModel: null };
         const body = obj(await response.json());
-        const model = obj(body.model);
         return {
           state: { state: "ready", account: typeof body.email === "string" ? body.email : null },
-          model: typeof model.id === "string" ? { id: model.id, label: typeof model.label === "string" ? model.label : model.id } : DEFAULT_MODEL,
+          model: transportModel(body.model) ?? DEFAULT_MODEL,
+          // A backend without a check model runs fact checks on its model.
+          checkModel: transportModel(body.checkModel),
         };
       } catch (error) {
         // Signed out meanwhile (the account turns a 401 into an error too).
-        if (!deps.signedIn()) return { state: { state: "logged-out" }, model: null };
-        return { state: { state: "error", message: error instanceof Error ? error.message : String(error) }, model: null };
+        if (!deps.signedIn()) return { state: { state: "logged-out" }, model: null, checkModel: null };
+        return { state: { state: "error", message: error instanceof Error ? error.message : String(error) }, model: null, checkModel: null };
       }
     },
     async complete(body, signal) {
@@ -133,14 +143,14 @@ export function keyTransport(deps: KeyDeps): OpenRouterTransport {
   return {
     async check() {
       const key = (await deps.key())?.trim();
-      if (!key) return { state: { state: "logged-out" }, model: null };
+      if (!key) return { state: { state: "logged-out" }, model: null, checkModel: null };
       try {
         const response = await send(`${OPENROUTER_API}/key`, { headers: headers(key) }, fetcher);
-        if (response.status === 401) return { state: { state: "error", message: AGENT_KEY_INVALID }, model: null };
-        if (!response.ok) return { state: { state: "error", message: await detailOf(response) }, model: null };
-        return { state: { state: "ready", account: `OpenRouter ${keyHint(key)}` }, model: DEFAULT_MODEL };
+        if (response.status === 401) return { state: { state: "error", message: AGENT_KEY_INVALID }, model: null, checkModel: null };
+        if (!response.ok) return { state: { state: "error", message: await detailOf(response) }, model: null, checkModel: null };
+        return { state: { state: "ready", account: `OpenRouter ${keyHint(key)}` }, model: DEFAULT_MODEL, checkModel: CHECK_MODEL };
       } catch (error) {
-        return { state: { state: "error", message: error instanceof Error ? error.message : String(error) }, model: null };
+        return { state: { state: "error", message: error instanceof Error ? error.message : String(error) }, model: null, checkModel: null };
       }
     },
     async complete(body, signal) {
@@ -149,7 +159,8 @@ export function keyTransport(deps: KeyDeps): OpenRouterTransport {
       const response = await send(`${OPENROUTER_API}/chat/completions`, {
         method: "POST",
         headers: headers(key),
-        body: JSON.stringify({ ...body, model: OPENROUTER_MODEL, ...(body.stream ? { usage: { include: true } } : {}) }),
+        // Only the two models of the harness; anything else runs on the chat model.
+        body: JSON.stringify({ ...body, model: body.model === CHECK_MODEL.id ? CHECK_MODEL.id : DEFAULT_MODEL.id, ...(body.stream ? { usage: { include: true } } : {}) }),
         signal,
       }, fetcher);
       if (response.status === 401) throw new TransportError(AGENT_KEY_INVALID, 401);

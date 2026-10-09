@@ -14,7 +14,8 @@
   "scripts": {
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "bench:agent": "vitest run --config vitest.bench.config.ts"
   },
   "dependencies": {
     "@agentz/design": "workspace:*",

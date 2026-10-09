@@ -303,7 +303,7 @@ function ChatBody(props: ChatPanelProps & { session: ChatSession }) {
     requestAnimationFrame(() => { if (listRef) listRef.scrollTop = listRef.scrollHeight; });
   }));
 
-  const send = async (text = draft(), q = quote(), extra?: { instruction?: string; job?: AgentJobId }) => {
+  const send = async (text = draft(), q = quote(), extra?: { instruction?: string; job?: AgentJobId; check?: boolean }) => {
     const clean = text.trim();
     if (!clean || running()) return;
     setDraft("");
@@ -319,7 +319,7 @@ function ChatBody(props: ChatPanelProps & { session: ChatSession }) {
     const blocks = liveBlocks(props.scriptId) ?? [];
     const runtime = measureBlocks(blocks, props.wpm).runtimeSec;
     const instruction = jobInstruction(job, { range: formatRange(props.range), runtime: formatClock(runtime), wpm: props.wpm });
-    void send(t(JOB_LABEL[job]), null, { instruction, job });
+    void send(t(JOB_LABEL[job]), null, { instruction, job, ...(job === "facts" ? { check: true } : {}) });
   };
 
   // Requests from the editor context menu.
@@ -329,7 +329,7 @@ function ChatBody(props: ChatPanelProps & { session: ChatSession }) {
     const taken = agentUi.takeRequest(props.scriptId);
     if (!taken) return;
     if (taken.job) runJob(taken.job);
-    else if (taken.send) void send(taken.text, taken.quote ?? null, taken.instruction ? { instruction: taken.instruction } : undefined);
+    else if (taken.send) void send(taken.text, taken.quote ?? null, taken.instruction || taken.check ? { instruction: taken.instruction, check: taken.check } : undefined);
     else {
       setQuote(taken.quote ?? null);
       setDraft(taken.text);

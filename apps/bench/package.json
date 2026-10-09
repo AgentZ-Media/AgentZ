@@ -1,0 +1,20 @@
+{
+  "name": "@agentz/bench",
+  "private": true,
+  "version": "0.0.0",
+  "description": "Benchmarks of the suite's AI agents: cost, speed and output of each model, from the same tasks and tools.",
+  "type": "module",
+  "scripts": {
+    "dev": "vite --port 1490",
+    "build": "vite build",
+    "preview": "vite preview --port 1490",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@agentz/design": "workspace:*"
+  },
+  "devDependencies": {
+    "typescript": "catalog:",
+    "vite": "catalog:"
+  }
+}

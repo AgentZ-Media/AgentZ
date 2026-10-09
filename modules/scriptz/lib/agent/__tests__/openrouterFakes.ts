@@ -62,7 +62,11 @@ export function fakeTransport(steps: ScriptedStep[], check?: TransportCheck) {
   const requests: Obj[] = [];
   const transport: OpenRouterTransport = {
     async check() {
-      return check ?? { state: { state: "ready", account: "a@b.de" }, model: { id: "google/gemini-3.8-flash", label: "Gemini 3.8 Flash" } };
+      return check ?? {
+        state: { state: "ready", account: "a@b.de" },
+        model: { id: "openai/gpt-6.1-sol", label: "GPT-6.1 Sol" },
+        checkModel: { id: "openai/gpt-6-luna", label: "GPT-6 Luna" },
+      };
     },
     async complete(body, signal) {
       // A deep copy, as it went over the wire.

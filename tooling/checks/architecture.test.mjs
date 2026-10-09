@@ -17,6 +17,7 @@ const workspaceNames = {
   "apps/scriptz": "@agentz/scriptz-app",
   "apps/notes": "@agentz/notes-app",
   "apps/site": "@agentz/site",
+  "apps/bench": "@agentz/bench",
   "tooling/vitest-preset": "@agentz/vitest-preset",
 };
 for (const [directory, name] of Object.entries(workspaceNames)) {
@@ -51,6 +52,7 @@ test("enforces the full workspace dependency matrix", () => {
     "apps/scriptz": ["packages/design", "packages/kit", "packages/desktop", "modules/scriptz"],
     "apps/notes": ["packages/design", "packages/kit", "packages/desktop", "modules/notes"],
     "apps/site": ["packages/design"],
+    "apps/bench": ["packages/design"],
   };
   for (const [source, targets] of Object.entries(allowed)) {
     for (const [target, name] of Object.entries(workspaceNames)) {
@@ -80,6 +82,7 @@ test("blocks all static, reexport, type and dynamic forms of Tauri in product co
   assert.equal(lint("packages/kit", "import '@tauri-apps/api/core';")[0].messageId, "tauri");
   assert.equal(lint("packages/design", "import '@tauri-apps/api/core';")[0].messageId, "tauri");
   assert.equal(lint("apps/site", "import '@tauri-apps/api/core';")[0].messageId, "tauri");
+  assert.equal(lint("apps/bench", "import '@tauri-apps/api/core';")[0].messageId, "tauri");
   assert.deepEqual(lint("packages/desktop", "import '@tauri-apps/api/core';"), []);
   assert.deepEqual(lint("apps/scriptz", "import '@tauri-apps/api/core';"), []);
 });
