@@ -24,7 +24,7 @@ describe("openrouter harness", () => {
     const provider = new OpenRouterProvider("agentz", transport, threads.store);
     expect(await provider.check()).toEqual({ state: "ready", account: "a@b.de" });
     const [model] = await provider.listModels();
-    expect(model).toMatchObject({ id: "google/gemini-3.8-flash", label: "Gemini 3.8 Flash", isDefault: true });
+    expect(model).toMatchObject({ id: "openai/gpt-6.1-sol", label: "GPT-6.1 Sol", isDefault: true });
 
     const thread = await provider.openThread({ instructions: "PERSONA", tools: [] });
     const events: AgentEvent[] = [];
@@ -35,7 +35,7 @@ describe("openrouter harness", () => {
     expect(events.at(-1)).toMatchObject({ type: "message", text: "Hallo!" });
 
     const body = requests[0];
-    expect(body).toMatchObject({ model: "google/gemini-3.8-flash", stream: true, tool_choice: "auto", reasoning: { effort: "medium" } });
+    expect(body).toMatchObject({ model: "openai/gpt-6.1-sol", stream: true, tool_choice: "auto", reasoning: { effort: "medium" } });
     // The instructions are the system prompt, unchanged, with a cache breakpoint.
     expect((body.messages as Obj[])[0]).toEqual({ role: "system", content: [{ type: "text", text: "PERSONA", cache_control: { type: "ephemeral" } }] });
     // Web search is always offered.
@@ -45,8 +45,38 @@ describe("openrouter harness", () => {
     expect(saved?.provider).toBe(THREAD_KIND);
     expect(JSON.parse(saved!.messagesJson)).toEqual([
       { role: "user", content: "Hi" },
-      { role: "assistant", content: "Hallo!", reasoning_details: [{ type: "reasoning.text", text: "**Plan** kurz", index: 0 }] },
+      { role: "assistant", content: "Hallo!", reasoning_details: [{ type: "reasoning.text", text: "**Plan** kurz", index: 0 }], model: "openai/gpt-6.1-sol" },
     ]);
+  });
+
+  it("runs a fact check turn on the check model and the next turn on the chat model", async () => {
+    const signature = { type: "reasoning.encrypted", data: "LUNA", index: 0 };
+    const { transport, requests } = fakeTransport([
+      { details: [signature], toolCalls: [{ id: "c1", name: "web_search", args: { query: "ArbZG Pause" } }] },
+      { json: { choices: [{ message: { content: "30 Minuten.", annotations: [] } }] } },
+      { details: [signature], content: ["Stimmt so nicht."] },
+      { content: ["Gern, hier weiter."] },
+    ]);
+    const provider = new OpenRouterProvider("agentz", transport, memoryThreads().store);
+    await provider.check();
+    // The check model is not a choice in the model list.
+    expect((await provider.listModels()).map((m) => m.id)).toEqual(["openai/gpt-6.1-sol"]);
+    const check = provider.checkModel();
+    expect(check).toMatchObject({ id: "openai/gpt-6-luna", isDefault: false });
+
+    const thread = await provider.openThread({ instructions: "x", tools: [] });
+    await thread.run("Prüf die Zeile", { model: check!.id, effort: "medium" }, () => {});
+    await thread.run("Und jetzt kürzer", { model: "openai/gpt-6.1-sol", effort: "medium" }, () => {});
+
+    expect(requests.map((r) => r.model)).toEqual(["openai/gpt-6-luna", "openai/gpt-6-luna", "openai/gpt-6-luna", "openai/gpt-6.1-sol"]);
+    // Within the check turn the reasoning goes back to the same model ...
+    const sameModel = (requests[2].messages as Obj[]).find((m) => m.role === "assistant");
+    expect(sameModel).toMatchObject({ reasoning_details: [signature] });
+    expect(sameModel).not.toHaveProperty("model");
+    // ... the chat model gets the history without the check model's reasoning.
+    const assistants = (requests[3].messages as Obj[]).filter((m) => m.role === "assistant");
+    expect(assistants.length).toBeGreaterThan(0);
+    for (const message of assistants) expect(message).not.toHaveProperty("reasoning_details");
   });
 
   it("runs tools locally and sends results and reasoning details back", async () => {

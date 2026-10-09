@@ -28,6 +28,8 @@ export interface ChatRequest {
   /** Model-facing instruction sent instead of `text` (e.g. a voice
    *  rewrite); the chat still shows `text`. */
   instruction?: string;
+  /** A fact check (runs on the check model, see SendOptions.check). */
+  check?: boolean;
 }
 const [request, setRequest] = createSignal<ChatRequest | null>(null);
 

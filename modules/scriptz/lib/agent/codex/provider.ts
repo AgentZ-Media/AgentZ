@@ -49,6 +49,10 @@ const TURN_TIMEOUT_MS = 6 * 60 * 1000;
 const TURN_START_TIMEOUT_MS = 30_000;
 
 const CLIENT_INFO = { name: "scriptz", title: "ScriptZ", version: "1.0.0" };
+/** Codex model for fact checks (the OpenRouter harness uses its
+ *  counterpart, OPENROUTER_CHECK_MODEL); without it checks use the chat
+ *  model. */
+const CODEX_CHECK_MODEL = "gpt-6-luna";
 
 interface TurnWaiter {
   turnId: string | null;
@@ -384,6 +388,10 @@ export class CodexProvider implements AgentProvider {
       for (const m of out) m.isDefault = m.id === this.configuredModel;
     }
     return out;
+  }
+
+  checkModel(models: readonly AgentModel[]): AgentModel | null {
+    return models.find((m) => m.id === CODEX_CHECK_MODEL) ?? null;
   }
 
   async openThread(options: OpenThreadOptions): Promise<AgentThread> {

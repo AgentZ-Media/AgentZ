@@ -120,6 +120,10 @@ export interface AgentProvider {
   readonly id: string;
   check(): Promise<ProviderState>;
   listModels(): Promise<AgentModel[]>;
+  /** A lighter model for fact checks (one turn; the chat goes on with its
+   *  model). Null when the provider has none; then checks use the chat
+   *  model. `models` is the provider's last model list. */
+  checkModel(models: readonly AgentModel[]): AgentModel | null;
   openThread(options: OpenThreadOptions): Promise<AgentThread>;
   dispose(): Promise<void>;
 }

@@ -21,6 +21,7 @@ vi.mock("@agentz/kit/account", () => {
 });
 
 let opened: OpenThreadOptions[] = [];
+let runModels: string[] = [];
 let turn: (tools: AgentTool[], onEvent: (event: AgentEvent) => void) => Promise<void> = async () => {};
 vi.mock("../provider", () => ({
   hasAgentHost: () => true,
@@ -28,13 +29,15 @@ vi.mock("../provider", () => ({
   refreshHostedAccess: vi.fn(async () => access()),
   ensureModels: async () => [{ id: "m", label: "M", description: "", efforts: ["medium"], defaultEffort: "medium", isDefault: true }],
   resolveModel: (list: Array<{ id: string }>) => list[0],
+  resolveCheckModel: () => ({ id: "check", label: "Check", description: "", efforts: ["medium"], defaultEffort: "medium", isDefault: false }),
   getProvider: () => ({
     id: "fake",
     async openThread(options: OpenThreadOptions) {
       opened.push(options);
       return {
         id: "t",
-        async run(_input: string, _options: unknown, onEvent: (event: AgentEvent) => void) {
+        async run(_input: string, turnOptions: { model: string }, onEvent: (event: AgentEvent) => void) {
+          runModels.push(turnOptions.model);
           await turn(options.tools, onEvent);
           return { status: "completed" as const };
         },
@@ -91,6 +94,7 @@ beforeEach(async () => {
   decide.mockReset();
   decide.mockResolvedValue({});
   opened = [];
+  runModels = [];
   blocks = script;
   claims.resetClaimsForTests();
 });
@@ -246,6 +250,7 @@ describe("checkClaim", () => {
     expect(opened[0].ephemeral).toBe(true);
     expect(opened[0].instructions).toBe("CHAT INSTRUCTIONS");
     expect(opened[0].tools.map((tool) => tool.name).sort()).toEqual(["get_current_script", "report_fact_check"]);
+    expect(runModels).toEqual(["check"]);
     const check = claims.lineState("s1", script[1].text).check;
     expect(check).toMatchObject({ state: "done", note: "Geprüft.", claim: { verdict: "wrong", quote: "Resturlaub verfällt am 31. Dezember." } });
   });

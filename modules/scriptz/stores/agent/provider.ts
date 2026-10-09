@@ -219,6 +219,12 @@ export function resolveModel(list: readonly AgentModel[], chosen: string): Agent
   return list.find((m) => m.id === chosen) ?? list.find((m) => m.isDefault) ?? list[0];
 }
 
+/** The model of a fact check: the provider's check model, else the chat
+ *  model. Only for that turn; the chat goes on with `resolveModel`. */
+export function resolveCheckModel(list: readonly AgentModel[], chosen: string): AgentModel | undefined {
+  return getProvider()?.checkModel(list) ?? resolveModel(list, chosen);
+}
+
 /** Ends the provider (Codex process, running harness turns) and forgets
  *  status and models. The next status check starts a fresh provider. */
 export function disposeProvider(): void {
