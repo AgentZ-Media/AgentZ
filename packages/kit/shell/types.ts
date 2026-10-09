@@ -5,6 +5,7 @@ import type { FlushResult } from "../lib";
 import type { IconName } from "../ui";
 import type { Catalog } from "../i18n";
 import type { CloudConfig, SyncAdapter } from "../account/types";
+import type { ReportPillPlacement } from "../stores/ui";
 
 export type KitSectionId = "account" | "appearance" | "shortcuts" | "updates" | "about";
 export interface SettingsSectionProps { onClose(): void }
@@ -89,6 +90,12 @@ export interface ShellControls {
   onboardingOpen: Accessor<boolean>;
   openOnboarding(): void;
   closeOnboarding(): void;
+  /** "Report a problem" dialog; only for signed-in users of a host with a cloud backend. */
+  reportOpen: Accessor<boolean>;
+  openReport(): void;
+  closeReport(): void;
+  /** Moves the floating pill out of the way of a screen's own controls; null restores the corner. */
+  setReportPillPlacement(placement: ReportPillPlacement | null): void;
 }
 export interface OnboardingProps {
   open: boolean;

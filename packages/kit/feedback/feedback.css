@@ -1,0 +1,222 @@
+/* =========================================================================
+   "Report a problem": floating pill and dialog.
+   Screens move the pill with shell.setReportPillPlacement() (inline style).
+   ========================================================================= */
+
+/* ---------------- Pill ---------------- */
+.rpt-pill {
+  position: fixed;
+  right: 14px;
+  bottom: 14px;
+  z-index: 50;
+  display: flex;
+  transition: right var(--t-med) var(--ease), bottom var(--t-med) var(--ease), opacity var(--t-fast);
+}
+.rpt-pill.is-away {
+  opacity: 0;
+  pointer-events: none;
+}
+.rpt-pill-open {
+  display: flex;
+  align-items: center;
+  height: 30px;
+  min-width: 30px;
+  padding: 0 7px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-pill);
+  background: color-mix(in srgb, var(--surface) 86%, transparent);
+  -webkit-backdrop-filter: blur(14px) saturate(1.4);
+  backdrop-filter: blur(14px) saturate(1.4);
+  color: var(--faint);
+  box-shadow: var(--shadow-1);
+  font-size: var(--fs-12);
+  font-weight: 600;
+  white-space: nowrap;
+  opacity: 0.8;
+  transition: color var(--t-fast), opacity var(--t-fast), border-color var(--t-fast), box-shadow var(--t-fast);
+}
+.rpt-pill-open svg.i {
+  flex: none;
+}
+.rpt-pill-label {
+  max-width: 0;
+  overflow: hidden;
+  opacity: 0;
+  transition: max-width var(--t-med) var(--ease), opacity var(--t-fast), margin var(--t-med) var(--ease);
+}
+.rpt-pill:hover .rpt-pill-open,
+.rpt-pill:focus-within .rpt-pill-open {
+  color: var(--fg);
+  opacity: 1;
+  border-color: var(--line-strong);
+  box-shadow: var(--shadow-2);
+}
+.rpt-pill:hover .rpt-pill-label,
+.rpt-pill:focus-within .rpt-pill-label {
+  max-width: 160px;
+  margin: 0 3px 0 6px;
+  opacity: 1;
+}
+.rpt-pill-open:active {
+  transform: scale(0.97);
+}
+.rpt-pill-hide {
+  position: absolute;
+  top: -6px;
+  left: -6px;
+  display: grid;
+  place-items: center;
+  width: 17px;
+  height: 17px;
+  border: 1px solid var(--line);
+  border-radius: 50%;
+  background: var(--surface);
+  color: var(--muted);
+  box-shadow: var(--shadow-1);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity var(--t-fast), color var(--t-fast);
+}
+.rpt-pill:hover .rpt-pill-hide,
+.rpt-pill:focus-within .rpt-pill-hide {
+  opacity: 1;
+  pointer-events: auto;
+}
+.rpt-pill-hide:hover {
+  color: var(--fg);
+}
+@media (prefers-reduced-motion: reduce) {
+  .rpt-pill,
+  .rpt-pill-label {
+    transition: none;
+  }
+}
+
+/* ---------------- Dialog ---------------- */
+.rpt-dlg {
+  width: 480px;
+}
+.rpt-body {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 22px 24px 20px;
+}
+.rpt-head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.rpt-head h2,
+.rpt-done h2 {
+  flex: 1;
+  margin: 0;
+  font-size: var(--fs-16);
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+.rpt-icon,
+.rpt-done-icon {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 38px;
+  height: 38px;
+  border-radius: 12px;
+  background: var(--accent-soft);
+  color: var(--accent-ink);
+}
+.rpt-text,
+.rpt-details p {
+  margin: 0;
+  color: var(--muted);
+  font-size: var(--fs-13);
+  line-height: var(--lh-normal);
+}
+.rpt-hint {
+  margin: 0;
+  color: var(--faint);
+  font-size: var(--fs-12);
+}
+.rpt-message {
+  width: 100%;
+  min-height: 112px;
+  max-height: 40vh;
+  resize: vertical;
+  line-height: var(--lh-normal);
+}
+.rpt-details {
+  padding-top: 12px;
+  border-top: 1px solid var(--line-soft);
+}
+.rpt-details summary {
+  cursor: pointer;
+  color: var(--muted);
+  font-size: var(--fs-13);
+  font-weight: 600;
+}
+.rpt-details[open] summary {
+  margin-bottom: 8px;
+}
+.rpt-info {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-height: 180px;
+  margin-top: 10px;
+  padding: 10px 12px;
+  overflow: auto;
+  border-radius: var(--r-3);
+  background: var(--fill);
+  font: 11.5px/1.5 var(--type);
+  user-select: text;
+  -webkit-user-select: text;
+}
+.rpt-info dl {
+  display: grid;
+  grid-template-columns: max-content minmax(0, 1fr);
+  gap: 1px 12px;
+  margin: 0;
+}
+.rpt-info dt {
+  color: var(--faint);
+}
+.rpt-info dd {
+  margin: 0;
+  color: var(--fg);
+  overflow-wrap: anywhere;
+}
+.rpt-errors {
+  margin: 0;
+  padding-left: 18px;
+  color: var(--muted);
+  overflow-wrap: anywhere;
+}
+.rpt-error {
+  margin: 0;
+  padding: 9px 11px;
+  border-radius: var(--r-3);
+  background: var(--warn-soft);
+  color: var(--warn);
+  font-size: var(--fs-13);
+  font-weight: 550;
+}
+.rpt-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+}
+.rpt-done {
+  align-items: center;
+  padding-top: 30px;
+  text-align: center;
+}
+.rpt-done h2 {
+  flex: none;
+}
+.rpt-done .rpt-actions {
+  align-self: stretch;
+  justify-content: center;
+  margin-top: 4px;
+}

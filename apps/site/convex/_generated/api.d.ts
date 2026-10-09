@@ -11,6 +11,8 @@
 import type * as ai from "../ai.js";
 import type * as appLink from "../appLink.js";
 import type * as auth from "../auth.js";
+import type * as bugReports from "../bugReports.js";
+import type * as bugs from "../bugs.js";
 import type * as compat from "../compat.js";
 import type * as crons from "../crons.js";
 import type * as decisions from "../decisions.js";
@@ -32,6 +34,8 @@ declare const fullApi: ApiFromModules<{
   ai: typeof ai;
   appLink: typeof appLink;
   auth: typeof auth;
+  bugReports: typeof bugReports;
+  bugs: typeof bugs;
   compat: typeof compat;
   crons: typeof crons;
   decisions: typeof decisions;

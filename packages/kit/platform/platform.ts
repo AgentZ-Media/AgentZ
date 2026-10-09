@@ -80,6 +80,22 @@ export interface SecretStore {
   delete(key: string): Promise<void>;
 }
 
+// ===== System details =====
+//
+// What the host knows about the device beyond `platform`, for problem
+// reports. Every field is optional; nothing personal (no host or user name).
+
+export interface SystemInfo {
+  /** Operating system as the host names it, e.g. "macos", "windows". */
+  os?: string;
+  /** Version of the operating system, e.g. "15.4.1" or "10.0.26100". */
+  osVersion?: string;
+  /** CPU architecture, e.g. "aarch64", "x86_64". */
+  arch?: string;
+  /** Language and region of the system, e.g. "de-DE". */
+  locale?: string;
+}
+
 // ===== Adapter interface =====
 
 export interface PlatformAdapter {
@@ -97,6 +113,9 @@ export interface PlatformAdapter {
 
   /** Read the running app version (e.g. "0.7.3"). */
   getVersion(): Promise<string>;
+
+  /** Details about the device for problem reports; unset on hosts without them. */
+  systemInfo?(): Promise<SystemInfo>;
 
   /** Build identity, known synchronously at startup. Hosts without it are
    *  treated as stable builds. */

@@ -24,6 +24,7 @@ const SETTINGS = {
   focus_typewriter: "1",
   update_channel: "nightly",
   update_auto_install: "0",
+  report_button: "0",
 };
 
 function memory() {
@@ -68,7 +69,7 @@ afterEach(() => {
 });
 
 describe("persisted settings contract", () => {
-  it("reads all twenty persisted keys and restores their stored values", async () => {
+  it("reads all twenty-one persisted keys and restores their stored values", async () => {
     const { settingsStore: s, startSettingsRuntime } = await import("../../stores/settings");
     const { baseSettingsStore: base, startBaseSettingsRuntime } = await import("@agentz/kit/stores");
     stopBase = startBaseSettingsRuntime();
@@ -83,13 +84,13 @@ describe("persisted settings contract", () => {
       language: base.language(), min: s.lengthMinDefaultSec(), max: s.lengthMaxDefaultSec(),
       prune: s.pruneUnusedCharacters(), stages: s.scriptStages(),
       panel: s.openInPanel(), closeFinished: s.closeFinishedScripts(), typewriter: s.focusTypewriter(),
-      channel: base.updateChannel(), autoInstall: base.autoInstallUpdates(),
+      channel: base.updateChannel(), autoInstall: base.autoInstallUpdates(), reportButton: base.reportButton(),
     }).toEqual({
       theme: "dark", highlighting: false, updates: false, hourly: false, quick: true,
       exportTitlePage: false,
       wpm: 175, focus: true, stats: false, paper: true, language: "en", min: 30, max: 90, prune: true,
       stages: [{ id: "writing" }, { id: "ready", label: "Fertig geschrieben" }, { id: "shot" }],
-      panel: false, closeFinished: false, typewriter: true, channel: "nightly", autoInstall: false,
+      panel: false, closeFinished: false, typewriter: true, channel: "nightly", autoInstall: false, reportButton: false,
     });
   });
 
@@ -106,6 +107,7 @@ describe("persisted settings contract", () => {
       base.setLanguage("de"), s.setLengthMinDefaultSec(null), s.setLengthMaxDefaultSec(95.7),
       s.setPruneUnusedCharacters(false), s.setOpenInPanel(true), s.setCloseFinishedScripts(true),
       s.setFocusTypewriter(false), base.setUpdateChannel("stable"), base.setAutoInstallUpdates(true),
+      base.setReportButton(true),
       s.setScriptStages([{ id: "writing" }, { id: "shot", label: "Gedreht" }, { id: "c-1", label: "Online" }]),
     ]);
     expect(Object.fromEntries(db.setSetting.mock.calls)).toEqual({
@@ -114,7 +116,7 @@ describe("persisted settings contract", () => {
       quick_mode_auto_enable: "0", dialog_wpm: "181", focus_mode_default: "0", show_writing_stats: "1",
       dark_paper: "0", language: "de", length_min_default_sec: "", length_max_default_sec: "96",
       prune_unused_characters: "0", open_scripts_in_panel: "1", close_finished_scripts: "1",
-      focus_typewriter: "0", update_channel: "stable", update_auto_install: "1",
+      focus_typewriter: "0", update_channel: "stable", update_auto_install: "1", report_button: "1",
       script_stages: '[{"id":"writing"},{"id":"shot","label":"Gedreht"},{"id":"c-1","label":"Online"}]',
     });
   });

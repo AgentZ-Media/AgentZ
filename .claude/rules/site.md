@@ -32,8 +32,12 @@ paths:
   `convex/_generated/` wird committet. Sync-Daten der Apps
   (`schema.ts`, `sync.ts`, `appLink.ts`) sind Nutzerinhalte; jede App hat eine
   eigene Record-Tabelle
-  ([`docs/cloud-sync.md`](../../docs/cloud-sync.md)). Neue Datenverarbeitung im Konto immer
-  in der Datenschutzerklärung nachziehen.
+  ([`docs/cloud-sync.md`](../../docs/cloud-sync.md)). Fehlermeldungen der Apps
+  (`bugs.ts`, Tabelle `bug_reports`) nur von angemeldeten Konten, für jede
+  App-ID der Suite, mit Spamschutz in `bugReports.ts`
+  ([`docs/fehlermeldungen.md`](../../docs/fehlermeldungen.md)). Neue
+  Datenverarbeitung im Konto und neue mitgeschickte Angaben immer in der
+  Datenschutzerklärung nachziehen.
 - Skriptzähler (`ScriptCount.astro`, `src/stats.ts`, `src/scripts/script-count.ts`)
   auf Startseite und ScriptZ-Seite: Der Build rendert die letzte Summe, der
   Browser holt die aktuelle über `/api/stats.json`. Das ist ein Rewrite in

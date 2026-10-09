@@ -58,7 +58,13 @@ Sidebar zeigen Stable-Builds das Punktraster der App-Kachel (`SideDots`),
 Nightly-Builds den Nachthimmel.
 
 Das Kit liefert ⌘K (Palette), ⌘, (Einstellungen) und ⌘\ (Sidebar) sowie die
-Sektionen Darstellung, Tastatur, Updates und Über. Die Tastatur-Übersicht
+Sektionen Darstellung, Tastatur, Updates und Über. Mit `CloudConfig` kommt
+für angemeldete Nutzer „Problem melden“ dazu (jede App automatisch, mit
+App-ID und Name): eine schwebende Pille unten rechts (in Darstellung
+abschaltbar), ein Dialog und eine Zeile unter Über. Bildschirme mit eigenen
+Bedienelementen unten rechts schieben die Pille mit
+`shell.setReportPillPlacement()` zur Seite
+([`docs/fehlermeldungen.md`](../../docs/fehlermeldungen.md)). Die Tastatur-Übersicht
 entsteht aus derselben Registry wie die Handler; die Registry respektiert
 `defaultPrevented`, IME-Eingabe und offene Dialoge.
 

@@ -13,7 +13,7 @@ Cloud die Wahrheit.
 | Konto, Engine, UI | `packages/kit/account/` (`@agentz/kit/account`) | Anmeldung, Sitzung, Datensatzformat, Sync-Engine, Avatar, Konto-Button, Dialoge, Einstellungsseite „Konto“ |
 | Adapter je App | z. B. `modules/scriptz/lib/sync/adapter.ts` | Welche Tabellen, in welcher Reihenfolge, wie eingehende Datensätze geschrieben werden, Konfliktkopien |
 | Desktop-Host | `packages/desktop/lib/platform.ts`, `crates/agentz-desktop/src/secrets.rs` | Schlüsselbund (`PlatformAdapter.secrets`), URL-Schema `agentz-<id>://` (`onOpenUrl`) |
-| Backend | `apps/site/convex/` | `sync.ts`, `appLink.ts`, `schema.ts`, `syncApps.ts`, `compat.ts`, `syncPolicy.ts`, `stats.ts`, `releases.ts`, KI-Proxy `ai.ts` |
+| Backend | `apps/site/convex/` | `sync.ts`, `appLink.ts`, `schema.ts`, `syncApps.ts`, `compat.ts`, `syncPolicy.ts`, `stats.ts`, `releases.ts`, KI-Proxy `ai.ts`, Fehlermeldungen `bugs.ts` ([`fehlermeldungen.md`](fehlermeldungen.md)) |
 | Anmeldeseite | `apps/site/src/components/AppSignIn.astro` (`/konto/app/`, `/en/account/app/`) | Vollbild-Anmeldung für Apps |
 
 Die Shell startet das Konto (`startAccountRuntime`), wenn der Host eine

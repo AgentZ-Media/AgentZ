@@ -19,6 +19,8 @@ export interface SettingsDialogProps {
   hasOnboarding?: boolean;
   /** Shows the account section (the host has a cloud backend). */
   account?: boolean;
+  /** Offers "Report a problem" (signed in to the suite backend). */
+  report?: boolean;
 }
 const KIT_IDS = new Set(["account", "appearance", "shortcuts", "updates", "about"]);
 
@@ -36,12 +38,12 @@ export function SettingsDialog(props: SettingsDialogProps) {
     }
     const sections: Array<SettingsSection & { sep?: boolean }> = [
       ...(props.account ? [{ id: "account", icon: "user" as const, label: () => t("prefs.account.title"), component: () => <><AccountSettings appName={props.module.name} onClose={close} />{extensions("account")}</> }] : []),
-      { id: "appearance", icon: "sun", label: () => t("prefs.appearance.title"), component: () => <SettingsAppearance appName={props.module.name} onClose={close} extension={extensions("appearance")} /> },
+      { id: "appearance", icon: "sun", label: () => t("prefs.appearance.title"), component: () => <SettingsAppearance appName={props.module.name} onClose={close} extension={extensions("appearance")} report={props.report} /> },
       ...product,
       { id: "shortcuts", icon: "keyboard", label: () => t("prefs.shortcuts.title"), component: () => <><SettingsShortcuts onClose={close} shortcuts={props.shortcuts} />{extensions("shortcuts")}</> },
     ];
     if (updates()) sections.push({ id: "updates", icon: "refresh", sep: true, label: () => t("prefs.updates.title"), component: () => <><SettingsUpdates updates={updates()!} appName={props.module.name} releasesUrl={props.module.about.releasesUrl} nightlyReleasesUrl={props.module.about.nightlyReleasesUrl} onClose={close} />{extensions("updates")}</> });
-    sections.push({ id: "about", icon: "info", sep: true, label: () => t("prefs.about.heading", { appName: props.module.name }), component: () => <><SettingsAbout module={props.module} onClose={close} onShowOnboarding={props.hasOnboarding ? () => { close(); props.shell.openOnboarding(); } : undefined} />{extensions("about")}</> });
+    sections.push({ id: "about", icon: "info", sep: true, label: () => t("prefs.about.heading", { appName: props.module.name }), component: () => <><SettingsAbout module={props.module} onClose={close} onShowOnboarding={props.hasOnboarding ? () => { close(); props.shell.openOnboarding(); } : undefined} onReport={props.report ? () => { close(); props.shell.openReport(); } : undefined} />{extensions("about")}</> });
     return sections;
   });
   const section = () => props.shell.settingsSection();

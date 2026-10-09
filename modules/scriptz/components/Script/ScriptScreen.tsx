@@ -25,7 +25,7 @@ import { navStore } from "../../stores/nav";
 import { settingsStore } from "../../stores/settings";
 import { defaultLengthRange, library } from "../Shell/libraryData";
 import { uiStore } from "../../stores/ui";
-import { createStatePersistence, pushToast } from "@agentz/kit/stores";
+import { createStatePersistence, pushToast, shellUi } from "@agentz/kit/stores";
 import { t } from "../../i18n";
 import { TopBar } from "./TopBar";
 import { Inspector } from "./Inspector";
@@ -62,6 +62,11 @@ export interface ScriptScreenProps {
 const QUICK_MODE_KEY = (id: string) => `script.${id}.quick_mode`;
 /** Below this window width the inspector becomes an overlay from the right. */
 const NARROW_PX = 1200;
+/** Layout of the "Report a problem" pill: chat width (.ss-agent-wrap), the
+ *  closed timeline bar (.tl) and the pill's distance to both. */
+const CHAT_WIDTH_PX = 380;
+const TIMELINE_BAR_PX = 41;
+const PILL_INSET_PX = 14;
 
 const EMPTY_DOC = JSON.stringify({
   root: {
@@ -310,6 +315,20 @@ export function ScriptScreen(props: ScriptScreenProps) {
   const agentVisible = () => !isPeek() && agentStore.available() && !focus() && agentUi.chatOpen(props.scriptId);
   const inspectorVisible = () =>
     !isPeek() && !focus() && !parseError() && !agentVisible() && uiStore.inspectorOpen() && (!narrow() || overlayArmed());
+  // The Kit's "Report a problem" pill sits in the bottom right corner. Over
+  // the paper column it would cover the timeline, over the chat its composer:
+  // there it moves above the timeline and left of the chat, and steps away
+  // while the timeline is open or the chat covers the window.
+  if (!isPeek()) {
+    createEffect(() => {
+      const chat = agentVisible();
+      if (!chat && inspectorVisible()) { shellUi.setReportPillPlacement(null); return; }
+      shellUi.setReportPillPlacement((chat && narrow()) || uiStore.timelineOpen()
+        ? { hidden: true }
+        : { right: (chat ? CHAT_WIDTH_PX : 0) + PILL_INSET_PX, bottom: TIMELINE_BAR_PX + PILL_INSET_PX });
+    });
+    onCleanup(() => shellUi.setReportPillPlacement(null));
+  }
   const toggleInspector = () => {
     if (agentVisible()) {
       agentUi.setChatOpen(props.scriptId, false);
