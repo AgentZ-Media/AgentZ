@@ -19,10 +19,10 @@ Die Funktion liegt komplett im Kit: Jede App, deren Host eine `CloudConfig`
 übergibt, bekommt sie automatisch, sobald jemand angemeldet ist. App-ID und
 Name kommen aus dem `AppModule`; das Backend prüft die ID nur auf ihre Form,
 eine neue App braucht dort also keine Änderung. `shell.openReport()` öffnet
-den Dialog von überall (ScriptZ: Befehl in der Suche). Bildschirme mit eigenen Bedienelementen unten rechts schieben
-die Pille mit `shell.setReportPillPlacement({ right, bottom, hidden })` zur
-Seite und setzen beim Verlassen `null` (ScriptZ: Skript-Ansicht mit Zeitleiste
-und Chat).
+den Dialog von überall (ScriptZ: Befehl in der Suche). Bildschirme mit eigenen
+Bedienelementen unten rechts schieben die Pille mit
+`shell.setReportPillPlacement({ right, bottom, hidden })` zur Seite und setzen
+beim Verlassen `null` (ScriptZ: Skript-Ansicht mit Zeitleiste und Chat).
 
 ## Was mitgeht
 
@@ -50,7 +50,8 @@ Angaben in der Datenschutzerklärung nachziehen.
 ## Spamschutz
 
 - Ohne gültige Sitzung antwortet `POST /bugs/report` mit 401, bevor der Inhalt
-  gelesen wird; Anfragen über 64 000 Zeichen mit 413.
+  gelesen wird; Anfragen über 64 000 Zeichen mit 413. Der Inhalt wird als
+  Stream gelesen und bricht an der Grenze ab, auch ohne `content-length`.
 - Pro Konto höchstens 10 Meldungen pro Stunde und 30 pro Tag, mindestens 15
   Sekunden Abstand; über alle Konten höchstens 500 pro Stunde
   (`checkLimits` in `bugReports.ts`). Darüber antwortet das Backend mit 429,
