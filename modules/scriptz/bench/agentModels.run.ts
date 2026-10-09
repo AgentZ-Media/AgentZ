@@ -531,7 +531,7 @@ function judgePrompt(task: Task, run: BenchRun, request: string, history: string
 async function judge(judgeModel: string, run: BenchRun, request: string, history: string): Promise<void> {
   const task = TASKS.find((t) => t.id === run.task);
   if (!task || run.status !== "completed") return;
-  for (let attempt = 1; attempt <= 3; attempt++) {
+  for (let attempt = 1; attempt <= 5; attempt++) {
     try {
       const response = await fetch(`${API}/chat/completions`, {
         method: "POST", headers,
@@ -539,8 +539,11 @@ async function judge(judgeModel: string, run: BenchRun, request: string, history
       });
       if (!response.ok) {
         const detail = (await response.text()).slice(0, 200);
-        // Rate limits and server errors: wait, then try again.
-        if (response.status === 429 || response.status >= 500) await new Promise((resolve) => setTimeout(resolve, 3000 * attempt));
+        // Rate limits, server errors and credits being topped up (402 while
+        // requests are in flight): wait, then try again.
+        if (response.status === 402 || response.status === 429 || response.status >= 500) {
+          await new Promise((resolve) => setTimeout(resolve, (response.status === 402 ? 20_000 : 3000) * attempt));
+        }
         throw new Error(`HTTP ${response.status}: ${detail}`);
       }
       const body = obj(await response.json());
@@ -566,7 +569,7 @@ async function pool<T>(items: readonly T[], size: number, fn: (item: T) => Promi
 
 /** Rates every completed run without a rating, with its conversation. */
 async function judgeAll(judgeModel: string, runs: BenchRun[], all: readonly BenchRun[], tasks: Library["tasks"]): Promise<void> {
-  await pool(runs.filter((run) => !run.judge && run.status === "completed"), 12, (run) => judge(judgeModel, run, requestText(tasks, run.task), historyFor(run, all, tasks)));
+  await pool(runs.filter((run) => !run.judge && run.status === "completed"), 3, (run) => judge(judgeModel, run, requestText(tasks, run.task), historyFor(run, all, tasks)));
 }
 
 // ---------------------------------------------------------------- library
@@ -663,7 +666,12 @@ function commit(): string {
 }
 
 function toRun(world: World, p: Pending, info: Map<string, Obj>, batch: string, head: string): BenchRun {
-  const steps = (logs.get(world) ?? []).filter((s) => s.task === p.task.id).map(({ done: _done, ...rest }) => rest);
+  const raw = (logs.get(world) ?? []).filter((s) => s.task === p.task.id).map(({ done: _done, ...rest }) => rest);
+  // Fact checks wait in the app's check queue, one per app; in the
+  // benchmark every world shares it. Their time counts from the first
+  // request to the model.
+  const queued = p.task.mode === "claim" && raw.length ? Math.min(...raw.map((s) => s.atMs)) : 0;
+  const steps = raw.map((s) => ({ ...s, atMs: s.atMs - queued, draftAtMs: s.draftAtMs === null ? null : s.draftAtMs - queued }));
   const sum = (pick: (u: Obj) => unknown) => steps.reduce((total, s) => total + num(s.usage ? pick(s.usage) : 0), 0);
   const billed = steps.length > 0 && steps.every((s) => s.billedUsd !== null);
   const cost = (s: StepLog) => (billed ? s.billedUsd ?? 0 : num(s.usage?.cost));
@@ -681,7 +689,7 @@ function toRun(world: World, p: Pending, info: Map<string, Obj>, batch: string, 
     promptHash: promptStates.get(p.task.id) ?? "",
     pricing: meta ? obj(meta.pricing) : null,
     status: p.status, ...(p.error ? { error: p.error } : {}),
-    ms: p.ms, firstOutputMs: firsts.length ? Math.min(...firsts) : null,
+    ms: p.ms - queued, firstOutputMs: firsts.length ? Math.min(...firsts) : null,
     steps: steps.filter((s) => s.kind === "step").length,
     failedSteps: steps.filter((s) => s.error).length,
     searches: steps.filter((s) => s.kind === "search").length,
